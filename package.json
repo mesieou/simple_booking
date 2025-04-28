@@ -1,11 +1,12 @@
 {
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev & npx next-video sync -w",
     "build": "next build",
     "start": "next start"
   },
   "dependencies": {
+    "@mux/mux-node": "^11.0.2",
     "@radix-ui/react-checkbox": "^1.1.1",
     "@radix-ui/react-dropdown-menu": "^2.1.1",
     "@radix-ui/react-label": "^2.1.0",
@@ -18,9 +19,11 @@
     "lucide-react": "^0.468.0",
     "next": "latest",
     "next-themes": "^0.4.3",
+    "next-video": "^2.2.0",
     "prettier": "^3.3.3",
     "react": "19.0.0",
-    "react-dom": "19.0.0"
+    "react-dom": "19.0.0",
+    "sharp": "^0.34.1"
   },
   "devDependencies": {
     "@types/node": "22.10.2",
