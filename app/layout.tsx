@@ -8,7 +8,7 @@ import { ThemeProvider } from "next-themes";
 import Link from "next/link";
 import Image from "next/image";
 import "./globals.css";
-import logo from "../components/ui/public/SkedyLogo.png";
+import logo from "../public/SkedyLogo.png";
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
