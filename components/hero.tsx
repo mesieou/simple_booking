@@ -7,8 +7,7 @@ import JoinWaitlist  from "@/components/waitlist-form";
 export default function Header() {
   return (
     <div className="flex flex-col gap-16 items-center">
-      <div className="flex gap-8 justify-center items-center">
-
+      <div className="flex flex-col-reverse md:flex-row gap-8 justify-center items-center">
         <div className="w-full sm:w-3/4 md:w-1/2 lg:w-1/3 h-auto rounded-lg shadow-lg">
           <Video
             src={botDemo}
@@ -22,10 +21,10 @@ export default function Header() {
           </p>
           <div className="mt-32">
             <JoinWaitlist />  
-          </div>
+          </div> 
         </div>
       </div>
-      <div className="w-full p-[1px] bg-gradient-to-r from-transparent via-foreground/10 to-transparent my-8" />
+      <div className="w-full p-[1px] bg-gradient-to-r from-transparent via-foreground/10 to-transparent my-8" />''
     </div>
   );
 }
