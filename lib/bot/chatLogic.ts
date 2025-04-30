@@ -1,42 +1,46 @@
-// lib/bot/schemas.ts
+// lib/bot/chatLogic.ts
 /**
- * JSON Schemas that describe the arguments OpenAI can send back
- * when it wants to call one of our functions.
+ * Chat Logic
+ * This module handles the chat logic for the moving-service assistant.
+ * It processes the chat history and generates responses using OpenAI's API.
+ * It also handles function calls for getting quotes and booking slots.
  */
+import { getQuoteSchema, bookSlotSchema } from "@/lib/bot/schemas";
+import {systemPrompt} from "@/lib/bot/prompts";
+import { getQuote } from "@/lib/bot/helpers/quote";
+import OpenAI from "openai";
 
-export const getQuoteSchema = {
-    name: "getQuote",
-    description: "Return a moving quote given pickup and dropoff addresses",
-    parameters: {
-        type: "object",
-        properties: {
-            pickup: { type: "string", description: "Full pickup address" },
-            dropoff: { type: "string", description: "Full dropoff address" },
-            movers: {
-                type: "integer",
-                description: "Number of movers (1 or 2)",
-                enum: [1, 2],
-            },
-        },
-        required: ["pickup", "dropoff"],
-    }
-} as const;
 
-export const bookSlotSchema = { 
-    name: "bookSlot",
-    description: "Lock an avalable time slot for the momve",
-    parameters: {
-        type: "object",
-        properties: {
-            slotId: { type: "string", description: "The slot ID to book" },
-            pickup: { type: "string", description: "Pickup address" },
-            dropoff: { type: "string", description: "Dropoff address" },
-            customerName: { type: "string", description: "Customer full name" },
-            email: { type: "string", description: "Customer email" },
-            phone: { type: "string", description: "Customer phone number" },
-            // Add any other properties you need for the booking
-            // Datetime, number of movers, etc.
-        },
-        required: ["slotId", "pickup", "dropoff", "customerName", "email", "phone"]
+const openai = new OpenAI();
+
+export async function handleChat(history: any[]) {
+    const completion = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo", //"gpt-4o-mini"
+        messages: [{ role: "system", content: systemPrompt }, ...history ], 
+        functions: [getQuoteSchema, bookSlotSchema],
+        function_call: "auto"
+    });
+
+    const msg = completion.choices[0].message;
+
+    // === Get Quote ===
+    if (msg.function_call?.name === "getQuote") {
+        const args = JSON.parse(msg.function_call.arguments || "{}");
+        const quote = getQuote({pickup: args.pickup, dropoff: args.dropoff});
+        history.push(msg);
+        history.push({
+            role: "function",
+            name: "getQuote",
+            content: JSON.stringify(quote)
+        });
+        return history;
     }
-} as const;
+
+    // === Book Slot ===
+    if (msg.function_call?.name === "bookSlot") {
+        // TO DO: add booking logic here 
+    }
+
+    // default: append assistant reply
+    return [...history, msg];
+}
