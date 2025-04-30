@@ -32,7 +32,7 @@ function JoinWaitlist() {
 
     // updates the use state and display a success message to the user
     setIsSubmitted(true);
-    // setFormMessage({ success: "Thank you for joining the waitlist!" });
+    setFormMessage({ success: "Thank you for joining the waitlist!" });
 
     
     // Saving the email to the database
@@ -52,7 +52,7 @@ function JoinWaitlist() {
         {/* Display success or error message */}
         {formMessage && <FormMessage message={formMessage} />}
 
-        {!isSubmitted ? (
+        {!isSubmitted && (
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
               <input
@@ -62,7 +62,7 @@ function JoinWaitlist() {
                 onChange={handleEmailChange}
                 required
                 placeholder="Enter your email"
-                className="w-full text-black bg-white p-2 mt-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                className="w-full text-black bg-white p-2 mt-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring text-cen"
               />
             </div>
 
@@ -73,10 +73,6 @@ function JoinWaitlist() {
               Join Waitlist
             </button>
           </form>
-        ) : (
-          <div className="text-center text-green-600 mt-4">
-            <p>Thank you for joining the waitlist!</p>
-          </div>
         )}
       </div>
     </div>

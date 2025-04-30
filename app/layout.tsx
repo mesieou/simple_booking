@@ -16,8 +16,8 @@ const defaultUrl = process.env.VERCEL_URL
 
 export const metadata = {
   metadataBase: new URL(defaultUrl),
-  title: "Next.js and Supabase Starter Kit",
-  description: "The fastest way to build apps with Next.js and Supabase",
+  title: "Skedy",
+  description: "The best way to manage bookings and calendars",
 };
 
 const geistSans = Geist({
@@ -54,7 +54,7 @@ export default function RootLayout({
               <div className="flex flex-col gap-20 max-w-5xl p-5">
                 {children}
               </div>
-
+              
               <footer className="w-full flex items-center justify-center border-t mx-auto text-center text-xs gap-8 py-16">
                 <p>
                    All rights reserved by Skedy.
