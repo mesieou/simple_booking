@@ -15,7 +15,7 @@ const LABOUR_RATE_PER_MIN_AUD = 2.62;  // Per mover minute
 export type QuoteArgs = {
     pickup: string
     dropoff: string
-    movers?: 1 | 2
+    // movers?: 1 | 2
 }
 
 export type Quote = {
