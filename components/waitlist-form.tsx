@@ -1,19 +1,26 @@
 'use client';
 
 import React, { useState } from "react";
-import { FormMessage, Message } from "./form-message"; // Import FormMessage component
+import { FormMessage, Message } from "./form-message"; // Import FormMessage componen
+import { createClient } from "@/utils/supabase/client"
 
 // Main JoinWaitlist component
 function JoinWaitlist() {
+
+  //create an instance of supa to save the emails in the database
+  const supa = createClient();
+  
   const [email, setEmail] = useState<string>("");
   const [formMessage, setFormMessage] = useState<Message | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
-
+   
+  // this saves the email typed by the user using usestate hook
   const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setEmail(e.target.value);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // this function checks the email format and send it to supa
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Basic email validation
@@ -23,12 +30,18 @@ function JoinWaitlist() {
       return;
     }
 
-    // Handle form submission (replace with API call)
+    // updates the use state and display a success message to the user
     setIsSubmitted(true);
     setFormMessage({ success: "Thank you for joining the waitlist!" });
 
-    console.log("Submitted email:", email);
-    // Replace with API call (e.g., axios.post("/api/subscribe", { email }))
+    
+    // Saving the email to the database
+    const { data, error } = await supa.from("waitlist").insert([{email}]);  
+    if (error) {
+      console.error("Supabase insert error", error);
+      setFormMessage({ error: "Oops! Something went wrong. Please try again. "})
+      setIsSubmitted(false);
+    }
   };
 
   return (
@@ -39,15 +52,9 @@ function JoinWaitlist() {
         {/* Display success or error message */}
         {formMessage && <FormMessage message={formMessage} />}
 
-        {!isSubmitted ? (
+        {!isSubmitted && (
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-white-700"
-              >
-                Email Address
-              </label>
               <input
                 type="email"
                 id="email"
@@ -55,7 +62,7 @@ function JoinWaitlist() {
                 onChange={handleEmailChange}
                 required
                 placeholder="Enter your email"
-                className="w-full bg-white p-2 mt-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                className="w-full text-black bg-white p-2 mt-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring text-cen"
               />
             </div>
 
@@ -66,10 +73,6 @@ function JoinWaitlist() {
               Join Waitlist
             </button>
           </form>
-        ) : (
-          <div className="text-center text-green-600 mt-4">
-            <p>Thank you for joining the waitlist!</p>
-          </div>
         )}
       </div>
     </div>
