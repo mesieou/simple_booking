@@ -25,16 +25,32 @@ export async function handleChat(history: any[]) {
 
     // === Get Quote ===
     if (msg.function_call?.name === "getQuote") {
+        // 1. Extract arguments coming from model
         const args = JSON.parse(msg.function_call.arguments || "{}");
+
+        // 2. Run our helper, get the quote
         const quote = getQuote({pickup: args.pickup, dropoff: args.dropoff});
+        
+        // 3. Append assistant function call + our function response to history
         history.push(msg);
         history.push({
             role: "function",
             name: "getQuote",
             content: JSON.stringify(quote)
         });
+
+        // 4. --- Second round ---
+        // Ask the model o turn the raw quote into a human readable reply
+        const followUp = await openai.chat.completions.create({
+            model : "gpt-3.5-turbo", 
+            messages: [{ role: "system", content: systemPrompt}, ...history],
+        });
+
+        // 5. Append the human sentence to history and return
+        history.push(followUp.choices[0].message);
         return history;
     }
+
 
     // === Book Slot ===
     if (msg.function_call?.name === "bookSlot") {
