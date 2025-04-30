@@ -45,8 +45,8 @@ function JoinWaitlist() {
   };
 
   return (
-    <div className="flex justify-center items-center p-6">
-      <div className="max-w-md w-ful p-6  flex items-center gap-2">
+    <div className="flex justify-center items-center md:p-6">
+      <div className="max-w-md w-ful p-6  md:flex items-center gap-2">
         <h2 className="text-2xl text-white font-semibold mb-4 text-center">Join the Waitlist</h2>
 
         {/* Display success or error message */}
@@ -62,13 +62,13 @@ function JoinWaitlist() {
                 onChange={handleEmailChange}
                 required
                 placeholder="Enter your email"
-                className="w-full text-black bg-white p-2 mt-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring text-cen"
+                className="w-full text-black bg-white p-2 mt-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring text-center"
               />
             </div>
 
             <button
               type="submit"
-              className="w-full bg-primary text-primary-foreground py-2 rounded-md hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-ring"
+              className="w-full bg-gradient-to-r from-primary to-secondary text-primary-foreground py-2 rounded-md hover:bg-gradient-to-l from-primary to-secondary focus:outline-none focus:ring-2 focus:ring-ring"
             >
               Join Waitlist
             </button>
