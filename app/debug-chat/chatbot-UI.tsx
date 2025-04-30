@@ -13,6 +13,7 @@ export default function ChatbotUI() {
     // msg: stores what the user is currently typing into the input box
     // setmsg updates the msg var when the user types something
     const [msg, setMsg] = useState("");
+    const [loading, setLoading] = useState(false);
 
     // history stores the full conversation (all user + bot msgs)
     // sethistory updates the conversation history
@@ -23,23 +24,50 @@ export default function ChatbotUI() {
             {/* === Chat history section === */}
             {/* Loop through all the messages in history and show them on screen */}
             <div className="space-y-2">
-                {history.map((m, i) => (
+                {history.map((m, i) => {
+                    /* ----- FUNCTION / TOOL MESSAGES ----- */
+                    if (m.role === "function") {
+                    switch (m.name) {
+                        case "get_quote": {
+                        // Quote returned as JSON string -> convert to object
+                        const q = JSON.parse(m.content);
+                        return (
+                            <div key={i} className="text-left text-sm">
+                            <div className="inline-block bg-green-100 px-3 py-2 rounded">
+                                Base ${q.baseFare}  +  ${q.labourRatePerMin}/min labour
+                            </div>
+                            </div>
+                        );
+                        }
+                        default:
+                        return null; // hide any other function types for now
+                    }
+                }
+
+                return (
                     <div 
                     key = {i} // key helps react to keep track of elements in a list
                     className={`${
-                        m.role === "user" ? "text-right" : "text-left"}}"
+                        m.role === "user" ? "text-right" : "text-left"}"
                     } text-sm`} // If the message is from user, align right, else left
                     >
-                        <div className="inline-block px-3 py-2 rounded bg-gray-200">
-                            {/* Show message content, or name of function if its a function call */}
-                            { m. content ?? m.function_call?.name ?? "Bot"}
+                        <div 
+                            className={`inline-block px-3 py-2 rounded ${
+                                m.role === "user" ? "bg-blue-200" : "bg-gray-200"
+                              }`}
+                        >
+                            {m.content ?? m.function_call?.name ?? "Bot"}
                         </div>
                     </div>
-                ))}
+                );     
+                })}
             </div>
             
             {/* === Input box === */}
             {/*This is where the user types their message */}
+            {loading && (
+            <div className="text-left text-xs italic text-gray-400">Bot is thinking…</div>
+            )}
             <input type="text"
             className="border border-gray-300 rounded 2-full p-2"
             placeholder="Type a message and press enter"
@@ -55,15 +83,19 @@ export default function ChatbotUI() {
         // dont send if the message is empty or just spaces
         if (!msg.trim()) return;
 
+        
         // add the new message to the chat history (as a user message)
         const next = [...history, { role:"user", content:msg}];
         setHistory(next); // update the screen with the new message
         setMsg(""); // Clear the input box
 
+        setLoading(true);
+
         try {
+            // call backend
             const res = await fetch("/api/chat", {
                 method: "POST",
-                headers: {"content-Type": "application.json"},
+                headers: {"Content-Type": "application.json"},
                 body: JSON.stringify({ history: next }),
             });
 
@@ -79,6 +111,9 @@ export default function ChatbotUI() {
                     context:"Something went wrong talking to the bot.",
                 },
             ]);
+        } finally {
+            // Hide bot is thinking 
+            setLoading(false)
         }
     }
 }
