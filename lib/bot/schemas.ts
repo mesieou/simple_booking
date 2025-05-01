@@ -18,21 +18,50 @@ export const getQuoteSchema = {
     }
 } as const;
 
-export const bookSlotSchema = { 
-    name: "bookSlot",
-    description: "Lock an avalable time slot for the momve",
+
+/**
+ * get_slots
+ * Called after user provides a date
+ * The LLM passes {"date":"2025-05-15"} and expects slot list back.
+ */
+
+export const getSlotsSchema = {
+    name: "get_slots",
+    description: "Return 4 default time slots for a given moving date",
     parameters: {
         type: "object",
         properties: {
-            slotId: { type: "string", description: "The slot ID to book" },
-            pickup: { type: "string", description: "Pickup address" },
-            dropoff: { type: "string", description: "Dropoff address" },
-            customerName: { type: "string", description: "Customer full name" },
-            email: { type: "string", description: "Customer email" },
-            phone: { type: "string", description: "Customer phone number" },
-            // Add any other properties you need for the booking
-            // Datetime, number of movers, etc.
+            date: {type:"string", description: "Move date, eg 2025-04-15"},
         },
-        required: ["slotId", "pickup", "dropoff", "customerName", "email", "phone"]
+        required:["date"],
     }
 } as const;
+
+/**
+ * book_slot
+ * called after user choses a slot
+ * this is a hardcoded confirmation for now
+ */
+
+export const bookSlotSchema = {
+    name: "book_slot",
+    description: "Finalize the booking for the chose slot",
+    parameters: {
+        type: "object",
+        properties: {
+            slotId: {type:"string"},
+            date: {typr:"string"},
+            pickup: {typr:"string"},
+            dropoff: {typr:"string"},
+        },
+        required: ["slotId", "date", " pickup", "dropoff"],
+    },
+} as const;
+
+
+// then export it with the others
+export const toolSchemas = [
+    getQuoteSchema,
+    getSlotsSchema,
+    bookSlotSchema      
+  ];
