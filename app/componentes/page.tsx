@@ -9,6 +9,7 @@ import SupabaseLogo from '@/components/supabase-logo'
 import { ThemeSwitcher } from '@/components/theme-switcher'
 import JoinWaitlist from '@/components/waitlist-form'
 import Precios from '@/components/precios';
+import Direction from '@/components/direction';
 
 
 export default async function Componentes() {
@@ -27,6 +28,9 @@ export default async function Componentes() {
       <ThemeSwitcher/>
       <JoinWaitlist/>
       <Precios/>
+      <Direction texto="Pick up from"/>
+      <Direction texto="Move to"/>
+
     </>
   );
 }
