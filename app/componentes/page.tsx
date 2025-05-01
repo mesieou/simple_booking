@@ -10,6 +10,7 @@ import { ThemeSwitcher } from '@/components/theme-switcher'
 import JoinWaitlist from '@/components/waitlist-form'
 import Precios from '@/components/precios';
 import Direction from '@/components/direction';
+import Distance from '@/components/distance';
 
 
 export default async function Componentes() {
@@ -30,7 +31,7 @@ export default async function Componentes() {
       <Precios/>
       <Direction texto="Pick up from"/>
       <Direction texto="Move to"/>
-
+      <Distance/>
     </>
   );
 }
