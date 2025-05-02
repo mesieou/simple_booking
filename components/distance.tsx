@@ -22,7 +22,7 @@ export default function Distance() {
     setDuracion(null);
 
     try {
-      const response = await fetch(`/api/distancia?origen=${encodeURIComponent(origen)}&destino=${encodeURIComponent(destino)}`);
+      const response = await fetch(`/api/form?origen=${encodeURIComponent(origen)}&destino=${encodeURIComponent(destino)}`);
       if (!response.ok) {
         const errorData: ErrorResult = await response.json();
         throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
