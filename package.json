@@ -28,6 +28,7 @@
     "sharp": "^0.34.1"
   },
   "devDependencies": {
+    "@types/date-fns": "^2.5.3",
     "@types/node": "22.10.2",
     "@types/react": "^19.0.2",
     "@types/react-dom": "19.0.2",
