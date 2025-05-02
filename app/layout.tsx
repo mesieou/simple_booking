@@ -18,6 +18,9 @@ export const metadata = {
   metadataBase: new URL(defaultUrl),
   title: "Skedy",
   description: "The best way to manage bookings and calendars",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 const geistSans = Geist({
