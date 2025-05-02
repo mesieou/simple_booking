@@ -8,7 +8,7 @@ class Business {
     workingHours: any;
     serviceRatePerMinutes: number;
 
-    constructor( 
+    constructor(
         name: string, 
         email: string, 
         phone: string, 
@@ -37,6 +37,7 @@ class Business {
             "workingHours": this.workingHours,
             "serviceRatePerMinutes": this.serviceRatePerMinutes
         }
+        
         const { data, error } = await supa.from("business").insert(business).select().single();
 
         //displays the error if the data fails to upload in supa or displays the succesful data
