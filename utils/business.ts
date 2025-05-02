@@ -6,19 +6,22 @@ class Business {
     phone: string;
     timeZone: string;
     workingHours: any;
+    serviceRatePerMinutes: number;
 
     constructor( 
         name: string, 
         email: string, 
         phone: string, 
         timeZone: string, 
-        workingHours: any
+        workingHours: any,
+        serviceRatePerMinutes: number
     ) {
          this.name = name;
          this.email = email;
          this.phone = phone;
          this.timeZone = timeZone;
          this.workingHours = workingHours;
+         this.serviceRatePerMinutes = serviceRatePerMinutes;
     }
 
     //creates a business in supa
@@ -32,6 +35,7 @@ class Business {
             "phone": this.phone,
             "timeZone": this.timeZone,
             "workingHours": this.workingHours,
+            "serviceRatePerMinutes": this.serviceRatePerMinutes
         }
         const { data, error } = await supa.from("business").insert(business).select().single();
 

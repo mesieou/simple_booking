@@ -1,5 +1,5 @@
 import { Business } from "../../business";
-jest.mock("../client.ts"); // Use the mock from __mocks__/client.ts
+jest.mock("../supabase/client"); // Use the mock from __mocks__/client.ts
 
 describe("Business", () => {
   it("should create a business successfully", async () => {
@@ -12,7 +12,8 @@ describe("Business", () => {
       "test@biz.com",
       "123456789",
       "Australia/Melbourne",
-      workingHours
+      workingHours,
+      1.50
     );
 
     const { data, error } = await business.add();
