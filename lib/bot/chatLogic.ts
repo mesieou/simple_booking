@@ -19,7 +19,7 @@ export async function handleChat(history: any[]) {
     const completion = await openai.chat.completions.create({
         model: "gpt-3.5-turbo", //"gpt-4o-mini"
         messages: [{ role: "system", content: systemPrompt }, ...history ], 
-        functions: [getQuoteSchema, bookSlotSchema],
+        functions: [getQuoteSchema, getSlotsSchema, bookSlotSchema],
         function_call: "auto"
     });
 

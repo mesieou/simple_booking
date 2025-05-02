@@ -49,12 +49,11 @@ export const bookSlotSchema = {
     parameters: {
         type: "object",
         properties: {
-            slotId: {type:"string"},
-            date: {typr:"string"},
-            pickup: {typr:"string"},
-            dropoff: {typr:"string"},
+            slot_id: {type:"integer"},
+            service_date: {type:"integer"},
+            email: {type:"string", description: "customer email" },
         },
-        required: ["slotId", "date", " pickup", "dropoff"],
+        required: ["service_date", "slot_id", "email"],
     },
 } as const;
 
