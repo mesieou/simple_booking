@@ -12,19 +12,22 @@ class Booking {
     user: User;
     provider: User;
     quote: Quote;
+    business: Business;
 
     constructor( 
         timestampTz: string, 
         status: string, 
         user: User, 
         provider: User, 
-        quote: Quote
+        quote: Quote,
+        business: Business
     ) {
          this.timestampTz = timestampTz;
          this.status = status;
          this.user = user;
          this.provider = provider;
          this.quote = quote;
+         this.business = business;
     }
 
     //creates a booking in supa
@@ -37,9 +40,9 @@ class Booking {
         const booking = {
             "timestampTz": this.timestampTz,
             "status": this.status,
-            "user_id": this.user.id,
-            "provider_id": this.provider.id,
-            "quote_id": this.quote.id,
+            "userId": this.user.id,
+            "providerId": this.provider.id,
+            "quoteId": this.quote.id,
         }
         const { data, error } = await supa.from("bookings").insert(booking).select().single();
 
