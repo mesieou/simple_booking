@@ -28,6 +28,17 @@ export const createClient = jest.fn(() => ({
                 error: null,
               };
             }
+            if (table === "bookings") {
+              return {
+                data: {
+                  id: "mocked-booking-id",
+                  businessId: record.businessId ?? "mocked-business-id",
+                  userId: record.userId ?? "mocked-user-id",
+                  quoteId: record.quoteId ?? "mocked-user-id",
+                },
+                error: null,
+              };
+            }
             return { data: null, error: "Unknown table" };
           }),
         })),
