@@ -1,4 +1,4 @@
-import { createClient } from "./supabase/client" 
+import { createClient } from "@/utils/supabase/client"
 
 class Business {
     name: string;
