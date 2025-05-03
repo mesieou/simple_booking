@@ -3,7 +3,7 @@ export const createClient = jest.fn(() => ({
       insert: jest.fn((record) => ({
         select: jest.fn(() => ({
           single: jest.fn(() => {
-            if (table === "business") {
+            if (table === "businesses") {
               return {
                 data: { id: "mocked-business-id" },
                 error: null,
@@ -13,7 +13,17 @@ export const createClient = jest.fn(() => ({
               return {
                 data: {
                   id: "mocked-user-id",
-                  business_id: record.business_id ?? "mocked-business-id",
+                  businessId: record.businessId ?? "mocked-business-id",
+                },
+                error: null,
+              };
+            }
+            if (table === "quotes") {
+              return {
+                data: {
+                  id: "mocked-quote-id",
+                  businessId: record.businessId ?? "mocked-business-id",
+                  userId: record.userId ?? "mocked-user-id",
                 },
                 error: null,
               };
