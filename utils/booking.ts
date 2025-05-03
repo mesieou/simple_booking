@@ -1,6 +1,6 @@
 import { Business } from "./business";
-import { User } from "./User";
-import { Quote} from "./Quote";
+import { User } from "./user";
+import { Quote} from "./quote";
 import { createClient } from "@/utils/supabase/client"
  
  //creates the connection with supabase
@@ -9,40 +9,37 @@ const supa = createClient();
 class Booking {
     timestampTz: string;
     status: string; 
-    user: User;
-    provider: User;
-    quote: Quote;
-    business: Business;
+    userId: string;
+    providerId: string;
+    quoteId: string;
+    businessId: string;
 
     constructor( 
         timestampTz: string, 
         status: string, 
-        user: User, 
-        provider: User, 
-        quote: Quote,
-        business: Business
+        userId: string, 
+        providerId: string, 
+        quoteId: string,
+        businessId: string
     ) {
          this.timestampTz = timestampTz;
          this.status = status;
-         this.user = user;
-         this.provider = provider;
-         this.quote = quote;
-         this.business = business;
+         this.userId = userId;
+         this.providerId = providerId;
+         this.quoteId = quoteId;
+         this.businessId = businessId;
     }
 
     //creates a booking in supa
     async add() {
-        //ckecks if the user, providaer or quote do not have idd
-        if (!this.user?.id || !this.provider?.id || !this.quote?.id) {
-            throw new Error("Missing required IDs");
-        } 
-        
+
         const booking = {
             "timestampTz": this.timestampTz,
             "status": this.status,
-            "userId": this.user.id,
-            "providerId": this.provider.id,
-            "quoteId": this.quote.id,
+            "userId": this.userId,
+            "providerId": this.providerId,
+            "quoteId": this.quoteId,
+            "businessId": this.businessId
         }
         const { data, error } = await supa.from("bookings").insert(booking).select().single();
 
@@ -56,4 +53,6 @@ class Booking {
     }
 
 }
+
+export { Booking };
 
