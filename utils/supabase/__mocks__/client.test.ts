@@ -1,10 +1,11 @@
 import { Business } from "../../business";
+import { Quote } from "../../quote";
 import { User } from "../../user";
 
 jest.mock("../client.ts"); // Uses __mocks__/client.ts
 
 describe("Business", () => {
-  it("should create a business and associated user successfully", async () => {
+  it("should create a quote, business and use and do associations", async () => {
     const workingHours = {
       Monday: { start: "09:00", end: "17:00" },
     };
@@ -32,6 +33,24 @@ describe("Business", () => {
 
     expect(userError).toBeNull();
     expect(userData).toBeDefined();
-    expect(userData.business_id).toBe(bizData.id);
+    expect(userData.businessId).toBe(bizData.id);
+
+    //creates a new quote and assign the suer and business to the quote
+    const quote = new Quote(
+      "12 Lygon Street, Carlton VIC 3053",
+      "87 Chapel Street, South Yarra VIC 3141",
+      85,
+      userData.id,
+      bizData.id
+    )
+
+    //inserts the quote into the data base
+    const {data: quoteData, error: quoteError } = await quote.add();
+
+    //tests that the quote creation does not return an issue, that it was create and the business and user were created properly
+    expect(quoteError).toBeNull();
+    expect(quoteData).toBeDefined();
+    expect(quoteData.businessId).toBe(bizData.id);
+    expect(quoteData.userId).toBe(userData.id);
   });
 });

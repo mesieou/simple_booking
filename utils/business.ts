@@ -38,7 +38,7 @@ class Business {
             "serviceRatePerMinutes": this.serviceRatePerMinutes
         }
         
-        const { data, error } = await supa.from("business").insert(business).select().single();
+        const { data, error } = await supa.from("businesses").insert(business).select().single();
 
         //displays the error if the data fails to upload in supa or displays the succesful data
         if(error) {

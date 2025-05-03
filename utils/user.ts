@@ -5,13 +5,13 @@ class User {
     firstName: string;
     lastName: string; 
     role: string;
-    businessId: Business;
+    businessId: string;
 
     constructor( 
         firstName: string, 
         lastName: string, 
         role: string, 
-        businessId: Business, 
+        businessId: string, 
     ) {
          this.firstName = firstName;
          this.lastName = lastName;
