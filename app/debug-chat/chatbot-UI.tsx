@@ -7,6 +7,7 @@
 
 // Import the useState hook from react to store user input and chat history in memory
 import { useState } from "react";
+import {Slot} from "@/lib/bot/helpers/slots";
 
 // This is the main UI component for the chatbot
 export default function ChatbotUI() {
@@ -24,7 +25,9 @@ export default function ChatbotUI() {
             {/* === Chat history section === */}
             {/* Loop through all the messages in history and show them on screen */}
             <div className="space-y-2">
-                {history.map((m, i) => {
+                {history
+                .filter((m) => m.role !== "assistant" || m.function_call === undefined)
+                .map((m, i) => {
                     /* ----- FUNCTION / TOOL MESSAGES ----- */
                     if (m.role === "function") {
                     switch (m.name) {
@@ -33,11 +36,34 @@ export default function ChatbotUI() {
                         const q = JSON.parse(m.content);
                         return (
                             <div key={i} className="text-left text-sm">
-                            <div className="inline-block bg-green-100 px-3 py-2 rounded">
-                                Base ${q.baseFare}  +  ${q.labourRatePerMin}/min labour
+                                <div className="inline-block bg-green-100 px-3 py-2 rounded text-black">
+                                    Base ${q.baseFare}  +  ${q.labourRatePerMin}/min labour
+                                </div>
                             </div>
-                            </div>
-                        );
+                            );
+                        }
+                        case "get_slots":{
+                            // slots is [{id, label}...] we list them out
+                            const slots = JSON.parse(m.content) as Slot[];
+                            return (
+                                <div key={i} className="text-left text-sm space-y-1">
+                                    {slots.map((s) => (
+                                        <div key={s.id} className="bg-yellow-100 px-3 py-1 rounded text-black">
+                                            {s.label}
+                                        </div>
+                                    ))}
+                                </div>
+                            );
+                        }
+
+                        case "book_slot": {
+                            return (
+                                <div key={i} className="text-left text-sm">
+                                    <div className="bg-green-200 px-3 py-2 rounded text-black">
+                                        ✅ Booking confirmed! See you then.
+                                    </div>
+                                </div>
+                            );
                         }
                         default:
                         return null; // hide any other function types for now
@@ -46,15 +72,15 @@ export default function ChatbotUI() {
 
                 return (
                     <div 
-                    key = {i} // key helps react to keep track of elements in a list
-                    className={`${
-                        m.role === "user" ? "text-right" : "text-left"}"
-                    } text-sm`} // If the message is from user, align right, else left
+                        key = {i} // key helps react to keep track of elements in a list
+                        className={`${
+                            m.role === "user" ? "text-right" : "text-left"
+                        } text-sm`} // If the message is from user, align right, else left
                     >
                         <div 
                             className={`inline-block px-3 py-2 rounded ${
                                 m.role === "user" ? "bg-blue-200" : "bg-gray-200"
-                              }`}
+                              } text-black whitespace-pre-line max-w-lg break-words`}
                         >
                             {m.content ?? m.function_call?.name ?? "Bot"}
                         </div>
@@ -95,7 +121,7 @@ export default function ChatbotUI() {
             // call backend
             const res = await fetch("/api/chat", {
                 method: "POST",
-                headers: {"Content-Type": "application.json"},
+                headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({ history: next }),
             });
 
