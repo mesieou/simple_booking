@@ -13,7 +13,7 @@ import Direction from '@/components/direction';
 import Distance from '@/components/distance';
 import Day from '@/components/day';
 import Calendar from '@/components/calendar';
-import CalendarCopy from '@/components/calendar copy';
+import Hour from '@/components/hour';
 
 
 export default async function Componentes() {
@@ -37,7 +37,7 @@ export default async function Componentes() {
       <Distance/>
       <Day date={new Date()}/>
       <Calendar/>
-      <CalendarCopy/>
+      <Hour date={new Date()}/>
     </>
   );
 }

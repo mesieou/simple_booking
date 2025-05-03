@@ -1,5 +1,6 @@
 // 'use client';
 
+// import { useState } from 'react';
 // import Day from '@/components/day';
 
 // const getNextDays = (count: number): Date[] => {
@@ -14,26 +15,40 @@
 // };
 
 // export default function Calendar() {
-//   const days = getNextDays(30);
+//   const [showFullMonth, setShowFullMonth] = useState(false);
+//   const daysToShow = showFullMonth ? 30 : 5;
+//   const days = getNextDays(daysToShow);
 
 //   return (
-//     <div className="group space-y-3 transition-opacity [&:is(fieldset)]:disabled:opacity-25">
-//       <label className='text-label-2 after:text-label-5 group-data-optional:after:content-["optional"] font-medium leading-none after:ml-2 after:text-gray-400'>
-//         Calendario
+//     <div className="group space-y-3 transition-opacity [&:is(fieldset)]:disabled:opacity-25 text-center">
+//       <label className="text-2xl text-label-2 font-medium leading-none text-white">
+//         Select day
 //       </label>
-//       <div className='space-y-3'></div>
-//       <div className="grid grid-cols-5 gap-3">
+      
+//       <div className="w-full grid grid-cols-5 gap-x-12 gap-y-5">
 //         {days.map((day, index) => (
 //           <Day key={index} date={day} />
 //         ))}
 //       </div>
+
+//       <div className="pt-4">
+//         <button
+//           onClick={() => setShowFullMonth(!showFullMonth)}
+//           className="h-max w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition text-2xl"
+//         >
+//           {showFullMonth ? 'Show Less' : 'Show Full Month'}
+//         </button>
+//       </div>
 //     </div>
 //   );
 // }
+
+
 'use client';
 
 import { useState } from 'react';
 import Day from '@/components/day';
+import Horarios from '@/components/hour'; // importamos el nuevo componente
 
 const getNextDays = (count: number): Date[] => {
   const days: Date[] = [];
@@ -48,29 +63,35 @@ const getNextDays = (count: number): Date[] => {
 
 export default function Calendar() {
   const [showFullMonth, setShowFullMonth] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const daysToShow = showFullMonth ? 30 : 5;
   const days = getNextDays(daysToShow);
 
   return (
-    <div className="group space-y-3 transition-opacity [&:is(fieldset)]:disabled:opacity-25 text-center">
-      <label className="text-2xl text-label-2 font-medium leading-none text-white">
-        Select day
-      </label>
-      
-      <div className="w-full grid grid-cols-5 gap-x-12 gap-y-5">
+    <div className="text-center space-y-6">
+      <h2 className="text-2xl text-white">Selecciona un día</h2>
+
+      <div className="grid grid-cols-5 gap-6">
         {days.map((day, index) => (
-          <Day key={index} date={day} />
+          <Day key={index} date={day} onSelect={setSelectedDate} isSelected={selectedDate?.toDateString() === day.toDateString()} />
         ))}
       </div>
 
-      <div className="pt-4">
+      <div>
         <button
           onClick={() => setShowFullMonth(!showFullMonth)}
-          className="h-max w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition text-2xl"
+          className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition text-lg"
         >
-          {showFullMonth ? 'Show Less' : 'Show Full Month'}
+          {showFullMonth ? 'Mostrar menos' : 'Mostrar mes completo'}
         </button>
       </div>
+
+      {selectedDate && (
+        <div className="mt-8">
+          <h3 className="text-xl text-white mb-4">Horarios disponibles para {selectedDate.toDateString()}</h3>
+          <Horarios date={selectedDate} />
+        </div>
+      )}
     </div>
   );
 }

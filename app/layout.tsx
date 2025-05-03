@@ -48,6 +48,9 @@ export default function RootLayout({
                     <Image src={logo} className="w-40 m:h-auto m:m-10" alt="Skedy logo. bookings and scheduler business" />
                   </Link>
                   </div>
+                  <div>
+                    MENU
+                  </div>
                   {!hasEnvVars ? <EnvVarWarning /> : <HeaderAuth />}
                 </div>
               </nav>
