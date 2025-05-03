@@ -1,7 +1,7 @@
-import { Business } from "../../business";
-import { Quote } from "../../quote";
-import { User } from "../../user";
-import { Booking } from "../../booking";
+import { Business } from "../../models/business";
+import { Quote } from "../../models/quote";
+import { User } from "../../models/user";
+import { Booking } from "../../models/booking";
 
 jest.mock("../client.ts"); // Uses __mocks__/all-models.ts
 
