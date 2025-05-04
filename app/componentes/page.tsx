@@ -37,7 +37,6 @@ export default async function Componentes() {
       <Distance/>
       <Day date={new Date()}/>
       <Calendar/>
-      <Hour date={new Date()}/>
     </>
   );
 }
