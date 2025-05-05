@@ -44,9 +44,9 @@ export default function RootLayout({
               <nav className="w-full flex justify-center border-b border-b-foreground/10 h-16">
                 <div className="w-full max-w-5xl flex justify-between items-center p-3 px-5 text-sm">
                   <div className="flex gap-5 items-center font-semibold">
-                  <Link href="/" className="flex items-center">
-                    <Image src={logo} className="w-40 m:h-auto m:m-10" alt="Skedy logo. bookings and scheduler business" />
-                  </Link>
+                    <Link href="/" className="flex items-center">
+                      <Image src={logo} className="w-40 m:h-auto m:m-10" alt="Skedy logo. bookings and scheduler business" />
+                    </Link>
                   </div>
                   {!hasEnvVars ? <EnvVarWarning /> : <HeaderAuth />}
                 </div>
