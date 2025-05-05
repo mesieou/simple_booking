@@ -31,7 +31,11 @@ export async function handleChat(history: any[]) {
         const args = JSON.parse(msg.function_call.arguments || "{}");
 
         // 2. Run our helper, get the quote
-        const quote = getQuote({pickup: args.pickup, dropoff: args.dropoff});
+        const quote = getQuote({
+            pickup: args.pickup,
+            dropoff: args.dropoff,
+            // Optional parameters will use their default values
+        });
         
         // 3. Append assistant function call + our function response to history
         history.push(msg);
