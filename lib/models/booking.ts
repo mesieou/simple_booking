@@ -1,7 +1,7 @@
 import { Business } from "./business";
 import { User } from "./user";
 import { Quote} from "./quote";
-import { createClient } from "@/utils/supabase/client"
+import { createClient } from "@/lib/supabase/client"
  
  //creates the connection with supabase
 const supa = createClient();        

@@ -1,6 +1,6 @@
 import { Business } from "./business";
 import { User } from "./user";
-import { createClient } from "@/utils/supabase/client"
+import { createClient } from "@/lib/supabase/client"
  
  //creates the connection with supabase
 const supa = createClient();        
@@ -9,6 +9,7 @@ class Quote {
     pickUp: string;
     dropOff: string; 
     baseFare: number;
+    travelFare: number;
     userId: string;
     businessId: string;
 
@@ -16,12 +17,14 @@ class Quote {
         pickUp: string, 
         dropOff: string, 
         baseFare: number,
+        travelFare: number,
         userId: string, 
         businessId: string
     ) {
          this.pickUp = pickUp;
          this.dropOff = dropOff;
          this.baseFare = baseFare;
+         this.travelFare = travelFare;
          this.userId = userId;
          this.businessId = businessId;
     }
@@ -33,6 +36,7 @@ class Quote {
             "pickUp": this.pickUp,
             "dropOff": this.dropOff,
             "baseFare": this.baseFare,
+            "travelFare": this.travelFare,
             "userId": this.userId,
             "businessId": this.businessId
         }

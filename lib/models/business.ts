@@ -1,4 +1,4 @@
-import { createClient } from "@/utils/supabase/client"
+import { createClient } from "@/lib/supabase/client"
 
 class Business {
     name: string;
@@ -6,7 +6,7 @@ class Business {
     phone: string;
     timeZone: string;
     workingHours: any;
-    serviceRatePerMinutes: number;
+    serviceRatePerMinute: number;
 
     constructor(
         name: string, 
@@ -14,14 +14,14 @@ class Business {
         phone: string, 
         timeZone: string, 
         workingHours: any,
-        serviceRatePerMinutes: number
+        serviceRatePerMinute: number
     ) {
          this.name = name;
          this.email = email;
          this.phone = phone;
          this.timeZone = timeZone;
          this.workingHours = workingHours;
-         this.serviceRatePerMinutes = serviceRatePerMinutes;
+         this.serviceRatePerMinute = serviceRatePerMinute;
     }
 
     //creates a business in supa
@@ -35,7 +35,7 @@ class Business {
             "phone": this.phone,
             "timeZone": this.timeZone,
             "workingHours": this.workingHours,
-            "serviceRatePerMinutes": this.serviceRatePerMinutes
+            "serviceRatePerMinute": this.serviceRatePerMinute
         }
         
         const { data, error } = await supa.from("businesses").insert(business).select().single();
