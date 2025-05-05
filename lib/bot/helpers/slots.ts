@@ -32,6 +32,6 @@ export function makeSlots(dateStr: string): Slot[] {
 
   return windows.map(([from, to], idx) => ({
     id: `slot-${idx + 1}`,
-    label: `${pad(from)} – ${pad(to)}`,
+    label: `${pad(from)} - ${pad(to)}`,
   }));
 }
