@@ -14,6 +14,7 @@ import Distance from '@/components/distance';
 import Day from '@/components/day';
 import Calendar from '@/components/calendar';
 import Hour from '@/components/hour';
+import Menu from '@/components/menu';
 
 
 export default async function Componentes() {
@@ -37,6 +38,7 @@ export default async function Componentes() {
       <Distance/>
       <Day date={new Date()}/>
       <Calendar/>
+      <Menu/>
     </>
   );
 }
