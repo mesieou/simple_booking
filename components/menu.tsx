@@ -10,7 +10,7 @@ export default function Menu() {
   const links = [
     { href: '/', label: 'Home' },
     { href: '/about', label: 'About' },
-    { href: '/Services', label: 'Services' },
+    { href: '/services', label: 'Services' },
     { href: '/componentes', label: 'Contact' },
   ];
 
