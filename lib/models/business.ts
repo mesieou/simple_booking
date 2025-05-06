@@ -5,7 +5,6 @@ class Business {
     email: string; 
     phone: string;
     timeZone: string;
-    workingHours: any;
     serviceRatePerMinute: number;
 
     constructor(
@@ -13,14 +12,12 @@ class Business {
         email: string, 
         phone: string, 
         timeZone: string, 
-        workingHours: any,
         serviceRatePerMinute: number
     ) {
          this.name = name;
          this.email = email;
          this.phone = phone;
          this.timeZone = timeZone;
-         this.workingHours = workingHours;
          this.serviceRatePerMinute = serviceRatePerMinute;
     }
 
@@ -34,7 +31,6 @@ class Business {
             "email": this.email,
             "phone": this.phone,
             "timeZone": this.timeZone,
-            "workingHours": this.workingHours,
             "serviceRatePerMinute": this.serviceRatePerMinute
         }
         
