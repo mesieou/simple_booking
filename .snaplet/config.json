@@ -1,0 +1,4 @@
+{
+  "adapter": "pg",
+  "projectDescription": "This project is about managing bookings, businesses, authentication, authorization, and user subscriptions. It also involves handling audit logs, messages, S3 uploads, SAML providers, and identity verification."
+}
