@@ -21,7 +21,7 @@ export const metadata = {
   title: "Skedy",
   description: "The best way to manage bookings and calendars",
   icons: {
-    icon: "/favicon.ico",
+    icon: "/favicon.png",
   },
 };
 
