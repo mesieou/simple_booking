@@ -1,79 +1,63 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { faker } from '@faker-js/faker';
+import { ProviderSettingsModel, ProviderWorkingHours } from '@/lib/models/provider-settings';
 import { Business } from '@/lib/models/business';
 import { User } from '@/lib/models/user';
 import { Quote } from '@/lib/models/quote';
 import { Booking } from '@/lib/models/booking';
 import { DateTime } from 'luxon';
 import { v4 as uuidv4 } from 'uuid';
-import { faker } from '@faker-js/faker';
 
 // Helper function to clear all data
-async function clearData(supabase: any) {
-  console.log('Clearing existing data...');
-  
-  // Delete in correct order to respect foreign key constraints
-  const tables = ['bookings', 'quotes', 'users', 'businesses'];
+async function clearExistingData(supabase: any) {
+  const tables = ['bookings', 'quotes', 'calendarSettings', 'users', 'businesses'];
   
   for (const table of tables) {
     const { error } = await supabase
       .from(table)
       .delete()
-      .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all but keep a dummy record
+      .neq('id', '00000000-0000-0000-0000-000000000000');
     
     if (error) {
       console.error(`Error clearing ${table}:`, error);
       throw error;
     }
   }
-  
-  console.log('Data cleared successfully');
 }
 
-// Helper function to create a business with server-side client
+// Helper function to create a business with server client
 async function createBusinessWithServerClient(supabase: any, business: Business) {
-  const businessData = {
-    id: uuidv4(),
-    name: business.name,
-    email: business.email,
-    phone: business.phone,
-    timeZone: business.timeZone,
-    workingHours: business.workingHours,
-    serviceRatePerMinute: business.serviceRatePerMinute
-  };
-
-  console.log('Attempting to insert business with data:', businessData);
-
   const { data, error } = await supabase
     .from('businesses')
-    .insert(businessData)
+    .insert(business)
     .select()
     .single();
 
   if (error) {
-    console.error('Error inserting business:', error);
+    console.error('Error creating business:', error);
     throw error;
   }
+
   return data;
 }
 
-// Helper function to create a user in Auth and database
-async function createUserWithServerClient(supabase: any, user: User, password: string) {
-  // Generate a unique email using Faker
+// Helper function to create a user with server client
+async function createUserWithServerClient(supabase: any, user: User) {
+  // First create the auth user
   const email = faker.internet.email({
     firstName: user.firstName.toLowerCase(),
     lastName: user.lastName.toLowerCase()
   });
   
-  // First create the user in Auth
-  const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+  const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
     email: email,
-    password: password,
+    password: 'password123',  // Default password for testing
     email_confirm: true,
     user_metadata: {
-      role: user.role,
       firstName: user.firstName,
-      lastName: user.lastName
+      lastName: user.lastName,
+      role: user.role
     }
   });
 
@@ -82,16 +66,15 @@ async function createUserWithServerClient(supabase: any, user: User, password: s
     throw authError;
   }
 
-  // Then create the user in the database
+  // Then create the database user with the auth user's ID
   const userData = {
-    id: authData.user.id,
-    role: user.role,
+    id: authUser.user.id,
     firstName: user.firstName,
     lastName: user.lastName,
-    businessId: user.businessId
+    role: user.role,
+    businessId: user.businessId,
+    createdAt: new Date().toISOString()
   };
-
-  console.log('Attempting to insert user with data:', userData);
 
   const { data, error } = await supabase
     .from('users')
@@ -100,9 +83,37 @@ async function createUserWithServerClient(supabase: any, user: User, password: s
     .single();
 
   if (error) {
-    console.error('Error inserting user:', error);
+    console.error('Error creating database user:', error);
     throw error;
   }
+
+  return data;
+}
+
+// Helper function to create provider settings
+async function createProviderSettings(supabase: any, settings: any) {
+  const formattedSettings = {
+    userId: settings.userId,
+    businessId: settings.businessId,
+    workingHours: settings.workingHours || null,
+    calendarType: settings.calendarType || null,
+    calendarId: settings.calendarId || null,
+    settings: settings.settings || null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  const { data, error } = await supabase
+    .from('calendarSettings')
+    .insert(formattedSettings)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating provider settings:', error);
+    throw error;
+  }
+
   return data;
 }
 
@@ -155,9 +166,14 @@ export async function POST(request: Request) {
         }
       }
     );
-
+    
     // Clear existing data
-    await clearData(supabase);
+    await clearExistingData(supabase);
+
+    const createdBusinesses: Business[] = [];
+    const createdUsers: User[] = [];
+    const createdQuotes: Quote[] = [];
+    const createdBookings: Booking[] = [];
 
     // Create multiple businesses with random data
     const businesses = Array.from({ length: 5 }, () => {
@@ -173,131 +189,228 @@ export async function POST(request: Request) {
           "Asia/Tokyo",
           "America/Los_Angeles"
         ]),
-        {
-          Monday: { start: "09:00", end: "17:00" },
-          Tuesday: { start: "09:00", end: "17:00" },
-          Wednesday: { start: "09:00", end: "17:00" },
-          Thursday: { start: "09:00", end: "17:00" },
-          Friday: { start: "09:00", end: "17:00" }
-        },
         faker.number.float({ min: 1.5, max: 3, fractionDigits: 2 })
       );
     });
 
-    const createdBusinesses = [];
+    const createdBusinessesData = [];
     for (const business of businesses) {
       const businessData = await createBusinessWithServerClient(supabase, business);
-      createdBusinesses.push(businessData);
+      createdBusinessesData.push(businessData);
     }
 
     // Create users for each business
-    const createdUsers = [];
-    for (const business of createdBusinesses) {
-      // Create owner
+    const createdUsersData = [];
+    for (const business of createdBusinessesData) {
+      // Create owner (who might also be a provider)
       const owner = new User(
         faker.person.firstName(),
         faker.person.lastName(),
-        "Owner",
+        'owner',
         business.id
       );
-      const ownerData = await createUserWithServerClient(supabase, owner, "password123");
-      createdUsers.push(ownerData);
-
-      // Create provider
-      const provider = new User(
-        faker.person.firstName(),
-        faker.person.lastName(),
-        "Provider",
-        business.id
-      );
-      const providerData = await createUserWithServerClient(supabase, provider, "password123");
-      createdUsers.push(providerData);
-    }
-
-    // Create quotes and bookings
-    const createdQuotes = [];
-    const createdBookings = [];
-    
-    for (const business of createdBusinesses) {
-      console.log(`Creating quotes and bookings for business: ${business.name}`);
       
-      // Find the owner and provider for this business
-      const owner = createdUsers.find(u => u.businessId === business.id && u.role === "Owner");
-      const provider = createdUsers.find(u => u.businessId === business.id && u.role === "Provider");
+      const ownerData = await createUserWithServerClient(supabase, owner);
+      createdUsersData.push(ownerData);
+
+      // Create owner's provider settings (owner might also be a provider)
+      const ownerIsProvider = faker.datatype.boolean();
+      if (ownerIsProvider) {
+        const useCalendar = faker.datatype.boolean();
+        const ownerSettings = {
+          userId: ownerData.id,
+          businessId: business.id,
+          workingHours: useCalendar ? null : {
+            monday: { start: '09:00', end: '17:00' },
+            tuesday: { start: '09:00', end: '17:00' },
+            wednesday: { start: '09:00', end: '17:00' },
+            thursday: { start: '09:00', end: '17:00' },
+            friday: { start: '09:00', end: '17:00' },
+            saturday: null,
+            sunday: null
+          },
+          calendarType: useCalendar ? faker.helpers.arrayElement(['google', 'outlook']) : null,
+          calendarId: useCalendar ? faker.string.uuid() : null,
+          settings: {
+            bufferTime: faker.helpers.arrayElement([15, 30, 45]),
+            timezone: business.timezone,
+            maxBookingsPerDay: faker.helpers.arrayElement([2, 3, 4, 5]),
+            minNoticeHours: faker.helpers.arrayElement([24, 48, 72])
+          }
+        };
+
+        await createProviderSettings(supabase, ownerSettings);
+      }
+
+      // Create 1-3 additional providers per business
+      const numProviders = faker.number.int({ min: 1, max: 3 });
       
-      console.log('Found users:', { owner, provider });
-      
-      if (owner && provider) {
-        // Create multiple quotes for this business
-        const quotes = Array.from({ length: 3 }, () => {
-          const melbourneStreets = [
-            "Collins St", "Bourke St", "Swanston St", "Flinders St", 
-            "Elizabeth St", "Lonsdale St", "Russell St", "Exhibition St",
-            "King St", "William St", "Queen St", "Little Collins St",
-            "Spencer St", "La Trobe St", "Spring St", "Market St"
-          ];
-          
-          const melbourneSuburbs = [
-            { name: "Melbourne", postcode: "3000" },  // CBD
-            { name: "Southbank", postcode: "3006" },
-            { name: "Docklands", postcode: "3008" },
-            { name: "Carlton", postcode: "3053" },
-            { name: "East Melbourne", postcode: "3002" }
-          ];
+      for (let i = 0; i < numProviders; i++) {
+        const user = new User(
+          faker.person.firstName(),
+          faker.person.lastName(),
+          'provider',
+          business.id
+        );
+        
+        const userData = await createUserWithServerClient(supabase, user);
+        createdUsersData.push(userData);
 
-          const generateMelbourneAddress = () => {
-            const streetNumber = faker.number.int({ min: 1, max: 300 });
-            const street = faker.helpers.arrayElement(melbourneStreets);
-            const suburb = faker.helpers.arrayElement(melbourneSuburbs);
-            return `${streetNumber} ${street}, ${suburb.name} VIC ${suburb.postcode}`;
-          };
+        // Create provider settings
+        const useCalendar = faker.datatype.boolean();
+        const calendarType = useCalendar ? faker.helpers.arrayElement(['google', 'outlook']) : null;
+        const providerSettings = {
+          userId: userData.id,
+          businessId: business.id,
+          workingHours: useCalendar ? null : {
+            monday: { start: '09:00', end: '17:00' },
+            tuesday: { start: '09:00', end: '17:00' },
+            wednesday: { start: '09:00', end: '17:00' },
+            thursday: { start: '09:00', end: '17:00' },
+            friday: { start: '09:00', end: '17:00' },
+            saturday: null,
+            sunday: null
+          },
+          calendarType: calendarType,
+          calendarId: useCalendar ? faker.string.uuid() : null,
+          settings: {
+            bufferTime: faker.helpers.arrayElement([15, 30, 45]),
+            timezone: business.timezone,
+            maxBookingsPerDay: faker.helpers.arrayElement([2, 3, 4, 5]),
+            minNoticeHours: faker.helpers.arrayElement([24, 48, 72])
+          }
+        };
 
-          return {
-            pickUp: generateMelbourneAddress(),
-            dropOff: generateMelbourneAddress(),
-            baseFare: faker.number.int({ min: 50, max: 300 }),
-            travelFare: faker.number.int({ min: 20, max: 150 })
-          };
-        });
+        await createProviderSettings(supabase, providerSettings);
+      }
 
-        for (const quoteData of quotes) {
-          console.log('Creating quote with data:', quoteData);
-          const quote = await createQuote(supabase, {
-            businessId: business.id,
-            userId: owner.id,
-            ...quoteData
-          });
-          console.log('Created quote:', quote);
+      // Create quotes for this business
+      const numQuotes = faker.number.int({ min: 3, max: 5 });
+      for (let i = 0; i < numQuotes; i++) {
+        const quoteData = {
+          pickUp: faker.location.streetAddress(),
+          dropOff: faker.location.streetAddress(),
+          baseFare: faker.number.int({ min: 50, max: 300 }),
+          travelFare: faker.number.int({ min: 20, max: 150 }),
+          userId: ownerData.id,
+          businessId: business.id,
+          jobType: faker.helpers.arrayElement(["one item", "few items", "house/apartment move"]),
+          status: faker.helpers.arrayElement(["pending", "accepted", "rejected"]),
+          labourFare: faker.number.int({ min: 50, max: 200 }),
+          total: 0 // Will be calculated after
+        };
+        quoteData.total = quoteData.baseFare + quoteData.travelFare + quoteData.labourFare;
+
+        const { data: quote, error: quoteError } = await supabase
+          .from('quotes')
+          .insert(quoteData)
+          .select()
+          .single();
+
+        if (quoteError) {
+          console.error('Error creating quote:', quoteError);
+        } else {
           createdQuotes.push(quote);
-        }
-
-        // Create multiple bookings for this business
-        const bookings = Array.from({ length: 3 }, (_, i) => ({
-          timestampTz: DateTime.now().plus({ days: i + 1 }).toFormat("yyyy-MM-dd HH:mm:ssZZ"),
-          status: faker.helpers.arrayElement(["Not Completed", "In Progress", "Completed"])
-        }));
-
-        for (let i = 0; i < bookings.length; i++) {
-          console.log('Creating booking with data:', bookings[i]);
-          const booking = await createBooking(supabase, {
-            businessId: business.id,
-            userId: owner.id,
+          
+          // Create a booking for this quote
+          const providers = createdUsersData.filter(u => u.businessId === business.id && u.role === "provider");
+          const provider = providers[Math.floor(Math.random() * providers.length)];
+          const bookingData = {
+            timestampTz: new Date(Date.now() + Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000).toISOString(), // Random date in next 30 days
+            status: faker.helpers.arrayElement(["Not Completed", "In Progress", "Completed"]),
+            userId: quote.userId,
             providerId: provider.id,
-            quoteId: createdQuotes[i].id,
-            ...bookings[i]
-          });
-          console.log('Created booking:', booking);
-          createdBookings.push(booking);
+            quoteId: quote.id,
+            businessId: quote.businessId
+          };
+
+          const { data: booking, error: bookingError } = await supabase
+            .from('bookings')
+            .insert(bookingData)
+            .select()
+            .single();
+
+          if (bookingError) {
+            console.error('Error creating booking:', bookingError);
+          } else {
+            createdBookings.push(booking);
+          }
         }
-      } else {
-        console.error(`Could not find owner or provider for business ${business.name}`);
       }
     }
 
-    return NextResponse.json({ 
+    // Create quotes and bookings
+    for (const business of createdBusinessesData) {
+      console.log(`Creating quotes and bookings for business: ${business.name}`);
+      
+      // Find the owner and providers for this business
+      const owner = createdUsersData.find(u => u.businessId === business.id && u.role === "owner");
+      const providers = createdUsersData.filter(u => u.businessId === business.id && u.role === "provider");
+      
+      console.log('Found users:', { owner, providers });
+      
+      if (owner) {
+        // Create multiple quotes for this business
+        const numQuotes = faker.number.int({ min: 3, max: 5 });
+        for (let i = 0; i < numQuotes; i++) {
+          const quoteData = {
+            pickUp: faker.location.streetAddress(),
+            dropOff: faker.location.streetAddress(),
+            baseFare: faker.number.int({ min: 50, max: 300 }),
+            travelFare: faker.number.int({ min: 20, max: 150 }),
+            userId: owner.id,
+            businessId: business.id,
+            jobType: faker.helpers.arrayElement(["one item", "few items", "house/apartment move"]),
+            status: faker.helpers.arrayElement(["pending", "accepted", "rejected"]),
+            labourFare: faker.number.int({ min: 50, max: 200 }),
+            total: 0 // Will be calculated after
+          };
+          quoteData.total = quoteData.baseFare + quoteData.travelFare + quoteData.labourFare;
+
+          const { data: quote, error: quoteError } = await supabase
+            .from('quotes')
+            .insert(quoteData)
+            .select()
+            .single();
+
+          if (quoteError) {
+            console.error('Error creating quote:', quoteError);
+          } else {
+            createdQuotes.push(quote);
+            
+            // Create a booking for this quote
+            const provider = providers[Math.floor(Math.random() * providers.length)];
+            const bookingData = {
+              timestampTz: new Date(Date.now() + Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000).toISOString(), // Random date in next 30 days
+              status: faker.helpers.arrayElement(["Not Completed", "In Progress", "Completed"]),
+              userId: quote.userId,
+              providerId: provider.id,
+              quoteId: quote.id,
+              businessId: quote.businessId
+            };
+
+            const { data: booking, error: bookingError } = await supabase
+              .from('bookings')
+              .insert(bookingData)
+              .select()
+              .single();
+
+            if (bookingError) {
+              console.error('Error creating booking:', bookingError);
+            } else {
+              createdBookings.push(booking);
+            }
+          }
+        }
+      } else {
+        console.error(`Could not find owner for business ${business.name}`);
+      }
+    }
+
+    return NextResponse.json({
       message: 'Database seeded successfully',
-      businesses: createdBusinesses,
-      users: createdUsers,
+      businesses: createdBusinessesData,
+      users: createdUsersData,
       quotes: createdQuotes,
       bookings: createdBookings
     });
