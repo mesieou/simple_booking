@@ -9,6 +9,8 @@ import Link from "next/link";
 import Image from "next/image";
 import "./globals.css";
 import logo from "../public/SkedyLogo.png";
+import { Footer } from "@/components/footer";
+import Menu from "@/components/menu";
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -18,6 +20,9 @@ export const metadata = {
   metadataBase: new URL(defaultUrl),
   title: "Skedy",
   description: "The best way to manage bookings and calendars",
+  icons: {
+    icon: "/favicon.png",
+  },
 };
 
 const geistSans = Geist({
@@ -43,24 +48,28 @@ export default function RootLayout({
             <div className="flex-1 w-full flex flex-col gap-20 items-center">
               <nav className="w-full flex justify-center border-b border-b-foreground/10 h-16">
                 <div className="w-full max-w-5xl flex justify-between items-center p-3 px-5 text-sm">
-                  <div className="flex gap-5 items-center font-semibold">
+                  <div className="flex items-center w-1/3">
+                    <div className="md:hidden">
+                      <Menu />
+                    </div>
                     <Link href="/" className="flex items-center">
                       <Image src={logo} className="w-40 m:h-auto m:m-10" alt="Skedy logo. bookings and scheduler business" />
                     </Link>
                   </div>
-                  {!hasEnvVars ? <EnvVarWarning /> : <HeaderAuth />}
+                  <div className="flex-1 flex justify-center">
+                    <div className="hidden md:block w-full">
+                      <Menu />
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-end w-1/3">
+                    {!hasEnvVars ? <EnvVarWarning /> : <HeaderAuth />}
+                  </div>
                 </div>
               </nav>
               <div className="flex flex-col gap-20 max-w-5xl p-5">
                 {children}
               </div>
-              
-              <footer className="w-full flex items-center justify-center border-t border-t-foreground/10 mx-auto text-center text-xs gap-8 py-16">
-                <p>
-                   All rights reserved by Skedy. 
-                </p>
-                <ThemeSwitcher />
-              </footer>
+              <Footer />
             </div>
           </main>
         </ThemeProvider>
