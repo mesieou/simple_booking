@@ -1,9 +1,9 @@
-import { createAdminClient } from '../lib/supabase/admin';
+import { createClient } from '../lib/supabase/server';
 
 async function main() {
   try {
     console.log('Starting database seeding...');
-    const supabase = await createAdminClient();
+    const supabase = createClient();
     // Add your seeding logic here using the admin client
     console.log('Database seeded successfully!');
     process.exit(0);
