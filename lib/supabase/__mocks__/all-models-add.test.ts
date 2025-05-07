@@ -1,93 +1,98 @@
-import { Business } from "../../models/business";
-import { Quote } from "../../models/quote";
-import { User } from "../../models/user";
-import { Booking } from "../../models/booking";
+import { Business, BusinessData } from "../../models/business";
+import { Quote, QuoteData } from "../../models/quote";
+import { User, UserData } from "../../models/user";
+import { Booking, BookingData } from "../../models/booking";
 
 jest.mock("../client.ts"); // Uses __mocks__/all-models.ts
 
 describe("Business", () => {
   it("should create a booking, quote, business and use and do associations", async () => {
-    const workingHours = {
-      Monday: { start: "09:00", end: "17:00" },
-    };
-
-    const business = new Business(
-      "Test Biz",
-      "test@biz.com",
-      "123456789",
-      "Australia/Melbourne",
-      workingHours,
-      1.5
-    );
+    const business = new Business({
+      name: "Test Biz",
+      email: "test@biz.com",
+      phone: "123456789",
+      timeZone: "Australia/Melbourne",
+      serviceRatePerMinute: 1.5
+    });
 
     // Insert business and get its ID
-    const { data: bizData, error: bizError } = await business.add()
+    const businessData = await business.add();
+    expect(businessData).toBeDefined();
+    expect(businessData.id).toBe("mocked-business-id");
 
-    expect(bizError).toBeNull();
-    expect(bizData).toBeDefined();
-
-
-
-
+    if (!businessData.id) throw new Error("Business ID is required");
 
     //creates a new user and a provider
-    const user = new User("Juan", "Berna", "Owner", bizData.id);
-    const provider = new User("Daniel", "Berna", "Provider", bizData.id);
+    const user = new User({
+      firstName: "Juan",
+      lastName: "Berna",
+      role: "admin",
+      businessId: businessData.id
+    });
 
-    const { data: providerData, error: providerError } = await user.add()
-    const { data: userData, error: userError } = await user.add()
+    const provider = new User({
+      firstName: "Daniel",
+      lastName: "Berna",
+      role: "provider",
+      businessId: businessData.id
+    });
 
-    expect(userError).toBeNull();
+    const userData = await user.add();
+    const providerData = await provider.add();
+
     expect(userData).toBeDefined();
-    expect(userData.businessId).toBe(bizData.id);
-    expect(providerError).toBeNull();
+    expect(userData.id).toBe("mocked-user-id");
+    expect(userData.businessId).toBe(businessData.id);
     expect(providerData).toBeDefined();
-    expect(providerData.businessId).toBe(bizData.id);
+    expect(providerData.id).toBe("mocked-user-id");
+    expect(providerData.businessId).toBe(businessData.id);
 
+    if (!userData.id) throw new Error("User ID is required");
+    if (!providerData.id) throw new Error("Provider ID is required");
 
-
-
-
-
-    //creates a new quote and assign the suer and business to the quote
-    const quote = new Quote(
-      "12 Lygon Street, Carlton VIC 3053",
-      "87 Chapel Street, South Yarra VIC 3141",
-      85,
-      userData.id,
-      bizData.id
-    )
+    //creates a new quote and assign the user and business to the quote
+    const quote = new Quote({
+      pickUp: "12 Lygon Street, Carlton VIC 3053",
+      dropOff: "87 Chapel Street, South Yarra VIC 3141",
+      baseFare: 85,
+      travelFare: 50,
+      userId: userData.id,
+      businessId: businessData.id,
+      jobType: "one item",
+      status: "pending",
+      labourFare: 50,
+      total: 185
+    });
 
     //inserts the quote into the data base
-    const {data: quoteData, error: quoteError } = await quote.add();
+    const quoteData = await quote.add();
 
     //tests that the booking creation does not return an issue, that it was create and the business and user were created properly
-    expect(quoteError).toBeNull();
     expect(quoteData).toBeDefined();
-    expect(quoteData.businessId).toBe(bizData.id);
+    expect(quoteData.id).toBe("mocked-quote-id");
+    expect(quoteData.businessId).toBe(businessData.id);
     expect(quoteData.userId).toBe(userData.id);
 
+    if (!quoteData.id) throw new Error("Quote ID is required");
 
-
-
-
-     //creates a new booking and assign the suer and business to the booking
-     const booking = new Booking(
-      "2025-05-05T14:42:10.123+10:00",
-      "Not Completed",
-      userData.id,
-      providerData.id,
-      quoteData.id,
-      bizData.id
-    )
+    //creates a new booking and assign the user and business to the booking
+    const booking = new Booking({
+      startTime: "2025-05-05T14:42:10.123+10:00",
+      endTime: "2025-05-05T15:42:10.123+10:00",
+      status: "Not Completed",
+      userId: userData.id,
+      providerId: providerData.id,
+      quoteId: quoteData.id,
+      businessId: businessData.id
+    });
 
     //inserts the booking into the data base
-    const {data: bookingData, error: bookingError } = await booking.add();
+    const bookingData = await booking.add();
 
     //tests that the booking creation does not return an issue, that it was create and the business and user were created properly
-    expect(bookingError).toBeNull();
     expect(bookingData).toBeDefined();
-    expect(bookingData.businessId).toBe(bizData.id);
+    expect(bookingData.id).toBe("mocked-booking-id");
+    expect(bookingData.businessId).toBe(businessData.id);
     expect(bookingData.userId).toBe(userData.id);
   });
 });
