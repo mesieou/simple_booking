@@ -11,6 +11,7 @@ import "./globals.css";
 import logo from "../public/SkedyLogo.png";
 import { Footer } from "@/components/footer";
 import Menu from "@/components/menu";
+import { LanguageProvider } from "@/lib/language-context";
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -38,41 +39,43 @@ export default function RootLayout({
   return (
     <html lang="en" className={geistSans.className} suppressHydrationWarning>
       <body className="bg-background text-foreground">
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <main className="min-h-screen flex flex-col items-center m-4">
-            <div className="flex-1 w-full flex flex-col gap-20 items-center">
-              <nav className="w-full flex justify-center border-b border-b-foreground/10 h-16">
-                <div className="w-full max-w-5xl flex justify-between items-center p-3 px-5 text-sm">
-                  <div className="flex items-center w-1/3">
-                    <div className="md:hidden">
-                      <Menu />
+        <LanguageProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <main className="min-h-screen flex flex-col items-center m-4">
+              <div className="flex-1 w-full flex flex-col gap-20 items-center">
+                <nav className="w-full flex justify-center border-b border-b-foreground/10 h-16">
+                  <div className="w-full max-w-5xl flex justify-between items-center p-3 px-5 text-sm">
+                    <div className="flex items-center w-1/3">
+                      <div className="md:hidden">
+                        <Menu />
+                      </div>
+                      <Link href="/" className="flex items-center">
+                        <Image src={logo} className="w-40 m:h-auto m:m-10" alt="Skedy logo. bookings and scheduler business" />
+                      </Link>
                     </div>
-                    <Link href="/" className="flex items-center">
-                      <Image src={logo} className="w-40 m:h-auto m:m-10" alt="Skedy logo. bookings and scheduler business" />
-                    </Link>
-                  </div>
-                  <div className="flex-1 flex justify-center">
-                    <div className="hidden md:block w-full">
-                      <Menu />
+                    <div className="flex-1 flex justify-center">
+                      <div className="hidden md:block w-full">
+                        <Menu />
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-end w-1/3">
+                      {!hasEnvVars ? <EnvVarWarning /> : <HeaderAuth />}
                     </div>
                   </div>
-                  <div className="flex items-center justify-end w-1/3">
-                    {!hasEnvVars ? <EnvVarWarning /> : <HeaderAuth />}
-                  </div>
+                </nav>
+                <div className="flex flex-col gap-20 max-w-5xl p-5">
+                  {children}
                 </div>
-              </nav>
-              <div className="flex flex-col gap-20 max-w-5xl p-5">
-                {children}
+                <Footer />
               </div>
-              <Footer />
-            </div>
-          </main>
-        </ThemeProvider>
+            </main>
+          </ThemeProvider>
+        </LanguageProvider>
       </body>
     </html>
   );
