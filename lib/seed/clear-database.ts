@@ -1,7 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 
 export async function clearExistingData(supabase: SupabaseClient) {
-  const tables = ['bookings', 'quotes', 'calendarSettings', 'users', 'businesses', 'events'];
+  const tables = ['events', 'bookings', 'quotes', 'calendarSettings', 'users', 'businesses', ];
   
   for (const table of tables) {
     const { error } = await supabase
