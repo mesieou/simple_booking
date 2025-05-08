@@ -1,11 +1,16 @@
+'use client';
+
+import { useLanguage } from "@/lib/language-context";
 import Link from 'next/link'
 import Image from 'next/image'
 import logo from '../public/SkedyLogo.png'
 
 export function Footer() {
+  const { t } = useLanguage();
+
   return (
-    <footer className="bg-transparent">
-      <div className="mx-auto w-full max-w-screen-xl p-4 py-6 lg:py-8">
+    <footer className="w-full bg-gradient-to-r from-gray-900/80 to-gray-800/80 text-white backdrop-blur-sm">
+      <div className="w-3/4 mx-auto p-4 py-6 lg:py-8">
         <div className="md:flex md:justify-between items-center">
           <div className="mb-6 md:mb-0 flex items-center gap-12">
             <Link href="/" className="flex items-center">
@@ -16,78 +21,75 @@ export function Footer() {
                 height={100}
                 className="w-[100px] h-[100px] object-contain mr-8"
               />
-              {/* <span className="self-center text-2xl font-semibold whitespace-nowrap dark:text-white ml-2">
-                Skedy
-              </span> */}
             </Link>
           </div>
           <div className="grid grid-cols-2 gap-8 sm:gap-6 sm:grid-cols-3">
             <div>
-              <h2 className="mb-6 text-sm font-semibold text-white uppercase">
-                Recursos
+              <h2 className="mb-6 text-sm font-semibold text-yellow-400 uppercase">
+                {t('resources')}
               </h2>
-              <ul className="text-black dark:text-black font-medium">
+              <ul className="text-gray-300 font-medium">
                 <li className="mb-4">
-                  <Link href="/features" className="hover:underline">
-                    Características
+                  <Link href="/features" className="hover:text-yellow-400 transition-colors">
+                    {t('features')}
                   </Link>
                 </li>
                 <li>
-                  <Link href="/pricing" className="hover:underline">
-                    Precios
+                  <Link href="/pricing" className="hover:text-yellow-400 transition-colors">
+                    {t('prices')}
                   </Link>
                 </li>
               </ul>
             </div>
             <div>
-              <h2 className="mb-6 text-sm font-semibold text-white uppercase">
-                Soporte
+              <h2 className="mb-6 text-sm font-semibold text-yellow-400 uppercase">
+                {t('support')}
               </h2>
-              <ul className="text-black dark:text-black font-medium">
+              <ul className="text-gray-300 font-medium">
                 <li className="mb-4">
-                  <Link href="/contact" className="hover:underline">
-                    Contacto
+                  <Link href="/contact" className="hover:text-yellow-400 transition-colors">
+                    {t('contact')}
                   </Link>
                 </li>
                 <li>
-                  <Link href="/faq" className="hover:underline">
-                    Preguntas Frecuentes
+                  <Link href="/faq" className="hover:text-yellow-400 transition-colors">
+                    {t('questions')}
                   </Link>
                 </li>
               </ul>
             </div>
             <div>
-              <h2 className="mb-6 text-sm font-semibold text-white uppercase">
-                Legal
+              <h2 className="mb-6 text-sm font-semibold text-yellow-400 uppercase">
+                {t('legal')}
               </h2>
-              <ul className="text-black dark:text-black font-medium">
+              <ul className="text-gray-300 font-medium">
                 <li className="mb-4">
-                  <Link href="/privacy" className="hover:underline">
-                    Política de Privacidad
+                  <Link href="/privacy" className="hover:text-yellow-400 transition-colors">
+                    {t('privacy')}
                   </Link>
                 </li>
                 <li>
-                  <Link href="/terms" className="hover:underline">
-                    Términos y Condiciones
+                  <Link href="/terms" className="hover:text-yellow-400 transition-colors">
+                    {t('terms')}
                   </Link>
                 </li>
               </ul>
             </div>
           </div>
         </div>
-        <hr className="my-6 border-gray-200 sm:mx-auto dark:border-gray-700 lg:my-8" />
+        <hr className="my-6 border-gray-700/50 sm:mx-auto lg:my-8" />
         <div className="sm:flex sm:items-center sm:justify-between">
-          <span className="text-sm sm:text-center" style={{ color: 'rgb(223, 212, 48)' }}>
+          <span className="text-sm sm:text-center text-yellow-400">
             © {new Date().getFullYear()}{' '}
-            <Link href="/" className="hover:underline" style={{ color: 'rgb(223, 212, 48)' }}>
+            <Link href="/" className="hover:underline">
               Skedy™
             </Link>
-            . Todos los derechos reservados.
+            . {t('rights')}
           </span>
           <div className="flex mt-4 sm:justify-center sm:mt-0 space-x-5">
             <a
               href="#"
-              className="text-blue-900 hover:text-gray-900 dark:hover:text-white"
+              className="text-gray-400 hover:text-yellow-400 transition-colors"
             >
               <svg
                 className="w-4 h-4"
@@ -106,7 +108,7 @@ export function Footer() {
             </a>
             <a
               href="#"
-              className="text-blue-500 hover:text-gray-900 dark:hover:text-white"
+              className="text-gray-400 hover:text-yellow-400 transition-colors"
             >
               <svg
                 className="w-4 h-4"
@@ -125,7 +127,7 @@ export function Footer() {
             </a>
             <a
               href="#"
-              className="text-white hover:text-gray-900 dark:hover:text-white"
+              className="text-gray-400 hover:text-yellow-400 transition-colors"
             >
               <svg
                 className="w-4 h-4"
@@ -144,7 +146,7 @@ export function Footer() {
             </a>
             <a
               href="#"
-              className="text-pink-500 hover:text-gray-900 dark:hover:text-white"
+              className="text-gray-400 hover:text-yellow-400 transition-colors"
             >
               <svg
                 className="w-4 h-4"
