@@ -18,6 +18,10 @@ export interface QuoteData {
     status: QuoteStatus;
     labourFare: number;
     total: number;
+    baseTime: number;
+    travelTime: number;
+    jobDuration: number;
+    totalDuration: number;
     createdAt?: string;
     updatedAt?: string;
 }
@@ -43,6 +47,10 @@ export class Quote {
         if (!data.status) throw new QuoteError("Status is required");
         if (data.labourFare < 0) throw new QuoteError("Labour fare cannot be negative");
         if (data.total < 0) throw new QuoteError("Total cannot be negative");
+        if (data.baseTime < 0) throw new QuoteError("Base time cannot be negative");
+        if (data.travelTime < 0) throw new QuoteError("Travel time cannot be negative");
+        if (data.jobDuration < 0) throw new QuoteError("Job duration cannot be negative");
+        if (data.totalDuration < 0) throw new QuoteError("Total duration cannot be negative");
         
         this.data = data;
     }
@@ -63,6 +71,10 @@ export class Quote {
             "status": this.data.status,
             "labourFare": this.data.labourFare,
             "total": this.data.total,
+            "baseTime": this.data.baseTime,
+            "travelTime": this.data.travelTime,
+            "jobDuration": this.data.jobDuration,
+            "totalDuration": this.data.totalDuration,
             "createdAt": new Date().toISOString(),
             "updatedAt": new Date().toISOString()
         }
@@ -150,6 +162,10 @@ export class Quote {
             "status": quoteData.status,
             "labourFare": quoteData.labourFare,
             "total": quoteData.total,
+            "baseTime": quoteData.baseTime,
+            "travelTime": quoteData.travelTime,
+            "jobDuration": quoteData.jobDuration,
+            "totalDuration": quoteData.totalDuration,
             "updatedAt": new Date().toISOString()
         }
         
@@ -201,6 +217,10 @@ export class Quote {
     get status(): QuoteStatus { return this.data.status; }
     get labourFare(): number { return this.data.labourFare; }
     get total(): number { return this.data.total; }
+    get baseTime(): number { return this.data.baseTime; }
+    get travelTime(): number { return this.data.travelTime; }
+    get jobDuration(): number { return this.data.jobDuration; }
+    get totalDuration(): number { return this.data.totalDuration; }
     get createdAt(): string | undefined { return this.data.createdAt; }
     get updatedAt(): string | undefined { return this.data.updatedAt; }
 }

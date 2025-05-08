@@ -8,6 +8,7 @@ export interface BookingData {
     providerId: string;
     quoteId: string;
     businessId: string;
+    dateTime: string; // ISO string format for timestamp
 }
 
 export class BookingError extends Error {
@@ -26,6 +27,7 @@ export class Booking {
         if (!data.providerId) throw new BookingError("Provider ID is required");
         if (!data.quoteId) throw new BookingError("Quote ID is required");
         if (!data.businessId) throw new BookingError("Business ID is required");
+        if (!data.dateTime) throw new BookingError("DateTime is required");
         
         this.data = { ...data, id: '' };
     }
@@ -40,6 +42,7 @@ export class Booking {
             "providerId": this.data.providerId,
             "quoteId": this.data.quoteId,
             "businessId": this.data.businessId,
+            "dateTime": this.data.dateTime,
         }
         const { data, error } = await supa.from("bookings").insert(booking).select().single();
 
@@ -122,6 +125,7 @@ export class Booking {
             "providerId": bookingData.providerId,
             "quoteId": bookingData.quoteId,
             "businessId": bookingData.businessId,
+            "dateTime": bookingData.dateTime,
         }
         
         const { data, error } = await supa
@@ -166,6 +170,7 @@ export class Booking {
     get providerId(): string { return this.data.providerId; }
     get quoteId(): string { return this.data.quoteId; }
     get businessId(): string { return this.data.businessId; }
+    get dateTime(): string { return this.data.dateTime; }
     get id(): string { return this.data.id; }
 }
 
