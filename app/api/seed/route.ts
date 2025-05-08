@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { clearExistingData } from '@/lib/seed/clear-database';
-import { createBusinesses } from '@/lib/seed/businesses';
-import { createAllUsers } from '@/lib/seed/all-users';
-import { createQuotes, createBookings } from '@/lib/seed/quotes-bookings';
+import { createBusinesses } from '@/lib/seed/create-businesses';
+import { createAllUsers } from '@/lib/seed/create-all-users';
+import { createQuotes } from '@/lib/seed/create-quotes';
+import { createBookings } from '@/lib/seed/create-bookings';
 import { SeedResult } from '@/lib/seed/types';
 import { User } from '@/lib/models/user';
 

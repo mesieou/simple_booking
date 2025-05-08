@@ -1,8 +1,8 @@
 import { faker } from '@faker-js/faker';
 import { User, UserRole } from '@/lib/models/user';
 import { Business } from '@/lib/models/business';
-import { createCalendarSettings } from './calendar-settings';
-import { createEventsForUser } from './events';
+import { createCalendarSettings } from './create-calendar-settings';
+import { createEventsForUser } from './create-events';
 import { createUser } from './user';
 
 export async function createAllUsers(business: Business) {
