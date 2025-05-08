@@ -11,11 +11,9 @@ import JoinWaitlist from '@/components/waitlist-form'
 import Precios from '@/components/precios';
 import Direction from '@/components/direction';
 import Distance from '@/components/distance';
-import Day from '@/components/day';
 import Calendar from '@/components/calendar';
-import Hour from '@/components/hour';
 import Menu from '@/components/menu';
-
+import LanguageSwitcher from '@/components/language-switcher';
 
 export default async function Componentes() {
     const mensajeExito = { success: "¡Datos guardados exitosamente!" };
@@ -38,6 +36,7 @@ export default async function Componentes() {
       <Distance/>
       <Calendar/>
       <Menu/>
+      <LanguageSwitcher/>
     </>
   );
 }
