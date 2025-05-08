@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from '@/lib/supabase/server';
 import { clearExistingData } from '@/lib/seed/clear-database';
 import { createBusinesses } from '@/lib/seed/create-businesses';
 import { createAllUsers } from '@/lib/seed/create-all-users';
@@ -11,16 +11,7 @@ import { User } from '@/lib/models/user';
 export async function POST(request: Request) {
   try {
     // Create a Supabase client with service role key
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
-    );
+    const supabase = createClient();
     
     // Clear existing data
     await clearExistingData(supabase);
