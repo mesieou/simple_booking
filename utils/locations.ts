@@ -4,7 +4,8 @@ export const ciudadesPermitidas = [
   'barcelona',
   'londres',
   'paris',
-  'tokio'
+  'tokio',
+  'bogotá'
 ];
 
 export async function validarUbicacion(direccion: string): Promise<boolean> {
