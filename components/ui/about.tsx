@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import React from "react";
-import { useLanguage } from "@/lib/language-context";
+import { useLanguage } from "@/lib/translations/language-context";
 
 const About = () => {
   const { t } = useLanguage();
