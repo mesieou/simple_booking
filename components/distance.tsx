@@ -53,7 +53,9 @@ export default function Distance() {
       const element = data.rows?.[0]?.elements?.[0];
       if (element?.status === 'OK') {
         setDistancia(element.distance.text);
-        setDuracion(element.duration.text);
+        // Usar duration_in_traffic si está disponible, sino usar duration
+        const tiempoEstimado = element.duration_in_traffic?.text || element.duration.text;
+        setDuracion(tiempoEstimado);
       } else if (data.error) {
         setError(data.error);
       } else {
