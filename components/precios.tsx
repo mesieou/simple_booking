@@ -1,6 +1,6 @@
 'use client';
 
-import { useLanguage } from "@/lib/language-context";
+import { useLanguage } from "@/lib/translations/language-context";
 
 export default function Precios() {
     const { t } = useLanguage();
