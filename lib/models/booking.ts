@@ -112,6 +112,30 @@ export class Booking {
         return this.queryBookings("quoteId", quoteId, "Failed to fetch bookings by quote");
     }
 
+    static async getByProviderAndDateRange(
+        providerId: string,
+        startDate: Date,
+        endDate: Date
+    ): Promise<Booking[]> {
+        if (!Booking.isValidUUID(providerId)) {
+            throw new BookingError("Invalid UUID format for providerId");
+        }
+
+        const supa = createClient();
+        const { data, error } = await supa
+            .from("bookings")
+            .select("*")
+            .eq("providerId", providerId)
+            .gte("dateTime", startDate.toISOString())
+            .lte("dateTime", endDate.toISOString());
+        
+        if (error) {
+            throw new BookingError("Failed to fetch bookings by provider and date range", error);
+        }
+        
+        return data.map(bookingData => new Booking(bookingData));
+    }
+
     // Update booking
     static async update(id: string, bookingData: BookingData): Promise<Booking> {
         if (!Booking.isValidUUID(id)) {

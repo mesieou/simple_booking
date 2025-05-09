@@ -6,13 +6,13 @@ export type WorkingHours = {
 } | null
 
 export type ProviderWorkingHours = {
-  monday: WorkingHours
-  tuesday: WorkingHours
-  wednesday: WorkingHours
-  thursday: WorkingHours
-  friday: WorkingHours
-  saturday: WorkingHours
-  sunday: WorkingHours
+  mon: WorkingHours
+  tue: WorkingHours
+  wed: WorkingHours
+  thu: WorkingHours
+  fri: WorkingHours
+  sat: WorkingHours
+  sun: WorkingHours
 }
 
 export interface CalendarSettingsData {
@@ -167,13 +167,13 @@ export class CalendarSettings {
   // Helper method to get default working hours
   static getDefaultWorkingHours(): ProviderWorkingHours {
     return {
-      monday: { start: '09:00', end: '17:00' },
-      tuesday: { start: '09:00', end: '17:00' },
-      wednesday: { start: '09:00', end: '17:00' },
-      thursday: { start: '09:00', end: '17:00' },
-      friday: { start: '09:00', end: '17:00' },
-      saturday: null,
-      sunday: null
+      mon: { start: '09:00', end: '17:00' },
+      tue: { start: '09:00', end: '17:00' },
+      wed: { start: '09:00', end: '17:00' },
+      thu: { start: '09:00', end: '17:00' },
+      fri: { start: '09:00', end: '17:00' },
+      sat: null,
+      sun: null
     }
   }
 
