@@ -184,61 +184,66 @@ export async function updateDayAvailability(
     return null;
   }
 
-  // Calculate available slots for the quote duration
-  const quoteDuration = quote.totalDuration;
-  let slotStart = workStart;
-  const times: string[] = [];
+  // Calculate available slots for all durations
+  const updatedSlots: { [key: string]: string[] } = {};
+  
+  for (const duration of DURATION_INTERVALS) {
+    let slotStart = workStart;
+    const times: string[] = [];
 
-  while (slotStart.plus({ minutes: quoteDuration }).toMillis() <= workEnd.toMillis()) {
-    const slotEnd = slotStart.plus({ minutes: quoteDuration });
-    const slotStartUTC = slotStart.toUTC();
-    const slotEndUTC = slotEnd.toUTC();
+    while (slotStart.plus({ minutes: duration }).toMillis() <= workEnd.toMillis()) {
+      const slotEnd = slotStart.plus({ minutes: duration });
+      const slotStartUTC = slotStart.toUTC();
+      const slotEndUTC = slotEnd.toUTC();
 
-    // Check if this slot overlaps with any existing bookings
-    const overlaps = bookingQuotes.some(
-      ({ booking, quote: bookingQuote }: { booking: Booking; quote: Quote }) => {
-        const bookingDateTime = DateTime.fromISO(booking.dateTime);
-        const bookingEnd = bookingDateTime.plus({ minutes: bookingQuote.totalDuration });
-        const bookingEndWithBuffer = bookingEnd.plus({ minutes: bufferTime });
-        
-        // A slot overlaps if:
-        // 1. It starts before the booking ends (including buffer)
-        // 2. It ends after the booking starts
-        return slotStartUTC.toMillis() < bookingEndWithBuffer.toMillis() && 
-               slotEndUTC.toMillis() > bookingDateTime.toMillis();
+      // Check if this slot overlaps with any existing bookings
+      const overlaps = bookingQuotes.some(
+        ({ booking, quote: bookingQuote }: { booking: Booking; quote: Quote }) => {
+          const bookingDateTime = DateTime.fromISO(booking.dateTime);
+          const bookingEnd = bookingDateTime.plus({ minutes: bookingQuote.totalDuration });
+          const bookingEndWithBuffer = bookingEnd.plus({ minutes: bufferTime });
+          
+          // A slot overlaps if:
+          // 1. It starts before the booking ends (including buffer)
+          // 2. It ends after the booking starts
+          return slotStartUTC.toMillis() < bookingEndWithBuffer.toMillis() && 
+                 slotEndUTC.toMillis() > bookingDateTime.toMillis();
+        }
+      );
+
+      if (!overlaps) {
+        times.push(slotStart.toFormat("HH:mm"));
       }
-    );
 
-    if (!overlaps) {
-      times.push(slotStart.toFormat("HH:mm"));
+      slotStart = slotStart.plus({ minutes: 30 });
     }
 
-    slotStart = slotStart.plus({ minutes: 30 });
+    // Only add duration if there are available slots
+    if (times.length > 0) {
+      updatedSlots[duration.toString()] = times;
+    }
   }
 
   // Update the existing availability record
-  if (times.length > 0) {
-    existingAvailabilityData.slots[quoteDuration.toString()] = times;
+  if (Object.keys(updatedSlots).length > 0) {
+    const updatedAvailability = new AvailabilitySlots({
+      providerId: existingAvailabilityData.providerId,
+      date: existingAvailabilityData.date,
+      slots: updatedSlots
+    });
+    
     return await AvailabilitySlots.update(
       user.id,
       dateInProviderTZ.toFormat("yyyy-MM-dd"),
-      existingAvailabilityData
+      updatedAvailability
     );
   } else {
-    // If no slots available for this duration, remove it from the record
-    delete existingAvailabilityData.slots[quoteDuration.toString()];
-    if (Object.keys(existingAvailabilityData.slots).length === 0) {
-      await AvailabilitySlots.delete(
-        user.id,
-        dateInProviderTZ.toFormat("yyyy-MM-dd")
-      );
-      return null;
-    }
-    return await AvailabilitySlots.update(
+    // If no slots available, delete the record
+    await AvailabilitySlots.delete(
       user.id,
-      dateInProviderTZ.toFormat("yyyy-MM-dd"),
-      existingAvailabilityData
+      dateInProviderTZ.toFormat("yyyy-MM-dd")
     );
+    return null;
   }
 }
 
