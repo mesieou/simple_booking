@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Direction from '@/components/direction';
+import { validarUbicacion, obtenerMensajeError } from '@/utils/locations';
 
 interface ErrorResult {
   error: string;
@@ -22,12 +23,33 @@ export default function Distance() {
     setDuracion(null);
 
     try {
-      const response = await fetch(`/api/form?origen=${encodeURIComponent(origen)}&destino=${encodeURIComponent(destino)}`);
-      if (!response.ok) {
-        const errorData: ErrorResult = await response.json();
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      // Validar ubicaciones
+      const origenValido = await validarUbicacion(origen);
+      if (!origenValido) {
+        setError(obtenerMensajeError(origen));
+        return;
       }
-      const data = await response.json();
+
+      const destinoValido = await validarUbicacion(destino);
+      if (!destinoValido) {
+        setError(obtenerMensajeError(destino));
+        return;
+      }
+
+      const response = await fetch(`/api/maps?origen=${encodeURIComponent(origen)}&destino=${encodeURIComponent(destino)}`);
+      const responseText = await response.text();
+      console.log('Respuesta del servidor:', responseText);
+
+      if (!response.ok) {
+        try {
+          const errorData = JSON.parse(responseText);
+          throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        } catch (parseError) {
+          throw new Error(`Error del servidor: ${responseText}`);
+        }
+      }
+
+      const data = JSON.parse(responseText);
       const element = data.rows?.[0]?.elements?.[0];
       if (element?.status === 'OK') {
         setDistancia(element.distance.text);
@@ -38,7 +60,7 @@ export default function Distance() {
         setError('No se pudo calcular la distancia.');
       }
     } catch (err: any) {
-      console.error('Error fetching distance:', err.message);
+      console.error('Error:', err.message);
       setError(err.message);
     } finally {
       setIsLoading(false);
