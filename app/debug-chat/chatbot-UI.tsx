@@ -11,6 +11,7 @@ import {Slot} from "@/lib/bot/helpers/slots";
 
 // This is the main UI component for the chatbot
 export default function ChatbotUI() {
+
     // msg: stores what the user is currently typing into the input box
     // setmsg updates the msg var when the user types something
     const [msg, setMsg] = useState("");

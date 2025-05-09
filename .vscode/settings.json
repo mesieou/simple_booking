@@ -1,0 +1,16 @@
+{
+    "folder-color.pathColors": [
+        {
+            "folderPath": "simple_booking\\app\\debug-chat\\",
+            "color": "foldercolorizer.color_cc6600"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\bot\\",
+            "color": "foldercolorizer.color_cc6600"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\models\\",
+            "color": "foldercolorizer.color_00cc00"
+        }
+    ]
+}
