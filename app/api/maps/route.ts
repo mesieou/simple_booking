@@ -35,8 +35,15 @@ export async function GET(request: NextRequest): Promise<NextResponse<DistanceAp
     
     // Crear una fecha para hoy a las 5 PM
     const today = new Date();
-    today.setHours(17, 0, 0, 0); // 5 PM
-    const departureTime = Math.floor(today.getTime() / 1000); // Convertir a timestamp Unix
+    const targetTime = new Date(today);
+    targetTime.setHours(17, 0, 0, 0); // 5 PM
+
+    // Si la hora actual es después de las 5 PM, usar 5 PM del día siguiente
+    if (today > targetTime) {
+      targetTime.setDate(targetTime.getDate() + 1);
+    }
+
+    const departureTime = Math.floor(targetTime.getTime() / 1000); // Convertir a timestamp Unix
 
     const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(origen)}&destinations=${encodeURIComponent(destino)}&key=${apiKey}&mode=driving&departure_time=${departureTime}&traffic_model=pessimistic`;
 
