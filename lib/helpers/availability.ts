@@ -77,6 +77,7 @@ export async function computeInitialAvailability(
       let slotStart = workStart;
       const times: string[] = [];
 
+      // Generate slots for the entire day
       while (slotStart.plus({ minutes: duration }).toMillis() <= workEnd.toMillis()) {
         const slotEnd = slotStart.plus({ minutes: duration });
         const slotStartUTC = slotStart.toUTC();
@@ -89,6 +90,9 @@ export async function computeInitialAvailability(
             const bookingEnd = bookingDateTime.plus({ minutes: bookingQuote.totalDuration });
             const bookingEndWithBuffer = bookingEnd.plus({ minutes: bufferTime });
             
+            // A slot overlaps if:
+            // 1. It starts before the booking ends (including buffer)
+            // 2. It ends after the booking starts
             return slotStartUTC.toMillis() < bookingEndWithBuffer.toMillis() && 
                    slotEndUTC.toMillis() > bookingDateTime.toMillis();
           }
@@ -98,14 +102,17 @@ export async function computeInitialAvailability(
           times.push(slotStart.toFormat("HH:mm"));
         }
 
+        // Move to next slot
         slotStart = slotStart.plus({ minutes: 30 });
       }
 
+      // Only add duration if there are available slots
       if (times.length > 0) {
         availableSlots[duration.toString()] = times;
       }
     }
 
+    // Only add day if there are available slots
     if (Object.keys(availableSlots).length > 0) {
       slots.push(new AvailabilitySlots({
         providerId: user.id,
@@ -194,6 +201,9 @@ export async function updateDayAvailability(
         const bookingEnd = bookingDateTime.plus({ minutes: bookingQuote.totalDuration });
         const bookingEndWithBuffer = bookingEnd.plus({ minutes: bufferTime });
         
+        // A slot overlaps if:
+        // 1. It starts before the booking ends (including buffer)
+        // 2. It ends after the booking starts
         return slotStartUTC.toMillis() < bookingEndWithBuffer.toMillis() && 
                slotEndUTC.toMillis() > bookingDateTime.toMillis();
       }
@@ -302,6 +312,9 @@ export async function computeAvailability(
           const bookingEnd = bookingDateTime.plus({ minutes: bookingQuote.totalDuration });
           const bookingEndWithBuffer = bookingEnd.plus({ minutes: bufferTime });
           
+          // A slot overlaps if:
+          // 1. It starts before the booking ends (including buffer)
+          // 2. It ends after the booking starts
           return slotStartUTC.toMillis() < bookingEndWithBuffer.toMillis() && 
                  slotEndUTC.toMillis() > bookingDateTime.toMillis();
         }
