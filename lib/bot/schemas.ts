@@ -58,9 +58,26 @@ export const bookSlotSchema = {
 } as const;
 
 
+export const testQuoteSchema = {
+    name: "testQuote",
+    description: "Test the quote creation functionality with a keyword",
+    parameters: {
+        type: "object",
+        properties: {
+            keyword: {
+                type: "string",
+                description: "The keyword to use in the test quote"
+            }
+        },
+        required: ["keyword"]
+    }
+};
+
+
 // then export it with the others
 export const toolSchemas = [
     getQuoteSchema,
     getSlotsSchema,
-    bookSlotSchema      
+    bookSlotSchema,
+    testQuoteSchema    
   ];
