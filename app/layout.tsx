@@ -11,7 +11,7 @@ import "./globals.css";
 import logo from "../public/SkedyLogo.png";
 import { Footer } from "@/components/footer";
 import Menu from "@/components/menu";
-import { LanguageProvider } from "@/lib/language-context";
+import { LanguageProvider } from "@/lib/translations/language-context";
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
