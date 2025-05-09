@@ -7,6 +7,7 @@ interface DistanceApiResponse {
       status: string;
       distance: { text: string; value: number };
       duration: { text: string };
+      duration_in_traffic: { text: string };
     }[];
   }[];
   origin_addresses: string[];
@@ -21,49 +22,41 @@ export async function GET(request: NextRequest): Promise<NextResponse<DistanceAp
   const { searchParams } = new URL(request.url);
   const origen = searchParams.get('origen');
   const destino = searchParams.get('destino');
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
-  const url = "https://maps.googleapis.com/maps/api/distancematrix/json";
 
   if (!origen || !destino) {
-    return NextResponse.json({ error: "Se deben proporcionar origen y destino." }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Se requieren los parámetros origen y destino' },
+      { status: 400 }
+    );
   }
-
-  if (!apiKey) {
-    return NextResponse.json({ error: "API key no configurada." }, { status: 500 });
-  }
-
-  const params = new URLSearchParams({
-    origins: origen,
-    destinations: destino,
-    mode: "driving",
-    language: "es",
-    units: "metric",
-    key: apiKey,
-  });
 
   try {
-    const fullUrl = `${url}?${params.toString()}`;
-    console.log('URL de la petición:', fullUrl);
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
     
-    const response = await fetch(fullUrl);
-    const responseText = await response.text();
-    console.log('Respuesta del servidor:', responseText);
+    // Crear una fecha para hoy a las 5 PM
+    const today = new Date();
+    today.setHours(17, 0, 0, 0); // 5 PM
+    const departureTime = Math.floor(today.getTime() / 1000); // Convertir a timestamp Unix
+
+    const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(origen)}&destinations=${encodeURIComponent(destino)}&key=${apiKey}&mode=driving&departure_time=${departureTime}&traffic_model=pessimistic`;
+
+    const response = await fetch(url);
+    const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      throw new Error(data.error_message || 'Error al obtener la distancia');
     }
 
-    let data: DistanceApiResponse;
-    try {
-      data = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error('Error al parsear JSON:', parseError);
-      throw new Error('Error al procesar la respuesta del servidor');
+    if (data.status !== 'OK') {
+      throw new Error(data.error_message || 'Error en la respuesta de la API');
     }
 
-    return NextResponse.json(data, { status: 200 });
+    return NextResponse.json(data);
   } catch (error: any) {
-    console.error("Error fetching distance:", error.message);
-    return NextResponse.json({ error: error.message || "Ocurrió un error al calcular la distancia." }, { status: 500 });
+    console.error('Error en distance matrix:', error);
+    return NextResponse.json(
+      { error: error.message || 'Error al procesar la solicitud' },
+      { status: 500 }
+    );
   }
 } 
