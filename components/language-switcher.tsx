@@ -8,7 +8,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useLanguage } from "@/lib/language-context";
+import { useLanguage } from "@/lib/translations/language-context";
 import { Language } from "@/lib/translations/index";
 import { Globe } from "lucide-react";
 import { useRouter } from "next/navigation";

@@ -1,6 +1,6 @@
 'use client';
 
-import { Language, TranslationKey, getTranslation } from './translations/index';
+import { Language, TranslationKey, getTranslation } from './index';
 import { createContext, useContext, useEffect, useState } from 'react';
 
 interface LanguageContextType {
