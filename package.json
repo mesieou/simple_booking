@@ -6,7 +6,8 @@
     "dev": "next dev & npx next-video sync -w",
     "build": "next build",
     "start": "next start",
-    "seed": "ts-node --loader ts-node/esm scripts/seed.ts"
+    "seed": "ts-node --loader ts-node/esm scripts/seed.ts",
+    "test": "jest"
   },
   "dependencies": {
     "@faker-js/faker": "^9.7.0",
@@ -42,7 +43,7 @@
     "@types/express": "^5.0.1",
     "@types/jest": "^29.5.14",
     "@types/luxon": "^3.6.2",
-    "@types/node": "^22.15.3",
+    "@types/node": "^22.15.17",
     "@types/pg": "^8.11.14",
     "@types/react": "^19.0.2",
     "@types/react-dom": "19.0.2",
