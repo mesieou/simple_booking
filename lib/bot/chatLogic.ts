@@ -5,13 +5,13 @@
  * It processes the chat history and generates responses using OpenAI's API.
  * It also handles function calls for getting quotes and booking slots.
  */
-import { getQuoteSchema, getSlotsSchema, bookSlotSchema, testQuoteSchema } from "@/lib/bot/schemas";
+import { getQuoteSchema, getSlotsSchema, bookSlotSchema, testUserSchema } from "@/lib/bot/schemas";
 import {systemPrompt} from "@/lib/bot/prompts";
 import { getQuote } from "@/lib/bot/helpers/quote";
 import { makeSlots } from "@/lib/bot/helpers/slots";
 import OpenAI from "openai";
 
-import { testQuoteCreation } from "@/lib/bot/test-quote";
+import { testUserCreation } from "@/lib/bot/test-quote";
 
 
 const openai = new OpenAI();
@@ -21,25 +21,28 @@ export async function handleChat(history: any[]) {
     const completion = await openai.chat.completions.create({
         model: "gpt-3.5-turbo", //"gpt-4o-mini"
         messages: [{ role: "system", content: systemPrompt }, ...history ], 
-        functions: [getQuoteSchema, getSlotsSchema, bookSlotSchema, testQuoteSchema],
+        functions: [getQuoteSchema, getSlotsSchema, bookSlotSchema, testUserSchema],
         function_call: "auto"
     });
 
     const msg = completion.choices[0].message;
 
 
-    // === Test Quote ===
-    if (msg.function_call?.name === "testQuote") {
-        const {keyword} = JSON.parse(msg.function_call.arguments || "{}");
+    // === Test User Creation ===
+    if (msg.function_call?.name === "testUser") {
+        const {firstName, lastName} = JSON.parse(msg.function_call.arguments || "{}");
 
         try {
-            const result = await testQuoteCreation(keyword);
+            const result = await testUserCreation(firstName, lastName);
 
             history.push(msg);
             history.push({
                 role: "function",
-                name: "testQuote",
-                content: JSON.stringify({success: true, quoteId: result.id})
+                name: "testUser",
+                content: JSON.stringify({
+                    success: true, 
+                    userId: result.data.id
+                })
             });
 
             const followUp = await openai.chat.completions.create({
@@ -50,11 +53,16 @@ export async function handleChat(history: any[]) {
             history.push(followUp.choices[0].message);
             return history;
         } catch (error) {
+            console.error("TestUser error:", error);
             history.push(msg);
             history.push({
                 role: "function",
-                name: "testQuote",
-                content: JSON.stringify({success: false, error: error instanceof Error ? error.message : String(error)})
+                name: "testUser",
+                content: JSON.stringify({ 
+                    success: false, 
+                    error: (error as any).message || String(error), 
+                    stack: (error as any).stack 
+                })
             });
 
             const followUp = await openai.chat.completions.create({

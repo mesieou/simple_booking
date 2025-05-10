@@ -58,20 +58,18 @@ export const bookSlotSchema = {
 } as const;
 
 
-export const testQuoteSchema = {
-    name: "testQuote",
-    description: "Test the quote creation functionality with a keyword",
+export const testUserSchema = {
+    name: "testUser",
+    description: "Create a new customer user with the provided name.",
     parameters: {
         type: "object",
         properties: {
-            keyword: {
-                type: "string",
-                description: "The keyword to use in the test quote"
-            }
+            firstName: { type: "string", description: "Customer's first name" },
+            lastName: { type: "string", description: "Customer's last name" }
         },
-        required: ["keyword"]
+        required: ["firstName", "lastName"]
     }
-};
+} as const;
 
 
 // then export it with the others
@@ -79,5 +77,5 @@ export const toolSchemas = [
     getQuoteSchema,
     getSlotsSchema,
     bookSlotSchema,
-    testQuoteSchema    
+    testUserSchema    
   ];
