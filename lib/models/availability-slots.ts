@@ -7,7 +7,6 @@ export interface AvailabilitySlotsData {
         [key: string]: string[]; // e.g., "1h": ["08:00", "09:00", ...]
     };
     createdAt?: string;
-    updatedAt?: string;
 }
 
 export class AvailabilitySlotsError extends Error {
@@ -38,8 +37,7 @@ export class AvailabilitySlots {
             "providerId": this.data.providerId,
             "date": this.data.date,
             "slots": this.data.slots,
-            "createdAt": new Date().toISOString(),
-            "updatedAt": new Date().toISOString()
+            "createdAt": new Date().toISOString()
         }
 
         const { data, error } = await supa
@@ -113,8 +111,7 @@ export class AvailabilitySlots {
         const availabilitySlots = {
             "providerId": slotsData.providerId,
             "date": slotsData.date,
-            "slots": slotsData.slots,
-            "updatedAt": new Date().toISOString()
+            "slots": slotsData.slots
         }
         
         const { data, error } = await supa
@@ -167,5 +164,4 @@ export class AvailabilitySlots {
     get date(): string { return this.data.date; }
     get slots(): { [key: string]: string[] } { return this.data.slots; }
     get createdAt(): string | undefined { return this.data.createdAt; }
-    get updatedAt(): string | undefined { return this.data.updatedAt; }
 } 
