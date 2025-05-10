@@ -1,17 +1,20 @@
 'use client';
 
+import { useLanguage } from "@/lib/translations/language-context";
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
+import LanguageSwitcher from './language-switcher';
 
 export default function Menu() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
+  const { t } = useLanguage();
 
   const links = [
-    { href: '/', label: 'Home' },
-    { href: '/about', label: 'About' },
-    { href: '/services', label: 'Services' },
-    { href: '/componentes', label: 'Contact' },
+    { href: '/', label: t('home') },
+    { href: '/about', label: t('about') },
+    { href: '/services', label: t('services') },
+    { href: '/componentes', label: t('contact') },
   ];
 
   return (
@@ -64,12 +67,15 @@ export default function Menu() {
                 </li>
               );
             })}
+            <li className="mt-4">
+              <LanguageSwitcher />
+            </li>
           </ul>
         </div>
       </div>
 
       {/* Menú desktop */}
-      <div className="hidden md:flex md:w-auto md:order-1">
+      <div className="hidden md:flex md:w-auto md:order-1 items-center">
         <ul className="flex flex-col p-4 md:p-0 mt-4 font-medium border rounded-lg md:space-x-8 rtl:space-x-reverse md:flex-row md:mt-0 md:border-0 shadow-xl">
           {links.map(({ href, label }) => {
             const isActive = pathname === href;
@@ -88,6 +94,9 @@ export default function Menu() {
               </li>
             );
           })}
+          <li className="ml-4">
+            <LanguageSwitcher />
+          </li>
         </ul>
       </div>
     </div>

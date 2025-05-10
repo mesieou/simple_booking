@@ -3,10 +3,11 @@
 import React, { useState } from "react";
 import { FormMessage, Message } from "./form-message"; // Import FormMessage componen
 import { createClient } from "@/lib/supabase/client"
+import { useLanguage } from "@/lib/translations/language-context";
 
 // Main JoinWaitlist component
 function JoinWaitlist() {
-
+  const { t } = useLanguage();
   //create an instance of supa to save the emails in the database
   const supa = createClient();
   
@@ -26,20 +27,20 @@ function JoinWaitlist() {
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      setFormMessage({ error: "Please enter a valid email address." });
+      setFormMessage({ error: t('waitlist.error_invalid_email') });
       return;
     }
 
     // updates the use state and display a success message to the user
     setIsSubmitted(true);
-    setFormMessage({ success: "Thank you for joining the waitlist!" });
+    setFormMessage({ success: t('waitlist.success') });
 
     
     // Saving the email to the database
     const { data, error } = await supa.from("waitlist").insert([{email}]);  
     if (error) {
       console.error("Supabase insert error", error);
-      setFormMessage({ error: "Oops! Something went wrong. Please try again. "})
+      setFormMessage({ error: t('waitlist.error_generic') })
       setIsSubmitted(false);
     }
   };
@@ -47,7 +48,7 @@ function JoinWaitlist() {
   return (
     <div className="flex justify-center items-center md:p-6">
       <div className="max-w-md w-ful p-6  md:flex items-center gap-2">
-        <h2 className="text-2xl text-white font-semibold mb-4 text-center">Join the Waitlist</h2>
+        <h2 className="text-2xl text-white font-semibold mb-4 text-center">{t('waitlist.title')}</h2>
 
         {/* Display success or error message */}
         {formMessage && <FormMessage message={formMessage} />}
@@ -61,7 +62,7 @@ function JoinWaitlist() {
                 value={email}
                 onChange={handleEmailChange}
                 required
-                placeholder="Enter your email"
+                placeholder={t('waitlist.email_placeholder')}
                 className="w-full text-black bg-white p-2 mt-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring text-center"
               />
             </div>
@@ -70,7 +71,7 @@ function JoinWaitlist() {
               type="submit"
               className="w-full bg-gradient-to-r from-primary to-secondary text-primary-foreground py-2 rounded-md hover:bg-gradient-to-l from-primary to-secondary focus:outline-none focus:ring-2 focus:ring-ring"
             >
-              Join Waitlist
+              {t('waitlist.submit')}
             </button>
           </form>
         )}
