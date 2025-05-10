@@ -4,6 +4,9 @@ import { v4 as uuidv4 } from 'uuid';
 
 export type UserRole = "admin" | "provider" | "customer" | "admin/provider";
 
+// Provider roles that can have availability
+export const PROVIDER_ROLES: UserRole[] = ["provider", "admin/provider"];
+
 export class UserError extends Error {
     constructor(message: string, public originalError?: any) {
         super(message);
@@ -11,6 +14,12 @@ export class UserError extends Error {
     }
 }
 
+/**
+ * User class representing a user in the system.
+ * Provider roles include:
+ * - "provider": Standard provider role
+ * - "admin/provider": User with both admin and provider capabilities
+ */
 export class User {
     id: string;
     firstName: string;
@@ -131,6 +140,21 @@ export class User {
         
         if (error) {
             throw new UserError("Failed to fetch users by role", error);
+        }
+        
+        return data.map(userData => new User(userData.firstName, userData.lastName, userData.role, userData.businessId));
+    }
+
+    // Get all providers (including admin/providers)
+    static async getAllProviders(): Promise<User[]> {
+        const supa = createClient()
+        const { data, error } = await supa
+            .from("users")
+            .select("*")
+            .in("role", PROVIDER_ROLES);
+        
+        if (error) {
+            throw new UserError("Failed to fetch providers", error);
         }
         
         return data.map(userData => new User(userData.firstName, userData.lastName, userData.role, userData.businessId));
