@@ -345,3 +345,63 @@ export async function computeAvailability(
 
   return slots;
 }
+
+// Roll availability forward by adding one day and removing the first day
+export async function rollAvailability(
+  user: User,
+  business: Business
+): Promise<void> {
+  // Get calendar settings to determine provider's timezone
+  const calendarSettings = await CalendarSettings.getByUserAndBusiness(
+    user.id,
+    user.businessId
+  );
+  const providerTZ = calendarSettings.settings?.timezone ?? 'UTC';
+
+  // Calculate dates in provider's timezone
+  const today = DateTime.now().setZone(providerTZ);
+  const yesterday = today.minus({ days: 1 });
+  const day30 = today.plus({ days: 30 });
+
+  // Delete yesterday's availability (oldest day)
+  await AvailabilitySlots.delete(
+    user.id,
+    yesterday.toFormat("yyyy-MM-dd")
+  );
+
+  // Create new availability for day 30
+  const newAvailability = await computeInitialAvailability(
+    user,
+    day30.toJSDate(),
+    1,
+    business
+  );
+
+  // Add the new availability
+  if (newAvailability.length > 0) {
+    await newAvailability[0].add();
+  }
+}
+
+// Roll availability forward for all providers
+export async function rollAllProvidersAvailability(): Promise<void> {
+  // Get all providers
+  const providers = await User.getAllProviders();
+  
+  // Roll availability for each provider
+  for (const provider of providers) {
+    try {
+      const business = await Business.getById(provider.businessId);
+      if (!business) {
+        console.error(`Business not found for provider ${provider.id}`);
+        continue;
+      }
+      
+      await rollAvailability(provider, business);
+    } catch (error) {
+      console.error(`Failed to roll availability for provider ${provider.id}:`, error);
+      // Continue with next provider even if one fails
+      continue;
+    }
+  }
+}
