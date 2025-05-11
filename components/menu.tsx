@@ -14,7 +14,7 @@ export default function Menu() {
     { href: '/', label: t('home') },
     { href: '/about', label: t('about') },
     { href: '/services', label: t('services') },
-    { href: '/componentes', label: t('contact') },
+    { href: '/booking/distance', label: t('booking') },
   ];
 
   return (

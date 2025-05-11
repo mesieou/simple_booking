@@ -2,9 +2,12 @@
 
 import { useLanguage } from "@/lib/translations/language-context";
 
-export default function Precios() {
+interface PreciosProps {
+    base?: number;
+}
+
+export default function Precios({ base = 46 }: PreciosProps) {
     const { t } = useLanguage();
-    const base = 46;
     const traveled = 19;
     const labor_min = 213;
     const total = base + traveled + labor_min;
