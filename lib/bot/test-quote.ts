@@ -7,7 +7,7 @@ export async function testUserCreation(firstName: string, lastName: string): Pro
             firstName,
             lastName,
             "customer",
-            "dd2c2d8b-4b27-4b17-baa4-43f3424c9d96"  // hardcoded business ID
+            "5daa4f28-1ade-491b-be8b-b80025ffc2c4"  // hardcoded business ID
         );
 
         // Add the user to the database
