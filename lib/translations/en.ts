@@ -3,7 +3,7 @@ export const en = {
     home: 'Home',
     about: 'About',
     services: 'Services',
-    contact: 'Contact'
+    booking: 'Booking'
   },
   form: {
     submit: 'Submit',
