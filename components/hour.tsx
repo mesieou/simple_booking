@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 
 interface HorariosProps {
   date: Date;
+  onTimeSelect?: (time: string) => void;
 }
 
 interface Horario {
@@ -13,7 +14,7 @@ interface Horario {
   hora: string;
 }
 
-export default function Hour({ date }: HorariosProps) {
+export default function Hour({ date, onTimeSelect }: HorariosProps) {
   const [horarios, setHorarios] = useState<Horario[]>([]);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
@@ -50,7 +51,11 @@ export default function Hour({ date }: HorariosProps) {
   const buttonItems = horarios.map((h) => ({
     id: h.id,
     label: h.hora,
-    onClick: () => alert(`You chose ${h.hora}`)
+    onClick: () => {
+      if (onTimeSelect) {
+        onTimeSelect(h.hora);
+      }
+    }
   }));
 
   return (
