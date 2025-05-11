@@ -60,10 +60,10 @@ export default function Direction({ texto, value, onChange, ...inputProps }: Dir
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full min-w-[300px]">
       <div className="relative">
-        <div className="relative border rounded-xl px-3.5 py-3 flex items-center gap-x-4 flex-wrap transition text-black bg-white border-gray-400 focus-within:border-brand hover:border-brand">
-          <div className="pointer-events-none flex h-5 w-5 items-center justify-center">
+        <div className="relative border rounded-xl px-3.5 py-3 flex items-center gap-x-4 flex-wrap transition text-black bg-white border-gray-400 focus-within:border-brand hover:border-brand min-h-[72px]">
+          <div className="pointer-events-none flex h-5 w-5 items-center justify-center shrink-0">
             <svg className="w-5 h-5" xmlns="http://www.w3.org/2000/svg">
               <path
                 fill="currentColor"
@@ -73,7 +73,7 @@ export default function Direction({ texto, value, onChange, ...inputProps }: Dir
               />
             </svg>
           </div>
-          <div className="flex-grow">
+          <div className="flex-grow min-w-0">
             <label htmlFor={inputProps.id} className="block text-label-5 text-left text-gray-600">
               {texto}
             </label>
@@ -88,12 +88,12 @@ export default function Direction({ texto, value, onChange, ...inputProps }: Dir
         {showSuggestions && suggestions.length > 0 && (
           <div
             ref={suggestionsRef}
-            className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto"
+            className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto min-w-[280px]"
           >
             {suggestions.map((suggestion, index) => (
               <div
                 key={index}
-                className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-black"
+                className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-black truncate"
                 onClick={() => handleSuggestionClick(suggestion)}
               >
                 {suggestion}

@@ -17,7 +17,11 @@ const getNextDays = (count: number): Date[] => {
   return days;
 };
 
-export default function Calendar() {
+interface CalendarProps {
+  onSelect?: (date: Date, time?: string) => void;
+}
+
+export default function Calendar({ onSelect }: CalendarProps) {
   const [showFullMonth, setShowFullMonth] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const daysToShow = showFullMonth ? 30 : 5;
@@ -30,12 +34,19 @@ export default function Calendar() {
     
     if (date >= today) {
       setSelectedDate(date);
+      if (onSelect) onSelect(date);
+    }
+  };
+
+  const handleTimeSelect = (time: string) => {
+    if (selectedDate && onSelect) {
+      onSelect(selectedDate, time);
     }
   };
 
   return (
     <div className="text-center space-y-6" role="region" aria-label="Appointment Calendar">
-      <h2 className="text-2xl text-white" id="calendar-title">Select a day</h2>
+      
 
       <div 
         className="grid grid-cols-5 gap-6"
@@ -69,7 +80,11 @@ export default function Calendar() {
           <h3 className="text-xl text-white mb-4" id="horarios-title">
             Available schedules for {selectedDate.toDateString()}
           </h3>
-          <Horarios date={selectedDate} aria-labelledby="horarios-title" />
+          <Horarios 
+            date={selectedDate} 
+            onTimeSelect={handleTimeSelect}
+            aria-labelledby="horarios-title" 
+          />
         </div>
       )}
     </div>
