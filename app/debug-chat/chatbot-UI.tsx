@@ -7,7 +7,6 @@
 
 // Import the useState, useRef, and useEffect hooks from react to store user input and chat history in memory
 import { useState, useRef, useEffect } from "react";
-import {Slot} from "@/lib/bot/helpers/slots";
 
 // This is the main UI component for the chatbot
 export default function ChatbotUI() {
