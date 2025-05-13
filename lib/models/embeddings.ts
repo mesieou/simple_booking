@@ -1,14 +1,15 @@
 import { createClient } from "@/lib/supabase/client";
+import { handleModelError } from '@/lib/helpers/error';
 
 export interface EmbeddingData {
   id?: string;
-  document_id: string;
+  documentId: string;
   content: string;
   embedding: number[];
   category?: string;
-  chunk_index?: number;
+  chunkIndex?: number;
   metadata?: Record<string, any>;
-  created_at?: string;
+  createdAt?: string;
 }
 
 export class EmbeddingError extends Error {
@@ -22,9 +23,9 @@ export class Embedding {
   private data: EmbeddingData;
 
   constructor(data: EmbeddingData) {
-    if (!data.document_id) throw new EmbeddingError("document_id is required");
-    if (!data.content) throw new EmbeddingError("content is required");
-    if (!Array.isArray(data.embedding)) throw new EmbeddingError("embedding must be an array");
+    if (!data.documentId) handleModelError("documentId is required", new Error("Missing documentId"));
+    if (!data.content) handleModelError("content is required", new Error("Missing content"));
+    if (!Array.isArray(data.embedding)) handleModelError("embedding must be an array", new Error("Invalid embedding format"));
     this.data = data;
   }
 
@@ -32,24 +33,24 @@ export class Embedding {
     const supa = createClient();
     const insertData = {
       ...data,
-      created_at: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
     };
     const { data: result, error } = await supa.from("embeddings").insert(insertData).select().single();
-    if (error) throw new EmbeddingError("Failed to insert embedding", error);
-    if (!result) throw new EmbeddingError("No data returned after insert");
+    if (error) handleModelError("Failed to insert embedding", error);
+    if (!result) handleModelError("No data returned after insert", new Error("No data returned"));
     return result;
   }
 
-  static async getByDocumentId(document_id: string): Promise<EmbeddingData[]> {
+  static async getByDocumentId(documentId: string): Promise<EmbeddingData[]> {
     const supa = createClient();
-    const { data, error } = await supa.from("embeddings").select("*").eq("document_id", document_id);
-    if (error) throw new EmbeddingError("Failed to fetch embeddings", error);
+    const { data, error } = await supa.from("embeddings").select("*").eq("documentId", documentId);
+    if (error) handleModelError("Failed to fetch embeddings", error);
     return data || [];
   }
 
-  static async deleteByDocumentId(document_id: string): Promise<void> {
+  static async deleteByDocumentId(documentId: string): Promise<void> {
     const supa = createClient();
-    const { error } = await supa.from("embeddings").delete().eq("document_id", document_id);
-    if (error) throw new EmbeddingError("Failed to delete embeddings", error);
+    const { error } = await supa.from("embeddings").delete().eq("documentId", documentId);
+    if (error) handleModelError("Failed to delete embeddings", error);
   }
 } 

@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { v4 as uuidv4 } from 'uuid';
+import { handleModelError } from '@/lib/helpers/error';
 
 export type PricingType = 'FIXED' | 'PER_MINUTE';
 
@@ -18,40 +19,33 @@ export interface ServiceData {
     updatedAt?: string;
 }
 
-export class ServiceError extends Error {
-    constructor(message: string, public originalError?: any) {
-        super(message);
-        this.name = 'ServiceError';
-    }
-}
-
 export class Service {
     private data: ServiceData;
 
     constructor(data: ServiceData) {
-        if (!data.businessId) throw new ServiceError("Business ID is required");
-        if (!data.name) throw new ServiceError("Name is required");
+        if (!data.businessId) handleModelError("Business ID is required", new Error("Missing businessId"));
+        if (!data.name) handleModelError("Name is required", new Error("Missing name"));
         if (!data.pricingType || !['FIXED', 'PER_MINUTE'].includes(data.pricingType)) {
-            throw new ServiceError("Pricing type must be 'FIXED' or 'PER_MINUTE'");
+            handleModelError("Pricing type must be 'FIXED' or 'PER_MINUTE'", new Error("Invalid pricingType"));
         }
         if (data.pricingType === 'FIXED') {
             if (data.fixedPrice === undefined || data.fixedPrice < 0) {
-                throw new ServiceError("Fixed price is required and must be non-negative for 'FIXED' pricing type");
+                handleModelError("Fixed price is required and must be non-negative for 'FIXED' pricing type", new Error("Invalid fixedPrice"));
             }
         }
         if (data.pricingType === 'PER_MINUTE') {
             if (data.ratePerMinute === undefined || data.ratePerMinute < 0) {
-                throw new ServiceError("Rate per minute is required and must be non-negative for 'PER_MINUTE' pricing type");
+                handleModelError("Rate per minute is required and must be non-negative for 'PER_MINUTE' pricing type", new Error("Invalid ratePerMinute"));
             }
         }
         if (data.baseCharge !== undefined && data.baseCharge < 0) {
-            throw new ServiceError("Base charge cannot be negative");
+            handleModelError("Base charge cannot be negative", new Error("Invalid baseCharge"));
         }
         if (data.includedMinutes !== undefined && data.includedMinutes < 0) {
-            throw new ServiceError("Included minutes cannot be negative");
+            handleModelError("Included minutes cannot be negative", new Error("Invalid includedMinutes"));
         }
         if (data.durationEstimate < 0) {
-            throw new ServiceError("Duration estimate cannot be negative");
+            handleModelError("Duration estimate cannot be negative", new Error("Invalid durationEstimate"));
         }
         this.data = data;
     }
@@ -79,18 +73,10 @@ export class Service {
         };
         const { data, error } = await supa.from("services").insert(service).select().single();
         if (error) {
-            console.error("Supabase insert error:", {
-                message: error.message,
-                details: error.details,
-                code: error.code,
-                hint: error.hint,
-                table: "services",
-                data: service
-            });
-            throw new ServiceError(`Failed to create service: ${error.message}`, error);
+            handleModelError("Failed to create service", error);
         }
         if (!data) {
-            throw new ServiceError("Failed to create service: No data returned");
+            handleModelError("Failed to create service: No data returned", new Error("No data returned from insert"));
         }
         this.data = data;
         return data;
@@ -100,18 +86,10 @@ export class Service {
         const supa = createClient();
         const { data, error } = await supa.from("services").select("*").eq("id", id).single();
         if (error) {
-            console.error("Supabase fetch error:", {
-                message: error.message,
-                details: error.details,
-                code: error.code,
-                hint: error.hint,
-                table: "services",
-                id
-            });
-            throw new ServiceError(`Failed to fetch service: ${error.message}`, error);
+            handleModelError("Failed to fetch service", error);
         }
         if (!data) {
-            throw new ServiceError(`Service with id ${id} not found`);
+            handleModelError(`Service with id ${id} not found`, new Error("Service not found"));
         }
         return new Service(data);
     }
@@ -120,15 +98,7 @@ export class Service {
         const supa = createClient();
         const { data, error } = await supa.from("services").select("*").eq("businessId", businessId);
         if (error) {
-            console.error("Supabase fetch error:", {
-                message: error.message,
-                details: error.details,
-                code: error.code,
-                hint: error.hint,
-                table: "services",
-                businessId
-            });
-            throw new ServiceError(`Failed to fetch services by business: ${error.message}`, error);
+            handleModelError("Failed to fetch services by business", error);
         }
         return data.map((serviceData: ServiceData) => new Service(serviceData));
     }
@@ -149,19 +119,10 @@ export class Service {
         };
         const { data, error } = await supa.from("services").update(service).eq("id", id).select().single();
         if (error) {
-            console.error("Supabase update error:", {
-                message: error.message,
-                details: error.details,
-                code: error.code,
-                hint: error.hint,
-                table: "services",
-                id,
-                data: service
-            });
-            throw new ServiceError(`Failed to update service: ${error.message}`, error);
+            handleModelError("Failed to update service", error);
         }
         if (!data) {
-            throw new ServiceError("Failed to update service: No data returned");
+            handleModelError("Failed to update service: No data returned", new Error("No data returned from update"));
         }
         return new Service(data);
     }
@@ -170,15 +131,7 @@ export class Service {
         const supa = createClient();
         const { error } = await supa.from("services").delete().eq("id", id);
         if (error) {
-            console.error("Supabase delete error:", {
-                message: error.message,
-                details: error.details,
-                code: error.code,
-                hint: error.hint,
-                table: "services",
-                id
-            });
-            throw new ServiceError(`Failed to delete service: ${error.message}`, error);
+            handleModelError("Failed to delete service", error);
         }
     }
 

@@ -1,9 +1,9 @@
 import { createClient } from '@/lib/supabase/server';
 import { Document } from '@/lib/models/documents';
 import { Embedding } from '@/lib/models/embeddings';
-import { encode, decode } from 'gpt-3-encoder';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
+type CheerioAPI = ReturnType<typeof cheerio.load>;
 import { URL } from 'url';
 
 export interface WebsiteCrawlConfig {
@@ -66,9 +66,9 @@ export class WebsiteCrawler {
     }
   }
 
-  private extractInternalLinks($: cheerio.Root, baseUrl: URL): string[] {
+  private extractInternalLinks($: CheerioAPI, baseUrl: URL): string[] {
     const links: string[] = [];
-    $('a[href]').each((_index: number, element: cheerio.Element) => {
+    $('a[href]').each((_index: number, element: any) => {
       const href = $(element).attr('href');
       if (href) {
         try {
@@ -119,7 +119,7 @@ export class WebsiteCrawler {
       
       for (const chunk of chunks) {
         await Embedding.add({
-          document_id: documentRecord.id!,
+          documentId: documentRecord.id!,
           content: chunk,
           embedding: await this.generateEmbedding(chunk)
         });
@@ -127,13 +127,22 @@ export class WebsiteCrawler {
     }
   }
 
-  private splitTextIntoChunks(text: string, maxTokens = 500): string[] {
-    const tokens = encode(text);
+  private splitTextIntoChunks(text: string, maxChunkSize = 1000): string[] {
+    const words = text.split(/\s+/);
     const chunks: string[] = [];
+    let currentChunk: string[] = [];
 
-    for (let i = 0; i < tokens.length; i += maxTokens) {
-      const chunkTokens = tokens.slice(i, i + maxTokens);
-      chunks.push(decode(chunkTokens));
+    for (const word of words) {
+      if (currentChunk.join(' ').length + word.length + 1 > maxChunkSize) {
+        chunks.push(currentChunk.join(' '));
+        currentChunk = [word];
+      } else {
+        currentChunk.push(word);
+      }
+    }
+
+    if (currentChunk.length > 0) {
+      chunks.push(currentChunk.join(' '));
     }
 
     return chunks;
