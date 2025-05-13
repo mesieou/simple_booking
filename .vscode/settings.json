@@ -11,6 +11,10 @@
         {
             "folderPath": "simple_booking\\lib\\models\\",
             "color": "foldercolorizer.color_00cc00"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\services\\",
+            "color": "foldercolorizer.color_3366cc"
         }
     ]
 }

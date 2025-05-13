@@ -8,19 +8,16 @@
 import {createUserSchema } from "@/lib/bot/schemas";
 import { systemPrompt } from "@/lib/bot/prompts";
 import { User } from "@/lib/models/user";
-import OpenAI from "openai";
+import { chatWithFunctions, chatWithOpenAI } from "@/lib/services/openai";
 
-const openai = new OpenAI();
 
 // Central function: takes existing history, and returns new history
 export async function handleChat(history: any[]) {
-    const completion = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [{ role: "system", content: systemPrompt }, ...history ],
-        functions: [createUserSchema],
-        function_call: "auto"
-    });
+    const messages = [{ role: "system", content: systemPrompt }, ...history];
 
+    
+    // Check if GPT wants to call a function
+    const completion = await chatWithFunctions(messages, [createUserSchema]);
     const msg = completion.choices[0].message;
 
     // === Create User ===
@@ -39,6 +36,7 @@ export async function handleChat(history: any[]) {
             // Add the user to the database
             const result = await user.add();
 
+            // Push the function call and result to history
             history.push(msg);
             history.push({
                 role: "function",
@@ -46,36 +44,36 @@ export async function handleChat(history: any[]) {
                 content: JSON.stringify({
                     success: true, 
                     userId: result.data.id
-                })
+                }),
             });
 
-            const followUp = await openai.chat.completions.create({
-                model: "gpt-3.5-turbo",
-                messages: [{ role: "system", content: systemPrompt}, ...history],
-            });
-
-            history.push(followUp.choices[0].message);
-            return history;
-        } catch (error) {
-            console.error("User creation error:", error);
+        } catch (err) {
+            console.error("User creation error:", err);
             history.push(msg);
             history.push({
                 role: "function",
                 name: "createUser",
                 content: JSON.stringify({ 
                     success: false, 
-                    error: (error as any).message || String(error)
-                })
+                    error: (err as any).message || String(err)
+                }),
             });
 
-            const followUp = await openai.chat.completions.create({
-                model: "gpt-3.5-turbo",
-                messages: [{ role: "system", content: systemPrompt}, ...history],
-            });
+        }
+        // After function runs, GPT needs to respond again
+        const followUp = await chatWithOpenAI([{ role: "system", content: systemPrompt}, ...history]);
+            // const followUp = await openai.chat.completions.create({
+            //     model: "gpt-3.5-turbo",
+            //     messages: [{ role: "system", content: systemPrompt}, ...history],
+            // });
 
             history.push(followUp.choices[0].message);
             return history;
         }
+
+        // If tehre was no function call, just push GPT's answer
+        history.push(msg);
+        return history;
     }
 
     // // === Get Quote ===
@@ -161,6 +159,4 @@ export async function handleChat(history: any[]) {
     // }
 
     // default: append assistant reply
-    return [...history, msg];
-}
 //
