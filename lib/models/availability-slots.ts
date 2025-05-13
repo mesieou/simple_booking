@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { handleModelError } from '@/lib/helpers/error';
 
 export interface AvailabilitySlotsData {
     providerId: string;
@@ -9,22 +10,13 @@ export interface AvailabilitySlotsData {
     createdAt?: string;
 }
 
-export class AvailabilitySlotsError extends Error {
-    originalError?: any;
-    constructor(message: string, originalError?: any) {
-        super(message);
-        this.name = 'AvailabilitySlotsError';
-        this.originalError = originalError;
-    }
-}
-
 export class AvailabilitySlots {
     private data: AvailabilitySlotsData;
 
     constructor(data: AvailabilitySlotsData) {
-        if (!data.providerId) throw new AvailabilitySlotsError("Provider ID is required");
-        if (!data.date) throw new AvailabilitySlotsError("Date is required");
-        if (!data.slots) throw new AvailabilitySlotsError("Slots are required");
+        if (!data.providerId) handleModelError("Provider ID is required", new Error("Missing providerId"));
+        if (!data.date) handleModelError("Date is required", new Error("Missing date"));
+        if (!data.slots) handleModelError("Slots are required", new Error("Missing slots"));
         
         this.data = data;
     }
@@ -47,11 +39,11 @@ export class AvailabilitySlots {
             .single();
 
         if (error) {
-            throw new AvailabilitySlotsError("Failed to create availability slots", error);
+            handleModelError("Failed to create availability slots", error);
         }
 
         if (!data) {
-            throw new AvailabilitySlotsError("Failed to create availability slots: No data returned");
+            handleModelError("Failed to create availability slots: No data returned", new Error("No data returned from insert"));
         }
 
         this.data = data;
@@ -74,7 +66,7 @@ export class AvailabilitySlots {
             .lte("date", endDate);
 
         if (error) {
-            throw new AvailabilitySlotsError("Failed to fetch availability slots", error);
+            handleModelError("Failed to fetch availability slots", error);
         }
 
         return data;
@@ -98,7 +90,7 @@ export class AvailabilitySlots {
             if (error.code === 'PGRST116') {
                 return null; // No data found
             }
-            throw new AvailabilitySlotsError("Failed to fetch availability slots", error);
+            handleModelError("Failed to fetch availability slots", error);
         }
 
         return data;
@@ -123,11 +115,11 @@ export class AvailabilitySlots {
             .single();
 
         if (error) {
-            throw new AvailabilitySlotsError("Failed to update availability slots", error);
+            handleModelError("Failed to update availability slots", error);
         }
 
         if (!data) {
-            throw new AvailabilitySlotsError("Failed to update availability slots: No data returned");
+            handleModelError("Failed to update availability slots: No data returned", new Error("No data returned from update"));
         }
 
         return new AvailabilitySlots(data);
@@ -144,7 +136,7 @@ export class AvailabilitySlots {
             .eq("date", date);
 
         if (error) {
-            throw new AvailabilitySlotsError("Failed to delete availability slots", error);
+            handleModelError("Failed to delete availability slots", error);
         }
     }
 

@@ -7,6 +7,9 @@ import { createQuotes } from '@/lib/seed/create-quotes';
 import { createBookings } from '@/lib/seed/create-bookings';
 import { SeedResult } from '@/lib/seed/types';
 import { User } from '@/lib/models/user';
+import { createDocuments } from '../../../lib/seed/create-documents';
+import { createEmbeddings } from '../../../lib/seed/create-embeddings';
+ 
 
 export async function POST(request: Request) {
   try {
@@ -21,7 +24,9 @@ export async function POST(request: Request) {
       clients: [],
       providers: [],
       quotes: [],
-      bookings: []
+      bookings: [],
+      documents: [],
+      embeddings: []
     };
 
     // Create businesses
@@ -52,6 +57,15 @@ export async function POST(request: Request) {
       }
     }
 
+    result.documents = [];
+    result.embeddings = [];
+
+    const documents = await createDocuments(businesses);
+    result.documents = documents.map(d => d.id!).filter(id => id !== undefined);
+
+    const embeddings = await createEmbeddings(documents);
+    result.embeddings = embeddings.map(e => e.id!).filter(id => id !== undefined);
+
     return NextResponse.json({
       message: 'Database seeded successfully',
       ...result
@@ -63,4 +77,4 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-} 
+}
