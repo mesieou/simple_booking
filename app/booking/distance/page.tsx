@@ -39,7 +39,7 @@ export default function BookingDistanceStep() {
         />
       </div>
       {/* Columna derecha: Paso 1 */}
-      <div className="w-full md:w-1/2 bg-white rounded-xl shadow-md p-6 flex flex-col items-start min-w-[500px]">
+      <div className="w-full md:w-1/2 bg-white rounded-xl shadow-md p-6 flex flex-col items-start">
         <h2 className="text-2xl font-bold mb-2 text-black">Pickup & drop-off</h2>
         <p className="text-base text-gray-500 mb-6">Enter your pickup and drop-off addresses</p>
         <div className="w-full mb-8">
