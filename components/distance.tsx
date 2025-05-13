@@ -80,7 +80,7 @@ export default function Distance({ onChange }: DistanceProps) {
   };
 
   return (
-    <div className="p-4 min-w-[400px] w-full max-w-[600px] mx-auto">
+    <div className="p-4 w-full max-w-[600px] mx-auto">
       <div className="space-y-4">
         <Direction
           texto="Pick up from"

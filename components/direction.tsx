@@ -60,7 +60,7 @@ export default function Direction({ texto, value, onChange, ...inputProps }: Dir
   };
 
   return (
-    <div className="w-full min-w-[300px]">
+    <div className="w-full">
       <div className="relative">
         <div className="relative border rounded-xl px-3.5 py-3 flex items-center gap-x-4 flex-wrap transition text-black bg-white border-gray-400 focus-within:border-brand hover:border-brand min-h-[72px]">
           <div className="pointer-events-none flex h-5 w-5 items-center justify-center shrink-0">
