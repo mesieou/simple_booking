@@ -3,6 +3,8 @@ import { User } from '../models/user';
 import { Quote } from '../models/quote';
 import { Booking } from '../models/booking';
 import { Event } from '../models/events';
+import { Document } from '../models/documents';
+import { Embedding } from '../models/embeddings';
 
 export interface SeedResult {
   businesses: string[];
@@ -10,6 +12,8 @@ export interface SeedResult {
   providers: string[];
   quotes: string[];
   bookings: string[];
+  documents: string[];
+  embeddings: string[];
 }
 
 export interface SeedContext {
@@ -17,5 +21,7 @@ export interface SeedContext {
   users: User[];
   quotes: Quote[];
   bookings: Booking[];
+  documents: Document[];
+  embeddings: Embedding[];
   calendarIds: Map<string, string>;
 } 

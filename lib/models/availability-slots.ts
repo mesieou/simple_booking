@@ -47,6 +47,7 @@ export class AvailabilitySlots {
             .single();
 
         if (error) {
+            console.error("Supabase insert error:", error); // 👈 log the actual error
             throw new AvailabilitySlotsError("Failed to create availability slots", error);
         }
 
