@@ -82,6 +82,7 @@ export class User {
         if(error) {
             // If user record creation fails, we should clean up the auth user
             await supa.auth.admin.deleteUser(authData.user.id);
+            console.error("Supabase insert error:", error); // 
             throw new UserError("Failed to create user", error);
         }
 

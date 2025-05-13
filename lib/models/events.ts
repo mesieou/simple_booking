@@ -89,6 +89,7 @@ export class Event {
         const { data, error } = await supa.from("events").select("*").eq("userId", userId);
         
         if (error) {
+            console.error("Supabase insert error:", error); // 👈 log the actual error
             throw new EventError("Failed to fetch events by user", error);
         }
         

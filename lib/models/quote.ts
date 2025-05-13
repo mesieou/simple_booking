@@ -8,22 +8,18 @@ export type QuoteStatus = "pending" | "accepted" | "rejected";
 
 export interface QuoteData {
     id?: string;
-    pickUp: string;
-    dropOff: string;
-    baseFare: number;
-    travelFare: number;
-    userId: string;
-    businessId: string;
-    jobType: JobType;
-    status: QuoteStatus;
-    labourFare: number;
-    total: number;
-    baseTime: number;
-    travelTime: number;
-    jobDuration: number;
-    totalDuration: number;
     createdAt?: string;
     updatedAt?: string;
+    userId: string;
+    pickUp: string;
+    dropOff: string;
+    businessId: string;
+    travelCostEstimate: number;
+    status: string;
+    totalJobCostEstimation: number;
+    travelTimeEstimate: number;
+    totalJobDurationEstimation: number;
+    serviceId: string;
 }
 
 export class QuoteError extends Error {
@@ -36,58 +32,56 @@ export class QuoteError extends Error {
 export class Quote {
     private data: QuoteData;
 
-    constructor(data: QuoteData) {
-        if (!data.pickUp) throw new QuoteError("Pick up location is required");
-        if (!data.dropOff) throw new QuoteError("Drop off location is required");
-        if (data.baseFare < 0) throw new QuoteError("Base fare cannot be negative");
-        if (data.travelFare < 0) throw new QuoteError("Travel fare cannot be negative");
+    constructor(data: QuoteData, businessIsMobile?: boolean) {
+        // pickUp and dropOff, travelTimeEstimate, and travelCostEstimate are only required if the business is mobile
+        if (businessIsMobile) {
+            if (!data.pickUp) throw new QuoteError("Pick up location is required for mobile businesses");
+            if (!data.dropOff) throw new QuoteError("Drop off location is required for mobile businesses");
+            if (data.travelTimeEstimate === undefined || data.travelTimeEstimate < 0) throw new QuoteError("Travel time estimate is required and must be non-negative for mobile businesses");
+            if (data.travelCostEstimate === undefined || data.travelCostEstimate < 0) throw new QuoteError("Travel cost estimate is required and must be non-negative for mobile businesses");
+        }
         if (!data.userId) throw new QuoteError("User ID is required");
         if (!data.businessId) throw new QuoteError("Business ID is required");
-        if (!data.jobType) throw new QuoteError("Job type is required");
         if (!data.status) throw new QuoteError("Status is required");
-        if (data.labourFare < 0) throw new QuoteError("Labour fare cannot be negative");
-        if (data.total < 0) throw new QuoteError("Total cannot be negative");
-        if (data.baseTime < 0) throw new QuoteError("Base time cannot be negative");
-        if (data.travelTime < 0) throw new QuoteError("Travel time cannot be negative");
-        if (data.jobDuration < 0) throw new QuoteError("Job duration cannot be negative");
-        if (data.totalDuration < 0) throw new QuoteError("Total duration cannot be negative");
-        
+        if (!data.serviceId) throw new QuoteError("Service ID is required");
+        if (data.totalJobCostEstimation < 0) throw new QuoteError("Total job cost estimation cannot be negative");
+        if (data.totalJobDurationEstimation < 0) throw new QuoteError("Total job duration estimation cannot be negative");
         this.data = data;
     }
 
     //creates a Quote in supa
     async add(): Promise<QuoteData> {
         const supa = createClient();
-
         const quote = {
             "id": this.data.id || uuidv4(),
             "pickUp": this.data.pickUp,
             "dropOff": this.data.dropOff,
-            "baseFare": this.data.baseFare,
-            "travelFare": this.data.travelFare,
             "userId": this.data.userId,
             "businessId": this.data.businessId,
-            "jobType": this.data.jobType,
+            "travelCostEstimate": this.data.travelCostEstimate,
             "status": this.data.status,
-            "labourFare": this.data.labourFare,
-            "total": this.data.total,
-            "baseTime": this.data.baseTime,
-            "travelTime": this.data.travelTime,
-            "jobDuration": this.data.jobDuration,
-            "totalDuration": this.data.totalDuration,
+            "totalJobCostEstimation": this.data.totalJobCostEstimation,
+            "travelTimeEstimate": this.data.travelTimeEstimate,
+            "totalJobDurationEstimation": this.data.totalJobDurationEstimation,
+            "serviceId": this.data.serviceId,
             "createdAt": new Date().toISOString(),
             "updatedAt": new Date().toISOString()
         }
         const { data, error } = await supa.from("quotes").insert(quote).select().single();
-
         if(error) {
-            throw new QuoteError("Failed to create quote", error);
+            console.error("Supabase insert error:", {
+                message: error.message,
+                details: error.details,
+                code: error.code,
+                hint: error.hint,
+                table: "quotes",
+                data: quote
+            });
+            throw new QuoteError(`Failed to create quote: ${error.message}`, error);
         }
-
         if (!data) {
             throw new QuoteError("Failed to create quote: No data returned");
         }
-
         this.data = data;
         return data;
     }
@@ -102,7 +96,15 @@ export class Quote {
         const { data, error } = await supa.from("quotes").select("*").eq("id", id).single();
         
         if (error) {
-            throw new QuoteError("Failed to fetch quote", error);
+            console.error("Supabase fetch error:", {
+                message: error.message,
+                details: error.details,
+                code: error.code,
+                hint: error.hint,
+                table: "quotes",
+                id
+            });
+            throw new QuoteError(`Failed to fetch quote: ${error.message}`, error);
         }
         
         if (!data) {
@@ -122,7 +124,15 @@ export class Quote {
         const { data, error } = await supa.from("quotes").select("*").eq("userId", userId);
         
         if (error) {
-            throw new QuoteError("Failed to fetch quotes by user", error);
+            console.error("Supabase fetch error:", {
+                message: error.message,
+                details: error.details,
+                code: error.code,
+                hint: error.hint,
+                table: "quotes",
+                userId
+            });
+            throw new QuoteError(`Failed to fetch quotes by user: ${error.message}`, error);
         }
         
         return data.map(quoteData => new Quote(quoteData));
@@ -138,7 +148,15 @@ export class Quote {
         const { data, error } = await supa.from("quotes").select("*").eq("businessId", businessId);
         
         if (error) {
-            throw new QuoteError("Failed to fetch quotes by business", error);
+            console.error("Supabase fetch error:", {
+                message: error.message,
+                details: error.details,
+                code: error.code,
+                hint: error.hint,
+                table: "quotes",
+                businessId
+            });
+            throw new QuoteError(`Failed to fetch quotes by business: ${error.message}`, error);
         }
         
         return data.map(quoteData => new Quote(quoteData));
@@ -149,41 +167,36 @@ export class Quote {
         if (!Quote.isValidUUID(id)) {
             throw new QuoteError("Invalid UUID format");
         }
-
         const supa = createClient();
         const quote = {
             "pickUp": quoteData.pickUp,
             "dropOff": quoteData.dropOff,
-            "baseFare": quoteData.baseFare,
-            "travelFare": quoteData.travelFare,
             "userId": quoteData.userId,
             "businessId": quoteData.businessId,
-            "jobType": quoteData.jobType,
+            "travelCostEstimate": quoteData.travelCostEstimate,
             "status": quoteData.status,
-            "labourFare": quoteData.labourFare,
-            "total": quoteData.total,
-            "baseTime": quoteData.baseTime,
-            "travelTime": quoteData.travelTime,
-            "jobDuration": quoteData.jobDuration,
-            "totalDuration": quoteData.totalDuration,
+            "totalJobCostEstimation": quoteData.totalJobCostEstimation,
+            "travelTimeEstimate": quoteData.travelTimeEstimate,
+            "totalJobDurationEstimation": quoteData.totalJobDurationEstimation,
+            "serviceId": quoteData.serviceId,
             "updatedAt": new Date().toISOString()
         }
-        
-        const { data, error } = await supa
-            .from("quotes")
-            .update(quote)
-            .eq("id", id)
-            .select()
-            .single();
-
+        const { data, error } = await supa.from("quotes").update(quote).eq("id", id).select().single();
         if (error) {
-            throw new QuoteError("Failed to update quote", error);
+            console.error("Supabase update error:", {
+                message: error.message,
+                details: error.details,
+                code: error.code,
+                hint: error.hint,
+                table: "quotes",
+                id,
+                data: quote
+            });
+            throw new QuoteError(`Failed to update quote: ${error.message}`, error);
         }
-
         if (!data) {
             throw new QuoteError("Failed to update quote: No data returned");
         }
-
         return new Quote(data);
     }
 
@@ -197,7 +210,15 @@ export class Quote {
         const { error } = await supa.from("quotes").delete().eq("id", id);
 
         if (error) {
-            throw new QuoteError("Failed to delete quote", error);
+            console.error("Supabase delete error:", {
+                message: error.message,
+                details: error.details,
+                code: error.code,
+                hint: error.hint,
+                table: "quotes",
+                id
+            });
+            throw new QuoteError(`Failed to delete quote: ${error.message}`, error);
         }
     }
 
@@ -209,18 +230,14 @@ export class Quote {
     get id(): string | undefined { return this.data.id; }
     get pickUp(): string { return this.data.pickUp; }
     get dropOff(): string { return this.data.dropOff; }
-    get baseFare(): number { return this.data.baseFare; }
-    get travelFare(): number { return this.data.travelFare; }
     get userId(): string { return this.data.userId; }
     get businessId(): string { return this.data.businessId; }
-    get jobType(): JobType { return this.data.jobType; }
-    get status(): QuoteStatus { return this.data.status; }
-    get labourFare(): number { return this.data.labourFare; }
-    get total(): number { return this.data.total; }
-    get baseTime(): number { return this.data.baseTime; }
-    get travelTime(): number { return this.data.travelTime; }
-    get jobDuration(): number { return this.data.jobDuration; }
-    get totalDuration(): number { return this.data.totalDuration; }
+    get travelCostEstimate(): number { return this.data.travelCostEstimate; }
+    get status(): string { return this.data.status; }
+    get totalJobCostEstimation(): number { return this.data.totalJobCostEstimation; }
+    get travelTimeEstimate(): number { return this.data.travelTimeEstimate; }
+    get totalJobDurationEstimation(): number { return this.data.totalJobDurationEstimation; }
+    get serviceId(): string { return this.data.serviceId; }
     get createdAt(): string | undefined { return this.data.createdAt; }
     get updatedAt(): string | undefined { return this.data.updatedAt; }
 }
