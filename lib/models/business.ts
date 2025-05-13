@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { handleModelError } from '@/lib/helpers/error';
 
 export type InterfaceType = 'whatsapp' | 'website';
 
@@ -16,24 +17,17 @@ export interface BusinessData {
     updatedAt?: string;
 }
 
-export class BusinessError extends Error {
-    constructor(message: string, public originalError?: any) {
-        super(message);
-        this.name = 'BusinessError';
-    }
-}
-
 export class Business {
     private data: BusinessData;
 
     constructor(data: BusinessData) {
-        if (!data.name) throw new BusinessError("Name is required");
-        if (!data.email) throw new BusinessError("Email is required");
-        if (!data.phone) throw new BusinessError("Phone is required");
-        if (!data.timeZone) throw new BusinessError("Time zone is required");
-        if (data.mobile === undefined) throw new BusinessError("Mobile is required");
-        if (!['whatsapp', 'website'].includes(data.interfaceType)) throw new BusinessError("Interface type must be 'whatsapp' or 'website'");
-        if (data.interfaceType === 'whatsapp' && !data.whatsappNumber) throw new BusinessError("Whatsapp number is required if interface type is 'whatsapp'");
+        if (!data.name) handleModelError("Name is required", new Error("Missing name"));
+        if (!data.email) handleModelError("Email is required", new Error("Missing email"));
+        if (!data.phone) handleModelError("Phone is required", new Error("Missing phone"));
+        if (!data.timeZone) handleModelError("Time zone is required", new Error("Missing timeZone"));
+        if (data.mobile === undefined) handleModelError("Mobile is required", new Error("Missing mobile"));
+        if (!['whatsapp', 'website'].includes(data.interfaceType)) handleModelError("Interface type must be 'whatsapp' or 'website'", new Error("Invalid interfaceType"));
+        if (data.interfaceType === 'whatsapp' && !data.whatsappNumber) handleModelError("Whatsapp number is required if interface type is 'whatsapp'", new Error("Missing whatsappNumber"));
         this.data = data;
     }
 
@@ -57,19 +51,11 @@ export class Business {
         const { data, error } = await supa.from("businesses").insert(business).select().single();
 
         if(error) {
-            console.error("Supabase insert error:", {
-                message: error.message,
-                details: error.details,
-                code: error.code,
-                hint: error.hint,
-                table: "businesses",
-                data: business
-            });
-            throw new BusinessError(`Failed to create business: ${error.message}`, error);
+            handleModelError("Failed to create business", error);
         }
 
         if (!data) {
-            throw new BusinessError("Failed to create business: No data returned");
+            handleModelError("Failed to create business: No data returned", new Error("No data returned from insert"));
         }
 
         this.data = data;
@@ -79,26 +65,18 @@ export class Business {
     // Get business by ID
     static async getById(id: string): Promise<Business> {
         if (!Business.isValidUUID(id)) {
-            throw new BusinessError("Invalid UUID format");
+            handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
         const supa = createClient();
         const { data, error } = await supa.from("businesses").select("*").eq("id", id).single();
         
         if (error) {
-            console.error("Supabase fetch error:", {
-                message: error.message,
-                details: error.details,
-                code: error.code,
-                hint: error.hint,
-                table: "businesses",
-                id
-            });
-            throw new BusinessError(`Failed to fetch business: ${error.message}`, error);
+            handleModelError("Failed to fetch business", error);
         }
         
         if (!data) {
-            throw new BusinessError(`Business with id ${id} not found`);
+            handleModelError(`Business with id ${id} not found`, new Error("Business not found"));
         }
         
         return new Business(data);
@@ -110,7 +88,7 @@ export class Business {
         const { data, error } = await supa.from("businesses").select("*");
         
         if (error) {
-            throw new BusinessError("Failed to fetch businesses", error);
+            handleModelError("Failed to fetch businesses", error);
         }
         
         return data.map(businessData => new Business(businessData));
@@ -119,7 +97,7 @@ export class Business {
     // Update business
     static async update(id: string, businessData: BusinessData): Promise<Business> {
         if (!Business.isValidUUID(id)) {
-            throw new BusinessError("Invalid UUID format");
+            handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
         const supa = createClient();
@@ -143,20 +121,11 @@ export class Business {
             .single();
 
         if (error) {
-            console.error("Supabase update error:", {
-                message: error.message,
-                details: error.details,
-                code: error.code,
-                hint: error.hint,
-                table: "businesses",
-                id,
-                data: business
-            });
-            throw new BusinessError(`Failed to update business: ${error.message}`, error);
+            handleModelError("Failed to update business", error);
         }
 
         if (!data) {
-            throw new BusinessError("Failed to update business: No data returned");
+            handleModelError("Failed to update business: No data returned", new Error("No data returned from update"));
         }
 
         return new Business(data);
@@ -165,22 +134,14 @@ export class Business {
     // Delete business
     static async delete(id: string): Promise<void> {
         if (!Business.isValidUUID(id)) {
-            throw new BusinessError("Invalid UUID format");
+            handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
         const supa = createClient();
         const { error } = await supa.from("businesses").delete().eq("id", id);
 
         if (error) {
-            console.error("Supabase delete error:", {
-                message: error.message,
-                details: error.details,
-                code: error.code,
-                hint: error.hint,
-                table: "businesses",
-                id
-            });
-            throw new BusinessError(`Failed to delete business: ${error.message}`, error);
+            handleModelError("Failed to delete business", error);
         }
     }
 

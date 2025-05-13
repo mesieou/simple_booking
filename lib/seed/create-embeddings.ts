@@ -13,7 +13,7 @@ export async function createEmbeddings(documents: DocumentData[], numEmbeddings 
     try {
       for (let i = 0; i < numEmbeddings; i++) {
         const emb = await Embedding.add({
-          document_id: doc.id,
+          documentId: doc.id,
           content: doc.content || 'Chunk content',
           embedding: Array.from({ length: 1536 }, () => Math.random() * 2 - 1),
           category: doc.category

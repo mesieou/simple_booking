@@ -87,7 +87,7 @@ export async function computeInitialAvailability(
         const overlaps = bookingQuotes.some(
           ({ booking, quote: bookingQuote }: { booking: Booking; quote: Quote }) => {
             const bookingDateTime = DateTime.fromISO(booking.dateTime);
-            const bookingEnd = bookingDateTime.plus({ minutes: bookingQuote.totalDuration });
+            const bookingEnd = bookingDateTime.plus({ minutes: bookingQuote.totalJobDurationEstimation });
             const bookingEndWithBuffer = bookingEnd.plus({ minutes: bufferTime });
             
             // A slot overlaps if:
@@ -200,7 +200,7 @@ export async function updateDayAvailability(
       const overlaps = bookingQuotes.some(
         ({ booking, quote: bookingQuote }: { booking: Booking; quote: Quote }) => {
           const bookingDateTime = DateTime.fromISO(booking.dateTime);
-          const bookingEnd = bookingDateTime.plus({ minutes: bookingQuote.totalDuration });
+          const bookingEnd = bookingDateTime.plus({ minutes: bookingQuote.totalJobDurationEstimation });
           const bookingEndWithBuffer = bookingEnd.plus({ minutes: bufferTime });
           
           // A slot overlaps if:

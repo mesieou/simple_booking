@@ -26,7 +26,6 @@
     "date-fns": "^4.1.0",
     "express": "^5.1.0",
     "framer-motion": "^12.9.7",
-    "gpt-3-encoder": "^1.1.4",
     "lucide-react": "^0.468.0",
     "luxon": "^3.6.1",
     "next": "latest",
@@ -42,6 +41,7 @@
   "devDependencies": {
     "@snaplet/copycat": "^6.0.0",
     "@snaplet/seed": "^0.98.0",
+    "@types/cheerio": "^0.22.35",
     "@types/date-fns": "^2.5.3",
     "@types/express": "^5.0.1",
     "@types/jest": "^29.5.14",

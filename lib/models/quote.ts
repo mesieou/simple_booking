@@ -2,6 +2,7 @@ import { Business } from "./business";
 import { User } from "./user";
 import { createClient } from "@/lib/supabase/server"
 import { v4 as uuidv4 } from 'uuid';
+import { handleModelError } from '@/lib/helpers/error';
 
 export type JobType = "one item" | "few items" | "house/apartment move";
 export type QuoteStatus = "pending" | "accepted" | "rejected";
@@ -22,30 +23,23 @@ export interface QuoteData {
     serviceId: string;
 }
 
-export class QuoteError extends Error {
-    constructor(message: string, public originalError?: any) {
-        super(message);
-        this.name = 'QuoteError';
-    }
-}
-
 export class Quote {
     private data: QuoteData;
 
     constructor(data: QuoteData, businessIsMobile?: boolean) {
         // pickUp and dropOff, travelTimeEstimate, and travelCostEstimate are only required if the business is mobile
         if (businessIsMobile) {
-            if (!data.pickUp) throw new QuoteError("Pick up location is required for mobile businesses");
-            if (!data.dropOff) throw new QuoteError("Drop off location is required for mobile businesses");
-            if (data.travelTimeEstimate === undefined || data.travelTimeEstimate < 0) throw new QuoteError("Travel time estimate is required and must be non-negative for mobile businesses");
-            if (data.travelCostEstimate === undefined || data.travelCostEstimate < 0) throw new QuoteError("Travel cost estimate is required and must be non-negative for mobile businesses");
+            if (!data.pickUp) handleModelError("Pick up location is required for mobile businesses", new Error("Missing pickUp"));
+            if (!data.dropOff) handleModelError("Drop off location is required for mobile businesses", new Error("Missing dropOff"));
+            if (data.travelTimeEstimate === undefined || data.travelTimeEstimate < 0) handleModelError("Travel time estimate is required and must be non-negative for mobile businesses", new Error("Invalid travelTimeEstimate"));
+            if (data.travelCostEstimate === undefined || data.travelCostEstimate < 0) handleModelError("Travel cost estimate is required and must be non-negative for mobile businesses", new Error("Invalid travelCostEstimate"));
         }
-        if (!data.userId) throw new QuoteError("User ID is required");
-        if (!data.businessId) throw new QuoteError("Business ID is required");
-        if (!data.status) throw new QuoteError("Status is required");
-        if (!data.serviceId) throw new QuoteError("Service ID is required");
-        if (data.totalJobCostEstimation < 0) throw new QuoteError("Total job cost estimation cannot be negative");
-        if (data.totalJobDurationEstimation < 0) throw new QuoteError("Total job duration estimation cannot be negative");
+        if (!data.userId) handleModelError("User ID is required", new Error("Missing userId"));
+        if (!data.businessId) handleModelError("Business ID is required", new Error("Missing businessId"));
+        if (!data.status) handleModelError("Status is required", new Error("Missing status"));
+        if (!data.serviceId) handleModelError("Service ID is required", new Error("Missing serviceId"));
+        if (data.totalJobCostEstimation < 0) handleModelError("Total job cost estimation cannot be negative", new Error("Invalid totalJobCostEstimation"));
+        if (data.totalJobDurationEstimation < 0) handleModelError("Total job duration estimation cannot be negative", new Error("Invalid totalJobDurationEstimation"));
         this.data = data;
     }
 
@@ -69,18 +63,10 @@ export class Quote {
         }
         const { data, error } = await supa.from("quotes").insert(quote).select().single();
         if(error) {
-            console.error("Supabase insert error:", {
-                message: error.message,
-                details: error.details,
-                code: error.code,
-                hint: error.hint,
-                table: "quotes",
-                data: quote
-            });
-            throw new QuoteError(`Failed to create quote: ${error.message}`, error);
+            handleModelError("Failed to create quote", error);
         }
         if (!data) {
-            throw new QuoteError("Failed to create quote: No data returned");
+            handleModelError("Failed to create quote: No data returned", new Error("No data returned from insert"));
         }
         this.data = data;
         return data;
@@ -89,26 +75,18 @@ export class Quote {
     // Get quote by ID
     static async getById(id: string): Promise<Quote> {
         if (!Quote.isValidUUID(id)) {
-            throw new QuoteError("Invalid UUID format");
+            handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
         const supa = createClient();
         const { data, error } = await supa.from("quotes").select("*").eq("id", id).single();
         
         if (error) {
-            console.error("Supabase fetch error:", {
-                message: error.message,
-                details: error.details,
-                code: error.code,
-                hint: error.hint,
-                table: "quotes",
-                id
-            });
-            throw new QuoteError(`Failed to fetch quote: ${error.message}`, error);
+            handleModelError("Failed to fetch quote", error);
         }
         
         if (!data) {
-            throw new QuoteError(`Quote with id ${id} not found`);
+            handleModelError(`Quote with id ${id} not found`, new Error("Quote not found"));
         }
         
         return new Quote(data);
@@ -117,22 +95,14 @@ export class Quote {
     // Get quotes by user
     static async getByUser(userId: string): Promise<Quote[]> {
         if (!Quote.isValidUUID(userId)) {
-            throw new QuoteError("Invalid UUID format");
+            handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
         const supa = createClient();
         const { data, error } = await supa.from("quotes").select("*").eq("userId", userId);
         
         if (error) {
-            console.error("Supabase fetch error:", {
-                message: error.message,
-                details: error.details,
-                code: error.code,
-                hint: error.hint,
-                table: "quotes",
-                userId
-            });
-            throw new QuoteError(`Failed to fetch quotes by user: ${error.message}`, error);
+            handleModelError("Failed to fetch quotes by user", error);
         }
         
         return data.map(quoteData => new Quote(quoteData));
@@ -141,22 +111,14 @@ export class Quote {
     // Get quotes by business
     static async getByBusiness(businessId: string): Promise<Quote[]> {
         if (!Quote.isValidUUID(businessId)) {
-            throw new QuoteError("Invalid UUID format");
+            handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
         const supa = createClient();
         const { data, error } = await supa.from("quotes").select("*").eq("businessId", businessId);
         
         if (error) {
-            console.error("Supabase fetch error:", {
-                message: error.message,
-                details: error.details,
-                code: error.code,
-                hint: error.hint,
-                table: "quotes",
-                businessId
-            });
-            throw new QuoteError(`Failed to fetch quotes by business: ${error.message}`, error);
+            handleModelError("Failed to fetch quotes by business", error);
         }
         
         return data.map(quoteData => new Quote(quoteData));
@@ -165,7 +127,7 @@ export class Quote {
     // Update quote
     static async update(id: string, quoteData: QuoteData): Promise<Quote> {
         if (!Quote.isValidUUID(id)) {
-            throw new QuoteError("Invalid UUID format");
+            handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
         const supa = createClient();
         const quote = {
@@ -183,19 +145,10 @@ export class Quote {
         }
         const { data, error } = await supa.from("quotes").update(quote).eq("id", id).select().single();
         if (error) {
-            console.error("Supabase update error:", {
-                message: error.message,
-                details: error.details,
-                code: error.code,
-                hint: error.hint,
-                table: "quotes",
-                id,
-                data: quote
-            });
-            throw new QuoteError(`Failed to update quote: ${error.message}`, error);
+            handleModelError("Failed to update quote", error);
         }
         if (!data) {
-            throw new QuoteError("Failed to update quote: No data returned");
+            handleModelError("Failed to update quote: No data returned", new Error("No data returned from update"));
         }
         return new Quote(data);
     }
@@ -203,22 +156,14 @@ export class Quote {
     // Delete quote
     static async delete(id: string): Promise<void> {
         if (!Quote.isValidUUID(id)) {
-            throw new QuoteError("Invalid UUID format");
+            handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
         const supa = createClient();
         const { error } = await supa.from("quotes").delete().eq("id", id);
 
         if (error) {
-            console.error("Supabase delete error:", {
-                message: error.message,
-                details: error.details,
-                code: error.code,
-                hint: error.hint,
-                table: "quotes",
-                id
-            });
-            throw new QuoteError(`Failed to delete quote: ${error.message}`, error);
+            handleModelError("Failed to delete quote", error);
         }
     }
 

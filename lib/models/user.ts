@@ -1,18 +1,12 @@
 import { createClient } from "@/lib/supabase/server"
 import { Business } from "./business";
 import { v4 as uuidv4 } from 'uuid';
+import { handleModelError } from '@/lib/helpers/error';
 
 export type UserRole = "admin" | "provider" | "customer" | "admin/provider";
 
 // Provider roles that can have availability
 export const PROVIDER_ROLES: UserRole[] = ["provider", "admin/provider"];
-
-export class UserError extends Error {
-    constructor(message: string, public originalError?: any) {
-        super(message);
-        this.name = 'UserError';
-    }
-}
 
 /**
  * User class representing a user in the system.
@@ -57,11 +51,11 @@ export class User {
         });
 
         if (authError) {
-            throw new UserError("Failed to create auth user", authError);
+            handleModelError("Failed to create auth user", authError);
         }
 
         if (!authData.user) {
-            throw new UserError("No user data returned from auth creation");
+            handleModelError("No user data returned from auth creation", new Error("No auth user data"));
         }
 
         // Wait a bit to ensure the auth user is fully created
@@ -82,14 +76,13 @@ export class User {
         if(error) {
             // If user record creation fails, we should clean up the auth user
             await supa.auth.admin.deleteUser(authData.user.id);
-            console.error("Supabase insert error:", error); // 
-            throw new UserError("Failed to create user", error);
+            handleModelError("Failed to create user", error);
         }
 
         if (!data) {
             // If no data returned, clean up the auth user
             await supa.auth.admin.deleteUser(authData.user.id);
-            throw new UserError("Failed to create user: No data returned");
+            handleModelError("Failed to create user: No data returned", new Error("No data returned from insert"));
         }
 
         // Update the user's ID to match the auth user's ID
@@ -101,18 +94,18 @@ export class User {
     // Get user by ID
     static async getById(id: string): Promise<User> {
         if (!User.isValidUUID(id)) {
-            throw new UserError("Invalid UUID format");
+            handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
         const supa = createClient()
         const { data, error } = await supa.from("users").select("*").eq("id", id).single();
         
         if (error) {
-            throw new UserError("Failed to fetch user", error);
+            handleModelError("Failed to fetch user", error);
         }
         
         if (!data) {
-            throw new UserError(`User with id ${id} not found`);
+            handleModelError(`User with id ${id} not found`, new Error("User not found"));
         }
         
         return new User(data.firstName, data.lastName, data.role, data.businessId);
@@ -121,14 +114,14 @@ export class User {
     // Get users by business
     static async getByBusiness(businessId: string): Promise<User[]> {
         if (!User.isValidUUID(businessId)) {
-            throw new UserError("Invalid UUID format");
+            handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
         const supa = createClient()
         const { data, error } = await supa.from("users").select("*").eq("businessId", businessId);
         
         if (error) {
-            throw new UserError("Failed to fetch users by business", error);
+            handleModelError("Failed to fetch users by business", error);
         }
         
         return data.map(userData => new User(userData.firstName, userData.lastName, userData.role, userData.businessId));
@@ -140,7 +133,7 @@ export class User {
         const { data, error } = await supa.from("users").select("*").eq("role", role);
         
         if (error) {
-            throw new UserError("Failed to fetch users by role", error);
+            handleModelError("Failed to fetch users by role", error);
         }
         
         return data.map(userData => new User(userData.firstName, userData.lastName, userData.role, userData.businessId));
@@ -155,7 +148,7 @@ export class User {
             .in("role", PROVIDER_ROLES);
         
         if (error) {
-            throw new UserError("Failed to fetch providers", error);
+            handleModelError("Failed to fetch providers", error);
         }
         
         return data.map(userData => new User(userData.firstName, userData.lastName, userData.role, userData.businessId));
@@ -164,7 +157,7 @@ export class User {
     // Update user
     static async update(id: string, userData: { firstName: string, lastName: string, role: UserRole, businessId: string }): Promise<User> {
         if (!User.isValidUUID(id)) {
-            throw new UserError("Invalid UUID format");
+            handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
         const supa = createClient()
@@ -183,11 +176,11 @@ export class User {
             .single();
 
         if (error) {
-            throw new UserError("Failed to update user", error);
+            handleModelError("Failed to update user", error);
         }
 
         if (!data) {
-            throw new UserError("Failed to update user: No data returned");
+            handleModelError("Failed to update user: No data returned", new Error("No data returned from update"));
         }
 
         return new User(data.firstName, data.lastName, data.role, data.businessId);
@@ -196,14 +189,14 @@ export class User {
     // Delete user
     static async delete(id: string): Promise<void> {
         if (!User.isValidUUID(id)) {
-            throw new UserError("Invalid UUID format");
+            handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
         const supa = createClient()
         const { error } = await supa.from("users").delete().eq("id", id);
 
         if (error) {
-            throw new UserError("Failed to delete user", error);
+            handleModelError("Failed to delete user", error);
         }
     }
 

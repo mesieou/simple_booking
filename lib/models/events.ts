@@ -1,6 +1,7 @@
 // lib/models/events.ts
 
 import { createClient } from "@/lib/supabase/server";
+import { handleModelError } from '@/lib/helpers/error';
 
 export interface EventData {
     summary: string;
@@ -10,24 +11,16 @@ export interface EventData {
     endTime: string;
     status: string;
     userId: string;
-
-}
-
-export class EventError extends Error {
-    constructor(message: string, public originalError?: any) {
-        super(message);
-        this.name = 'EventError';
-    }
 }
 
 export class Event {
     private data: EventData;
 
     constructor(data: EventData) {
-        if (!data.startTime) throw new EventError("Start time is required");
-        if (!data.endTime) throw new EventError("End time is required");
-        if (!data.status) throw new EventError("Status is required");
-        if (!data.userId) throw new EventError("User ID is required");
+        if (!data.startTime) handleModelError("Start time is required", new Error("Missing startTime"));
+        if (!data.endTime) handleModelError("End time is required", new Error("Missing endTime"));
+        if (!data.status) handleModelError("Status is required", new Error("Missing status"));
+        if (!data.userId) handleModelError("User ID is required", new Error("Missing userId"));
         
         this.data = data;
     }
@@ -48,11 +41,11 @@ export class Event {
         const { data, error } = await supa.from("events").insert(event).select().single();
 
         if(error) {
-            throw new EventError("Failed to create event", error);
+            handleModelError("Failed to create event", error);
         }
 
         if (!data) {
-            throw new EventError("Failed to create event: No data returned");
+            handleModelError("Failed to create event: No data returned", new Error("No data returned from insert"));
         }
 
         this.data = data;
@@ -62,18 +55,18 @@ export class Event {
     // Get event by ID
     static async getById(id: string): Promise<Event> {
         if (!Event.isValidUUID(id)) {
-            throw new EventError("Invalid UUID format");
+            handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
         const supa = createClient();
         const { data, error } = await supa.from("events").select("*").eq("id", id).single();
         
         if (error) {
-            throw new EventError("Failed to fetch event", error);
+            handleModelError("Failed to fetch event", error);
         }
         
         if (!data) {
-            throw new EventError(`Event with id ${id} not found`);
+            handleModelError(`Event with id ${id} not found`, new Error("Event not found"));
         }
         
         return new Event(data);
@@ -82,15 +75,14 @@ export class Event {
     // Get events by user
     static async getByUser(userId: string): Promise<Event[]> {
         if (!Event.isValidUUID(userId)) {
-            throw new EventError("Invalid UUID format");
+            handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
         const supa = createClient();
         const { data, error } = await supa.from("events").select("*").eq("userId", userId);
         
         if (error) {
-            console.error("Supabase insert error:", error); // 👈 log the actual error
-            throw new EventError("Failed to fetch events by user", error);
+            handleModelError("Failed to fetch events by user", error);
         }
         
         return data.map(eventData => new Event(eventData));
@@ -99,14 +91,14 @@ export class Event {
     // Get events by calendar
     static async getByCalendar(calendarId: string): Promise<Event[]> {
         if (!Event.isValidUUID(calendarId)) {
-            throw new EventError("Invalid UUID format");
+            handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
         const supa = createClient();
         const { data, error } = await supa.from("events").select("*").eq("calendarId", calendarId);
         
         if (error) {
-            throw new EventError("Failed to fetch events by calendar", error);
+            handleModelError("Failed to fetch events by calendar", error);
         }
         
         return data.map(eventData => new Event(eventData));
@@ -122,7 +114,7 @@ export class Event {
             .lte("endTime", end);
         
         if (error) {
-            throw new EventError("Failed to fetch events by date range", error);
+            handleModelError("Failed to fetch events by date range", error);
         }
         
         return data.map(eventData => new Event(eventData));
@@ -131,7 +123,7 @@ export class Event {
     // Update event
     static async update(id: string, eventData: EventData): Promise<Event> {
         if (!Event.isValidUUID(id)) {
-            throw new EventError("Invalid UUID format");
+            handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
         const supa = createClient();
@@ -153,11 +145,11 @@ export class Event {
             .single();
 
         if (error) {
-            throw new EventError("Failed to update event", error);
+            handleModelError("Failed to update event", error);
         }
 
         if (!data) {
-            throw new EventError("Failed to update event: No data returned");
+            handleModelError("Failed to update event: No data returned", new Error("No data returned from update"));
         }
 
         return new Event(data);
@@ -166,14 +158,14 @@ export class Event {
     // Delete event
     static async delete(id: string): Promise<void> {
         if (!Event.isValidUUID(id)) {
-            throw new EventError("Invalid UUID format");
+            handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
         const supa = createClient();
         const { error } = await supa.from("events").delete().eq("id", id);
 
         if (error) {
-            throw new EventError("Failed to delete event", error);
+            handleModelError("Failed to delete event", error);
         }
     }
 
