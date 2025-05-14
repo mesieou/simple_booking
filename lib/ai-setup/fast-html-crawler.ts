@@ -78,7 +78,7 @@ class FastHtmlCrawler {
   private progressCallback?: (progress: CrawlProgress) => void;
   private crawlSession: CrawlSessionData;
   private activePages = 0;
-  private supabase = createClient();
+  private supabase: any;
   private httpClient;
 
   constructor(
@@ -124,6 +124,10 @@ class FastHtmlCrawler {
         'Pragma': 'no-cache'
       }
     });
+  }
+
+  private async initialize() {
+    this.supabase = await createClient();
   }
 
   private async validateAndCheckRobots(): Promise<boolean> {
@@ -444,53 +448,59 @@ class FastHtmlCrawler {
 
   public async start(): Promise<CrawlSessionData> {
     try {
+      await this.initialize();
       const isAllowed = await this.validateAndCheckRobots();
       if (!isAllowed) {
-        throw new Error(`Crawling disallowed by robots.txt for ${this.config.websiteUrl}`);
+        throw new Error('Crawling not allowed by robots.txt');
       }
 
-      // Start with the homepage
-      const homepageContent = await this.fetchPageContent(this.config.websiteUrl);
-      if (!homepageContent) {
-        throw new Error('Failed to fetch homepage content');
+      const initialUrl = this.canonicalizeUrl(this.config.websiteUrl);
+      this.visitedUrls.add(initialUrl);
+
+      const initialContent = await this.fetchPageContent(initialUrl);
+      if (!initialContent) {
+        throw new Error('Failed to fetch initial page');
       }
 
-      let urlsToProcess = homepageContent.links;
-      const results: PageContent[] = [homepageContent];
+      const links = initialContent.links;
+      const limit = pLimit(this.config.concurrency!);
 
-      // Process URLs in batches
-      while (urlsToProcess.length > 0 && this.visitedUrls.size < this.config.maxPages!) {
-        const batch = urlsToProcess.splice(0, this.config.concurrency!);
-        const batchResults = await this.processBatch(batch);
-        results.push(...batchResults);
-
-        // Add new links to the queue
-        for (const result of batchResults) {
-          urlsToProcess.push(...result.links.filter(link => 
-            !this.visitedUrls.has(this.canonicalizeUrl(link)) &&
-            !urlsToProcess.includes(link)
-          ));
+      const processUrl = async (url: string) => {
+        this.activePages++;
+        try {
+          const content = await this.fetchPageContent(url);
+          if (content) {
+            await this.createEmbeddings([content]);
+            this.crawlSession.successfulPages++;
+          }
+        } catch (error) {
+          this.crawlSession.failedPages++;
+          this.crawlSession.errors.push({
+            url,
+            error: error instanceof Error ? error.message : String(error)
+          });
+        } finally {
+          this.activePages--;
+          this.crawlSession.totalPages++;
+          if (this.progressCallback) {
+            this.progressCallback({
+              processedPages: this.crawlSession.totalPages,
+              totalPages: this.config.maxPages!,
+              percentage: (this.crawlSession.totalPages / this.config.maxPages!) * 100,
+              currentUrl: url,
+              activePages: this.activePages
+            });
+          }
         }
-      }
+      };
+
+      const promises = links.map(url => limit(() => processUrl(url)));
+      await Promise.all(promises);
 
       this.crawlSession.endTime = Date.now();
-      this.crawlSession.totalPages = this.visitedUrls.size;
-
-      // Store crawl session metadata
-      const session = await CrawlSessionModel.add(this.crawlSession);
-
-      // Create embeddings in the background
-      this.createEmbeddings(results).catch(error => {
-        console.error('Error creating embeddings:', error);
-      });
-
       return this.crawlSession;
     } catch (error) {
-      this.crawlSession.endTime = Date.now();
-      this.crawlSession.errors.push({
-        url: this.config.websiteUrl,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
+      console.error('Crawl failed:', error);
       throw error;
     }
   }

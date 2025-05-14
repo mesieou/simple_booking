@@ -44,7 +44,7 @@ export class CalendarSettings {
 
   // Save or update calendar settings
   static async save(id: string | undefined, settings: CalendarSettingsData): Promise<CalendarSettings> {
-    const supabase = createClient()
+    const supabase = await createClient()
     
     const dataToSave = {
       ...settings,
@@ -84,7 +84,7 @@ export class CalendarSettings {
       handleModelError("Invalid business ID format", new Error("Invalid UUID format"));
     }
 
-    const supabase = createClient()
+    const supabase = await createClient()
     
     const { data, error } = await supabase
       .from('calendarSettings')
@@ -111,7 +111,7 @@ export class CalendarSettings {
       handleModelError("Invalid business ID format", new Error("Invalid UUID format"));
     }
 
-    const supabase = createClient()
+    const supabase = await createClient()
     
     const { data, error } = await supabase
       .from('calendarSettings')
@@ -139,7 +139,7 @@ export class CalendarSettings {
       handleModelError("Invalid settings ID format", new Error("Invalid UUID format"));
     }
 
-    const supabase = createClient()
+    const supabase = await createClient()
     
     const { error } = await supabase
       .from('calendarSettings')
