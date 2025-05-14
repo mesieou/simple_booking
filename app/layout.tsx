@@ -22,7 +22,7 @@ export const metadata = {
   title: "Skedy",
   description: "The best way to manage bookings and calendars",
   icons: {
-    icon: "/favicon.png",
+    icon: "/favicon.ico",
   },
 };
 
@@ -55,7 +55,12 @@ export default function RootLayout({
                         <Menu />
                       </div>
                       <Link href="/" className="flex items-center">
-                        <Image src={logo} className="w-40 m:h-auto m:m-10" alt="Skedy logo. bookings and scheduler business" />
+                        <Image 
+                          src={logo} 
+                          className="w-40 m:h-auto m:m-10" 
+                          alt="Skedy logo. bookings and scheduler business"
+                          priority 
+                        />
                       </Link>
                     </div>
                     <div className="flex-1 flex justify-center">

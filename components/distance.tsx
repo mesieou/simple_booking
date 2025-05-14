@@ -10,9 +10,10 @@ interface ErrorResult {
 
 interface DistanceProps {
   onChange?: (origen: string, destino: string) => void;
+  onContinue?: (duracion: string | null) => void;
 }
 
-export default function Distance({ onChange }: DistanceProps) {
+export default function Distance({ onChange, onContinue }: DistanceProps) {
   const [origen, setOrigen] = useState<string>('');
   const [destino, setDestino] = useState<string>('');
   const [distancia, setDistancia] = useState<string | null>(null);
@@ -46,7 +47,7 @@ export default function Distance({ onChange }: DistanceProps) {
         return;
       }
 
-      const response = await fetch(`/api/maps?origen=${encodeURIComponent(origen)}&destino=${encodeURIComponent(destino)}`);
+      const response = await fetch(`/api/maps/mapsdistance?origen=${encodeURIComponent(origen)}&destino=${encodeURIComponent(destino)}`);
       const responseText = await response.text();
       console.log('Respuesta del servidor:', responseText);
 
@@ -100,13 +101,23 @@ export default function Distance({ onChange }: DistanceProps) {
           onChange={(e) => setDestino(e.target.value)}
         />
 
-        <button
-          onClick={handleClickCalcular}
-          disabled={isLoading}
-          className="w-full mt-4 px-4 py-2 rounded bg-brand text-white disabled:opacity-50"
-        >
-          {isLoading ? 'Calculando...' : 'Calcular Distancia'}
-        </button>
+        <div className="flex gap-4">
+          <button
+            onClick={handleClickCalcular}
+            disabled={isLoading}
+            className="flex-1 px-4 py-2 rounded bg-brand text-white disabled:opacity-50"
+          >
+            {isLoading ? 'Calculando...' : 'Calcular Distancia'}
+          </button>
+
+          <button
+            onClick={() => onContinue && onContinue(duracion)}
+            disabled={!duracion}
+            className="flex-1 px-4 py-2 rounded bg-blue-600 text-white disabled:opacity-50"
+          >
+            Continuar
+          </button>
+        </div>
 
         {error && (
           <div className="mt-4 p-3 bg-red-50 rounded-lg">
