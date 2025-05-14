@@ -54,7 +54,7 @@ export default function Features_App() {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
               </div>
               <div className="p-6">
-                <h3 className="text-xl font-semibold mb-3 text-[rgb(250,204,21)]">
+                <h3 className="text-xl font-semibold mb-3 text-[hsl(var(--chart-4))]">
                   {t(`features.${feature.key}.title`)}
                 </h3>
                 <p className="text-muted-foreground mb-4 line-clamp-3">
@@ -62,7 +62,7 @@ export default function Features_App() {
                 </p>
                 <Link 
                   href={feature.link}
-                  className="inline-flex items-center text-[rgb(250,204,21)] hover:text-[rgb(250,204,21)]/80 transition-colors duration-200"
+                  className="inline-flex items-center text-[hsl(var(--chart-4))] hover:text-[hsl(var(--chart-4))/80] transition-colors duration-200"
                 >
                   {t('features.learn_more')}
                   <svg 

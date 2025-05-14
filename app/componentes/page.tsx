@@ -14,12 +14,25 @@ import Distance from '@/components/distance';
 import Calendar from '@/components/calendar';
 import Menu from '@/components/menu';
 import LanguageSwitcher from '@/components/language-switcher';
+import BookingSummary from '@/components/BookingSummary';
 
 export default async function Componentes() {
     const mensajeExito = { success: "¡Datos guardados exitosamente!" };
     
     return (
     <>
+      <BookingSummary
+        origen="America's Food Basket of Atlantic Ave, Ocean Hill"
+        origenDireccion="2220 Atlantic Ave, Ocean Hill, NY 11233"
+        destino="Neir's Tavern, Woodhaven"
+        destinoDireccion="87-48 78th St, Woodhaven, NY 11421"
+        vehiculo="Pickup"
+        luggers={2}
+        precioBase={62.02}
+        precioPorMinuto={1.94}
+        arrivalWindow="10:00 - 12:00"
+        moving="2 cajas grandes, 1 sofá"
+      />
       <DeployButton/>
       <EnvVarWarning/>
       <FormMessage message={mensajeExito}/>

@@ -3,7 +3,7 @@ export const es = {
     home: 'Inicio',
     about: 'Nosotros',
     services: 'Servicios',
-    contact: 'Contacto'
+    booking: 'Reservas'
   },
   form: {
     submit: 'Enviar',
