@@ -18,18 +18,17 @@ export default function BookingSizeStep() {
   // Obtener los datos de la URL
   const origen = searchParams.get('origen') || '--';
   const destino = searchParams.get('destino') || '--';
+  const duracion = searchParams.get('duracion') || null;
 
   // Estado para el size seleccionado
   const [selectedSize, setSelectedSize] = useState(SIZE_OPTIONS[0]);
 
-  // Calcular el precio total igual que en Precios
-  const traveled = 19;
-  const labor_min = 213;
-  const total = selectedSize.tarifa + traveled + labor_min;
+  // Precio por minuto de distancia
+  const price_distance = 1.94;
 
   // Al continuar, navegar al calendario con los datos y el size
   const handleContinue = () => {
-    router.push(`/booking/calendar?origen=${encodeURIComponent(origen)}&destino=${encodeURIComponent(destino)}&size=${selectedSize.key}`);
+    router.push(`/booking/calendar?origen=${encodeURIComponent(origen)}&destino=${encodeURIComponent(destino)}&size=${selectedSize.key}&duracion=${encodeURIComponent(duracion || '')}`);
   };
 
   return (
@@ -43,10 +42,10 @@ export default function BookingSizeStep() {
           destinoDireccion={destino}
           vehiculo={selectedSize.vehiculo}
           luggers={selectedSize.luggers}
-          precioBase={total}
-          precioPorMinuto={1.94}
+          precioBase={selectedSize.tarifa}
+          precioPorMinuto={price_distance}
           arrivalWindow="--"
-          moving="--"
+          moving={duracion || '--'}
         />
       </div>
       {/* Columna derecha: Visual resumen y precios */}
@@ -65,7 +64,11 @@ export default function BookingSizeStep() {
             </button>
           ))}
         </div>
-        <Precios base={selectedSize.tarifa} />
+        <Precios 
+          base={selectedSize.tarifa} 
+          duracion={duracion}
+          price_distance={price_distance}
+        />
         <div className="flex gap-4 self-end mt-8">
           <button
             className="flex items-center px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-lg"
