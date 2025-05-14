@@ -7,11 +7,31 @@ import { URL } from 'url';
 import parseRobots from 'robots-parser';
 import crypto from 'crypto';
 import pLimit from 'p-limit';
-import normalizeUrl from 'normalize-url';
 import { CrawlSession as CrawlSessionModel } from '@/lib/models/crawl-session';
-import { parseSitemap, SitemapItem } from 'sitemap';
-import { Readable } from 'stream';
+import { PDFDocument } from 'pdf-lib';
 import { retry } from 'ts-retry-promise';
+import { getLinks } from './url-fetcher';
+
+interface PDFData {
+  text: string;
+  numpages: number;
+  numrender: number;
+  info: {
+    PDFFormatVersion?: string;
+    IsAcroFormPresent?: boolean;
+    IsXFAPresent?: boolean;
+    Title?: string;
+    Author?: string;
+    Subject?: string;
+    Keywords?: string;
+    Creator?: string;
+    Producer?: string;
+    CreationDate?: string;
+    ModDate?: string;
+  };
+  metadata: any;
+  version: string;
+}
 
 export interface FastCrawlConfig {
   websiteUrl: string;
@@ -43,6 +63,7 @@ export interface PageContent {
     error?: string;
     language: string;
     originalUrl: string;
+    fileType?: string;
   };
 }
 
@@ -93,21 +114,6 @@ class FastWebsiteCrawler {
   };
   private lastLogTime: number = 0;
   private lastLogUrlCount: number = 0;
-  private readonly SKIPPED_EXTENSIONS = [
-    '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
-    '.zip', '.rar', '.tar', '.gz', '.7z',
-    '.jpg', '.jpeg', '.png', '.gif', '.svg', '.ico',
-    '.mp3', '.mp4', '.avi', '.mov', '.wmv',
-    '.css', '.js', '.json', '.xml', '.txt'
-  ];
-
-  private readonly SKIPPED_PARAMS = [
-    'utm_', 'ref_', 'source_', 'campaign_', 'medium_',
-    'fbclid', 'gclid', 'msclkid', 'dclid',
-    'share', 'share=', 'share?',
-    'print', 'print=', 'print?',
-    'preview', 'preview=', 'preview?'
-  ];
 
   constructor(
     config: FastCrawlConfig,
@@ -120,8 +126,8 @@ class FastWebsiteCrawler {
       concurrency: 20,
       useSitemap: true,
       logInterval: {
-        urls: 10,  // Log every 10 URLs by default
-        seconds: 5  // Log every 5 seconds by default
+        urls: 10,
+        seconds: 5
       },
       ...config
     };
@@ -170,109 +176,6 @@ class FastWebsiteCrawler {
     this.lastRequestTime = Date.now();
   }
 
-  private canonicalizeUrl(url: string): string {
-    try {
-      return normalizeUrl(url, {
-        stripHash: true,
-        stripWWW: true,
-        removeTrailingSlash: true,
-        removeQueryParameters: [/^utm_/i, /^ref_/i],
-        sortQueryParameters: true
-      });
-    } catch {
-      return url;
-    }
-  }
-
-  private isValidUrl(url: string): boolean {
-    try {
-      const parsedUrl = new URL(url);
-      const canonicalUrl = this.canonicalizeUrl(url);
-      
-      // Skip URLs with hash fragments
-      if (parsedUrl.hash) {
-        return false;
-      }
-
-      // Skip URLs with file extensions
-      const pathname = parsedUrl.pathname.toLowerCase();
-      if (this.SKIPPED_EXTENSIONS.some(ext => pathname.endsWith(ext))) {
-        return false;
-      }
-
-      // Skip URLs with certain query parameters
-      const searchParams = parsedUrl.searchParams;
-      if (this.SKIPPED_PARAMS.some(param => 
-        Array.from(searchParams.keys()).some(key => key.startsWith(param))
-      )) {
-        return false;
-      }
-
-      // Skip URLs with certain patterns
-      const skipPatterns = [
-        /\/tag\//i,
-        /\/author\//i,
-        /\/category\//i,
-        /\/archive\//i,
-        /\/feed\//i,
-        /\/rss\//i,
-        /\/atom\//i,
-        /\/sitemap\//i,
-        /\/wp-/i,
-        /\/wp-content\//i,
-        /\/wp-includes\//i,
-        /\/wp-admin\//i,
-        /\/wp-json\//i,
-        /\/wp-login\//i,
-        /\/wp-register\//i,
-        /\/wp-signup\//i,
-        /\/wp-login\//i,
-        /\/wp-register\//i,
-        /\/wp-signup\//i,
-        /\/wp-cron\//i,
-        /\/wp-trackback\//i,
-        /\/wp-comments\//i,
-        /\/wp-feed\//i,
-        /\/wp-rss\//i,
-        /\/wp-atom\//i,
-        /\/wp-rdf\//i,
-        /\/wp-rss2\//i,
-        /\/wp-rss3\//i,
-        /\/wp-rss4\//i,
-        /\/wp-rss5\//i,
-        /\/wp-rss6\//i,
-        /\/wp-rss7\//i,
-        /\/wp-rss8\//i,
-        /\/wp-rss9\//i,
-        /\/wp-rss10\//i,
-        /\/wp-rss11\//i,
-        /\/wp-rss12\//i,
-        /\/wp-rss13\//i,
-        /\/wp-rss14\//i,
-        /\/wp-rss15\//i,
-        /\/wp-rss16\//i,
-        /\/wp-rss17\//i,
-        /\/wp-rss18\//i,
-        /\/wp-rss19\//i,
-        /\/wp-rss20\//i
-      ];
-
-      if (skipPatterns.some(pattern => pattern.test(pathname))) {
-        return false;
-      }
-
-      return (
-        parsedUrl.hostname === this.baseUrl.hostname &&
-        parsedUrl.protocol === this.baseUrl.protocol &&
-        !this.visitedUrls.has(canonicalUrl) &&
-        this.visitedUrls.size < this.config.maxPages! &&
-        (!this.robotsRules || this.robotsRules.isAllowed(url, this.USER_AGENT))
-      );
-    } catch {
-      return false;
-    }
-  }
-
   private generateContentHash(content: string): string {
     return crypto.createHash('sha1').update(content).digest('hex');
   }
@@ -295,55 +198,15 @@ class FastWebsiteCrawler {
     return $('body').text().trim();
   }
 
-  private extractInternalLinks($: cheerio.CheerioAPI, baseUrl: URL): string[] {
-    const links: string[] = [];
-    $('a[href]').each((_index: number, element: any) => {
-      const href = $(element).attr('href');
-      if (href) {
-        try {
-          // Skip empty links, javascript: links, and mailto: links
-          if (!href || href.startsWith('javascript:') || href.startsWith('mailto:')) {
-            return;
-          }
-
-          // Skip links with rel="nofollow" or rel="noindex"
-          const rel = $(element).attr('rel');
-          if (rel && (rel.includes('nofollow') || rel.includes('noindex'))) {
-            return;
-          }
-
-          const absoluteUrl = new URL(href, baseUrl.toString()).toString();
-          const canonicalUrl = this.canonicalizeUrl(absoluteUrl);
-          if (this.isValidUrl(canonicalUrl)) {
-            links.push(canonicalUrl);
-          }
-        } catch {}
-      }
-    });
-    return links;
+  private cleanContent(content: string): string {
+    return content
+        .replace(/\s+/g, ' ')  // Replace multiple spaces with single space
+        .replace(/\n+/g, '\n') // Replace multiple newlines with single newline
+        .trim();
   }
 
-  private async fetchSitemapUrls(): Promise<string[]> {
-    try {
-      const sitemapUrl = `${this.baseUrl.origin}/sitemap.xml`;
-      const response = await fetch(sitemapUrl, {
-        headers: this.DEFAULT_HEADERS,
-        signal: AbortSignal.timeout(10000)
-      });
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch sitemap: ${response.status}`);
-      }
-      
-      const text = await response.text();
-      const sitemap = await parseSitemap(Readable.from(text));
-      return sitemap
-        .map((url: SitemapItem) => url.url)
-        .filter((url: string) => this.isValidUrl(url));
-    } catch (error) {
-      console.warn('Could not fetch sitemap, falling back to link extraction:', error);
-      return [];
-    }
+  private async getInitialUrls(): Promise<string[]> {
+    return [this.config.websiteUrl];
   }
 
   private async fetchPageContent(url: string): Promise<PageContent | null> {
@@ -352,7 +215,10 @@ class FastWebsiteCrawler {
     for (let attempt = 0; attempt < this.config.maxRetries!; attempt++) {
       try {
         const response = await fetch(url, {
-          headers: this.DEFAULT_HEADERS,
+          headers: {
+            ...this.DEFAULT_HEADERS,
+            'Accept-Language': 'en-US,en;q=0.9' // Force English content
+          },
           signal: AbortSignal.timeout(10000)
         });
 
@@ -375,17 +241,97 @@ class FastWebsiteCrawler {
           throw new Error(`HTTP error! status: ${status}`);
         }
 
+        // Check if the response is a PDF
+        const contentType = response.headers.get('content-type');
+        if (contentType?.includes('application/pdf')) {
+          const arrayBuffer = await response.arrayBuffer();
+          const pdfDoc = await PDFDocument.load(arrayBuffer);
+          
+          // Extract text from all pages
+          let content = '';
+          const pages = pdfDoc.getPages();
+          for (let i = 0; i < pages.length; i++) {
+            const page = pages[i];
+            const { width, height } = page.getSize();
+            content += `Page ${i + 1}: ${width}x${height}\n`;
+          }
+          
+          // Get PDF metadata
+          const title = pdfDoc.getTitle() || 
+                       decodeURIComponent(new URL(url).pathname.replace(/\//g, ' ').trim()) || 
+                       'Untitled PDF';
+          
+          // Clean and trim content
+          const cleanedContent = this.cleanContent(content);
+
+          if (!cleanedContent) {
+            console.warn(`No content found in PDF at ${url}`);
+            return null;
+          }
+
+          // Skip non-English content
+          const language = detectLanguage(url, cleanedContent);
+          if (language !== 'en') {
+            console.warn(`Skipping non-English PDF at ${url} (detected language: ${language})`);
+            return null;
+          }
+
+          const contentHash = this.generateContentHash(cleanedContent);
+          if (this.contentHashes.has(contentHash)) {
+            console.warn(`Duplicate PDF content detected at ${url}`);
+            return null;
+          }
+
+          this.contentHashes.add(contentHash);
+          const category = await detectPageCategory(url, title, cleanedContent);
+
+          return {
+            url,
+            title,
+            content: cleanedContent,
+            category,
+            contentHash,
+            links: [], // PDFs don't have links
+            businessId: this.config.businessId,
+            metadata: {
+              crawlTimestamp: Date.now(),
+              depth: 0,
+              status: 'success',
+              language: 'en',
+              originalUrl: url,
+              fileType: 'pdf'
+            }
+          };
+        }
+
+        // Handle HTML content
         const html = await response.text();
         const $ = cheerio.load(html) as cheerio.CheerioAPI;
+        
+        // Check HTML lang attribute
+        const htmlLang = $('html').attr('lang')?.toLowerCase();
+        if (htmlLang && !htmlLang.startsWith('en')) {
+          console.warn(`Skipping non-English page at ${url} (HTML lang: ${htmlLang})`);
+          return null;
+        }
         
         const title = $('title').text().trim() || 
                      $('h1').first().text().trim() || 
                      decodeURIComponent(new URL(url).pathname.replace(/\//g, ' ').trim()) || 
                      'Untitled Page';
-        const content = this.extractMainContent($).trim();
+        
+        // Clean and trim content
+        const content = this.cleanContent(this.extractMainContent($));
 
         if (!content) {
           console.warn(`No content found at ${url}`);
+          return null;
+        }
+
+        // Skip non-English content
+        const language = detectLanguage(url, content);
+        if (language !== 'en') {
+          console.warn(`Skipping non-English page at ${url} (detected language: ${language})`);
           return null;
         }
 
@@ -396,7 +342,10 @@ class FastWebsiteCrawler {
         }
 
         this.contentHashes.add(contentHash);
-        const links = this.extractInternalLinks($, this.baseUrl);
+        
+        // Get valid links to crawl
+        const links = await getLinks(url);
+        
         const category = await detectPageCategory(url, title, content);
 
         return {
@@ -411,8 +360,9 @@ class FastWebsiteCrawler {
             crawlTimestamp: Date.now(),
             depth: 0,
             status: 'success',
-            language: detectLanguage(url, content),
-            originalUrl: url
+            language: 'en',
+            originalUrl: url,
+            fileType: 'html'
           }
         };
       } catch (error) {
@@ -474,19 +424,18 @@ class FastWebsiteCrawler {
     const batchResults = await Promise.allSettled(
       urls.map(url =>
         limit(async () => {
-          const canonicalUrl = this.canonicalizeUrl(url);
-          if (this.visitedUrls.has(canonicalUrl)) {
+          if (this.visitedUrls.has(url)) {
             return null;
           }
 
-          this.visitedUrls.add(canonicalUrl);
+          this.visitedUrls.add(url);
           this.activePages++;
 
           // Log progress
-          this.logProgress(canonicalUrl);
+          this.logProgress(url);
 
           try {
-            const pageContent = await this.fetchPageContent(canonicalUrl);
+            const pageContent = await this.fetchPageContent(url);
             if (!pageContent) {
               this.crawlSession.failedPages++;
               return null;
@@ -502,7 +451,7 @@ class FastWebsiteCrawler {
           } catch (error) {
             this.crawlSession.failedPages++;
             this.crawlSession.errors.push({
-              url: canonicalUrl,
+              url,
               error: error instanceof Error ? error.message : 'Unknown error'
             });
             return null;
@@ -659,19 +608,9 @@ class FastWebsiteCrawler {
 
       let urlsToProcess: string[] = [];
       
-      // Try to get URLs from sitemap first
+      // Get initial URLs to start crawling
       if (this.config.useSitemap) {
-        urlsToProcess = await this.fetchSitemapUrls();
-      }
-
-      // If no sitemap or sitemap is empty, start with the homepage
-      if (urlsToProcess.length === 0) {
-        const homepageContent = await this.fetchPageContent(this.config.websiteUrl);
-        if (homepageContent) {
-          urlsToProcess = homepageContent.links;
-          // Add homepage to results
-          await this.createEmbeddings([homepageContent]);
-        }
+        urlsToProcess = await this.getInitialUrls();
       }
 
       // Process URLs in batches
@@ -684,7 +623,7 @@ class FastWebsiteCrawler {
         // Add new links to the queue
         for (const result of batchResults) {
           urlsToProcess.push(...result.links.filter(link => 
-            !this.visitedUrls.has(this.canonicalizeUrl(link)) &&
+            !this.visitedUrls.has(link) &&
             !urlsToProcess.includes(link)
           ));
         }
@@ -716,7 +655,7 @@ export async function setupBusinessAiBot(config: FastCrawlConfig, progressCallba
   return await crawler.start();
 }
 
-// Helper function to detect language from URL or content
+// Update the detectLanguage function to be more strict about English detection
 function detectLanguage(url: string, content: string): string {
   // Check URL patterns first
   const urlLang = url.match(/-([a-z]{2})(?:$|[/?])/i)?.[1]?.toLowerCase();
@@ -726,8 +665,18 @@ function detectLanguage(url: string, content: string): string {
   const langMatch = content.match(/lang=["']([a-z]{2})["']/i);
   if (langMatch) return langMatch[1].toLowerCase();
 
-  // Default to English if no language detected
-  return 'en';
+  // Simple English detection based on common words
+  const englishWords = ['the', 'and', 'that', 'have', 'for', 'not', 'with', 'you', 'this', 'but'];
+  const words = content.toLowerCase().split(/\s+/);
+  const englishWordCount = words.filter(word => englishWords.includes(word)).length;
+  
+  // If more than 5% of words are common English words, consider it English
+  if (englishWordCount / words.length > 0.05) {
+    return 'en';
+  }
+
+  // Default to non-English if we can't confidently determine
+  return 'unknown';
 }
 
 // Helper function to normalize text for comparison
