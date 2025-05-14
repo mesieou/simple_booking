@@ -32,12 +32,12 @@ export function CalendarDay({ date, onSelect, isSelected, className = '' }: Cale
       disabled={isPastDate()}
       variant={isSelected ? "default" : "outline"}
       size="lg"
-      className={`h-24 w-32 flex flex-col justify-center items-center border-2 border-white/50 hover:border-white ${className}`}
+      className={`h-24 w-22 flex flex-col justify-center items-center border-2 border-white/50 hover:border-white ${className}`}
       aria-label={`${dayName}, ${dayNumber} ${isPastDate() ? '(Past date, not available)' : ''}`}
       aria-disabled={isPastDate()}
     >
-      <span className="text-xl font-medium">{dayName}</span>
-      <span className="text-2xl font-bold">{dayNumber}</span>
+      <span className="text-xs font-medium">{dayName}</span>
+      <span className="text-xl font-bold">{dayNumber}</span>
     </Button>
   );
 } 

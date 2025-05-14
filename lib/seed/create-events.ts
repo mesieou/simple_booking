@@ -1,6 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { DateTime } from 'luxon';
-import { Event, EventError } from '../models/events';
+import { Event } from '../models/events';
 
 export async function createEventsForUser(
   userId: string,
@@ -26,9 +26,6 @@ export async function createEventsForUser(
       await event.add();
       events.push(event);
     } catch (error) {
-      if (error instanceof EventError) {
-        console.error("Original Supabase error:", error.originalError);
-      }
       console.error("Error creating event:", error);
       throw error; // Keep this for now to stop silent failures
     }

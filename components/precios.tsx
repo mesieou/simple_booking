@@ -2,9 +2,12 @@
 
 import { useLanguage } from "@/lib/translations/language-context";
 
-export default function Precios() {
+interface PreciosProps {
+    base?: number;
+}
+
+export default function Precios({ base = 46 }: PreciosProps) {
     const { t } = useLanguage();
-    const base = 46;
     const traveled = 19;
     const labor_min = 213;
     const total = base + traveled + labor_min;
@@ -16,7 +19,7 @@ export default function Precios() {
                     {t('base')}
                     <span className="text-sm text-muted-foreground ml-2">( )</span>
                 </p>
-                <p className="text-lg md:text-xl font-semibold text-[rgb(250,204,21)]">$ {base}</p>
+                <p className="text-lg md:text-xl font-semibold text-[hsl(var(--chart-4))]">$ {base}</p>
             </div>
 
             <div className="flex items-center justify-between p-3 rounded-md hover:bg-accent/10 transition-colors">
@@ -24,7 +27,7 @@ export default function Precios() {
                     {t('miles')}
                     <span className="text-sm text-muted-foreground ml-2">( )</span>
                 </p>
-                <p className="text-lg md:text-xl font-semibold text-[rgb(250,204,21)]">$ {traveled}</p>
+                <p className="text-lg md:text-xl font-semibold text-[hsl(var(--chart-4))]">$ {traveled}</p>
             </div>
 
             <div className="flex items-center justify-between p-3 rounded-md hover:bg-accent/10 transition-colors">
@@ -32,7 +35,7 @@ export default function Precios() {
                     {t('labor')}
                     <span className="text-sm text-muted-foreground ml-2">( )</span>
                 </p>
-                <p className="text-lg md:text-xl font-semibold text-[rgb(250,204,21)]">$ {labor_min}</p>
+                <p className="text-lg md:text-xl font-semibold text-[hsl(var(--chart-4))]">$ {labor_min}</p>
             </div>
 
             <div className="w-full h-px bg-gradient-to-r from-transparent via-foreground/10 to-transparent my-4" />
@@ -42,7 +45,7 @@ export default function Precios() {
                     {t('total')}
                     <span className="text-sm text-muted-foreground ml-2">( )</span>
                 </p>
-                <p className="text-xl md:text-2xl font-bold text-[rgb(250,204,21)]">
+                <p className="text-xl md:text-2xl font-bold text-[hsl(var(--chart-4))]">
                     $ {total}
                 </p>
             </div>

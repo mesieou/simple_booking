@@ -9,21 +9,21 @@ export function Footer() {
   const { t } = useLanguage();
 
   return (
-    <footer className="w-full bg-gradient-to-r from-gray-900/80 to-gray-800/80 text-white backdrop-blur-sm">
-      <div className="w-3/4 mx-auto p-4 py-6 lg:py-8">
+    <footer className="w-full bg-gradient-to-r from-violet-950 to-gray-800/80 text-white backdrop-blur-sm mt-auto">
+      <div className="w-4/5 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
         <div className="md:flex md:justify-between items-center">
-          <div className="mb-6 md:mb-0 flex items-center gap-12">
+          <div className="mb-6 md:mb-0 flex items-center gap-8">
             <Link href="/" className="flex items-center">
               <Image
                 src={logo}
                 alt="Skedy logo"
                 width={100}
                 height={100}
-                className="w-[100px] h-[100px] object-contain mr-8"
+                className="w-[150px] h-[150px] object-contain mr-40"
               />
             </Link>
           </div>
-          <div className="grid grid-cols-2 gap-8 sm:gap-6 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-12 sm:gap-16 sm:grid-cols-3">
             <div>
               <h2 className="mb-6 text-sm font-semibold text-yellow-400 uppercase">
                 {t('resources')}

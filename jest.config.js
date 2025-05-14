@@ -1,10 +1,8 @@
 /** @type {import('ts-jest').JestConfigWithTsJest} **/
 module.exports = {
-  testEnvironment: "node",
-  transform: {
-    "^.+\\.(tsx?|ts?)$": ["ts-jest", {}],
-  },
+  preset: 'ts-jest',
+  testEnvironment: 'node',
   moduleNameMapper: {
-    "^@/(.*)$": "<rootDir>/utils/supabase/client", // Ensure this matches your directory structure
-  },
+    '^@/(.*)$': '<rootDir>/$1'
+  }
 };
