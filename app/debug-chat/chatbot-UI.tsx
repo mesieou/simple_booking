@@ -10,7 +10,6 @@ import { useState, useRef, useEffect } from "react";
 
 // This is the main UI component for the chatbot
 export default function ChatbotUI() {
-
     // msg: stores what the user is currently typing into the input box
     // setmsg updates the msg var when the user types something
     const [msg, setMsg] = useState("");
@@ -40,51 +39,27 @@ export default function ChatbotUI() {
                 .map((m, i) => {
                     /* ----- FUNCTION / TOOL MESSAGES ----- */
                     if (m.role === "function") {
-                    switch (m.name) {
-                        case "get_quote": {
-                        // Quote returned as JSON string -> convert to object
-                        const q = JSON.parse(m.content);
-                        return (
-                            <div key={i} className="text-left">
-                                <div className="inline-block bg-primary/20 px-4 py-2 rounded-lg text-primary-foreground">
-                                    Base ${q.baseFare}  +  ${q.labourRatePerMin}/min labour
-                                </div>
-                            </div>
-                            );
-                        }
-
-                        case "book_slot": {
-                            return (
-                                <div key={i} className="text-left">
-                                    <div className="bg-primary/20 px-4 py-2 rounded-lg text-primary-foreground">
-                                        ✅ Booking confirmed! See you then.
-                                    </div>
-                                </div>
-                            );
-                        }
-                        default:
-                        return null; // hide any other function types for now
+                        return null; // hide function messages for now
                     }
-                }
 
-                return (
-                    <div 
-                        key={i}
-                        className={`${
-                            m.role === "user" ? "text-right" : "text-left"
-                        }`}
-                    >
+                    return (
                         <div 
-                            className={`inline-block px-4 py-2 rounded-lg ${
-                                m.role === "user" 
-                                    ? "bg-primary text-primary-foreground" 
-                                    : "bg-secondary/20 text-secondary-foreground"
-                            } max-w-lg break-words`}
+                            key={i}
+                            className={`${
+                                m.role === "user" ? "text-right" : "text-left"
+                            }`}
                         >
-                            {m.content ?? m.function_call?.name ?? "Bot"}
+                            <div 
+                                className={`inline-block px-4 py-2 rounded-lg ${
+                                    m.role === "user" 
+                                        ? "bg-primary text-primary-foreground" 
+                                        : "bg-secondary/20 text-secondary-foreground"
+                                } max-w-lg break-words`}
+                            >
+                                {m.content ?? m.function_call?.name ?? "Bot"}
+                            </div>
                         </div>
-                    </div>
-                );     
+                    );     
                 })}
             </div>
             
@@ -136,7 +111,6 @@ export default function ChatbotUI() {
         // dont send if the message is empty or just spaces
         if (!msg.trim()) return;
 
-        
         // add the new message to the chat history (as a user message)
         const next = [...history, { role:"user", content:msg}];
         setHistory(next); // update the screen with the new message
