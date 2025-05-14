@@ -36,7 +36,7 @@ export class User {
 
     //creates a user in supa
     async add() {
-        const supa = await createClient()
+        const supa = await createClient();
 
         // First create the auth user
         const { data: authData, error: authError } = await supa.auth.admin.createUser({
@@ -141,7 +141,7 @@ export class User {
 
     // Get all providers (including admin/providers)
     static async getAllProviders(): Promise<User[]> {
-        const supa = createClient()
+        const supa = await createClient()
         const { data, error } = await supa
             .from("users")
             .select("*")

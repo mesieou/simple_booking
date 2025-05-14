@@ -114,7 +114,7 @@ export class Booking {
             handleModelError("Invalid UUID format for providerId", new Error("Invalid UUID"));
         }
 
-        const supa = createClient();
+        const supa = await createClient();
         const { data, error } = await supa
             .from("bookings")
             .select("*")

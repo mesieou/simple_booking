@@ -30,7 +30,7 @@ export class Embedding {
   }
 
   static async add(data: EmbeddingData): Promise<EmbeddingData> {
-    const supa = createClient();
+    const supa = await createClient();
     const insertData = {
       ...data,
       createdAt: new Date().toISOString(),
@@ -42,14 +42,14 @@ export class Embedding {
   }
 
   static async getByDocumentId(documentId: string): Promise<EmbeddingData[]> {
-    const supa = createClient();
+    const supa = await createClient();
     const { data, error } = await supa.from("embeddings").select("*").eq("documentId", documentId);
     if (error) handleModelError("Failed to fetch embeddings", error);
     return data || [];
   }
 
   static async deleteByDocumentId(documentId: string): Promise<void> {
-    const supa = createClient();
+    const supa = await createClient();
     const { error } = await supa.from("embeddings").delete().eq("documentId", documentId);
     if (error) handleModelError("Failed to delete embeddings", error);
   }
