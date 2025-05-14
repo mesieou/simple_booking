@@ -1,15 +1,12 @@
 // app/api/webhook/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
-import { generateEmbedding } from "@/lib/helpers/openai";
+import { handleCustomerMessage } from "@/lib/bot/chatLogic";
 
-const VERIFY_TOKEN = process.env.WABA_API;
 
-// Handle incoming customer messages
-async function handleCustomerMessage(message: string) {
-    // For now, just logging the message
-    console.log("Received customer message:", message);
-}
+const WABA_API = process.env.WABA_API;
+const WHATSAPP_PHONE_ID = process.env.WABA_PHONE_NUMBER_ID;
+
 
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
@@ -18,7 +15,7 @@ export async function GET(req: NextRequest) {
     const token = searchParams.get("hub.verify_token")
     const challenge = searchParams.get("hub.challenge")
 
-    if (mode === "subscribe" && token === VERIFY_TOKEN) {
+    if (mode === "subscribe" && token === WABA_API) {
         console.log("Webhook verified");
         return new Response(challenge, { status: 200 })
     }
@@ -31,15 +28,39 @@ export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
         
-        // Extract message from WhatsApp webhook payload
+        // Extract message and sender from WhatsApp webhook payload
         const message = body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.text?.body;
+        const sender = body.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.from;
         
-        if (message) {
+        if (message && sender) {
             // Log the full webhook payload for debugging
             console.log("Webhook payload:", JSON.stringify(body, null, 2));
             
-            // Handle the message
-            await handleCustomerMessage(message);
+            // Handle the message and get the response
+            const response = await handleCustomerMessage(message);
+            
+            // Send response back to WhatsApp
+            const responseData = {
+                messaging_product: "whatsapp",
+                to: sender,
+                type: "text",
+                text: { body: response }
+            };
+
+            const waRes = await fetch(
+                `https://graph.facebook.com/v17.0/${WHATSAPP_PHONE_ID}/messages`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${WABA_API}`,
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(responseData),
+                }
+            );
+            const waResBody = await waRes.json().catch(() => ({}));
+            console.log("WhatsApp API response status:", waRes.status);
+            console.log("WhatsApp API response body:", waResBody);
         } else {
             console.log("Received webhook without message content:", JSON.stringify(body, null, 2));
         }

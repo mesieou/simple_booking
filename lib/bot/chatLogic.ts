@@ -8,6 +8,9 @@ import {createUserSchema } from "@/lib/bot/schemas";
 import { systemPrompt } from "@/lib/bot/prompts";
 import { User } from "@/lib/models/user";
 import { chatWithFunctions, chatWithOpenAI } from "@/lib/helpers/openai";
+import { generateEmbedding } from "@/lib/helpers/openai";
+import { Embedding } from "@/lib/models/embeddings";
+
 
 // Central function: takes existing history, and returns new history
 export async function handleChat(history: any[]) {
@@ -66,5 +69,39 @@ export async function handleChat(history: any[]) {
     // If there was no function call, just push GPT's answer
     history.push(msg);
     return history;
+}
+
+export async function handleCustomerMessage(message: string) {
+    console.log("Received customer message:", message);
+
+    const embedding = await generateEmbedding(message);
+    console.log("Embeded customer message:", embedding);
+
+    const similarChunks = await Embedding.findSimilar(embedding, 5);
+    // console.log("Top matching chunks:", similarChunks);
+
+    // 3. Create context from the chunks
+    const context = similarChunks
+        .map((chunk: any) => chunk.content)
+        .join("\n\n");
+
+    // 4. Create messages array with system prompt, context, and user message
+    const messages = [
+        { 
+            role: "system", 
+            content: `${systemPrompt} Relevant business information: ${context}`
+        },
+        { 
+            role: "user", 
+            content: message 
+        }
+    ];
+
+    // 5. Get response from OpenAI
+    const response = await chatWithOpenAI(messages);
+    
+    console.log("OpenAI response:", response.choices[0].message.content);
+    // 6. Return the response
+    return response.choices[0].message.content;
 }
 
