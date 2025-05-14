@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { Document } from '@/lib/models/documents';
 import { Embedding } from '@/lib/models/embeddings';
-import got from 'got';
+import got, { Response } from 'got';
 import * as cheerio from 'cheerio';
 import { generateEmbedding, detectPageCategory } from '@/lib/services/openai';
 import { URL } from 'url';
@@ -10,6 +10,7 @@ import crypto from 'crypto';
 import pLimit from 'p-limit';
 import normalizeUrl from 'normalize-url';
 import { CrawlSession as CrawlSessionModel } from '@/lib/models/crawl-session';
+
 
 export interface FastHtmlCrawlConfig {
   websiteUrl: string;
@@ -78,7 +79,7 @@ class FastHtmlCrawler {
   private crawlSession: CrawlSessionData;
   private activePages = 0;
   private supabase = createClient();
-  private httpClient: ReturnType<typeof got.extend>;
+  private httpClient;
 
   constructor(
     config: FastHtmlCrawlConfig,
@@ -121,16 +122,15 @@ class FastHtmlCrawler {
         'Accept-Language': 'en-US,en;q=0.5',
         'Cache-Control': 'no-cache',
         'Pragma': 'no-cache'
-      },
-      responseType: 'text'
+      }
     });
   }
 
   private async validateAndCheckRobots(): Promise<boolean> {
     try {
       const robotsUrl = `${this.baseUrl.origin}/robots.txt`;
-      const response = await this.httpClient.get(robotsUrl).text();
-      this.robotsRules = parseRobots(robotsUrl, response);
+      const response: Response<string> = await this.httpClient.get(robotsUrl);
+      this.robotsRules = parseRobots(robotsUrl, response.body);
       return this.robotsRules.isAllowed(this.config.websiteUrl, 'FastHtmlCrawler/1.0');
     } catch (error) {
       console.warn('Could not fetch robots.txt, proceeding with crawl:', error);
@@ -238,8 +238,9 @@ class FastHtmlCrawler {
     await this.delay();
 
     try {
-      const response = await this.httpClient.get(url).text();
-      const $ = cheerio.load(response) as cheerio.CheerioAPI;
+      const response: Response<string> = await this.httpClient.get(url);
+      const html = response.body;
+      const $ = cheerio.load(html) as cheerio.CheerioAPI;
       
       const metadata = this.extractMetadata($);
       const content = this.extractMainContent($).trim();
