@@ -4,63 +4,18 @@
  * when it wants to call one of our functions.
  */
 
-export const getQuoteSchema = {
-    name: "getQuote",
-    description: "Return a moving quote given pickup and dropoff addresses",
+export const createUserSchema = {
+    name: "createUser",
+    description: "Create a new customer user with the provided name.",
     parameters: {
         type: "object",
         properties: {
-            pickup: { type: "string", description: "Full pickup address" },
-            dropoff: { type: "string", description: "Full dropoff address" },
-            // movers: { type: "integer", description: "Number of movers (1 or 2)", enum: [1, 2] },
+            firstName: { type: "string", description: "Customer's first name" },
+            lastName: { type: "string", description: "Customer's last name" }
         },
-        required: ["pickup", "dropoff"],
+        required: ["firstName", "lastName"]
     }
 } as const;
 
-
-/**
- * get_slots
- * Called after user provides a date
- * The LLM passes {"date":"2025-05-15"} and expects slot list back.
- */
-
-export const getSlotsSchema = {
-    name: "get_slots",
-    description: "Return 4 default time slots for a given moving date",
-    parameters: {
-        type: "object",
-        properties: {
-            date: {type:"string", description: "Move date, eg 2025-04-15"},
-        },
-        required:["date"],
-    }
-} as const;
-
-/**
- * book_slot
- * called after user choses a slot
- * this is a hardcoded confirmation for now
- */
-
-export const bookSlotSchema = {
-    name: "book_slot",
-    description: "Finalize the booking for the chose slot",
-    parameters: {
-        type: "object",
-        properties: {
-            slot_id: {type:"integer"},
-            service_date: {type:"integer"},
-            email: {type:"string", description: "customer email" },
-        },
-        required: ["service_date", "slot_id", "email"],
-    },
-} as const;
-
-
-// then export it with the others
-export const toolSchemas = [
-    getQuoteSchema,
-    getSlotsSchema,
-    bookSlotSchema      
-  ];
+// Export all schemas
+export const toolSchemas = [createUserSchema];

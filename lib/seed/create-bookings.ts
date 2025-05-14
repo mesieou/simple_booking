@@ -1,5 +1,5 @@
 import { Quote } from '../models/quote';
-import { Booking, BookingError } from '../models/booking';
+import { Booking } from '../models/booking';
 import { User } from '../models/user';
 import { Business } from '../models/business';
 
@@ -35,7 +35,7 @@ export async function createBookings(
         const bookingData = await booking.add();
         bookings.push(booking);
       } catch (error) {
-        console.error('Error creating booking:', error instanceof BookingError ? error.originalError : error);
+        console.error('Error creating booking:', error);
       }
     }
   }

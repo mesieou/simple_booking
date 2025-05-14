@@ -4,6 +4,7 @@ import { Business } from '@/lib/models/business';
 import { createCalendarSettings } from './create-calendar-settings';
 import { createEventsForUser } from './create-events';
 import { createUser } from './user';
+import { computeInitialAvailability } from '../helpers/availability';
 
 export async function createAllUsers(business: Business) {
   const providers: User[] = [];
@@ -21,10 +22,15 @@ export async function createAllUsers(business: Business) {
   // If owner is admin/provider, add them to providers
   if (owner?.role === 'admin/provider') {
     providers.push(owner);
-    await createEventsForUser(owner.id!);
     const { settings, calendarId } = await createCalendarSettings(owner.id!, business);
     calendarIds.set(owner.id!, calendarId!);
-
+    
+    // Create initial availability for owner/provider
+    const fromDate = new Date();
+    const initialAvailability = await computeInitialAvailability(owner, fromDate, 30, business);
+    await Promise.all(initialAvailability.map(slots => slots.add()));
+    
+    await createEventsForUser(owner.id!);
   } else {
     // Create additional provider users
     const numProviders = 3;
@@ -34,6 +40,12 @@ export async function createAllUsers(business: Business) {
         providers.push(provider);
         const { settings, calendarId } = await createCalendarSettings(provider.id!, business);
         calendarIds.set(provider.id!, calendarId!);
+        
+        // Create initial availability for each provider
+        const fromDate = new Date();
+        const initialAvailability = await computeInitialAvailability(provider, fromDate, 30, business);
+        await Promise.all(initialAvailability.map(slots => slots.add()));
+        
         await createEventsForUser(provider.id!);
       }
     }

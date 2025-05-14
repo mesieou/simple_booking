@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { handleModelError } from '@/lib/helpers/error';
 
 export type BookingStatus = "Not Completed" | "In Progress" | "Completed";
 
@@ -11,23 +12,16 @@ export interface BookingData {
     dateTime: string; // ISO string format for timestamp
 }
 
-export class BookingError extends Error {
-    constructor(message: string, public originalError?: any) {
-        super(message);
-        this.name = 'BookingError';
-    }
-}
-
 export class Booking {
     private data: BookingData & { id: string };
 
     constructor(data: BookingData) {
-        if (!data.status) throw new BookingError("Status is required");
-        if (!data.userId) throw new BookingError("User ID is required");
-        if (!data.providerId) throw new BookingError("Provider ID is required");
-        if (!data.quoteId) throw new BookingError("Quote ID is required");
-        if (!data.businessId) throw new BookingError("Business ID is required");
-        if (!data.dateTime) throw new BookingError("DateTime is required");
+        if (!data.status) handleModelError("Status is required", new Error("Missing status"));
+        if (!data.userId) handleModelError("User ID is required", new Error("Missing userId"));
+        if (!data.providerId) handleModelError("Provider ID is required", new Error("Missing providerId"));
+        if (!data.quoteId) handleModelError("Quote ID is required", new Error("Missing quoteId"));
+        if (!data.businessId) handleModelError("Business ID is required", new Error("Missing businessId"));
+        if (!data.dateTime) handleModelError("DateTime is required", new Error("Missing dateTime"));
         
         this.data = { ...data, id: '' };
     }
@@ -47,12 +41,11 @@ export class Booking {
         const { data, error } = await supa.from("bookings").insert(booking).select().single();
 
         if(error) {
-            console.error("Supabase booking insert error:", error);
-            throw new BookingError("Failed to create booking", error);
+            handleModelError("Failed to create booking", error);
         }
 
         if (!data) {
-            throw new BookingError("Failed to create booking: No data returned");
+            handleModelError("Failed to create booking: No data returned", new Error("No data returned from insert"));
         }
         return data;
     }
@@ -60,18 +53,18 @@ export class Booking {
     // Get booking by ID
     static async getById(id: string): Promise<Booking> {
         if (!Booking.isValidUUID(id)) {
-            throw new BookingError("Invalid UUID format");
+            handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
         const supa = await createClient();
         const { data, error } = await supa.from("bookings").select("*").eq("id", id).single();
         
         if (error) {
-            throw new BookingError("Failed to fetch booking", error);
+            handleModelError("Failed to fetch booking", error);
         }
         
         if (!data) {
-            throw new BookingError(`Booking with id ${id} not found`);
+            handleModelError(`Booking with id ${id} not found`, new Error("Booking not found"));
         }
         
         return new Booking(data);
@@ -83,14 +76,14 @@ export class Booking {
         errorMessage: string
     ): Promise<Booking[]> {
         if (!Booking.isValidUUID(value)) {
-            throw new BookingError(`Invalid UUID format for ${column}`);
+            handleModelError(`Invalid UUID format for ${column}`, new Error("Invalid UUID"));
         }
 
         const supa = await createClient();
         const { data, error } = await supa.from("bookings").select("*").eq(column, value);
         
         if (error) {
-            throw new BookingError(errorMessage, error);
+            handleModelError(errorMessage, error);
         }
         
         return data.map(bookingData => new Booking(bookingData));
@@ -112,10 +105,34 @@ export class Booking {
         return this.queryBookings("quoteId", quoteId, "Failed to fetch bookings by quote");
     }
 
+    static async getByProviderAndDateRange(
+        providerId: string,
+        startDate: Date,
+        endDate: Date
+    ): Promise<Booking[]> {
+        if (!Booking.isValidUUID(providerId)) {
+            handleModelError("Invalid UUID format for providerId", new Error("Invalid UUID"));
+        }
+
+        const supa = createClient();
+        const { data, error } = await supa
+            .from("bookings")
+            .select("*")
+            .eq("providerId", providerId)
+            .gte("dateTime", startDate.toISOString())
+            .lte("dateTime", endDate.toISOString());
+        
+        if (error) {
+            handleModelError("Failed to fetch bookings by provider and date range", error);
+        }
+        
+        return data.map(bookingData => new Booking(bookingData));
+    }
+
     // Update booking
     static async update(id: string, bookingData: BookingData): Promise<Booking> {
         if (!Booking.isValidUUID(id)) {
-            throw new BookingError("Invalid UUID format");
+            handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
         const supa = await createClient();
@@ -136,11 +153,11 @@ export class Booking {
             .single();
 
         if (error) {
-            throw new BookingError("Failed to update booking", error);
+            handleModelError("Failed to update booking", error);
         }
 
         if (!data) {
-            throw new BookingError("Failed to update booking: No data returned");
+            handleModelError("Failed to update booking: No data returned", new Error("No data returned from update"));
         }
 
         return new Booking(data);
@@ -149,14 +166,14 @@ export class Booking {
     // Delete booking
     static async delete(id: string): Promise<void> {
         if (!Booking.isValidUUID(id)) {
-            throw new BookingError("Invalid UUID format");
+            handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
         const supa = await createClient();
         const { error } = await supa.from("bookings").delete().eq("id", id);
 
         if (error) {
-            throw new BookingError("Failed to delete booking", error);
+            handleModelError("Failed to delete booking", error);
         }
     }
 
