@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/server";
 import { handleModelError } from '@/lib/helpers/error';
 
 export interface DocumentData {
@@ -10,6 +10,7 @@ export interface DocumentData {
   content: string;
   source?: string;
   createdAt?: string;
+  contentHash?: string;
 }
 
 export class DocumentError extends Error {
