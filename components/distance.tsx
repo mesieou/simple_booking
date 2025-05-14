@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Direction from '@/components/direction';
-import { validarUbicacion, obtenerMensajeError } from '@/utils/locations';
+import { validarUbicacion, obtenerMensajeError, ciudadesPermitidas } from '@/utils/locations';
 
 interface ErrorResult {
   error: string;
@@ -27,7 +27,12 @@ export default function Distance({ onChange, onContinue }: DistanceProps) {
     }
   }, [origen, destino, onChange]);
 
-  const handleClickCalcular = async () => {
+  const handleContinue = async () => {
+    if (!origen || !destino) {
+      setError('Por favor, ingrese tanto el origen como el destino');
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     setDistancia(null);
@@ -44,6 +49,24 @@ export default function Distance({ onChange, onContinue }: DistanceProps) {
       const destinoValido = await validarUbicacion(destino);
       if (!destinoValido) {
         setError(obtenerMensajeError(destino));
+        return;
+      }
+
+      // Verificar que ambas direcciones estén en la misma ciudad permitida
+      const origenCiudad = ciudadesPermitidas.find(ciudad => 
+        origen.toLowerCase().includes(ciudad.toLowerCase())
+      );
+      const destinoCiudad = ciudadesPermitidas.find(ciudad => 
+        destino.toLowerCase().includes(ciudad.toLowerCase())
+      );
+
+      if (!origenCiudad || !destinoCiudad) {
+        setError('Ambas direcciones deben estar en una de las siguientes ciudades: ' + ciudadesPermitidas.join(', '));
+        return;
+      }
+
+      if (origenCiudad !== destinoCiudad) {
+        setError('El origen y el destino deben estar en la misma ciudad');
         return;
       }
 
@@ -67,6 +90,8 @@ export default function Distance({ onChange, onContinue }: DistanceProps) {
         // Usar duration_in_traffic si está disponible, sino usar duration
         const tiempoEstimado = element.duration_in_traffic?.text || element.duration.text;
         setDuracion(tiempoEstimado);
+        // Llamar a onContinue con la duración
+        onContinue && onContinue(tiempoEstimado);
       } else if (data.error) {
         setError(data.error);
       } else {
@@ -103,35 +128,17 @@ export default function Distance({ onChange, onContinue }: DistanceProps) {
 
         <div className="flex gap-4">
           <button
-            onClick={handleClickCalcular}
-            disabled={isLoading}
-            className="flex-1 px-4 py-2 rounded bg-brand text-white disabled:opacity-50"
-          >
-            {isLoading ? 'Calculando...' : 'Calcular Distancia'}
-          </button>
-
-          <button
-            onClick={() => onContinue && onContinue(duracion)}
-            disabled={!duracion}
+            onClick={handleContinue}
+            disabled={isLoading || !origen || !destino}
             className="flex-1 px-4 py-2 rounded bg-blue-600 text-white disabled:opacity-50"
           >
-            Continuar
+            {isLoading ? 'Calculando...' : 'Continuar'}
           </button>
         </div>
 
         {error && (
           <div className="mt-4 p-3 bg-red-50 rounded-lg">
             <p className="text-red-600">Error: {error}</p>
-          </div>
-        )}
-
-        {distancia && duracion && (
-          <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-            <h3 className="font-medium text-gray-800">Distancia entre {origen} y {destino}:</h3>
-            <div className="mt-2 space-y-1">
-              <p className="text-gray-600">Distancia: {distancia}</p>
-              <p className="text-gray-600">Tiempo estimado: {duracion}</p>
-            </div>
           </div>
         )}
       </div>
