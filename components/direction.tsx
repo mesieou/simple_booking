@@ -25,7 +25,7 @@ export default function Direction({ texto, value, onChange, ...inputProps }: Dir
   }, []);
 
   const fetchSuggestions = async (input: string) => {
-    if (!input || input.length < 2) {
+    if (!input || input.length < 3) {
       setSuggestions([]);
       return;
     }
@@ -39,6 +39,7 @@ export default function Direction({ texto, value, onChange, ...inputProps }: Dir
       }
     } catch (error) {
       console.error('Error al obtener sugerencias:', error);
+      setSuggestions([]);
     }
   };
 

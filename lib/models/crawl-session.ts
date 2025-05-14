@@ -24,7 +24,7 @@ export class CrawlSession {
   }
 
   static async add(data: Omit<CrawlSessionData, 'id'>): Promise<CrawlSession> {
-    const supabase = createClient();
+    const supabase = await createClient();
     const insertData = { 
       ...data,
       id: uuidv4() // Generate a UUID for the id field
@@ -49,7 +49,7 @@ export class CrawlSession {
   }
 
   static async getById(id: string): Promise<CrawlSession> {
-    const supabase = createClient();
+    const supabase = await createClient();
     const { data, error } = await supabase
       .from('crawl_sessions')
       .select('*')
@@ -61,7 +61,7 @@ export class CrawlSession {
   }
 
   static async getAll(businessId?: string): Promise<CrawlSession[]> {
-    const supabase = createClient();
+    const supabase = await createClient();
     let query = supabase.from('crawl_sessions').select('*');
     if (businessId) query = query.eq('businessId', businessId);
     const { data, error } = await query;
@@ -70,7 +70,7 @@ export class CrawlSession {
   }
 
   static async deleteById(id: string): Promise<void> {
-    const supabase = createClient();
+    const supabase = await createClient();
     const { error } = await supabase.from('crawl_sessions').delete().eq('id', id);
     if (error) handleModelError('Failed to delete crawl session', error);
   }
