@@ -22,29 +22,46 @@ export async function POST(request: Request) {
       .eq('id', businessId)
       .single();
 
-    if (businessError || !business) {
+    if (businessError) {
+      console.error('Business lookup error:', businessError);
+      return NextResponse.json(
+        { error: 'Failed to verify business', details: businessError.message }, 
+        { status: 500 }
+      );
+    }
+
+    if (!business) {
       return NextResponse.json(
         { error: 'Business not found' }, 
         { status: 404 }
       );
     }
 
-    // Setup AI Bot
-    await setupBusinessAiBot({
+    // Setup AI Bot with progress tracking
+    const progressCallback = (progress: any) => {
+      console.log('Crawl progress:', progress);
+    };
+
+    const crawlSession = await setupBusinessAiBot({
       websiteUrl,
       botType,
       businessId
-    });
+    }, progressCallback);
 
     return NextResponse.json({
       message: 'AI Bot setup completed successfully',
-      businessId
+      businessId,
+      crawlSession
     });
 
   } catch (error) {
     console.error('AI Bot Setup Error:', error);
     return NextResponse.json(
-      { error: 'Failed to setup AI Bot', details: String(error) }, 
+      { 
+        error: 'Failed to setup AI Bot', 
+        details: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      }, 
       { status: 500 }
     );
   }
