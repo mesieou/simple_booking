@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { handleModelError } from '@/lib/helpers/error';
 
 export type WorkingHours = {
   start: string
@@ -6,13 +7,13 @@ export type WorkingHours = {
 } | null
 
 export type ProviderWorkingHours = {
-  monday: WorkingHours
-  tuesday: WorkingHours
-  wednesday: WorkingHours
-  thursday: WorkingHours
-  friday: WorkingHours
-  saturday: WorkingHours
-  sunday: WorkingHours
+  mon: WorkingHours
+  tue: WorkingHours
+  wed: WorkingHours
+  thu: WorkingHours
+  fri: WorkingHours
+  sat: WorkingHours
+  sun: WorkingHours
 }
 
 export interface CalendarSettingsData {
@@ -29,21 +30,14 @@ export interface CalendarSettingsData {
   lastSync?: string
 }
 
-export class CalendarSettingsError extends Error {
-  constructor(message: string, public originalError?: any) {
-    super(message);
-    this.name = 'CalendarSettingsError';
-  }
-}
-
 export class CalendarSettings {
   private data: CalendarSettingsData
   private _id?: string
 
   constructor(data: CalendarSettingsData) {
-    if (!data.userId) throw new CalendarSettingsError("User ID is required");
-    if (!data.businessId) throw new CalendarSettingsError("Business ID is required");
-    if (!data.workingHours) throw new CalendarSettingsError("Working hours are required");
+    if (!data.userId) handleModelError("User ID is required", new Error("Missing userId"));
+    if (!data.businessId) handleModelError("Business ID is required", new Error("Missing businessId"));
+    if (!data.workingHours) handleModelError("Working hours are required", new Error("Missing workingHours"));
     
     this.data = data;
   }
@@ -72,12 +66,11 @@ export class CalendarSettings {
           .single()
 
     if (error) {
-      console.error('Calendar settings save error:', error);
-      throw new CalendarSettingsError("Failed to save calendar settings", error);
+      handleModelError("Failed to save calendar settings", error);
     }
 
     if (!data) {
-      throw new CalendarSettingsError("Failed to save calendar settings: No data returned");
+      handleModelError("Failed to save calendar settings: No data returned", new Error("No data returned from save"));
     }
 
     const calendarSettings = new CalendarSettings(data);
@@ -88,7 +81,7 @@ export class CalendarSettings {
   // Get calendar settings for a business
   static async getByBusiness(businessId: string): Promise<CalendarSettings[]> {
     if (!CalendarSettings.isValidUUID(businessId)) {
-      throw new CalendarSettingsError("Invalid business ID format");
+      handleModelError("Invalid business ID format", new Error("Invalid UUID format"));
     }
 
     const supabase = await createClient()
@@ -99,7 +92,7 @@ export class CalendarSettings {
       .eq('businessId', businessId)
 
     if (error) {
-      throw new CalendarSettingsError("Failed to fetch calendar settings by business", error);
+      handleModelError("Failed to fetch calendar settings by business", error);
     }
 
     return data.map(settings => {
@@ -112,10 +105,10 @@ export class CalendarSettings {
   // Get calendar settings for a specific user in a business
   static async getByUserAndBusiness(userId: string, businessId: string): Promise<CalendarSettings> {
     if (!CalendarSettings.isValidUUID(userId)) {
-      throw new CalendarSettingsError("Invalid user ID format");
+      handleModelError("Invalid user ID format", new Error("Invalid UUID format"));
     }
     if (!CalendarSettings.isValidUUID(businessId)) {
-      throw new CalendarSettingsError("Invalid business ID format");
+      handleModelError("Invalid business ID format", new Error("Invalid UUID format"));
     }
 
     const supabase = await createClient()
@@ -128,11 +121,11 @@ export class CalendarSettings {
       .single()
 
     if (error) {
-      throw new CalendarSettingsError("Failed to fetch calendar settings by user and business", error);
+      handleModelError("Failed to fetch calendar settings by user and business", error);
     }
 
     if (!data) {
-      throw new CalendarSettingsError(`No settings found for user ${userId} in business ${businessId}`);
+      handleModelError(`No settings found for user ${userId} in business ${businessId}`, new Error("No data found"));
     }
 
     const calendarSettings = new CalendarSettings(data);
@@ -143,7 +136,7 @@ export class CalendarSettings {
   // Delete calendar settings
   static async delete(id: string): Promise<void> {
     if (!CalendarSettings.isValidUUID(id)) {
-      throw new CalendarSettingsError("Invalid settings ID format");
+      handleModelError("Invalid settings ID format", new Error("Invalid UUID format"));
     }
 
     const supabase = await createClient()
@@ -154,7 +147,7 @@ export class CalendarSettings {
       .eq('id', id)
 
     if (error) {
-      throw new CalendarSettingsError("Failed to delete calendar settings", error);
+      handleModelError("Failed to delete calendar settings", error);
     }
   }
 
@@ -167,13 +160,13 @@ export class CalendarSettings {
   // Helper method to get default working hours
   static getDefaultWorkingHours(): ProviderWorkingHours {
     return {
-      monday: { start: '09:00', end: '17:00' },
-      tuesday: { start: '09:00', end: '17:00' },
-      wednesday: { start: '09:00', end: '17:00' },
-      thursday: { start: '09:00', end: '17:00' },
-      friday: { start: '09:00', end: '17:00' },
-      saturday: null,
-      sunday: null
+      mon: { start: '09:00', end: '17:00' },
+      tue: { start: '09:00', end: '17:00' },
+      wed: { start: '09:00', end: '17:00' },
+      thu: { start: '09:00', end: '17:00' },
+      fri: { start: '09:00', end: '17:00' },
+      sat: null,
+      sun: null
     }
   }
 
