@@ -28,30 +28,33 @@
  * Use `response.choices[0].message` to get the assistant's reply or function call trigger.
  */
 import OpenAI from "openai";
+import { v4 as uuidv4 } from 'uuid';
 
+// Configure OpenAI client with proper defaults for server-side usage
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
+  maxRetries: 3,
+  timeout: 30000, // 30 seconds
 });
 
 // Chat with OpenAI, normal situation
 export async function chatWithOpenAI(messages: any[]) {
-    return await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages,
-    });
-  }
-  
+  return await openai.chat.completions.create({
+    model: "gpt-3.5-turbo",
+    messages,
+  });
+}
 
 // Chat with functions, when we need to call a function
 export async function chatWithFunctions(messages: any[], functions: any[]) {
-return await openai.chat.completions.create({
+  return await openai.chat.completions.create({
     model: "gpt-3.5-turbo",
     messages,
     functions,
     function_call: "auto"
-});
+  });
 }
-  
+
 // Generate embeddings for text
 export async function generateEmbedding(text: string): Promise<number[]> {
   try {
@@ -65,7 +68,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
     throw new Error('Failed to generate embedding');
   }
 }
-  
+
 export type WebPageCategory = 
   | 'services' 
   | 'about' 
@@ -79,7 +82,8 @@ export type WebPageCategory =
   | 'booking' 
   | 'quote';
 
-export async function detectPageCategory(url: string, title: string, content: string): Promise<WebPageCategory | undefined> {
+// Detect page category using OpenAI
+export async function detectPageCategory(url: string, title: string, content: string): Promise<string | undefined> {
   try {
     const prompt = `Categorize this webpage into one of the following categories:
 - services: Pages about services offered
@@ -101,26 +105,25 @@ Content: ${content.substring(0, 1000)}...
 Category:`;
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages: [{ role: 'user', content: prompt }],
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: "You are a helpful assistant that categorizes web pages. Return only the category name, nothing else."
+        },
+        {
+          role: "user",
+          content: `Categorize this page:\nURL: ${url}\nTitle: ${title}\nContent: ${content.substring(0, 1000)}...`
+        }
+      ],
       temperature: 0.3,
-      max_tokens: 10
+      max_tokens: 50
     });
 
-    const message = response.choices[0].message;
-    if (!message?.content) return undefined;
-    
-    const category = message.content.trim().toLowerCase() as WebPageCategory;
-    
-    // Validate category
-    const validCategories: WebPageCategory[] = [
-      'services', 'about', 'contact', 'blog', 'products', 
-      'pricing', 'faq', 'testimonials', 'careers', 'booking', 'quote'
-    ];
-    
-    return validCategories.includes(category) ? category : undefined;
+    const category = response.choices[0]?.message?.content?.trim().toLowerCase();
+    return category || undefined;
   } catch (error) {
-    console.error('Error detecting category with OpenAI:', error);
+    console.error('Error detecting page category:', error);
     return undefined;
   }
 }

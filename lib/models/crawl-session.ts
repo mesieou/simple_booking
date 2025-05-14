@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { handleModelError } from '@/lib/helpers/error';
+import { v4 as uuidv4 } from 'uuid';
 
 export interface CrawlSessionData {
   id?: string;
@@ -24,7 +25,10 @@ export class CrawlSession {
 
   static async add(data: Omit<CrawlSessionData, 'id'>): Promise<CrawlSession> {
     const supabase = createClient();
-    const insertData = { ...data };
+    const insertData = { 
+      ...data,
+      id: uuidv4() // Generate a UUID for the id field
+    };
     console.log('Attempting to insert crawl session:', insertData);
     const { data: result, error } = await supabase
       .from('crawl_sessions')

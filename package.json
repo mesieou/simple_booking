@@ -18,6 +18,7 @@
     "@radix-ui/react-slot": "^1.1.0",
     "@supabase/ssr": "latest",
     "@supabase/supabase-js": "^2.49.4",
+    "@types/got": "^9.6.12",
     "autoprefixer": "10.4.20",
     "axios": "^1.7.2",
     "cheerio": "^1.0.0-rc.12",
@@ -26,6 +27,7 @@
     "date-fns": "^4.1.0",
     "express": "^5.1.0",
     "framer-motion": "^12.9.7",
+    "got": "^14.4.7",
     "lucide-react": "^0.468.0",
     "luxon": "^3.6.1",
     "next": "latest",
@@ -42,7 +44,9 @@
     "react-dom": "19.0.0",
     "robots-parser": "^3.0.1",
     "sharp": "^0.34.1",
-    "ts-luxon": "^6.0.0"
+    "sitemap": "^8.0.0",
+    "ts-luxon": "^6.0.0",
+    "ts-retry-promise": "^0.8.1"
   },
   "devDependencies": {
     "@babel/core": "^7.27.1",

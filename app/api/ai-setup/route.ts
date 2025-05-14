@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { setupBusinessAiBot, WebsiteCrawlConfig } from '@/lib/ai-setup/website-crawler';
+import { setupBusinessAiBot, FastCrawlConfig, CrawlProgress } from '@/lib/ai-setup/fast-website-crawler';
 
 export async function POST(request: Request) {
   try {
     const supabase = createClient();
-    const { websiteUrl, botType, businessId } = await request.json() as WebsiteCrawlConfig;
+    const { websiteUrl, botType, businessId } = await request.json() as FastCrawlConfig;
 
     // Validate input
     if (!websiteUrl || !botType || !businessId) {
@@ -38,14 +38,24 @@ export async function POST(request: Request) {
     }
 
     // Setup AI Bot with progress tracking
-    const progressCallback = (progress: any) => {
-      console.log('Crawl progress:', progress);
+    const progressCallback = (progress: CrawlProgress) => {
+      console.log('Crawl progress:', {
+        processed: progress.processedPages,
+        total: progress.totalPages,
+        percentage: progress.percentage.toFixed(1) + '%',
+        currentUrl: progress.currentUrl,
+        activePages: progress.activePages
+      });
     };
 
     const crawlSession = await setupBusinessAiBot({
       websiteUrl,
       botType,
-      businessId
+      businessId,
+      logInterval: {
+        urls: 5,    // Log every 5 URLs
+        seconds: 2  // Log every 2 seconds
+      }
     }, progressCallback);
 
     return NextResponse.json({
