@@ -53,4 +53,22 @@ export class Embedding {
     const { error } = await supa.from("embeddings").delete().eq("documentId", documentId);
     if (error) handleModelError("Failed to delete embeddings", error);
   }
+
+
+
+  /**
+   * Find the most similar content chunks to a given embedding vector.
+   * @param embedding The embedding vector of the user message.
+   * @param matchCount How many top matches to return (default: 5).
+   * @returns Array of matching chunks with similarity scores.
+   */
+  static async findSimilar(embedding: number[], matchCount = 5) {
+    const supa = createClient();
+    const { data, error } = await supa.rpc('match_documents', {
+      query_embedding: embedding,
+      match_count: matchCount
+    });
+    if (error) throw error;
+    return data;
+  }
 } 
