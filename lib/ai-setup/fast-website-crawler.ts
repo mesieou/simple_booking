@@ -93,6 +93,21 @@ class FastWebsiteCrawler {
   };
   private lastLogTime: number = 0;
   private lastLogUrlCount: number = 0;
+  private readonly SKIPPED_EXTENSIONS = [
+    '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+    '.zip', '.rar', '.tar', '.gz', '.7z',
+    '.jpg', '.jpeg', '.png', '.gif', '.svg', '.ico',
+    '.mp3', '.mp4', '.avi', '.mov', '.wmv',
+    '.css', '.js', '.json', '.xml', '.txt'
+  ];
+
+  private readonly SKIPPED_PARAMS = [
+    'utm_', 'ref_', 'source_', 'campaign_', 'medium_',
+    'fbclid', 'gclid', 'msclkid', 'dclid',
+    'share', 'share=', 'share?',
+    'print', 'print=', 'print?',
+    'preview', 'preview=', 'preview?'
+  ];
 
   constructor(
     config: FastCrawlConfig,
@@ -173,6 +188,79 @@ class FastWebsiteCrawler {
     try {
       const parsedUrl = new URL(url);
       const canonicalUrl = this.canonicalizeUrl(url);
+      
+      // Skip URLs with hash fragments
+      if (parsedUrl.hash) {
+        return false;
+      }
+
+      // Skip URLs with file extensions
+      const pathname = parsedUrl.pathname.toLowerCase();
+      if (this.SKIPPED_EXTENSIONS.some(ext => pathname.endsWith(ext))) {
+        return false;
+      }
+
+      // Skip URLs with certain query parameters
+      const searchParams = parsedUrl.searchParams;
+      if (this.SKIPPED_PARAMS.some(param => 
+        Array.from(searchParams.keys()).some(key => key.startsWith(param))
+      )) {
+        return false;
+      }
+
+      // Skip URLs with certain patterns
+      const skipPatterns = [
+        /\/tag\//i,
+        /\/author\//i,
+        /\/category\//i,
+        /\/archive\//i,
+        /\/feed\//i,
+        /\/rss\//i,
+        /\/atom\//i,
+        /\/sitemap\//i,
+        /\/wp-/i,
+        /\/wp-content\//i,
+        /\/wp-includes\//i,
+        /\/wp-admin\//i,
+        /\/wp-json\//i,
+        /\/wp-login\//i,
+        /\/wp-register\//i,
+        /\/wp-signup\//i,
+        /\/wp-login\//i,
+        /\/wp-register\//i,
+        /\/wp-signup\//i,
+        /\/wp-cron\//i,
+        /\/wp-trackback\//i,
+        /\/wp-comments\//i,
+        /\/wp-feed\//i,
+        /\/wp-rss\//i,
+        /\/wp-atom\//i,
+        /\/wp-rdf\//i,
+        /\/wp-rss2\//i,
+        /\/wp-rss3\//i,
+        /\/wp-rss4\//i,
+        /\/wp-rss5\//i,
+        /\/wp-rss6\//i,
+        /\/wp-rss7\//i,
+        /\/wp-rss8\//i,
+        /\/wp-rss9\//i,
+        /\/wp-rss10\//i,
+        /\/wp-rss11\//i,
+        /\/wp-rss12\//i,
+        /\/wp-rss13\//i,
+        /\/wp-rss14\//i,
+        /\/wp-rss15\//i,
+        /\/wp-rss16\//i,
+        /\/wp-rss17\//i,
+        /\/wp-rss18\//i,
+        /\/wp-rss19\//i,
+        /\/wp-rss20\//i
+      ];
+
+      if (skipPatterns.some(pattern => pattern.test(pathname))) {
+        return false;
+      }
+
       return (
         parsedUrl.hostname === this.baseUrl.hostname &&
         parsedUrl.protocol === this.baseUrl.protocol &&
@@ -213,6 +301,17 @@ class FastWebsiteCrawler {
       const href = $(element).attr('href');
       if (href) {
         try {
+          // Skip empty links, javascript: links, and mailto: links
+          if (!href || href.startsWith('javascript:') || href.startsWith('mailto:')) {
+            return;
+          }
+
+          // Skip links with rel="nofollow" or rel="noindex"
+          const rel = $(element).attr('rel');
+          if (rel && (rel.includes('nofollow') || rel.includes('noindex'))) {
+            return;
+          }
+
           const absoluteUrl = new URL(href, baseUrl.toString()).toString();
           const canonicalUrl = this.canonicalizeUrl(absoluteUrl);
           if (this.isValidUrl(canonicalUrl)) {
