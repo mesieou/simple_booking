@@ -61,4 +61,42 @@ export async function signOutAction() {
   const supabase = await createClient();
   await supabase.auth.signOut();
   redirect("/sign-in");
+}
+
+export async function forgotPasswordAction(formData: FormData) {
+  const email = formData.get("email") as string;
+  const supabase = await createClient();
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/protected/reset-password`,
+  });
+
+  if (error) {
+    console.error("Password reset error:", error);
+    throw new Error(error.message);
+  }
+
+  redirect("/forgot-password?message=Check your email to reset your password");
+}
+
+export async function resetPasswordAction(formData: FormData) {
+  const password = formData.get("password") as string;
+  const confirmPassword = formData.get("confirmPassword") as string;
+
+  if (password !== confirmPassword) {
+    throw new Error("Passwords do not match");
+  }
+
+  const supabase = await createClient();
+
+  const { error } = await supabase.auth.updateUser({
+    password: password,
+  });
+
+  if (error) {
+    console.error("Password update error:", error);
+    throw new Error(error.message);
+  }
+
+  redirect("/sign-in?message=Password updated successfully");
 } 

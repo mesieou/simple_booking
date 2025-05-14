@@ -34,7 +34,7 @@ export class Booking {
 
     //creates a Booking in supa
     async add(): Promise<BookingData> {
-        const supa = createClient();
+        const supa = await createClient();
 
         const booking = {
             "status": this.data.status,
@@ -63,7 +63,7 @@ export class Booking {
             throw new BookingError("Invalid UUID format");
         }
 
-        const supa = createClient();
+        const supa = await createClient();
         const { data, error } = await supa.from("bookings").select("*").eq("id", id).single();
         
         if (error) {
@@ -86,7 +86,7 @@ export class Booking {
             throw new BookingError(`Invalid UUID format for ${column}`);
         }
 
-        const supa = createClient();
+        const supa = await createClient();
         const { data, error } = await supa.from("bookings").select("*").eq(column, value);
         
         if (error) {
@@ -118,7 +118,7 @@ export class Booking {
             throw new BookingError("Invalid UUID format");
         }
 
-        const supa = createClient();
+        const supa = await createClient();
         const booking = {
             "status": bookingData.status,
             "userId": bookingData.userId,
@@ -152,7 +152,7 @@ export class Booking {
             throw new BookingError("Invalid UUID format");
         }
 
-        const supa = createClient();
+        const supa = await createClient();
         const { error } = await supa.from("bookings").delete().eq("id", id);
 
         if (error) {

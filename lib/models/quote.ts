@@ -57,7 +57,7 @@ export class Quote {
 
     //creates a Quote in supa
     async add(): Promise<QuoteData> {
-        const supa = createClient();
+        const supa = await createClient();
 
         const quote = {
             "id": this.data.id || uuidv4(),
@@ -98,7 +98,7 @@ export class Quote {
             throw new QuoteError("Invalid UUID format");
         }
 
-        const supa = createClient();
+        const supa = await createClient();
         const { data, error } = await supa.from("quotes").select("*").eq("id", id).single();
         
         if (error) {
@@ -118,7 +118,7 @@ export class Quote {
             throw new QuoteError("Invalid UUID format");
         }
 
-        const supa = createClient();
+        const supa = await createClient();
         const { data, error } = await supa.from("quotes").select("*").eq("userId", userId);
         
         if (error) {
@@ -134,7 +134,7 @@ export class Quote {
             throw new QuoteError("Invalid UUID format");
         }
 
-        const supa = createClient();
+        const supa = await createClient();
         const { data, error } = await supa.from("quotes").select("*").eq("businessId", businessId);
         
         if (error) {
@@ -150,7 +150,7 @@ export class Quote {
             throw new QuoteError("Invalid UUID format");
         }
 
-        const supa = createClient();
+        const supa = await createClient();
         const quote = {
             "pickUp": quoteData.pickUp,
             "dropOff": quoteData.dropOff,
@@ -193,7 +193,7 @@ export class Quote {
             throw new QuoteError("Invalid UUID format");
         }
 
-        const supa = createClient();
+        const supa = await createClient();
         const { error } = await supa.from("quotes").delete().eq("id", id);
 
         if (error) {
