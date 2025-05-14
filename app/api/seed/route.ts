@@ -11,7 +11,7 @@ import { User } from '@/lib/models/user';
 export async function POST(request: Request) {
   try {
     // Create a Supabase client with service role key
-    const supabase = createClient();
+    const supabase = await createClient();
     
     // Clear existing data
     await clearExistingData(supabase);
