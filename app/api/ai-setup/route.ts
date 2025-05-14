@@ -4,7 +4,7 @@ import { setupBusinessAiBot, FastCrawlConfig, CrawlProgress } from '@/lib/ai-set
 
 export async function POST(request: Request) {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const { websiteUrl, botType, businessId } = await request.json() as FastCrawlConfig;
 
     // Validate input

@@ -80,10 +80,14 @@ interface EmbeddingService {
 }
 
 class DefaultEmbeddingService implements EmbeddingService {
-  private supabase = createClient();
+  private supabase: any;
   private readonly BATCH_SIZE = 16; // OpenAI's recommended batch size
   private readonly MAX_RETRIES = 3;
   private readonly INITIAL_RETRY_DELAY = 1000;
+
+  private async initialize() {
+    this.supabase = await createClient();
+  }
 
   private splitTextIntoChunks(text: string, maxChunkSize = 1000): string[] {
     const words = text.split(/\s+/);
@@ -134,6 +138,7 @@ class DefaultEmbeddingService implements EmbeddingService {
   }
 
   private async checkExistingContent(contentHash: string, businessId: string): Promise<boolean> {
+    await this.initialize();
     const { data } = await this.supabase
       .from('documents')
       .select('id')
@@ -144,6 +149,7 @@ class DefaultEmbeddingService implements EmbeddingService {
   }
 
   async createEmbeddings(documents: PageContent[]): Promise<void> {
+    await this.initialize();
     for (const doc of documents) {
       // Check if content already exists
       const exists = await this.checkExistingContent(doc.contentHash, doc.businessId);

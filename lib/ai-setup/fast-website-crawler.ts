@@ -76,7 +76,7 @@ class FastWebsiteCrawler {
   private progressCallback?: (progress: CrawlProgress) => void;
   private crawlSession: CrawlSessionData;
   private activePages = 0;
-  private supabase = createClient();
+  private supabase: any;
   private readonly USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
   private readonly DEFAULT_HEADERS = {
     'User-Agent': this.USER_AGENT,
@@ -138,6 +138,10 @@ class FastWebsiteCrawler {
     };
     this.lastLogTime = Date.now();
     this.lastLogUrlCount = 0;
+  }
+
+  private async initialize() {
+    this.supabase = await createClient();
   }
 
   private async validateAndCheckRobots(): Promise<boolean> {
@@ -336,7 +340,7 @@ class FastWebsiteCrawler {
       }
       
       const text = await response.text();
-      const sitemap = await parseSitemap(Readable.from(text));
+      const sitemap = await parseSitemap(text);
       return sitemap
         .map((url: SitemapItem) => url.url)
         .filter((url: string) => this.isValidUrl(url));
@@ -563,8 +567,8 @@ class FastWebsiteCrawler {
           }),
           {
             retries: MAX_RETRIES,
-            delay: INITIAL_RETRY_DELAY,
-            backoff: 'EXPONENTIAL',
+            backoff: 'exponential',
+            backoffBase: INITIAL_RETRY_DELAY,
             timeout: FETCH_TIMEOUT
           }
         );
@@ -618,8 +622,8 @@ class FastWebsiteCrawler {
                     }),
                     {
                       retries: MAX_RETRIES,
-                      delay: INITIAL_RETRY_DELAY,
-                      backoff: 'EXPONENTIAL',
+                      backoff: 'exponential',
+                      backoffBase: INITIAL_RETRY_DELAY,
                       timeout: FETCH_TIMEOUT
                     }
                   )
@@ -652,30 +656,22 @@ class FastWebsiteCrawler {
 
   public async start(): Promise<CrawlSessionData> {
     try {
+      await this.initialize();
       const isAllowed = await this.validateAndCheckRobots();
       if (!isAllowed) {
-        throw new Error(`Crawling disallowed by robots.txt for ${this.config.websiteUrl}`);
+        throw new Error('Crawling not allowed by robots.txt');
       }
 
-      let urlsToProcess: string[] = [];
-      
-      // Try to get URLs from sitemap first
-      if (this.config.useSitemap) {
-        urlsToProcess = await this.fetchSitemapUrls();
+      // Start with the homepage
+      const homepageContent = await this.fetchPageContent(this.config.websiteUrl);
+      if (!homepageContent) {
+        throw new Error('Failed to fetch homepage content');
       }
 
-      // If no sitemap or sitemap is empty, start with the homepage
-      if (urlsToProcess.length === 0) {
-        const homepageContent = await this.fetchPageContent(this.config.websiteUrl);
-        if (homepageContent) {
-          urlsToProcess = homepageContent.links;
-          // Add homepage to results
-          await this.createEmbeddings([homepageContent]);
-        }
-      }
+      let urlsToProcess = homepageContent.links;
+      const results: PageContent[] = [homepageContent];
 
       // Process URLs in batches
-      const results: PageContent[] = [];
       while (urlsToProcess.length > 0 && this.visitedUrls.size < this.config.maxPages!) {
         const batch = urlsToProcess.splice(0, this.config.concurrency!);
         const batchResults = await this.processBatch(batch);
@@ -696,8 +692,10 @@ class FastWebsiteCrawler {
       // Store crawl session metadata
       const session = await CrawlSessionModel.add(this.crawlSession);
 
-      // Create embeddings synchronously before returning
-      await this.createEmbeddings(results);
+      // Create embeddings in the background
+      this.createEmbeddings(results).catch(error => {
+        console.error('Error creating embeddings:', error);
+      });
 
       return this.crawlSession;
     } catch (error) {

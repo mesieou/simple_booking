@@ -23,7 +23,7 @@ export class AvailabilitySlots {
 
     // Add new availability slots
     async add(): Promise<AvailabilitySlotsData> {
-        const supa = createClient();
+        const supa = await createClient();
 
         const availabilitySlots = {
             "providerId": this.data.providerId,
@@ -56,7 +56,7 @@ export class AvailabilitySlots {
         startDate: string,
         endDate: string
     ): Promise<AvailabilitySlotsData[]> {
-        const supa = createClient();
+        const supa = await createClient();
 
         const { data, error } = await supa
             .from("availabilitySlots")
@@ -77,7 +77,7 @@ export class AvailabilitySlots {
         providerId: string,
         date: string
     ): Promise<AvailabilitySlotsData | null> {
-        const supa = createClient();
+        const supa = await createClient();
 
         const { data, error } = await supa
             .from("availabilitySlots")
@@ -98,7 +98,7 @@ export class AvailabilitySlots {
 
     // Update availability slots
     static async update(providerId: string, date: string, slotsData: AvailabilitySlotsData): Promise<AvailabilitySlots> {
-        const supa = createClient();
+        const supa = await createClient();
         
         const availabilitySlots = {
             "providerId": slotsData.providerId,
@@ -127,7 +127,7 @@ export class AvailabilitySlots {
 
     // Delete availability slots
     static async delete(providerId: string, date: string): Promise<void> {
-        const supa = createClient();
+        const supa = await createClient();
         
         const { error } = await supa
             .from("availabilitySlots")
