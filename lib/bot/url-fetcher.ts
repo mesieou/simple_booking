@@ -12,6 +12,17 @@ const SOCIAL_DOMAINS = [
   'youtube.com', 'tiktok.com', 'pinterest.com', 'whatsapp.com',
 ];
 
+// Common TLDs for international domains
+const COMMON_TLDS = [
+  'com', 'net', 'org', 'edu', 'gov', 'io', 'co', 'uk', 'de', 'fr', 'es', 'it',
+  'nl', 'be', 'ch', 'at', 'se', 'no', 'dk', 'fi', 'pl', 'pt', 'gr', 'hu', 'cz',
+  'sk', 'ro', 'bg', 'hr', 'rs', 'si', 'me', 'mk', 'al', 'ba', 'md', 'ua', 'by',
+  'ru', 'tr', 'il', 'ae', 'sa', 'qa', 'kw', 'bh', 'om', 'jo', 'eg', 'za', 'ng',
+  'ke', 'ma', 'dz', 'tn', 'au', 'nz', 'jp', 'kr', 'cn', 'in', 'sg', 'my', 'id',
+  'ph', 'vn', 'th', 'mx', 'br', 'ar', 'cl', 'co', 'pe', 've', 'ec', 'uy', 'py',
+  'bo', 'cr', 'pa', 'do', 'pr', 'gt', 'sv', 'hn', 'ni', 'cu'
+];
+
 const SKIPPED_EXTENSIONS = [
   '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
   '.zip', '.rar', '.tar', '.gz', '.7z',
@@ -30,8 +41,7 @@ const SKIPPED_PARAMS = [
 
 const SKIPPED_PATTERNS = [
   /\/tag\//i,
-  /\/author\//i,
-  /\/category\//i,
+  /\/category\/page\//i,
   /\/archive\//i,
   /\/feed\//i,
   /\/rss\//i,
@@ -73,6 +83,122 @@ const SKIPPED_PATTERNS = [
   /\/wp-rss20\//i
 ];
 
+const URL_CATEGORY_PATTERNS = {
+  services: [
+    /\/services\//i,
+    /\/our-services\//i,
+    /\/what-we-do\//i,
+    /\/offerings\//i
+  ],
+  about: [
+    /\/about\//i,
+    /\/about-us\//i,
+    /\/company\//i,
+    /\/team\//i,
+    /\/our-story\//i,
+    /\/history\//i
+  ],
+  contact: [
+    /\/contact\//i,
+    /\/contact-us\//i,
+    /\/get-in-touch\//i,
+    /\/locations\//i,
+    /\/find-us\//i
+  ],
+  blog: [
+    /\/blog\//i,
+    /\/news\//i,
+    /\/articles\//i,
+    /\/insights\//i,
+    /\/resources\//i
+  ],
+  products: [
+    /\/products\//i,
+    /\/solutions\//i,
+    /\/offerings\//i,
+    /\/services\//i
+  ],
+  pricing: [
+    /\/pricing\//i,
+    /\/plans\//i,
+    /\/packages\//i,
+    /\/rates\//i
+  ],
+  faq: [
+    /\/faq\//i,
+    /\/faqs\//i,
+    /\/help\//i,
+    /\/support\//i
+  ],
+  testimonials: [
+    /\/testimonials\//i,
+    /\/reviews\//i,
+    /\/case-studies\//i,
+    /\/clients\//i
+  ],
+  careers: [
+    /\/careers\//i,
+    /\/jobs\//i,
+    /\/work-with-us\//i,
+    /\/join-us\//i
+  ],
+  booking: [
+    /\/book\//i,
+    /\/booking\//i,
+    /\/schedule\//i,
+    /\/appointment\//i
+  ],
+  quote: [
+    /\/quote\//i,
+    /\/get-a-quote\//i,
+    /\/request-quote\//i,
+    /\/estimate\//i
+  ]
+};
+
+function isRelatedDomain(url: string, baseUrl: URL): boolean {
+  try {
+    const parsedUrl = new URL(url);
+    const baseHostname = baseUrl.hostname;
+    const urlHostname = parsedUrl.hostname;
+
+    // If it's the same domain, it's related
+    if (urlHostname === baseHostname) {
+      return true;
+    }
+
+    // Check if it's a subdomain of the base domain
+    if (urlHostname.endsWith('.' + baseHostname)) {
+      return true;
+    }
+
+    // Check if it's a parent domain
+    if (baseHostname.endsWith('.' + urlHostname)) {
+      return true;
+    }
+
+    // Check for international domains (e.g., example.com and example.co.uk)
+    const baseParts = baseHostname.split('.');
+    const urlParts = urlHostname.split('.');
+    
+    // If they have the same main domain name
+    if (baseParts[0] === urlParts[0]) {
+      // Check if the TLDs are related (e.g., com and co.uk)
+      const baseTLD = baseParts.slice(-2).join('.');
+      const urlTLD = urlParts.slice(-2).join('.');
+      
+      // If either TLD is in our common list, consider them related
+      if (COMMON_TLDS.includes(baseTLD) || COMMON_TLDS.includes(urlTLD)) {
+        return true;
+      }
+    }
+
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 function isValidUrl(url: string, baseUrl: URL): boolean {
   try {
     const parsedUrl = new URL(url);
@@ -108,13 +234,73 @@ function isValidUrl(url: string, baseUrl: URL): boolean {
       return false;
     }
 
-    return (
-      parsedUrl.hostname === baseUrl.hostname &&
-      parsedUrl.protocol === baseUrl.protocol
-    );
+    // Check if it's a social media domain
+    if (SOCIAL_DOMAINS.some(domain => parsedUrl.hostname.includes(domain))) {
+      return false;
+    }
+
+    // Allow all other URLs, including external ones
+    return true;
   } catch {
     return false;
   }
+}
+
+export function getCategoryFromUrl(url: string): string {
+  const pathname = new URL(url).pathname.toLowerCase();
+  
+  // Check for specific patterns first
+  if (pathname.includes('/blog/') || pathname.includes('/news/') || pathname.includes('/articles/')) {
+    return 'blog';
+  }
+  
+  if (pathname.includes('/services/') || pathname.includes('/our-services/') || pathname.includes('/what-we-do/')) {
+    return 'services';
+  }
+  
+  if (pathname.includes('/about/') || pathname.includes('/about-us/') || pathname.includes('/company/')) {
+    return 'about';
+  }
+  
+  if (pathname.includes('/contact/') || pathname.includes('/contact-us/') || pathname.includes('/get-in-touch/')) {
+    return 'contact';
+  }
+  
+  if (pathname.includes('/products/') || pathname.includes('/solutions/')) {
+    return 'products';
+  }
+  
+  if (pathname.includes('/pricing/') || pathname.includes('/plans/') || pathname.includes('/packages/')) {
+    return 'pricing';
+  }
+  
+  if (pathname.includes('/faq/') || pathname.includes('/faqs/') || pathname.includes('/help/')) {
+    return 'faq';
+  }
+  
+  if (pathname.includes('/testimonials/') || pathname.includes('/reviews/') || pathname.includes('/case-studies/')) {
+    return 'testimonials';
+  }
+  
+  if (pathname.includes('/careers/') || pathname.includes('/jobs/') || pathname.includes('/work-with-us/')) {
+    return 'careers';
+  }
+  
+  if (pathname.includes('/book/') || pathname.includes('/booking/') || pathname.includes('/schedule/')) {
+    return 'booking';
+  }
+  
+  if (pathname.includes('/quote/') || pathname.includes('/get-a-quote/') || pathname.includes('/request-quote/')) {
+    return 'quote';
+  }
+  
+  // Default to 'services' for the homepage or when no category is found
+  if (pathname === '/' || pathname === '') {
+    return 'services';
+  }
+  
+  // For other pages without a clear category, use 'about'
+  return 'about';
 }
 
 export async function getLinks(baseUrl: string): Promise<string[]> {
@@ -136,8 +322,8 @@ export async function getLinks(baseUrl: string): Promise<string[]> {
         const fullUrl = new URL(href, parsedBase).toString();
         const parsed = new URL(fullUrl);
 
-        // Only process internal links
-        if (parsed.origin === parsedBase.origin) {
+        // Process both internal and related external links
+        if (isRelatedDomain(fullUrl, parsedBase)) {
           const cleanUrl = normalizeUrl(fullUrl, {
             stripHash: true,
             stripWWW: true,
@@ -152,6 +338,8 @@ export async function getLinks(baseUrl: string): Promise<string[]> {
           } else {
             console.log('Skipped:', cleanUrl);
           }
+        } else {
+          console.log('Skipped external:', fullUrl);
         }
       } catch {
         // Ignore malformed URLs

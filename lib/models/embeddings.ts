@@ -33,6 +33,7 @@ export class Embedding {
     const supa = createClient();
     const insertData = {
       ...data,
+      chunkIndex: data.chunkIndex ?? 0,
       createdAt: new Date().toISOString(),
     };
     const { data: result, error } = await supa.from("embeddings").insert(insertData).select().single();

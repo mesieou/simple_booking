@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { Document } from '@/lib/models/documents';
 import { Embedding } from '@/lib/models/embeddings';
 import * as cheerio from 'cheerio';
-import { generateEmbedding, detectPageCategory } from '@/lib/services/openai';
+import { generateEmbedding } from '@/lib/services/openai';
 import { URL } from 'url';
 import parseRobots from 'robots-parser';
 import crypto from 'crypto';
@@ -10,7 +10,8 @@ import pLimit from 'p-limit';
 import { CrawlSession as CrawlSessionModel } from '@/lib/models/crawl-session';
 import { PDFDocument } from 'pdf-lib';
 import { retry } from 'ts-retry-promise';
-import { getLinks } from './url-fetcher';
+import { getLinks, getCategoryFromUrl } from './url-fetcher';
+import { detectPageCategory } from '@/lib/services/openai';
 
 interface PDFData {
   text: string;
@@ -314,6 +315,9 @@ class FastWebsiteCrawler {
           console.warn(`Skipping non-English page at ${url} (HTML lang: ${htmlLang})`);
           return null;
         }
+
+        // Get valid links first
+        const links = await getLinks(url);
         
         const title = $('title').text().trim() || 
                      $('h1').first().text().trim() || 
@@ -342,10 +346,6 @@ class FastWebsiteCrawler {
         }
 
         this.contentHashes.add(contentHash);
-        
-        // Get valid links to crawl
-        const links = await getLinks(url);
-        
         const category = await detectPageCategory(url, title, content);
 
         return {
@@ -397,9 +397,14 @@ class FastWebsiteCrawler {
       console.log(`  Speed: ${urlsPerSecond} URLs/sec`);
       console.log(`  Success: ${this.crawlSession.successfulPages}, Failed: ${this.crawlSession.failedPages}`);
       console.log(`  Active pages: ${this.activePages}`);
-      console.log(`  Categories: ${Object.entries(this.crawlSession.categories)
-        .map(([cat, count]) => `${cat}: ${count}`)
-        .join(', ')}`);
+      
+      // Enhanced category logging
+      const categoryStats = Object.entries(this.crawlSession.categories)
+        .sort(([, a], [, b]) => b - a) // Sort by count descending
+        .map(([cat, count]) => `${cat}: ${count} (${((count / this.crawlSession.successfulPages) * 100).toFixed(1)}%)`)
+        .join('\n    ');
+      console.log('  Categories:');
+      console.log(`    ${categoryStats}`);
       
       this.lastLogTime = now;
       this.lastLogUrlCount = urlCount;
@@ -555,11 +560,11 @@ class FastWebsiteCrawler {
                       documentId: documentRecord.id!,
                       content: chunk,
                       embedding: embeddingBatch[k],
+                      chunkIndex: i + j + k,
+                      category: doc.category,
                       metadata: {
                         pageTitle: doc.title,
                         sourceUrl: doc.url,
-                        chunkIndex: i + j + k,
-                        category: doc.category,
                         contentHash: contentHash,
                         crawlTimestamp: doc.metadata.crawlTimestamp,
                         language: lang
