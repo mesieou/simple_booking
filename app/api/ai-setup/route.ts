@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { setupBusinessAiBot, FastCrawlConfig, CrawlProgress } from '@/lib/ai-setup/fast-website-crawler';
+import { setupBusinessAiBot, FastCrawlConfig, CrawlProgress } from '@/lib/bot/website-crawler';
 
 export async function POST(request: Request) {
   try {
