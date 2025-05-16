@@ -9,6 +9,11 @@ export const ciudadesPermitidas = [
 ];
 
 export async function validarUbicacion(direccion: string): Promise<boolean> {
+  // No validar si la dirección es muy corta
+  if (!direccion || direccion.length < 3) {
+    return true;
+  }
+
   try {
     const response = await fetch(`/api/maps/geocode?direccion=${encodeURIComponent(direccion)}`);
     const data = await response.json();

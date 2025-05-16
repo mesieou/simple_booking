@@ -33,7 +33,7 @@ export class Business {
 
     //creates a business in supa
     async add(): Promise<BusinessData> {
-        const supa = createClient();
+        const supa = await createClient();
 
         const business = {
             "name": this.data.name,
@@ -68,7 +68,7 @@ export class Business {
             handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
-        const supa = createClient();
+        const supa = await createClient();
         const { data, error } = await supa.from("businesses").select("*").eq("id", id).single();
         
         if (error) {
@@ -84,7 +84,7 @@ export class Business {
 
     // Get all businesses
     static async getAll(): Promise<Business[]> {
-        const supa = createClient();
+        const supa = await createClient();
         const { data, error } = await supa.from("businesses").select("*");
         
         if (error) {
@@ -100,7 +100,7 @@ export class Business {
             handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
-        const supa = createClient();
+        const supa = await createClient();
         const business = {
             "name": businessData.name,
             "email": businessData.email,
@@ -137,7 +137,7 @@ export class Business {
             handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
-        const supa = createClient();
+        const supa = await createClient();
         const { error } = await supa.from("businesses").delete().eq("id", id);
 
         if (error) {

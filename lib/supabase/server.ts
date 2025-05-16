@@ -1,4 +1,4 @@
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { createClient as createSupabaseClient } from "@supabase/supabase-js"
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
@@ -25,3 +25,4 @@ export const createClient = (): SupabaseClient => {
     }
   );
 };
+

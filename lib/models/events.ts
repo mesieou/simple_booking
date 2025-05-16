@@ -27,7 +27,7 @@ export class Event {
 
     //creates an Event in supa
     async add(): Promise<EventData> {
-        const supa = createClient();
+        const supa = await createClient();
 
         const event = {
             "summary": this.data.summary,
@@ -58,7 +58,7 @@ export class Event {
             handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
-        const supa = createClient();
+        const supa = await createClient();
         const { data, error } = await supa.from("events").select("*").eq("id", id).single();
         
         if (error) {
@@ -78,7 +78,7 @@ export class Event {
             handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
-        const supa = createClient();
+        const supa = await createClient();
         const { data, error } = await supa.from("events").select("*").eq("userId", userId);
         
         if (error) {
@@ -94,7 +94,7 @@ export class Event {
             handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
-        const supa = createClient();
+        const supa = await createClient();
         const { data, error } = await supa.from("events").select("*").eq("calendarId", calendarId);
         
         if (error) {
@@ -106,7 +106,7 @@ export class Event {
 
     // Get events by date range
     static async getByDateRange(start: string, end: string): Promise<Event[]> {
-        const supa = createClient();
+        const supa = await createClient();
         const { data, error } = await supa
             .from("events")
             .select("*")
@@ -126,7 +126,7 @@ export class Event {
             handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
-        const supa = createClient();
+        const supa = await createClient();
         const event = {
             "summary": eventData.summary,
             "description": eventData.description,
@@ -161,7 +161,7 @@ export class Event {
             handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
-        const supa = createClient();
+        const supa = await createClient();
         const { error } = await supa.from("events").delete().eq("id", id);
 
         if (error) {

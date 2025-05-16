@@ -14,7 +14,12 @@ export function encodedRedirect(
   path: string,
   message: string,
 ) {
-  return redirect(`${path}?${type}=${encodeURIComponent(message)}`);
+  const encodedMessage = encodeURIComponent(message);
+  const redirectUrl = `${path}?${type}=${encodedMessage}`;
+  console.log("Redirigiendo a:", redirectUrl);
+  
+  // Usar redirect directamente sin try/catch
+  return redirect(redirectUrl);
 }
 
 export function cn(...inputs: ClassValue[]) {

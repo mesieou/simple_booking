@@ -10,6 +10,7 @@ interface GeocodeResponse {
     }[];
   }[];
   status: string;
+  error_message?: string;
 }
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
@@ -34,10 +35,23 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const response = await fetch(
       `https://maps.googleapis.com/maps/api/geocode/json?${params.toString()}`
     );
+    
+    if (!response.ok) {
+      throw new Error(`Error en la respuesta de la API: ${response.status}`);
+    }
+
     const data: GeocodeResponse = await response.json();
 
+    if (data.status === 'ZERO_RESULTS') {
+      return NextResponse.json({ error: "No se encontraron resultados para esta dirección." }, { status: 404 });
+    }
+
     if (data.status !== 'OK') {
-      throw new Error(`Error en la geocodificación: ${data.status}`);
+      throw new Error(data.error_message || `Error en la geocodificación: ${data.status}`);
+    }
+
+    if (!data.results || data.results.length === 0) {
+      return NextResponse.json({ error: "No se encontraron resultados para esta dirección." }, { status: 404 });
     }
 
     return NextResponse.json(data);

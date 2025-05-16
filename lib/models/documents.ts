@@ -30,7 +30,7 @@ export class Document {
   }
 
   static async add(data: DocumentData): Promise<DocumentData> {
-    const supabase = createClient();
+    const supabase = await createClient();
     const insertData = {
       ...data,
       createdAt: new Date().toISOString(),
@@ -42,7 +42,7 @@ export class Document {
   }
 
   static async getById(id: string): Promise<DocumentData> {
-    const supabase = createClient();
+    const supabase = await createClient();
     const { data, error } = await supabase.from("documents").select("*").eq("id", id).single();
     if (error) handleModelError("Failed to fetch document", error);
     if (!data) handleModelError("Document not found", new Error("Document not found"));
@@ -50,7 +50,7 @@ export class Document {
   }
 
   static async getAll(businessId?: string): Promise<DocumentData[]> {
-    const supa = createClient();
+    const supa = await createClient();
     let query = supa.from("documents").select("*");
     if (businessId) query = query.eq("businessId", businessId);
     const { data, error } = await query;
@@ -61,7 +61,7 @@ export class Document {
   }
 
   static async update(id: string, data: Partial<DocumentData>): Promise<DocumentData> {
-    const supabase = createClient();
+    const supabase = await createClient();
     const { data: result, error } = await supabase.from("documents").update(data).eq("id", id).select().single();
     if (error) handleModelError("Failed to update document", error);
     if (!result) handleModelError("No data returned after update", new Error("No data returned"));
@@ -69,7 +69,7 @@ export class Document {
   }
 
   static async delete(id: string): Promise<void> {
-    const supabase = createClient();
+    const supabase = await createClient();
     const { error } = await supabase.from("documents").delete().eq("id", id);
     if (error) handleModelError("Failed to delete document", error);
   }
