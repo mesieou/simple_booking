@@ -612,6 +612,7 @@ class FastWebsiteCrawler {
       }
 
       let urlsToProcess: string[] = [];
+      const results: PageContent[] = [];
       
       // Get initial URLs to start crawling
       if (this.config.useSitemap) {
@@ -619,7 +620,6 @@ class FastWebsiteCrawler {
       }
 
       // Process URLs in batches
-      const results: PageContent[] = [];
       while (urlsToProcess.length > 0 && this.visitedUrls.size < this.config.maxPages!) {
         const batch = urlsToProcess.splice(0, this.config.concurrency!);
         const batchResults = await this.processBatch(batch);
