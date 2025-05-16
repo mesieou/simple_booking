@@ -4,32 +4,22 @@ import path from 'path';
 
 async function main() {
   try {
-    console.log('Starting database migrations...');
-    const supabase = createClient();
+    console.log('Starting database migration...');
+    const supabase = await createClient();
 
-    // Get all migration files and sort them
-    const migrationsDir = path.join(process.cwd(), 'migrations');
-    const migrationFiles = fs.readdirSync(migrationsDir)
-      .filter(file => file.endsWith('.sql'))
-      .sort();
+    // Read and execute the migration file
+    const migrationPath = path.join(process.cwd(), 'migrations', '002_create_crawl_sessions.sql');
+    const migrationSQL = fs.readFileSync(migrationPath, 'utf8');
 
-    // Execute each migration in order
-    for (const migrationFile of migrationFiles) {
-      console.log(`Running migration: ${migrationFile}`);
-      const migrationPath = path.join(migrationsDir, migrationFile);
-      const migrationSQL = fs.readFileSync(migrationPath, 'utf8');
-
-      const { error } = await supabase.rpc('exec_sql', { sql: migrationSQL });
-      if (error) {
-        throw new Error(`Failed to execute migration ${migrationFile}: ${error.message}`);
-      }
-      console.log(`Completed migration: ${migrationFile}`);
+    const { error } = await supabase.rpc('exec_sql', { sql: migrationSQL });
+    if (error) {
+      throw new Error(`Failed to execute migration: ${error.message}`);
     }
 
-    console.log('All migrations completed successfully!');
+    console.log('Migration completed successfully!');
     process.exit(0);
   } catch (error) {
-    console.error('Error running migrations:', error);
+    console.error('Error running migration:', error);
     process.exit(1);
   }
 }
