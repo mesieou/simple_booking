@@ -517,8 +517,8 @@ class FastWebsiteCrawler {
           }),
           {
             retries: MAX_RETRIES,
-            delay: INITIAL_RETRY_DELAY,
-            backoff: 'EXPONENTIAL',
+            backoff: 'exponential',
+            backoffBase: INITIAL_RETRY_DELAY,
             timeout: FETCH_TIMEOUT
           }
         );
@@ -572,8 +572,8 @@ class FastWebsiteCrawler {
                     }),
                     {
                       retries: MAX_RETRIES,
-                      delay: INITIAL_RETRY_DELAY,
-                      backoff: 'EXPONENTIAL',
+                      backoff: 'exponential',
+                      backoffBase: INITIAL_RETRY_DELAY,
                       timeout: FETCH_TIMEOUT
                     }
                   )
