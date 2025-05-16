@@ -30,14 +30,43 @@ export class Document {
   }
 
   static async add(data: DocumentData): Promise<DocumentData> {
+    console.log('Attempting to add document:', {
+      businessId: data.businessId,
+      category: data.category,
+      type: data.type,
+      title: data.title,
+      contentLength: data.content.length,
+      contentHash: data.contentHash
+    });
+
     const supabase = await createClient();
     const insertData = {
       ...data,
       createdAt: new Date().toISOString(),
     };
     const { data: result, error } = await supabase.from("documents").insert(insertData).select().single();
-    if (error) handleModelError("Failed to insert document", error);
-    if (!result) handleModelError("No data returned after insert", new Error("No data returned"));
+    
+    if (error) {
+      console.error('Failed to insert document:', {
+        error: error.message,
+        details: error.details,
+        code: error.code,
+        hint: error.hint
+      });
+      handleModelError("Failed to insert document", error);
+    }
+    
+    if (!result) {
+      console.error('No data returned after document insert');
+      handleModelError("No data returned after insert", new Error("No data returned"));
+    }
+
+    console.log('Successfully added document:', {
+      id: result.id,
+      businessId: result.businessId,
+      category: result.category
+    });
+
     return result;
   }
 

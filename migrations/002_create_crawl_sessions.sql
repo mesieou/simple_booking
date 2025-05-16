@@ -9,6 +9,8 @@ CREATE TABLE IF NOT EXISTS "crawl_sessions" (
     "failedPages" INTEGER NOT NULL DEFAULT 0,
     "categories" JSONB NOT NULL DEFAULT '{}',
     "errors" JSONB NOT NULL DEFAULT '[]',
+    "missingInformation" TEXT,
+    "categorizedContent" JSONB NOT NULL DEFAULT '{}',
     "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
