@@ -15,6 +15,14 @@
         {
             "folderPath": "simple_booking\\lib\\services\\",
             "color": "foldercolorizer.color_3366cc"
+        },
+        {
+            "folderPath": "simple_booking\\app\\api\\chat\\",
+            "color": "foldercolorizer.color_cc6600"
+        },
+        {
+            "folderPath": "simple_booking\\app\\api\\webhook\\",
+            "color": "foldercolorizer.color_00cc33"
         }
     ]
 }
