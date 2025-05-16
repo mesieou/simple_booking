@@ -1,5 +1,5 @@
 import { CrawlSession } from '@/lib/models/crawl-session';
-import { CrawlState, FastCrawlConfig, PageContent, CrawlProgress } from './types';
+import { CrawlState, FastCrawlConfig, PageContent, CrawlProgress, VALID_CATEGORIES } from './types';
 import { DEFAULT_HEADERS } from './constants';
 import { delay } from './utils';
 import { processHtmlContent, processPdfContent } from './content-processor';
@@ -7,6 +7,8 @@ import { createEmbeddings } from './embeddings';
 import parseRobots from 'robots-parser';
 import pLimit from 'p-limit';
 import { handleModelError } from '@/lib/helpers/error';
+import { detectMissingInformation } from '@/lib/helpers/openai';
+
 export function createInitialState(config: FastCrawlConfig): CrawlState {
   return {
     visitedUrls: new Set<string>(),
@@ -207,23 +209,7 @@ async function processBatch(state: CrawlState, urls: string[], progressCallback?
             return null;
           }
 
-          if (pageContent.category) {
-            const categories = { ...state.crawlSession.categories };
-            categories[pageContent.category] = (categories[pageContent.category] || 0) + 1;
-            
-            // Update crawl session
-            const updatedSession = new CrawlSession({
-              businessId: state.crawlSession.businessId,
-              startTime: state.crawlSession.startTime,
-              totalPages: state.visitedUrls.size,
-              successfulPages: state.crawlSession.successfulPages + 1,
-              failedPages: state.crawlSession.failedPages,
-              categories,
-              errors: state.crawlSession.errors
-            });
-            state.crawlSession = updatedSession;
-          }
-
+          // Return the page content with its categorized sections
           return pageContent;
         } catch (error) {
           // Update crawl session
@@ -273,21 +259,52 @@ async function crawlWebsite(state: CrawlState, progressCallback?: (progress: Cra
 
     // Process URLs in batches
     const results: PageContent[] = [];
+    const categorizedContent: Record<string, string[]> = Object.fromEntries(
+      VALID_CATEGORIES.map(cat => [cat, []])
+    );
+
     while (urlsToProcess.length > 0 && state.visitedUrls.size < state.config.maxPages!) {
       const batch = urlsToProcess.splice(0, state.config.concurrency!);
       const batchResults = await processBatch(state, batch, progressCallback);
       results.push(...batchResults);
 
+      // Accumulate content by category
+      for (const result of batchResults) {
+        if (result && result.categorizedContent) {
+          for (const section of result.categorizedContent) {
+            if (
+              section.category &&
+              categorizedContent[section.category] !== undefined &&
+              !categorizedContent[section.category].includes(section.content)
+            ) {
+              categorizedContent[section.category].push(section.content);
+            }
+          }
+        }
+      }
+
       // Add new links to the queue
       for (const result of batchResults) {
-        urlsToProcess.push(...result.links.filter(link => 
-          !state.visitedUrls.has(link) &&
-          !urlsToProcess.includes(link)
-        ));
+        if (result && result.links) {
+          urlsToProcess.push(...result.links.filter(link => 
+            !state.visitedUrls.has(link) &&
+            !urlsToProcess.includes(link)
+          ));
+        }
       }
     }
 
-    // Update crawl session with final stats
+    // Analyze missing information based on accumulated content
+    const missingInfo = await detectMissingInformation(
+      Object.entries(categorizedContent)
+        .filter(([_, contents]) => contents.length > 0)
+        .map(([category, contents]) => ({
+          category,
+          content: contents.join('\n\n')
+        }))
+    );
+
+    // Update crawl session with final stats and missing information
     const finalSession = new CrawlSession({
       businessId: state.crawlSession.businessId,
       startTime: state.crawlSession.startTime,
@@ -295,8 +312,12 @@ async function crawlWebsite(state: CrawlState, progressCallback?: (progress: Cra
       totalPages: state.visitedUrls.size,
       successfulPages: state.crawlSession.successfulPages,
       failedPages: state.crawlSession.failedPages,
-      categories: state.crawlSession.categories,
-      errors: state.crawlSession.errors
+      categories: Object.fromEntries(
+        Object.entries(categorizedContent)
+          .map(([category, contents]) => [category, contents.length])
+      ),
+      errors: state.crawlSession.errors,
+      missingInformation: JSON.stringify(missingInfo)
     });
     state.crawlSession = finalSession;
 
