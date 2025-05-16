@@ -15,23 +15,30 @@ export interface CrawlSessionData {
 }
 
 export class CrawlSession {
-  private data: CrawlSessionData;
+  private sessionData: CrawlSessionData;
 
   constructor(data: CrawlSessionData) {
     if (!data.businessId) handleModelError('businessId is required', new Error('Missing businessId'));
     if (typeof data.startTime !== 'number') handleModelError('startTime is required', new Error('Missing startTime'));
-    this.data = data;
+    this.sessionData = data;
   }
 
   static async add(data: Omit<CrawlSessionData, 'id'>): Promise<CrawlSession> {
     const supabase = await createClient();
-    const insertData = { 
-      ...data,
-      id: uuidv4() // Generate a UUID for the id field
+    const insertData = {
+      businessId: data.businessId,
+      startTime: data.startTime,
+      endTime: data.endTime,
+      totalPages: data.totalPages,
+      successfulPages: data.successfulPages,
+      failedPages: data.failedPages,
+      categories: data.categories,
+      errors: data.errors,
+      id: uuidv4()
     };
     console.log('Attempting to insert crawl session:', insertData);
     const { data: result, error } = await supabase
-      .from('crawl_sessions')
+      .from('crawlSessions')
       .insert(insertData)
       .select()
       .single();
@@ -51,7 +58,7 @@ export class CrawlSession {
   static async getById(id: string): Promise<CrawlSession> {
     const supabase = await createClient();
     const { data, error } = await supabase
-      .from('crawl_sessions')
+      .from('crawlSessions')
       .select('*')
       .eq('id', id)
       .single();
@@ -62,7 +69,7 @@ export class CrawlSession {
 
   static async getAll(businessId?: string): Promise<CrawlSession[]> {
     const supabase = await createClient();
-    let query = supabase.from('crawl_sessions').select('*');
+    let query = supabase.from('crawlSessions').select('*');
     if (businessId) query = query.eq('businessId', businessId);
     const { data, error } = await query;
     if (error) handleModelError('Failed to fetch crawl sessions', error);
@@ -71,18 +78,18 @@ export class CrawlSession {
 
   static async deleteById(id: string): Promise<void> {
     const supabase = await createClient();
-    const { error } = await supabase.from('crawl_sessions').delete().eq('id', id);
+    const { error } = await supabase.from('crawlSessions').delete().eq('id', id);
     if (error) handleModelError('Failed to delete crawl session', error);
   }
 
   // Getters
-  get id(): string | undefined { return this.data.id; }
-  get businessId(): string { return this.data.businessId; }
-  get startTime(): number { return this.data.startTime; }
-  get endTime(): number | undefined { return this.data.endTime; }
-  get totalPages(): number { return this.data.totalPages; }
-  get successfulPages(): number { return this.data.successfulPages; }
-  get failedPages(): number { return this.data.failedPages; }
-  get categories(): Record<string, number> { return this.data.categories; }
-  get errors(): Array<{ url: string; error: string }> { return this.data.errors; }
+  get id(): string | undefined { return this.sessionData.id; }
+  get businessId(): string { return this.sessionData.businessId; }
+  get startTime(): number { return this.sessionData.startTime; }
+  get endTime(): number | undefined { return this.sessionData.endTime; }
+  get totalPages(): number { return this.sessionData.totalPages; }
+  get successfulPages(): number { return this.sessionData.successfulPages; }
+  get failedPages(): number { return this.sessionData.failedPages; }
+  get categories(): Record<string, number> { return this.sessionData.categories; }
+  get errors(): Array<{ url: string; error: string }> { return this.sessionData.errors; }
 } 
