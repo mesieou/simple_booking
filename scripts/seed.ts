@@ -5,7 +5,7 @@ import path from 'path';
 async function main() {
   try {
     console.log('Starting database migration...');
-    const supabase = createClient();
+    const supabase = await createClient();
 
     // Read and execute the migration file
     const migrationPath = path.join(process.cwd(), 'migrations', '002_create_crawl_sessions.sql');

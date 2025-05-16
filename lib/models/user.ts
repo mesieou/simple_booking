@@ -36,7 +36,7 @@ export class User {
 
     //creates a user in supa
     async add() {
-        const supa = createClient()
+        const supa = await createClient();
 
         // First create the auth user
         const { data: authData, error: authError } = await supa.auth.admin.createUser({
@@ -97,7 +97,7 @@ export class User {
             handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
-        const supa = createClient()
+        const supa = await createClient()
         const { data, error } = await supa.from("users").select("*").eq("id", id).single();
         
         if (error) {
@@ -117,7 +117,7 @@ export class User {
             handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
-        const supa = createClient()
+        const supa = await createClient()
         const { data, error } = await supa.from("users").select("*").eq("businessId", businessId);
         
         if (error) {
@@ -129,7 +129,7 @@ export class User {
 
     // Get users by role
     static async getByRole(role: UserRole): Promise<User[]> {
-        const supa = createClient()
+        const supa = await createClient()
         const { data, error } = await supa.from("users").select("*").eq("role", role);
         
         if (error) {
@@ -141,7 +141,7 @@ export class User {
 
     // Get all providers (including admin/providers)
     static async getAllProviders(): Promise<User[]> {
-        const supa = createClient()
+        const supa = await createClient()
         const { data, error } = await supa
             .from("users")
             .select("*")
@@ -160,7 +160,7 @@ export class User {
             handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
-        const supa = createClient()
+        const supa = await createClient()
         const user = {
             "firstName": userData.firstName,
             "lastName": userData.lastName,
@@ -192,7 +192,7 @@ export class User {
             handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
-        const supa = createClient()
+        const supa = await createClient()
         const { error } = await supa.from("users").delete().eq("id", id);
 
         if (error) {
