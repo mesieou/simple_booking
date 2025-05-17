@@ -32,6 +32,7 @@ import {
   VALID_CATEGORIES,
 } from "@/lib/bot/website-crawler/types";
 
+
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
   maxRetries: 3,
@@ -164,19 +165,27 @@ export async function detectBusinessType(
 
 export async function detectMissingInformation(
   categorizedContent: { category: string; content: string }[]
-): Promise<string[]> {
+): Promise<string> {
+  console.log(
+    "\n[Missing Information Detection] Analyzing categorized content:"
+  );
+  categorizedContent.forEach((item, index) => {
+    console.log(`\nCategory ${index + 1}: ${item.category}`);
+    console.log(`Content preview: ${item.content.substring(0, 200)}...`);
+  });
+
   const formattedContent = categorizedContent
-    .map(({ category, content }) => `${category}:\n${content.substring(0, 500)}...`)
+    .map((c) => `Category: ${c.category}\nContent:\n${c.content}`)
     .join("\n\n");
 
   const prompt = `You are reviewing the content of a business website that has been categorized. Based on the content in each category, identify which of the following critical items are MISSING or INCOMPLETE:\n\n${VALID_CATEGORIES.map((cat) => `- ${cat}`).join("\n")}\n\nCategorized Content:\n${formattedContent}`;
 
   const response = await openai.chat.completions.create({
-    model: "gpt-3.5-turbo",
+    model: "gpt-4",
     messages: [
       {
         role: "system",
-        content: "You analyze website content to identify missing critical information. Return a JSON array of missing category names.",
+        content: "You help identify missing business website content.",
       },
       { role: "user", content: prompt },
     ],
@@ -184,16 +193,11 @@ export async function detectMissingInformation(
     max_tokens: 500,
   });
 
-  const result = response.choices[0]?.message?.content;
-  if (!result) return [];
+  const result = response.choices[0]?.message?.content || "";
+  console.log("\nMissing information analysis result:");
+  console.log(result);
 
-  try {
-    const missingInfo = JSON.parse(result) as string[];
-    return missingInfo.filter(cat => VALID_CATEGORIES.includes(cat as WebPageCategory));
-  } catch (err) {
-    console.error("Failed to parse missing information:", err);
-    return [];
-  }
+  return result;
 }
 
 /**
@@ -246,110 +250,17 @@ Return only the best matching category from the list above.`;
   }
 }
 
-export async function categorizeContentSections(
-  content: string,
-  title: string
-): Promise<CategorizedContent[]> {
-  console.log(
-    `\n[Content Section Categorization] Processing content from: ${title}`
-  );
-  console.log(`Content preview: ${content.substring(0, 200)}...`);
-
-  // Estimate tokens (rough estimate: 4 chars per token)
-  const estimatedTokens = Math.ceil((content.length + title.length) / 4) + 500;
-  await waitForRateLimit(estimatedTokens);
-
-  const prompt = `Analyze this webpage content and categorize sections into the following categories:
-${VALID_CATEGORIES.map((cat) => `- ${cat}`).join("\n")}
-
-For each section, consider the full context and assign a confidence score between 0.5 and 1.0:
-- 0.9-1.0: Perfect match, content clearly and exclusively fits this category
-- 0.8-0.9: Strong match, content primarily fits this category with minor overlaps
-- 0.7-0.8: Good match, content fits this category but may have some elements of others
-- 0.6-0.7: Fair match, content partially fits this category
-- 0.5-0.6: Weak match, content barely fits this category
-
-Guidelines for categorization:
-1. Consider the full context of each section
-2. Keep related information together - don't split contextually related content
-3. Assign the most appropriate category based on the overall meaning, not just keywords
-4. If content could fit multiple categories, choose the most dominant one
-5. Consider the section's purpose and main message
-
-Content from "${title}":
-${content.substring(0, 1500)} // Reduced from 2000 to save tokens
-
-Return a valid JSON array of objects with this exact structure:
-[
-  {
-    "category": "category_name",
-    "content": "section_content",
-    "confidence": 0.75 // Use appropriate confidence score based on match quality
-  }
-]
-
-Ensure all objects have all three fields and proper JSON formatting with commas between properties.
-The category must be one of the exact category names listed above.
-The confidence score must be between 0.5 and 1.0, with higher scores for better matches.`;
-
-  try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        {
-          role: "system",
-          content:
-            "You analyze and categorize webpage content sections. Always return valid JSON with exact category names and appropriate confidence scores between 0.5 and 1.0.",
-        },
-        { role: "user", content: prompt },
-      ],
-      temperature: 0.3,
-      max_tokens: 800,
-    });
-
-    const result = response.choices[0]?.message?.content;
-    if (!result) {
-      console.log("No content returned from OpenAI");
-      return [];
-    }
-
-    try {
-      const cleanedResult = result.replace(/```json\n?|\n?```/g, "").trim();
-      const sections = JSON.parse(cleanedResult) as CategorizedContent[];
-
-      // Log each section's categorization
-      console.log("\nCategorized sections:");
-      sections.forEach((section, index) => {
-        console.log(`\nSection ${index + 1}:`);
-        console.log(`Category: ${section.category}`);
-        console.log(`Confidence: ${section.confidence}`);
-        console.log(`Content preview: ${section.content.substring(0, 100)}...`);
-      });
-
-      // Validate categories and confidence scores
-      const validSections = sections.filter(section => {
-        const isValidCategory = VALID_CATEGORIES.includes(section.category as WebPageCategory);
-        const isValidConfidence = section.confidence >= 0.5 && section.confidence <= 1.0;
-        
-        if (!isValidCategory) {
-          console.warn(`Invalid category: ${section.category}`);
-        }
-        if (!isValidConfidence) {
-          console.warn(`Invalid confidence score: ${section.confidence}`);
-        }
-        
-        return isValidCategory && isValidConfidence;
-      });
-
-      console.log(`\nValid sections after filtering: ${validSections.length}`);
-      return validSections;
-    } catch (err) {
-      console.error("Failed to parse JSON from OpenAI response:", err);
-      console.error("Raw response:", result);
-      return [];
-    }
-  } catch (error) {
-    console.error("Error during OpenAI categorization call:", error);
-    return [];
-  }
+export async function sendMergedTextToGpt4Turbo(text: string, businessId: string, websiteUrl: string): Promise<string> {
+  const prompt = `The following is visible content extracted from a business website. Your job is to analyze the full text and divide it into logical sections. Then, for each section, return:\n\n- "category": one of the following:\n${VALID_CATEGORIES.map(cat => `  - "${cat}"`).join('\n')}\n  - OR a custom lowercase snake_case category (e.g. "testimonials", "news_updates") if needed\n- "content": full text of the section\n- "confidence": a score from 0.5 to 1.0 based on how well the content fits the chosen category\n\nGuidelines:\n- Group contextually related content into single sections\n- Don't split questions from answers (especially in FAQs)\n- If a section touches multiple themes, choose the dominant one\n- Skip generic layout/footer/header content\n\nReturn a valid JSON array like this:\n\n[\n  {\n    "category": "faq",\n    "content": "How long does it take... You need to keep receipts for 5 years...",\n    "confidence": 0.95\n  }\n]\n\nHere is all the cleaned text content from the site (ID: ${businessId}, URL: ${websiteUrl}):\n\n${text}`;
+  const response = await openai.chat.completions.create({
+    model: "gpt-4-turbo",
+    messages: [
+      { role: "system", content: "You are a helpful assistant that analyzes business websites." },
+      { role: "user", content: prompt }
+    ],
+    temperature: 0.3,
+    max_tokens: 1800
+  });
+  return response.choices[0]?.message?.content || "";
 }
+

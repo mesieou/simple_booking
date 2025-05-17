@@ -80,4 +80,30 @@ export interface CrawlState {
   activePages: number;
   lastLogTime: number;
   lastLogUrlCount: number;
+}
+
+export interface SimpleCrawlConfig {
+  websiteUrl: string;
+  businessId: string;
+  maxPages?: number;
+  requestDelay?: number;
+  maxRetries?: number;
+  concurrency?: number;
+}
+
+export interface SimpleCrawlState {
+  visitedUrls: Set<string>;
+  config: SimpleCrawlConfig;
+  baseUrl: URL;
+  lastRequestTime: number;
+  activePages: number;
+  allTexts: string[];
+}
+
+export interface SimpleCrawlResult {
+  mergedText: string;
+  pageCount: number;
+  uniqueParagraphs: number;
+  businessId: string;
+  websiteUrl: string;
 } 

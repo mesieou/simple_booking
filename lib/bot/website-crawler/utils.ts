@@ -44,4 +44,12 @@ export async function delay(state: CrawlState): Promise<void> {
     await new Promise(resolve => setTimeout(resolve, state.config.requestDelay! - timeSinceLastRequest));
   }
   state.lastRequestTime = Date.now();
+}
+
+/**
+ * Splits text into sentences using a regex. Handles basic English punctuation.
+ */
+export function splitIntoSentences(text: string): string[] {
+  // This regex splits on period, exclamation, or question mark followed by space or end of string
+  return text.match(/[^.!?\n]+[.!?]+(\s|$)|[^.!?\n]+$/g)?.map(s => s.trim()).filter(Boolean) || [];
 } 
