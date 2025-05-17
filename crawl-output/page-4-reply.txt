@@ -1,0 +1,29 @@
+```json
+[
+  {
+    "category": "services offered",
+    "content": "Y&S Accounting proudly specialises in providing professional consulting and accounting services to the Latin American community in Australia since 2008. Accounting services Personal tax returns Business advise Xero health check Business registration Bookkeeping Start-up advise",
+    "confidence": 0.95
+  },
+  {
+    "category": "services offered",
+    "content": "ENStarting a business can be approached in various ways. While not every step may be suitable for everyone, it is advised by us to carefully consider and evaluate these recommendations. Steps to starting a business 1. Market Research 2. Business Plan 3. Business Budgeting and Forecasting 4. Pricing strategies and Cost of Goods Sold 5. Business Structure 6. Small Business Accounting 7. Registering a Business 8. Your Obligations",
+    "confidence": 0.9
+  },
+  {
+    "category": "about / trust-building",
+    "content": "Y&S Accounting proudly specialises in providing professional consulting and accounting services to the Latin American community in Australia since 2008.",
+    "confidence": 0.85
+  },
+  {
+    "category": "contact",
+    "content": "Address: Level 38, 71 Eagle St, Brisbane QLD 4000 Contact: 1300 189 682 brisbane@ysaccounting.com.au",
+    "confidence": 0.95
+  },
+  {
+    "category": "terms & conditions / legal policies",
+    "content": "Privacy Policy Terms of Service Cookies Settings",
+    "confidence": 0.9
+  }
+]
+```

@@ -1,0 +1,33 @@
+The following is visible content extracted from a business website. Your job is to analyze the full text and divide it into logical sections. For each section, return:
+
+- "category": one of the following, written EXACTLY as shown (case, spaces, and punctuation must match):
+  - "services offered"\n  - "pricing or quotes"\n  - "contact"\n  - "booking or scheduling"\n  - "about / trust-building"\n  - "faq"\n  - "terms & conditions / legal policies"
+
+Do NOT invent new categories. If content does not fit any, use the closest match from the list above.
+- "content": the full, detailed text of the section (do NOT omit or summarize any details)
+- "confidence": a score from 0.5 to 1.0 based on how well the content fits the chosen category
+
+IMPORTANT:
+- You MUST categorize ALL content. Do NOT skip, omit, or summarize any information, even if it seems repetitive or unimportant.
+- Do NOT repeat or duplicate the same information in multiple sections. Each piece of information should appear only once, in the most appropriate category.
+- If content fits multiple categories, include it in the most relevant one, but do NOT copy it to others.
+- The output will be used for a customer assistant. Missing details will degrade its performance.
+- Be as granular as needed to ensure every piece of information is included in some section.
+- If a section touches multiple themes, choose the dominant one but do NOT drop any details.
+- Do not skip generic layout/footer/header content unless it is truly boilerplate (e.g. copyright, navigation links).
+- Do NOT summarize or compress content. Include all original details.
+- Do Not add any information that is not in the text.
+
+Return a valid JSON array like this:
+
+[
+  {
+    "category": "faq",
+    "content": "How long does it take... You need to keep receipts for 5 years...",
+    "confidence": 0.95
+  }
+]
+
+Here is all the cleaned text content from the site (ID: 0919f2b7-9af2-4094-b8b7-f7a70a59599a, URL: https://taxbne.com.au/):
+
+Download your Guide hereIf you would like to stay up to date with all our latest news then please subscribe belowThank you! Your submission has been received!Oops! Something went wrong while submitting the form.CloseAboutServicesContact1300 189 682Online tax return Book Online AboutServicesContact1300 189 682Online tax return Book Online ENOne of our accountants will process your applicationYou present it from the comfort of your own home100% guaranteed professional serviceYour online tax return step by step1Complete our online formCheck that you have the necessary information ready to file your return and read the frequently asked questions.2One of our accountants will review your applicationCheck that you have the necessary information ready to file your return and read the frequently asked questions.3Receive your Tax refundA member of the Y&S Accounting team will review your information and we will contact you if additional information is required.The information you need before you start the processCopy of passportCopy of your current visaBanking information(BSB and account number)Tax file number (TFN)What our customers sayDiana Franco I can't recommend Sebastian enough. He is a great accountant! He is very diligent, efficient and always goes above and beyond. Excellent service! Great for small businesses accounting.Orlando Guerra Very knowledgeable and professional. My return was filed quickly and I got the money back within weeks.Cristian Campo Very knowledgeable and easy to get in contact with. Excellent customer service. Highly recommended!Catalina Montoya I highly recommend Y&S accounting, and specially to Sebastian Garcia.They have an excellent customer service, they always work in a legar way trying to be the most diligent and helpful as much as possible. Looking after their economical costumer wellness.Juan Pablo Vasquez This is the 4th year making my tax return with no issues and exceptional professionalisms. Strongly recommend them.Frequently asked questionsIndividual Tax returnsHow long does the process take?Processing time is 48 business hours. 48 hours after you send us your information, we will send you your declaration ready to be electronically signed or we will contact you to request additional information.How much does the service cost?The base price is $99. If you need help applying for a medicare exemption certificate, an extra $35 applies. Why should I use Y&S accounting Brisbane's online tax return service?1. For the confidence that your tax return will be prepared by a professional tax return preparer authorised by the Australian tax office. 2. We specialise in international students and temporary residents in Australia.3. You can complete the whole process from the comfort of your own home.If I don't have a bank account in Australia, can I receive my refund in someone else's account or in a bank account in another country?Yes, we can arrange for you to receive your refund in a third party bank account or a bank account in another country. A trust account fee of $55 applies.What is a medicare exemption certificate and do I need one?People who are not entitled to Medicare can apply for an exemption from the Medicare levy on their tax return. To obtain an exemption, you must not be entitled to Medicare and you must apply for Medicare levy exemption certification with the Services Australia department.I am a permanent resident or Australian citizen, can I use the online declaration service?Our online service is designed for individuals on student visas in Australia. To view our services and prices for permanent residents/Australian citizens please click on the following link:Tax returnsStill have questions?Contact us!or Start NowY&S Accounting proudly specialises in providing professional consulting and accounting services to the Latin American community in Australia since 2008. Accounting servicesPersonal tax returnsBusiness adviseXero health checkBusiness registrationBookkeepingStart-up adviseAddress:Level 38, 71 Eagle St, Brisbane QLD 4000Contact:1300 189 682brisbane@ysaccounting.com.au© 2023 Y&S Accounting Brisbane. All right reserved.Privacy PolicyTerms of ServiceCookies Settings
