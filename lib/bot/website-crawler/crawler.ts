@@ -1,336 +1,162 @@
-import { CrawlSession } from '@/lib/models/crawl-session';
-import { CrawlState, FastCrawlConfig, PageContent, CrawlProgress } from './types';
-import { DEFAULT_HEADERS } from './constants';
-import { delay } from './utils';
-import { processHtmlContent, processPdfContent } from './content-processor';
-import { createEmbeddings } from './embeddings';
-import parseRobots from 'robots-parser';
-import pLimit from 'p-limit';
-import { handleModelError } from '@/lib/helpers/error';
-export function createInitialState(config: FastCrawlConfig): CrawlState {
-  return {
-    visitedUrls: new Set<string>(),
-    contentHashes: new Set<string>(),
-    config: {
-      maxPages: 100,
-      requestDelay: 100,
-      maxRetries: 3,
-      concurrency: 20,
-      useSitemap: true,
-      logInterval: {
-        urls: 10,
-        seconds: 5
-      },
-      ...config
-    },
-    baseUrl: new URL(config.websiteUrl),
-    robotsRules: null,
-    lastRequestTime: 0,
-    crawlSession: new CrawlSession({
-      businessId: config.businessId,
-      startTime: Date.now(),
-      totalPages: 0,
-      successfulPages: 0,
-      failedPages: 0,
-      categories: {},
-      errors: []
-    }),
-    activePages: 0,
-    lastLogTime: Date.now(),
-    lastLogUrlCount: 0
-  };
-}
+import { SimpleCrawlConfig, SimpleCrawlResult } from './types';
+import { extractAndCleanContent, deduplicateParagraphs, sendMergedTextToGpt4Turbo } from './content-processor';
+import { getAllDomainLinksRecursive } from './url-fetcher';
+import { createEmbeddingsFromCategorizedSections } from './embeddings';
+import { VALID_CATEGORIES } from './types';
+import fs from 'fs';
 
-async function validateAndCheckRobots(state: CrawlState): Promise<boolean> {
+async function fetchHtml(url: string): Promise<string | null> {
   try {
-    const robotsUrl = `${state.baseUrl.origin}/robots.txt`;
-    const response = await fetch(robotsUrl, { 
-      headers: DEFAULT_HEADERS,
-      signal: AbortSignal.timeout(5000)
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch robots.txt: ${response.status}`);
-    }
-    
-    const text = await response.text();
-    state.robotsRules = parseRobots(robotsUrl, text);
-    return state.robotsRules.isAllowed(state.config.websiteUrl, DEFAULT_HEADERS['User-Agent']);
-  } catch (error) {
-    console.warn('Could not fetch robots.txt, proceeding with crawl:', error);
-    return true;
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('text/html')) return null;
+    return await response.text();
+  } catch {
+    return null;
   }
 }
 
-async function getInitialUrls(state: CrawlState): Promise<string[]> {
-  return [state.config.websiteUrl];
+export interface ExtendedCrawlConfig extends SimpleCrawlConfig {
+  categorizedSections?: any[];
+  chunkSize?: number;
+  concurrencyLimit?: number;
 }
 
-function logProgress(state: CrawlState, currentUrl: string, progressCallback?: (progress: CrawlProgress) => void): void {
-  const now = Date.now();
-  const urlCount = state.visitedUrls.size;
-  const shouldLog = 
-    (state.config.logInterval?.urls && (urlCount - state.lastLogUrlCount) >= state.config.logInterval.urls) ||
-    (state.config.logInterval?.seconds && (now - state.lastLogTime) >= (state.config.logInterval.seconds * 1000));
-
-  if (shouldLog) {
-    const elapsedSeconds = Math.floor((now - state.crawlSession.startTime) / 1000);
-    const urlsPerSecond = (urlCount / elapsedSeconds).toFixed(2);
-    const progress = (urlCount / state.config.maxPages! * 100).toFixed(1);
-    
-    console.log(`[${new Date().toISOString()}] Progress: ${progress}% (${urlCount}/${state.config.maxPages})`);
-    console.log(`  Current URL: ${currentUrl}`);
-    console.log(`  Speed: ${urlsPerSecond} URLs/sec`);
-    console.log(`  Success: ${state.crawlSession.successfulPages}, Failed: ${state.crawlSession.failedPages}`);
-    console.log(`  Active pages: ${state.activePages}`);
-    
-    // Enhanced category logging
-    const categoryStats = Object.entries(state.crawlSession.categories)
-      .sort(([, a], [, b]) => (b as number) - (a as number)) // Sort by count descending
-      .map(([cat, count]) => `${cat}: ${count} (${((count as number / state.crawlSession.successfulPages) * 100).toFixed(1)}%)`)
-      .join('\n    ');
-    console.log('  Categories:');
-    console.log(`    ${categoryStats}`);
-    
-    state.lastLogTime = now;
-    state.lastLogUrlCount = urlCount;
+// Utility: Split text into chunks by word count with overlap
+function splitTextIntoChunks(text: string, maxWords: number, overlapWords: number): string[] {
+  const words = text.split(/\s+/);
+  const chunks: string[] = [];
+  let start = 0;
+  while (start < words.length) {
+    const end = Math.min(words.length, start + maxWords);
+    chunks.push(words.slice(start, end).join(' '));
+    if (end === words.length) break;
+    start = end - overlapWords;
+    if (start < 0) start = 0;
   }
-
-  // Always call the progress callback if provided
-  if (progressCallback) {
-    progressCallback({
-      processedPages: urlCount,
-      totalPages: state.config.maxPages!,
-      percentage: (urlCount / state.config.maxPages!) * 100,
-      currentUrl,
-      activePages: state.activePages
-    });
-  }
+  return chunks;
 }
 
-async function fetchPageContent(state: CrawlState, url: string): Promise<PageContent | null> {
-  await delay(state);
-
-  for (let attempt = 0; attempt < state.config.maxRetries!; attempt++) {
-    try {
-      const response = await fetch(url, {
-        headers: {
-          ...DEFAULT_HEADERS,
-          'Accept-Language': 'en-US,en;q=0.9' // Force English content
-        },
-        signal: AbortSignal.timeout(10000)
-      });
-
-      if (!response.ok) {
-        const status = response.status;
-        if ([401, 403, 404].includes(status)) {
-          console.warn(`Page returned ${status} for ${url}, skipping...`);
-          return null;
-        }
-        if (status === 429) {
-          console.warn(`Rate limited for ${url}, waiting longer before retry...`);
-          await new Promise(resolve => setTimeout(resolve, 5000 * (attempt + 1)));
-          continue;
-        }
-        if (status === 503) {
-          console.warn(`Service unavailable for ${url}, waiting before retry...`);
-          await new Promise(resolve => setTimeout(resolve, 2000 * (attempt + 1)));
-          continue;
-        }
-        throw new Error(`HTTP error! status: ${status}`);
-      }
-
-      // Check if the response is a PDF
-      const contentType = response.headers.get('content-type');
-      if (contentType?.includes('application/pdf')) {
-        const arrayBuffer = await response.arrayBuffer();
-        return await processPdfContent(url, arrayBuffer, state.config.businessId);
-      }
-
-      // Handle HTML content
-      const html = await response.text();
-      return await processHtmlContent(url, html, state.config.businessId);
-    } catch (error) {
-      if (attempt === state.config.maxRetries! - 1) {
-        const updatedSession = new CrawlSession({
-          businessId: state.crawlSession.businessId,
-          startTime: state.crawlSession.startTime,
-          totalPages: state.visitedUrls.size,
-          successfulPages: state.crawlSession.successfulPages,
-          failedPages: state.crawlSession.failedPages + 1,
-          categories: state.crawlSession.categories,
-          errors: [...state.crawlSession.errors, {
-            url,
-            error: error instanceof Error ? error.message : 'Unknown error'
-          }]
-        });
-        state.crawlSession = updatedSession;
-        return null;
-      }
-      await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
-    }
-  }
-  return null;
-}
-
-async function processBatch(state: CrawlState, urls: string[], progressCallback?: (progress: CrawlProgress) => void): Promise<PageContent[]> {
-  const limit = pLimit(state.config.concurrency!);
-  const results: PageContent[] = [];
-
-  const batchResults = await Promise.allSettled(
-    urls.map(url =>
-      limit(async () => {
-        if (state.visitedUrls.has(url)) {
-          return null;
-        }
-
-        state.visitedUrls.add(url);
-        state.activePages++;
-
-        // Log progress
-        logProgress(state, url, progressCallback);
-
-        try {
-          const pageContent = await fetchPageContent(state, url);
-          if (!pageContent) {
-            // Update crawl session
-            const updatedSession = new CrawlSession({
-              businessId: state.crawlSession.businessId,
-              startTime: state.crawlSession.startTime,
-              totalPages: state.visitedUrls.size,
-              successfulPages: state.crawlSession.successfulPages,
-              failedPages: state.crawlSession.failedPages + 1,
-              categories: state.crawlSession.categories,
-              errors: state.crawlSession.errors
-            });
-            state.crawlSession = updatedSession;
-            return null;
-          }
-
-          if (pageContent.category) {
-            const categories = { ...state.crawlSession.categories };
-            categories[pageContent.category] = (categories[pageContent.category] || 0) + 1;
-            
-            // Update crawl session
-            const updatedSession = new CrawlSession({
-              businessId: state.crawlSession.businessId,
-              startTime: state.crawlSession.startTime,
-              totalPages: state.visitedUrls.size,
-              successfulPages: state.crawlSession.successfulPages + 1,
-              failedPages: state.crawlSession.failedPages,
-              categories,
-              errors: state.crawlSession.errors
-            });
-            state.crawlSession = updatedSession;
-          }
-
-          return pageContent;
-        } catch (error) {
-          // Update crawl session
-          const updatedSession = new CrawlSession({
-            businessId: state.crawlSession.businessId,
-            startTime: state.crawlSession.startTime,
-            totalPages: state.visitedUrls.size,
-            successfulPages: state.crawlSession.successfulPages,
-            failedPages: state.crawlSession.failedPages + 1,
-            categories: state.crawlSession.categories,
-            errors: [...state.crawlSession.errors, {
-              url,
-              error: error instanceof Error ? error.message : 'Unknown error'
-            }]
-          });
-          state.crawlSession = updatedSession;
-          return null;
-        } finally {
-          state.activePages--;
-        }
-      })
-    )
+export async function crawlAndMergeText(config: SimpleCrawlConfig): Promise<SimpleCrawlResult & { embeddingsStatus?: string }> {
+  // Ensure output directory exists before any file writes
+  if (!fs.existsSync('crawl-output')) fs.mkdirSync('crawl-output');
+  const urls = await getAllDomainLinksRecursive(
+    config.websiteUrl,
+    config.maxPages || 100,
+    1 // Sequential for easier logging
   );
+  const allTexts: string[] = [];
+  const concurrency = 1;
+  let idx = 0;
 
-  for (const result of batchResults) {
-    if (result.status === 'fulfilled' && result.value) {
-      results.push(result.value);
-    }
-  }
-
-  return results;
-}
-
-async function crawlWebsite(state: CrawlState, progressCallback?: (progress: CrawlProgress) => void): Promise<CrawlSession> {
-  try {
-    const isAllowed = await validateAndCheckRobots(state);
-    if (!isAllowed) {
-      throw new Error(`Crawling disallowed by robots.txt for ${state.config.websiteUrl}`);
-    }
-
-    let urlsToProcess: string[] = [];
-    
-    // Get initial URLs to start crawling
-    if (state.config.useSitemap) {
-      urlsToProcess = await getInitialUrls(state);
-    }
-
-    // Process URLs in batches
-    const results: PageContent[] = [];
-    while (urlsToProcess.length > 0 && state.visitedUrls.size < state.config.maxPages!) {
-      const batch = urlsToProcess.splice(0, state.config.concurrency!);
-      const batchResults = await processBatch(state, batch, progressCallback);
-      results.push(...batchResults);
-
-      // Add new links to the queue
-      for (const result of batchResults) {
-        urlsToProcess.push(...result.links.filter(link => 
-          !state.visitedUrls.has(link) &&
-          !urlsToProcess.includes(link)
-        ));
+  // Concurrency-limited worker pool for fetching and extracting text
+  async function worker() {
+    while (true) {
+      const i = idx++;
+      if (i >= urls.length) break;
+      const url = urls[i];
+      const html = await fetchHtml(url);
+      if (!html) continue;
+      const text = extractAndCleanContent(html);
+      console.log(`\n--- Cleaned content for: ${url} ---\n${text}\n--- END ---\n`);
+      fs.writeFileSync(`crawl-output/page-${i+1}-cleaned.txt`, text, 'utf8');
+      if (text && text.length > 40) {
+        allTexts.push(text);
+      }
+      if (config.requestDelay) {
+        await new Promise(res => setTimeout(res, config.requestDelay));
       }
     }
-
-    // Update crawl session with final stats
-    const finalSession = new CrawlSession({
-      businessId: state.crawlSession.businessId,
-      startTime: state.crawlSession.startTime,
-      endTime: Date.now(),
-      totalPages: state.visitedUrls.size,
-      successfulPages: state.crawlSession.successfulPages,
-      failedPages: state.crawlSession.failedPages,
-      categories: state.crawlSession.categories,
-      errors: state.crawlSession.errors
-    });
-    state.crawlSession = finalSession;
-
-    // Store crawl session metadata
-    await CrawlSession.add(state.crawlSession);
-
-    // Create embeddings synchronously before returning
-    await createEmbeddings(results);
-
-    return state.crawlSession;
-  } catch (error) {
-    // Update crawl session with error
-    const errorSession = new CrawlSession({
-      businessId: state.crawlSession.businessId,
-      startTime: state.crawlSession.startTime,
-      endTime: Date.now(),
-      totalPages: state.visitedUrls.size,
-      successfulPages: state.crawlSession.successfulPages,
-      failedPages: state.crawlSession.failedPages,
-      categories: state.crawlSession.categories,
-      errors: [...state.crawlSession.errors, {
-        url: state.config.websiteUrl,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      }]
-    });
-    state.crawlSession = errorSession;
-    if (error) {
-      handleModelError('Failed to insert crawl session', error);
-    }
-    throw error;
   }
-}
+  await Promise.all(Array.from({ length: concurrency }, () => worker()));
 
-export async function setupBusinessAiBot(config: FastCrawlConfig, progressCallback?: (progress: CrawlProgress) => void) {
-  const state = createInitialState(config);
-  return await crawlWebsite(state, progressCallback);
+  // Print word and token count for input
+  const inputWords = allTexts.reduce((acc, t) => acc + t.split(/\s+/).length, 0);
+  const inputTokens = Math.round(inputWords * 1.33); // rough estimate
+  console.log(`[Crawl] Total input to GPT-4-turbo: ${inputWords} words, ~${inputTokens} tokens (across ${allTexts.length} pages)`);
+
+  // Strict prompt: process each page individually, collect all categorized outputs
+  const gptConcurrency = 1;
+  let gptIdx = 0;
+  const categorizedSections: any[] = [];
+  async function gptWorker() {
+    while (true) {
+      const i = gptIdx++;
+      if (i >= allTexts.length) break;
+      const pageText = allTexts[i];
+      if (!pageText) continue;
+      // Chunking logic: if pageText is very long, split and process each chunk
+      const wordCount = pageText.split(/\s+/).length;
+      let chunks: string[];
+      if (wordCount > 2000) {
+        chunks = splitTextIntoChunks(pageText, 1500, 100);
+        console.log(`[Crawl] Page ${i+1} is large (${wordCount} words), splitting into ${chunks.length} chunks.`);
+      } else {
+        chunks = [pageText];
+      }
+      let allChunkResults: any[] = [];
+      for (let c = 0; c < chunks.length; c++) {
+        const chunkText = chunks[c];
+        const fullPrompt = `The following is visible content extracted from a business website. Your job is to analyze the full text and divide it into logical sections. For each section, return:\n\n- "category": one of the following, written EXACTLY as shown (case, spaces, and punctuation must match):\n${VALID_CATEGORIES.map(cat => `  - "${cat}"`).join('\\n')}\n\nDo NOT invent new categories. If content does not fit any, use the closest match from the list above.\n- "content": the full, detailed text of the section (do NOT omit or summarize any details)\n- "confidence": a score from 0.5 to 1.0 based on how well the content fits the chosen category\n\nIMPORTANT:\n- You MUST categorize ALL content. Do NOT skip, omit, or summarize any information, even if it seems repetitive or unimportant.\n- Do NOT repeat or duplicate the same information in multiple sections. Each piece of information should appear only once, in the most appropriate category.\n- If content fits multiple categories, include it in the most relevant one, but do NOT copy it to others.\n- The output will be used for a customer assistant. Missing details will degrade its performance.\n- Be as granular as needed to ensure every piece of information is included in some section.\n- If a section touches multiple themes, choose the dominant one but do NOT drop any details.\n- Do not skip generic layout/footer/header content unless it is truly boilerplate (e.g. copyright, navigation links).\n- Do NOT summarize or compress content. Include all original details.\n- Do Not add any information that is not in the text.\n\nReturn a valid JSON array like this:\n\n[\n  {\n    "category": "faq",\n    "content": "How long does it take... You need to keep receipts for 5 years...",\n    "confidence": 0.95\n  }\n]\n\nHere is all the cleaned text content from the site (ID: ${config.businessId}, URL: ${config.websiteUrl}):\n\n${chunkText}`;
+        console.log(`\n--- RAW PROMPT TO GPT FOR PAGE ${i+1} CHUNK ${c+1}/${chunks.length} ---\n${fullPrompt}\n--- END PROMPT ---\n`);
+        fs.writeFileSync(`crawl-output/page-${i+1}-chunk-${c+1}-prompt.txt`, fullPrompt, 'utf8');
+        try {
+          const gptCategorized = await sendMergedTextToGpt4Turbo(chunkText, config.businessId, config.websiteUrl);
+          console.log(`\n--- RAW REPLY FROM GPT FOR PAGE ${i+1} CHUNK ${c+1}/${chunks.length} ---\n${gptCategorized}\n--- END REPLY ---\n`);
+          fs.writeFileSync(`crawl-output/page-${i+1}-chunk-${c+1}-reply.txt`, gptCategorized, 'utf8');
+          let parsed = null;
+          try {
+            parsed = JSON.parse(gptCategorized);
+          } catch (e) {
+            // Try to extract JSON array from output using regex
+            console.error(`[Crawl] JSON parse error (page ${i+1} chunk ${c+1}), attempting to extract JSON array...`);
+            const match = gptCategorized.match(/\[[\s\S]*\]/);
+            if (match) {
+              try {
+                parsed = JSON.parse(match[0]);
+                console.log(`[Crawl] Successfully extracted JSON array from output (page ${i+1} chunk ${c+1}).`);
+              } catch (e2) {
+                console.error(`[Crawl] Failed to parse extracted JSON array (page ${i+1} chunk ${c+1}):`, match[0]);
+              }
+            } else {
+              console.error(`[Crawl] No JSON array found in output (page ${i+1} chunk ${c+1}).`);
+            }
+          }
+          if (parsed) {
+            allChunkResults.push(...parsed);
+            const categories = parsed.map((s: any) => s.category);
+            console.log(`[Crawl] Parsed categories (page ${i+1} chunk ${c+1}):`, categories);
+          } else {
+            console.error(`[Crawl] Skipping page ${i+1} chunk ${c+1} due to invalid JSON output.`);
+          }
+        } catch (e) {
+          console.error(`[Crawl] Error processing page ${i+1} chunk ${c+1}:`, e);
+        }
+      }
+      // Merge all chunk results for this page
+      categorizedSections.push(...allChunkResults);
+    }
+  }
+  await Promise.all(Array.from({ length: gptConcurrency }, () => gptWorker()));
+
+  let embeddingsStatus;
+  try {
+    await createEmbeddingsFromCategorizedSections(
+      config.businessId,
+      config.websiteUrl,
+      categorizedSections // use defaults for chunkSize and concurrencyLimit
+    );
+    embeddingsStatus = 'success';
+  } catch (e) {
+    embeddingsStatus = `error: ${e instanceof Error ? e.message : String(e)}`;
+  }
+  return {
+    mergedText: allTexts.join('\n\n'),
+    pageCount: urls.length,
+    uniqueParagraphs: allTexts.length,
+    businessId: config.businessId,
+    websiteUrl: config.websiteUrl,
+    ...(embeddingsStatus ? { embeddingsStatus } : {})
+  };
 } 

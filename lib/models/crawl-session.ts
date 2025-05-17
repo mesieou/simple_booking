@@ -12,6 +12,7 @@ export interface CrawlSessionData {
   failedPages: number;
   categories: Record<string, number>;
   errors: Array<{ url: string; error: string }>;
+  missingInformation?: string;
 }
 
 export class CrawlSession {
@@ -34,6 +35,7 @@ export class CrawlSession {
       failedPages: data.failedPages,
       categories: data.categories,
       errors: data.errors,
+      missingInformation: data.missingInformation,
       id: uuidv4()
     };
     console.log('Attempting to insert crawl session:', insertData);
@@ -92,4 +94,5 @@ export class CrawlSession {
   get failedPages(): number { return this.sessionData.failedPages; }
   get categories(): Record<string, number> { return this.sessionData.categories; }
   get errors(): Array<{ url: string; error: string }> { return this.sessionData.errors; }
+  get missingInformation(): string | undefined { return this.sessionData.missingInformation; }
 } 

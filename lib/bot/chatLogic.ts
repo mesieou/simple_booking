@@ -58,7 +58,7 @@ export async function handleChat(history: any[]) {
         }
 
         // After function runs, GPT needs to respond again
-        const followUp = await chatWithOpenAI([{ role: "system", content: systemPrompt}, ...history]);
+        const followUp = await chatWithOpenAI([{ role: "system", content: systemPrompt}, ...history]) as { choices: { message: any }[] };
         history.push(followUp.choices[0].message);
         return history;
     }
