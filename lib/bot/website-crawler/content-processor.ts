@@ -1,6 +1,6 @@
 import * as cheerio from 'cheerio';
 import { PDFDocument } from 'pdf-lib';
-import { detectLanguage } from './utils';
+import { detectLanguage, normalizeText, PRICE_REGEX } from './utils';
 import crypto from 'crypto';
 import { sendMergedTextToGpt4Turbo as _sendMergedTextToGpt4Turbo } from '@/lib/helpers/openai';
 
@@ -186,6 +186,12 @@ export function extractAndCleanContent(html: string): string {
   const $ = cheerio.load(html);
   // Remove unwanted elements
   $('script, style, nav, footer, header, .ads, .advertisement, .cookie-banner, .menu, .sidebar, .social-share, .comments, .related-posts, .newsletter, .popup, .modal, .banner, .notification, .cookie-notice, .privacy-notice, .terms-notice, .disclaimer, .legal-notice, .copyright, .footer-links, .social-links, .share-buttons, .newsletter-signup, .subscribe-form, .contact-form, .search-form, .login-form, .signup-form, .password-form, .reset-form, .forgot-form, .remember-form, .profile-form, .settings-form, .preferences-form, .notification-settings, .privacy-settings, .account-settings, .billing-settings, .payment-settings, .shipping-settings, .delivery-settings, .order-settings, .cart-settings, .wishlist-settings, .favorite-settings, .bookmark-settings, .save-settings, .share-settings, .export-settings, .import-settings, .backup-settings, .restore-settings, .sync-settings, .update-settings, .upgrade-settings, .downgrade-settings, .cancel-settings, .delete-settings, .remove-settings, .hide-settings, .show-settings, .toggle-settings, .switch-settings, .change-settings, .edit-settings, .modify-settings, .adjust-settings, .configure-settings, .customize-settings, .personalize-settings, .optimize-settings, .improve-settings, .enhance-settings').remove();
+  // Convert tables to Markdown before extracting text
+  $('table').each((_, el) => {
+    const $el = $(el);
+    const md = tableToMarkdown($el);
+    $el.replaceWith(`<div class="markdown-table">${md}</div>`);
+  });
   // Try to find main content
   const main = $('main').text().trim();
   if (main) return cleanText(main);
@@ -208,13 +214,32 @@ function cleanText(content: string): string {
     .trim();
 }
 
+function tableToMarkdown($table: cheerio.Cheerio): string {
+  const $ = cheerio.load($table.html() || '');
+  const rows = $('tr').toArray().map(row => {
+    return $(row).find('th,td').toArray().map((cell: cheerio.Element) => {
+      return $(cell).text().trim().replace(/\|/g, '\\|');
+    });
+  });
+  if (rows.length === 0) return '';
+  const header = rows[0];
+  const body = rows.slice(1);
+  const md = [
+    '| ' + header.join(' | ') + ' |',
+    '| ' + header.map(() => '---').join(' | ') + ' |',
+    ...body.map(r => '| ' + r.join(' | ') + ' |')
+  ];
+  return md.join('\n');
+}
+
 export function deduplicateParagraphs(texts: string[]): { merged: string, uniqueCount: number } {
   const seen = new Set<string>();
   const paragraphs: string[] = [];
   for (const text of texts) {
     for (const para of text.split(/\n{2,}/)) {
       const trimmed = para.trim();
-      if (trimmed.length < 40) continue; // skip very short
+      // Do not skip short lines if they look like prices
+      if (trimmed.length < 40 && !PRICE_REGEX.test(trimmed)) continue;
       const hash = hashString(trimmed);
       if (!seen.has(hash)) {
         seen.add(hash);
@@ -238,4 +263,31 @@ function hashString(str: string): string {
 }
 
 export { splitByHeadings, splitHtmlIntoSections };
-export const sendMergedTextToGpt4Turbo = _sendMergedTextToGpt4Turbo; 
+export const sendMergedTextToGpt4Turbo = _sendMergedTextToGpt4Turbo;
+
+function processCategorizedSections(
+  categorizedSections: { category: string, content: string }[],
+  businessId: string
+) {
+  const grouped: Record<string, string[]> = {};
+  for (const section of categorizedSections) {
+    const cat = normalizeText(section.category);
+    if (!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push(section.content);
+  }
+
+  const finalDocs = [];
+  for (const [category, contents] of Object.entries(grouped)) {
+    const { merged } = deduplicateParagraphs(contents);
+    finalDocs.push({
+      businessId,
+      category,
+      content: merged,
+      // ...other metadata
+    });
+  }
+  // Insert finalDocs into the database
+
+  // Remove crawl session and supabase logic from here
+  // ...
+} 
