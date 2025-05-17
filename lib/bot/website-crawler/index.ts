@@ -1,2 +1,2 @@
-export { setupBusinessAiBot } from './crawler';
-export type { FastCrawlConfig, CrawlProgress } from './types'; 
+export { crawlAndMergeText } from './crawler';
+export type { SimpleCrawlConfig, SimpleCrawlResult } from './types'; 
