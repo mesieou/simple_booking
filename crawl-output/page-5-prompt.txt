@@ -1,0 +1,33 @@
+The following is visible content extracted from a business website. Your job is to analyze the full text and divide it into logical sections. For each section, return:
+
+- "category": one of the following, written EXACTLY as shown (case, spaces, and punctuation must match):
+  - "services offered"\n  - "pricing or quotes"\n  - "contact"\n  - "booking or scheduling"\n  - "about / trust-building"\n  - "faq"\n  - "terms & conditions / legal policies"
+
+Do NOT invent new categories. If content does not fit any, use the closest match from the list above.
+- "content": the full, detailed text of the section (do NOT omit or summarize any details)
+- "confidence": a score from 0.5 to 1.0 based on how well the content fits the chosen category
+
+IMPORTANT:
+- You MUST categorize ALL content. Do NOT skip, omit, or summarize any information, even if it seems repetitive or unimportant.
+- Do NOT repeat or duplicate the same information in multiple sections. Each piece of information should appear only once, in the most appropriate category.
+- If content fits multiple categories, include it in the most relevant one, but do NOT copy it to others.
+- The output will be used for a customer assistant. Missing details will degrade its performance.
+- Be as granular as needed to ensure every piece of information is included in some section.
+- If a section touches multiple themes, choose the dominant one but do NOT drop any details.
+- Do not skip generic layout/footer/header content unless it is truly boilerplate (e.g. copyright, navigation links).
+- Do NOT summarize or compress content. Include all original details.
+- Do Not add any information that is not in the text.
+
+Return a valid JSON array like this:
+
+[
+  {
+    "category": "faq",
+    "content": "How long does it take... You need to keep receipts for 5 years...",
+    "confidence": 0.95
+  }
+]
+
+Here is all the cleaned text content from the site (ID: 0919f2b7-9af2-4094-b8b7-f7a70a59599a, URL: https://taxbne.com.au/):
+
+ENBook your appointmentOne of our accountants will solve your questions 100% guaranteed professional serviceWe can help you with your DASP (Departing Australia Superannuation Payment) and your Early Tax return1Book your appointmentStart the process by booking an appointment with ease, choosing your preferred mode of communication: face-to-face, video call, or phone call. 2Comprehensive Information CheckDuring the scheduled appointment, our dedicated professionals will conduct a thorough check of your information. Whether it's a face-to-face meeting, a video call, or a phone call, we will ensure accuracy by verifying your details with the Australian Taxation Office (ATO) and your superfund. Our knowledgeable team will also explain the processes involved in both tax return and superannuation refund, addressing any questions or concerns you may have.3Receive a quote for the serviceFollowing the information check, we will provide you with a detailed quote for our services. Regardless of the chosen mode of communication, our quote will encompass the specific requirements of your tax return and superannuation refund, tailored to your unique circumstances. Rest assured that our pricing remains competitive, while upholding the highest standards of professionalism and efficiency.What our customers sayDiana Franco I can't recommend Sebastian enough. He is a great accountant! He is very diligent, efficient and always goes above and beyond. Excellent service! Great for small businesses accounting.Orlando Guerra Very knowledgeable and professional. My return was filed quickly and I got the money back within weeks.Cristian Campo Very knowledgeable and easy to get in contact with. Excellent customer service. Highly recommended!Catalina Montoya I highly recommend Y&S accounting, and specially to Sebastian Garcia.They have an excellent customer service, they always work in a legar way trying to be the most diligent and helpful as much as possible. Looking after their economical costumer wellness.Juan Pablo Vasquez This is the 4th year making my tax return with no issues and exceptional professionalisms. Strongly recommend them.Frequently asked questionsEarly Tax return¿How long does the Tax Return process takes?Electronic tax returns are usually processed by the ATO within two weeks. We expect that most refunds will be out within 10 working days after lodgement of your tax return, but some people will wait a bit longer for the ATO to get it done.Who is eligible for an early tax return?To be eligible for an early tax return, you must meet the following criteria:1. Leaving Australia permanently: You need to be departing Australia with no intention of returning before the end of the financial year for which you are filing the tax return. It applies to individuals who are leaving the country permanently.2. ATO's acceptance deadline: The Australian Taxation Office (ATO) typically accepts early tax returns until the 15th of June. To be eligible, you must file your tax return within this timeframe.What documents and information do I need to provide for the early tax return?To facilitate the early tax return process, you will need to provide relevant documents such as income statements, expense receipts, and any other supporting documentation related to your financial affairs. Our team will guide you on the specific documents required based on your situation.How do I get started with the early tax return service?Getting started is easy! Simply reach out to Y&S Accounting to schedule an appointment or book online. Our professionals will guide you through the process, answer any additional questions you may have, and ensure a smooth experience.If you have any further questions or need personalized assistance, feel free to contact our knowledgeable team. We are here to help you make the most of your early tax return experience.Still have questions?Contact us now!Y&S Accounting proudly specialises in providing professional consulting and accounting services to the Latin American community in Australia since 2008. Accounting servicesPersonal tax returnsBusiness adviseXero health checkBusiness registrationBookkeepingStart-up adviseAddress:Level 38, 71 Eagle St, Brisbane QLD 4000Contact:1300 189 682brisbane@ysaccounting.com.au© 2023 Y&S Accounting Brisbane. All right reserved.Privacy PolicyTerms of ServiceCookies Settings

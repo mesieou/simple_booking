@@ -5,7 +5,9 @@ import { generateEmbedding } from '@/lib/helpers/openai';
 import { WebPageCategory, VALID_CATEGORIES } from './types';
 import { retry } from 'ts-retry-promise';
 import { EMBEDDING_CONSTANTS } from './constants';
-import { splitIntoSentences, generateContentHash } from './utils';
+import { splitIntoSentences, generateContentHash, normalizeText } from './utils';
+import { deduplicateParagraphs } from './content-processor';
+import { v4 as uuidv4 } from 'uuid';
 
 interface CategorizedSection {
   category: WebPageCategory | string;
@@ -32,13 +34,37 @@ export async function createEmbeddingsFromCategorizedSections(
   console.log(`Starting createEmbeddingsFromCategorizedSections with ${categorizedSections.length} sections`);
   const supabase = createClient();
 
-  // Group by category
-  const categorizedContent: Record<string, CategorizedSection[]> = {};
-  for (const section of categorizedSections) {
-    if (!categorizedContent[section.category]) {
-      categorizedContent[section.category] = [];
+  // Group by category with robust deduplication
+  const categorizedContent: Record<string, string[]> = {};
+  const paragraphHashes: Record<string, Set<string>> = {};
+  function hashParagraph(text: string) {
+    // Simple hash for deduplication
+    let hash = 0, i, chr;
+    if (text.length === 0) return hash.toString();
+    for (i = 0; i < text.length; i++) {
+      chr = text.charCodeAt(i);
+      hash = ((hash << 5) - hash) + chr;
+      hash |= 0;
     }
-    categorizedContent[section.category].push(section);
+    return hash.toString();
+  }
+  for (const section of categorizedSections) {
+    const category = normalizeText(section.category);
+    if (!categorizedContent[category]) {
+      categorizedContent[category] = [];
+      paragraphHashes[category] = new Set();
+    }
+    // Split section content into paragraphs
+    const paragraphs = section.content.split(/\n{2,}/);
+    for (let para of paragraphs) {
+      const norm = normalizeText(para);
+      if (norm.length < 40) continue; // skip very short
+      const hash = hashParagraph(norm);
+      if (!paragraphHashes[category].has(hash)) {
+        paragraphHashes[category].add(hash);
+        categorizedContent[category].push(para.trim());
+      }
+    }
   }
 
   // Helper for concurrency-limited Promise.all
@@ -56,15 +82,13 @@ export async function createEmbeddingsFromCategorizedSections(
   }
 
   // Prepare per-category processing tasks
-  const categoryTasks = Object.entries(categorizedContent).map(([category, sections]) => async () => {
-    if (sections.length === 0) return;
+  const categoryTasks = Object.entries(categorizedContent).map(([category, paragraphs]) => async () => {
+    if (paragraphs.length === 0) return;
     try {
-      // Sort by confidence
-      sections.sort((a, b) => b.confidence - a.confidence);
-      // Combine content
-      const combinedContent = sections
-        .map(section => `[Confidence: ${section.confidence.toFixed(2)}] ${section.content}`)
-        .join('\n\n');
+      // Merge unique paragraphs for this category
+      const combinedContent = paragraphs.join('\n\n');
+      // Log merged content for debugging
+      console.log(`\n[DEBUG] Merged content for category '${category}':\n${combinedContent}\n[END MERGED CONTENT]\n`);
 
       // Use robust content hash
       const contentHash = generateContentHash(combinedContent, 'en');
@@ -104,7 +128,9 @@ export async function createEmbeddingsFromCategorizedSections(
       let currentConfidence = 0;
       let chunkCount = 0;
       let sentences: { text: string; confidence: number }[] = [];
-      for (const section of sections) {
+      // For chunking, use all original sections for this category
+      const originalSections = categorizedSections.filter(s => normalizeText(s.category) === category);
+      for (const section of originalSections) {
         const sectionText = `[Confidence: ${section.confidence.toFixed(2)}] ${section.content}`;
         const sectionSentences = splitIntoSentences(sectionText).map(s => ({ text: s, confidence: section.confidence }));
         sentences = sentences.concat(sectionSentences);
@@ -140,7 +166,7 @@ export async function createEmbeddingsFromCategorizedSections(
         const run = async () => {
           while (i < tasks.length) {
             const cur = i++;
-            results[cur] = await tasks[cur]();
+            results[cur] = await tasks[cur]()
           }
         };
         await Promise.all(Array.from({ length: concurrency }, run));
@@ -188,24 +214,37 @@ export async function createEmbeddingsFromCategorizedSections(
   await limitConcurrency(categoryTasks, concurrencyLimit);
 
   const presentCategories = new Set(
-    categorizedSections.map(section => section.category)
+    categorizedSections.map(section => normalizeText(section.category))
   );
   const missingCategories = VALID_CATEGORIES.filter(
-    cat => !presentCategories.has(cat)
+    cat => !presentCategories.has(normalizeText(cat))
   );
 
   // Save crawl session
-  await supabase.from('crawlSessions').insert([{
+  const crawlSessionPayload = {
+    id: uuidv4(),
     businessId: businessId,
     startTime: Date.now(),
     endTime: Date.now(),
     totalPages: categorizedSections.length,
     successfulPages: categorizedSections.length,
     failedPages: 0,
-    categories: Array.from(presentCategories),
+    categories: Object.fromEntries(Array.from(presentCategories).map(cat => [cat, 1])),
     errors: [],
-    missingInformation: JSON.stringify(missingCategories)
-  }]);
+    missingInformation: missingCategories.join(', ')
+  };
+  const { data: crawlSessionData, error: crawlSessionError } = await supabase.from('crawlSessions').insert([crawlSessionPayload]);
+  if (crawlSessionError) {
+    console.error('Supabase crawlSessions insert error:', {
+      message: crawlSessionError.message,
+      details: crawlSessionError.details,
+      code: crawlSessionError.code,
+      hint: crawlSessionError.hint,
+      payload: crawlSessionPayload
+    });
+  } else {
+    console.log('Supabase crawlSessions insert success:', crawlSessionData);
+  }
 
   console.log('Finished createEmbeddingsFromCategorizedSections');
 } 

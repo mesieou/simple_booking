@@ -96,7 +96,7 @@ export async function chatWithOpenAI(messages: any[]) {
     const request = async () => {
       try {
         const response = await openai.chat.completions.create({
-          model: "gpt-3.5-turbo",
+          model: "gpt-4o",
           messages,
         });
         resolve(response);
@@ -111,7 +111,7 @@ export async function chatWithOpenAI(messages: any[]) {
 
 export async function chatWithFunctions(messages: any[], functions: any[]) {
   return await openai.chat.completions.create({
-    model: "gpt-3.5-turbo",
+    model: "gpt-4o",
     messages,
     functions,
     function_call: "auto",
@@ -227,7 +227,7 @@ Return only the best matching category from the list above.`;
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: "gpt-4o",
       messages: [
         {
           role: "system",
@@ -251,15 +251,47 @@ Return only the best matching category from the list above.`;
 }
 
 export async function sendMergedTextToGpt4Turbo(text: string, businessId: string, websiteUrl: string): Promise<string> {
-  const prompt = `The following is visible content extracted from a business website. Your job is to analyze the full text and divide it into logical sections. Then, for each section, return:\n\n- "category": one of the following:\n${VALID_CATEGORIES.map(cat => `  - "${cat}"`).join('\n')}\n  - OR a custom lowercase snake_case category (e.g. "testimonials", "news_updates") if needed\n- "content": full text of the section\n- "confidence": a score from 0.5 to 1.0 based on how well the content fits the chosen category\n\nGuidelines:\n- Group contextually related content into single sections\n- Don't split questions from answers (especially in FAQs)\n- If a section touches multiple themes, choose the dominant one\n- Skip generic layout/footer/header content\n\nReturn a valid JSON array like this:\n\n[\n  {\n    "category": "faq",\n    "content": "How long does it take... You need to keep receipts for 5 years...",\n    "confidence": 0.95\n  }\n]\n\nHere is all the cleaned text content from the site (ID: ${businessId}, URL: ${websiteUrl}):\n\n${text}`;
+  const prompt = `The following is visible content extracted from a business website. Your job is to analyze the full text and divide it into logical sections. For each section, return:
+
+- "category": one of the following, written EXACTLY as shown (case, spaces, and punctuation must match):
+${VALID_CATEGORIES.map(cat => `  - "${cat}"`).join('\n')}
+
+Do NOT invent new categories. If content does not fit any, use the closest match from the list above.
+- "content": the full, detailed text of the section (do NOT omit or summarize any details)
+- "confidence": a score from 0.5 to 1.0 based on how well the content fits the chosen category
+
+IMPORTANT:
+- You MUST categorize ALL content. Do NOT skip, omit, or summarize any information, even if it seems repetitive or unimportant.
+- Do NOT repeat or duplicate the same information in multiple sections. Each piece of information should appear only once, in the most appropriate category.
+- If content fits multiple categories, include it in the most relevant one, but do NOT copy it to others.
+- The output will be used for a customer assistant. Missing details will degrade its performance.
+- Be as granular as needed to ensure every piece of information is included in some section.
+- If a section touches multiple themes, choose the dominant one but do NOT drop any details.
+- Do not skip generic layout/footer/header content unless it is truly boilerplate (e.g. copyright, navigation links).
+- Do NOT summarize or compress content. Include all original details.
+- Do Not add any information that is not in the text.
+
+Return a valid JSON array like this:
+
+[
+  {
+    "category": "faq",
+    "content": "How long does it take... You need to keep receipts for 5 years...",
+    "confidence": 0.95
+  }
+]
+
+Here is all the cleaned text content from the site (ID: ${businessId}, URL: ${websiteUrl}):
+
+${text}`;
   const response = await openai.chat.completions.create({
-    model: "gpt-4-turbo",
+    model: "gpt-4o",
     messages: [
       { role: "system", content: "You are a helpful assistant that analyzes business websites." },
       { role: "user", content: prompt }
     ],
     temperature: 0.3,
-    max_tokens: 1800
+    max_tokens: 4096
   });
   return response.choices[0]?.message?.content || "";
 }
