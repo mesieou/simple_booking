@@ -7,6 +7,7 @@
 
 // Import the useState, useRef, and useEffect hooks from react to store user input and chat history in memory
 import { useState, useRef, useEffect } from "react";
+import ReactMarkdown from 'react-markdown';
 
 // This is the main UI component for the chatbot
 export default function ChatbotUI() {
@@ -54,9 +55,9 @@ export default function ChatbotUI() {
                                     m.role === "user" 
                                         ? "bg-primary text-primary-foreground" 
                                         : "bg-secondary/20 text-secondary-foreground"
-                                } max-w-lg break-words`}
+                                } max-w-lg break-words prose dark:prose-invert prose-p:my-1`}
                             >
-                                {m.content ?? m.function_call?.name ?? "Bot"}
+                                <ReactMarkdown>{m.content ?? m.function_call?.name ?? "Bot"}</ReactMarkdown>
                             </div>
                         </div>
                     );     
