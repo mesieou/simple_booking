@@ -1,0 +1,39 @@
+```json
+[
+  {
+    "category": "services offered",
+    "content": "Y&S Accounting provides an online platform to assist Clients with their tax return preparation and lodgement. The Service includes the collection of necessary information, data entry, calculations, and submission of tax returns to the relevant tax authorities.",
+    "confidence": 0.95
+  },
+  {
+    "category": "terms & conditions / legal policies",
+    "content": "Terms and Conditions – Y&S Accounting Online Tax Return Service(Required) I agree to the Terms and Conditions.Please read these Terms and Conditions (“Terms”) carefully before using the Y&S Accounting Online Tax Return Service (“Service”). These Terms apply to all clients (“Clients”) using our Service. By using the Service, you agree to be bound by these Terms. If you do not agree with any part of these Terms, please do not use the Service. Eligibility: By using the Service, you confirm that you are legally eligible to enter into a contract and provide accurate and truthful information required for tax return preparation. Accuracy of Information: Clients are responsible for providing accurate and complete information required for tax return preparation. Y&S Accounting relies on the information provided by Clients and does not verify the accuracy or completeness of the data. Clients should review the information entered into the Service and notify Y&S Accounting of any errors or omissions promptly. Privacy and Data Security: Y&S Accounting respects the privacy and confidentiality of Clients’ personal and financial information. We have implemented security measures to protect data from unauthorised access or disclosure. However, Clients acknowledge and understand that no data transmission over the internet can be guaranteed as completely secure. Service Limitations: While Y&S Accounting strives to provide accurate and reliable tax return services, we do not guarantee the accuracy, completeness, or timeliness of the information provided. Clients are responsible for reviewing and confirming the accuracy of the prepared tax return before submission. Fee and Payment: Clients agree to pay the agreed-upon fee for the Service provided by Y&S Accounting. The fee will be communicated prior to the commencement of the Service. Payment should be made promptly and in accordance with the specified payment terms. Refund Policy: Refunds for the Service fees are subject to Y&S Accounting’s refund policy. Clients should refer to the refund policy communicated during the engagement process. Intellectual Property: The Service, including any software, content, or materials provided, is protected by intellectual property rights owned or licensed by Y&S Accounting. Clients agree not to reproduce, modify, distribute, or create derivative works based on the Service without obtaining prior written consent. Indemnification: Clients agree to indemnify and hold Y&S Accounting and its employees, directors, and agents harmless from any claims, damages, or liabilities arising from the use of the Service or any breach of these Terms. Termination: Y&S Accounting reserves the right to terminate or suspend access to the Service at any time for any reason. Clients may terminate their use of the Service by providing written notice to Y&S Accounting. Governing Law: These Terms are governed by and construed in accordance with the laws of the jurisdiction where Y&S Accounting operates. Any disputes arising from the Service or these Terms shall be subject to the exclusive jurisdiction of the courts in that jurisdiction. Modifications: Y&S Accounting reserves the right to modify or update these Terms at any time. Clients will be notified of any significant changes to these Terms. By using the Y&S Accounting Online Tax Return Service, you acknowledge that you have read, understood, and agreed to these Terms and Conditions. If you have any questions or concerns, please contact us prior to using the Service. Last updated: 01 July 2023",
+    "confidence": 1.0
+  },
+  {
+    "category": "pricing or quotes",
+    "content": "Tax return service(Required) Price: This field is hidden when viewing the formQuantity(Required)Please enter a number from 1 to 1.If your income is more than $23,365, we need to apply for a medicare exemption on your behalf. This ONLY applies to temporary visa holders (example: Student visa) If you hold a passport from any of the following countries, please DO NOT pay for the medicare levy exemption. Italy • the Netherlands • Norway • Belgium • Slovenia. Extras Medicare Levy Exemption Promo Code Total Credit Card/Debit Card(Required)Card Details Cardholder Name",
+    "confidence": 0.9
+  },
+  {
+    "category": "booking or scheduling",
+    "content": "Save and Continue Later",
+    "confidence": 0.6
+  },
+  {
+    "category": "faq",
+    "content": "The logbook method requires taxpayers to maintain a detailed record, known as a logbook, of their car’s business use over a continuous 12-week period. The logbook should include the following information: Start and end dates of the logbook period. Odometer readings at the start and end of the logbook period. Total kilometres traveled during the logbook period. Business-related trips, including the date, distance traveled, purpose of the trip, and odometer readings at the start and end of each trip. Once the logbook is completed, it can be used to determine the business use percentage of the car for the entire year. This percentage is then applied to the total car expenses, including fuel, repairs, maintenance, insurance, registration, and depreciation. The resulting amount represents the deductible portion of the car expenses.",
+    "confidence": 0.85
+  },
+  {
+    "category": "faq",
+    "content": "To be eligible for a tax deduction, the clothing expenses must meet specific criteria set by the ATO. Here are the key points to consider: Occupation-specific clothing: Clothing that is specific and essential to your occupation may be tax deductible. This includes uniforms, protective clothing, and costumes required for your work. Examples could be a nurse’s scrubs, a police officer’s uniform, or a chef’s kitchen attire. Compulsory uniforms: If your employer requires you to wear a specific uniform that is distinctive to your employer, you can claim the expenses for purchasing, cleaning, repairing, or replacing the uniform. The uniform should have the employer’s logo or be unique to your workplace. Protective clothing: Expenses for purchasing, cleaning, repairing, or replacing protective clothing used to protect you from the risk of illness, injury, or harm in your work are generally tax deductible. Examples include safety boots, hi-vis clothing, and safety goggles.",
+    "confidence": 0.85
+  },
+  {
+    "category": "faq",
+    "content": "In Australia, the donations are tax deductible if they are made to eligible charitable organisations that have been endorsed by the Australian Taxation Office (ATO) as Deductible Gift Recipients (DGRs).",
+    "confidence": 0.9
+  }
+]
+```

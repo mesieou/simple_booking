@@ -1,0 +1,33 @@
+The following is visible content extracted from a business website. Your job is to analyze the full text and divide it into logical sections. For each section, return:
+
+- "category": one of the following, written EXACTLY as shown (case, spaces, and punctuation must match):
+  - "services offered"\n  - "pricing or quotes"\n  - "contact"\n  - "booking or scheduling"\n  - "about / trust-building"\n  - "faq"\n  - "terms & conditions / legal policies"
+
+Do NOT invent new categories. If content does not fit any, use the closest match from the list above.
+- "content": the full, detailed text of the section (do NOT omit or summarize any details)
+- "confidence": a score from 0.5 to 1.0 based on how well the content fits the chosen category
+
+IMPORTANT:
+- You MUST categorize ALL content. Do NOT skip, omit, or summarize any information, even if it seems repetitive or unimportant.
+- Do NOT repeat or duplicate the same information in multiple sections. Each piece of information should appear only once, in the most appropriate category.
+- If content fits multiple categories, include it in the most relevant one, but do NOT copy it to others.
+- The output will be used for a customer assistant. Missing details will degrade its performance.
+- Be as granular as needed to ensure every piece of information is included in some section.
+- If a section touches multiple themes, choose the dominant one but do NOT drop any details.
+- Do not skip generic layout/footer/header content unless it is truly boilerplate (e.g. copyright, navigation links).
+- Do NOT summarize or compress content. Include all original details.
+- Do Not add any information that is not in the text.
+
+Return a valid JSON array like this:
+
+[
+  {
+    "category": "faq",
+    "content": "How long does it take... You need to keep receipts for 5 years...",
+    "confidence": 0.95
+  }
+]
+
+Here is all the cleaned text content from the site (ID: 0919f2b7-9af2-4094-b8b7-f7a70a59599a, URL: https://taxbne.com.au/):
+
+Download your Guide hereIf you would like to stay up to date with all our latest news then please subscribe belowThank you! Your submission has been received!Oops! Something went wrong while submitting the form.CloseResourcesStay up to date with the latest accounting and tax insights in AustraliaGeneral5 min readWhat does the ATO data matching program consist of?The Data Matching Program is designed to compare information provided by taxpayers with various databases.Read moreGeneral5 min readBenefits of filing my tax return with a registered tax agentIn Australia, when we engage a tax agent, we obtain certain benefits. But before understanding what benefits we can gain, it's essential to know who tax agents are.Read moreDeducciones 5 min readGuide to Calculating Vehicle DeductionsIf the use of your vehicle is related to your work activity, the expenses incurred can be deducted in your annual tax return. There are two methods for calculating the deduction of these expenses. The only restriction in choosing the method for calculating the deduction is the limitation of 5000 km per year per vehicle (see below for a more detailed explanation)Read more5 min readWhat is the Taxable Payments Annual Report (TPAR)?This is a document that reports payments made to contractors and subcontractors during the fiscal year. This is a system implemented by the ATO to prevent contractors from failing to declare their income and therefore evading taxes.Read moreGeneral5 min readWhat is the Medicare levy and how does it affect my tax return?It's possible to obtain a reduction or exemption from paying the Medicare levy, depending on your circumstances and those of your spouse. You should consider separately your right to a reduction or exemption.Read moreDeducciones 5 min readTax Deductions for Employees in the Cleaning IndustryWe understand how hard you work every day and that you deserve to keep as much of your hard-earned income as possible. However, are you aware that each year you might be unnecessarily giving money away to the tax office? If you don't meticulously handle your annual tax return and claim all the deductions you're entitled to as a cleaner, you could be losing a significant amount of money.Read more5 min readMaximising Your Tax Savings: The Most Common Expenses That Are Tax Deductible in AustraliaWhen it comes to managing your finances, it's important to take advantage of every opportunity to minimize your tax liability. One effective way to do this is by claiming tax deductions for eligible expenses. In Australia, there are numerous expenses that can be deducted, allowing individuals and businesses to retain more of their hard-earned money. In this blog post, we will explore the most common expenses that are tax deductible in Australia, empowering you to make the most of these opportunities.Read more5 min readTax treatment of trader vs investorThere is no fixed list of rules to determine who is and who is not a trader. To accurately determine if you are a trader, you must consider your intention in undertaking the activity and the objective facts of the activity. Even if you have determined that you are a trader, the ATO may not agree with your interpretation.Read moreGuia Básica [Español]Download e-bookABN Partnership [Español]Download e-bookFood delivery [Español]Download e-bookY&S Accounting proudly specialises in providing professional consulting and accounting services to the Latin American community in Australia since 2008. Accounting servicesPersonal tax returnsBusiness adviseXero health checkBusiness registrationBookkeepingStart-up adviseAddress:Level 38, 71 Eagle St, Brisbane QLD 4000Contact:1300 189 682brisbane@ysaccounting.com.au© 2023 Y&S Accounting Brisbane. All right reserved.Privacy PolicyTerms of ServiceCookies SettingsEN

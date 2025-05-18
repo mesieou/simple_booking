@@ -33,11 +33,33 @@ export class Embedding {
     const supa = await createClient();
     const insertData = {
       ...data,
+      chunkIndex: data.chunkIndex ?? 0,
       createdAt: new Date().toISOString(),
     };
     const { data: result, error } = await supa.from("embeddings").insert(insertData).select().single();
-    if (error) handleModelError("Failed to insert embedding", error);
-    if (!result) handleModelError("No data returned after insert", new Error("No data returned"));
+    
+    if (error) {
+      console.error('Failed to insert embedding:', {
+        error: error.message,
+        details: error.details,
+        code: error.code,
+        hint: error.hint
+      });
+      handleModelError("Failed to insert embedding", error);
+    }
+    
+    if (!result) {
+      console.error('No data returned after embedding insert');
+      handleModelError("No data returned after insert", new Error("No data returned"));
+    }
+
+    console.log('Successfully added embedding:', {
+      id: result.id,
+      documentId: result.documentId,
+      category: result.category,
+      chunkIndex: result.chunkIndex
+    });
+
     return result;
   }
 

@@ -1,0 +1,14 @@
+```json
+[
+  {
+    "category": "booking or scheduling",
+    "content": "Passwordless Login w/ Social Auth Email OR Continue with Google New here? Create an account.",
+    "confidence": 0.7
+  },
+  {
+    "category": "about / trust-building",
+    "content": "Thank you! Your submission has been received!",
+    "confidence": 0.6
+  }
+]
+```
