@@ -91,14 +91,36 @@ async function waitForRateLimit(tokens: number): Promise<void> {
   tokenCount += tokens;
 }
 
-export async function chatWithOpenAI(messages: any[]) {
+// Define the response type for chat completions
+export interface ChatCompletionResponse {
+
+  id: string;
+  object: string;
+  created: number;
+  model: string;
+  choices: {
+    index: number;
+    message: {
+      role: 'assistant' | 'user' | 'system' | 'function';
+      content: string | null;
+    };
+    finish_reason: 'stop' | 'length' | 'function_call' | 'content_filter' | null;
+  }[];
+  usage: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+}
+
+export async function chatWithOpenAI(messages: any[]): Promise<ChatCompletionResponse> {
   return new Promise((resolve, reject) => {
     const request = async () => {
       try {
         const response = await openai.chat.completions.create({
           model: "gpt-4o",
           messages,
-        });
+        }) as ChatCompletionResponse;
         resolve(response);
       } catch (error) {
         reject(error);
@@ -181,7 +203,7 @@ export async function detectMissingInformation(
   const prompt = `You are reviewing the content of a business website that has been categorized. Based on the content in each category, identify which of the following critical items are MISSING or INCOMPLETE:\n\n${VALID_CATEGORIES.map((cat) => `- ${cat}`).join("\n")}\n\nCategorized Content:\n${formattedContent}`;
 
   const response = await openai.chat.completions.create({
-    model: "gpt-4",
+    model: "gpt-4o",
     messages: [
       {
         role: "system",
@@ -193,7 +215,15 @@ export async function detectMissingInformation(
     max_tokens: 500,
   });
 
-  const result = response.choices[0]?.message?.content || "";
+  let result = response.choices[0]?.message?.content || "";
+  
+  // Format the response to ensure proper spacing and line breaks
+  result = result
+    .replace(/([.!?])\s*(?=[A-Z])/g, '$1\n\n') // Add double newline after sentences
+    .replace(/\n{3,}/g, '\n\n') // Normalize multiple newlines to double newline
+    .replace(/(\S)(\n)(\S)/g, '$1$2$3') // Ensure no spaces before newlines
+    .trim();
+
   console.log("\nMissing information analysis result:");
   console.log(result);
 
@@ -334,3 +364,65 @@ export async function analyzeSentiment(text: string): Promise<number | undefined
   }
 }
 
+export interface ChatMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+}
+
+/**
+ * Classifies a message as 'clear', 'unclear', or 'irrelevant' with optional chat history context.
+ * @param message The message to classify
+ * @param chatHistory Optional array of previous messages in the conversation for context
+ * @returns A promise that resolves to 'clear' | 'unclear' | 'irrelevant' or undefined if an error occurs
+ */
+export async function classifyMessage(
+  message: string, 
+  chatHistory: ChatMessage[] = []
+): Promise<'clear' | 'unclear' | 'irrelevant' | undefined> {
+  try {
+    interface ChatResponse {
+      choices: Array<{
+        message: {
+          content: string;
+        };
+      }>;
+    }
+
+    // Format the chat history for context
+    const historyContext = chatHistory.length > 0 
+      ? `\n\nPrevious conversation context (most recent first):\n` +
+        chatHistory
+          .slice(-5) // Limit to last 5 messages to avoid too much context
+          .reverse() // Show most recent first
+          .map(msg => `${msg.role}: ${msg.content}`)
+          .join('\n')
+      : '';
+
+    const prompt = `You are a message clarity classifier.\n\nYour job is to receive a user message and its conversation context, then classify it into one of the following labels:\n\n- clear → the message is well-formed and understandable; the bot can reply without needing more context\n- unclear → the message is vague, ambiguous, or lacks context; it would require clarification before responding\n- irrelevant → the message has nothing to do with customer service or is off-topic (e.g., emojis, jokes, random text)\n\nImportant considerations:\n1. If the message refers to something in the conversation history, it might be clear\n2. If the message is a follow-up without context (e.g., \"What about that thing?\"), it's likely unclear\n3. If the message is completely out of context from the conversation, it might be irrelevant\n\nInstructions:\n- Only reply with one of the three labels: \`clear\`, \`unclear\`, or \`irrelevant\`\n- Do not provide any explanation or extra text\n- Be strict — if there is any doubt or ambiguity, classify it as \`unclear\`\n\nExamples with context:\n1. Previous: user: \"I want to book a moving service\"\n   New: \"For next Monday\" → clear  \n2. Previous: (no context)\n   New: \"For next Monday\" → unclear  \n3. New: \"😂😂😂\" → irrelevant\n\nNow classify this message:${historyContext}\n\nNew message to classify:\n${message}`;
+
+    const messages = [
+      {
+        role: "system" as const,
+        content: "You are a helpful assistant that classifies message clarity based on both the message and conversation context."
+      },
+      {
+        role: "user" as const,
+        content: prompt
+      }
+    ];
+
+    const response = await chatWithOpenAI(messages) as unknown as ChatResponse;
+
+    const classification = response.choices[0]?.message?.content?.trim().toLowerCase();
+    
+    // Validate the response is one of the expected values
+    if (classification === 'clear' || classification === 'unclear' || classification === 'irrelevant') {
+      return classification;
+    }
+    
+    return 'unclear'; // Default to 'unclear' if the response is not as expected
+  } catch (error) {
+    console.error('Error classifying message:', error);
+    return undefined;
+  }
+}
