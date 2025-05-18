@@ -12,7 +12,7 @@ export async function signUpAction(formData: FormData) {
     throw new Error("Passwords do not match");
   }
 
-  const supabase = await createClient();
+  const supabase = createClient();
 
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -38,7 +38,7 @@ export async function signInAction(formData: FormData) {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
 
-  const supabase = await createClient();
+  const supabase = createClient();
 
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
@@ -58,14 +58,14 @@ export async function signInAction(formData: FormData) {
 }
 
 export async function signOutAction() {
-  const supabase = await createClient();
+  const supabase = createClient();
   await supabase.auth.signOut();
   redirect("/sign-in");
 }
 
 export async function forgotPasswordAction(formData: FormData) {
   const email = formData.get("email") as string;
-  const supabase = await createClient();
+  const supabase = createClient();
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/protected/reset-password`,
@@ -87,7 +87,7 @@ export async function resetPasswordAction(formData: FormData) {
     throw new Error("Passwords do not match");
   }
 
-  const supabase = await createClient();
+  const supabase = createClient();
 
   const { error } = await supabase.auth.updateUser({
     password: password,
