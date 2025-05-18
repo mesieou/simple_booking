@@ -18,10 +18,12 @@ const getNextDays = (count: number): Date[] => {
 };
 
 interface CalendarProps {
+  providerId: string;
+  size: 'one' | 'few' | 'house';
   onSelect?: (date: Date, time?: string) => void;
 }
 
-export default function Calendar({ onSelect }: CalendarProps) {
+export default function Calendar({ providerId, size, onSelect }: CalendarProps) {
   const [showFullMonth, setShowFullMonth] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const daysToShow = showFullMonth ? 30 : 5;
@@ -81,7 +83,9 @@ export default function Calendar({ onSelect }: CalendarProps) {
             Available schedules for {selectedDate.toDateString()}
           </h3>
           <Horarios 
+            providerId={providerId}
             date={selectedDate} 
+            size={size}
             onTimeSelect={handleTimeSelect}
             aria-labelledby="horarios-title" 
           />

@@ -14,7 +14,7 @@ import { createEmbeddings } from '../../../lib/seed/create-embeddings';
 export async function POST(request: Request) {
   try {
     // Create a Supabase client with service role key
-    const supabase = await createClient();
+    const supabase = createClient();
     
     // Clear existing data
     await clearExistingData(supabase);

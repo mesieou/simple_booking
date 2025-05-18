@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
 export async function getSession() {
-  const supabase = await createClient();
+  const supabase = createClient();
   const { data: { session } } = await supabase.auth.getSession();
   return session;
 }

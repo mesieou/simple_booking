@@ -2,7 +2,8 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import BookingSummary from '@/components/BookingSummary';
-import React, { useState } from 'react';
+import React, { useState, use } from 'react';
+import ProviderTitle from '@/app/components/ProviderTitle';
 
 const SIZE_OPTIONS = [
   { key: 'one', label: 'One item', tarifa: 46, luggers: 1, vehiculo: 'Pickup' },
@@ -10,9 +11,10 @@ const SIZE_OPTIONS = [
   { key: 'house', label: 'House', tarifa: 120, luggers: 3, vehiculo: 'Truck' },
 ];
 
-export default function BookingMovingStep() {
+export default function BookingMovingStep({ params }: { params: Promise<{ providerId: string }> }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { providerId } = use(params);
 
   // Obtener los datos de la URL
   const origen = searchParams.get('origen') || '--';
@@ -37,7 +39,10 @@ export default function BookingMovingStep() {
   };
 
   return (
+    <div className="container mx-auto px-4 py-8">
+      <ProviderTitle providerId={providerId} />
     <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row items-start justify-center p-4 md:p-12 max-w-7xl min-w-[320px] w-full mx-auto">
+
       {/* Columna izquierda: Resumen */}
       <div className="w-full md:w-1/2 mb-8 md:mb-0 md:mr-8 flex flex-col items-center">
         <BookingSummary
@@ -81,6 +86,7 @@ export default function BookingMovingStep() {
           </button>
         </div>
       </div>
+    </div>
     </div>
   );
 } 
