@@ -296,3 +296,41 @@ ${text}`;
   return response.choices[0]?.message?.content || "";
 }
 
+/**
+ * Analyzes the sentiment of a text and returns a score between -1 (very negative) and 1 (very positive).
+ * @param text The text to analyze
+ * @returns A promise that resolves to a number between -1 and 1, or undefined if an error occurs
+ */
+export async function analyzeSentiment(text: string): Promise<number | undefined> {
+  try {
+    interface ChatResponse {
+      choices: Array<{
+        message: {
+          content: string;
+        };
+      }>;
+    }
+
+    const response = await chatWithOpenAI([
+      {
+        role: "system" as const,
+        content: "You are a sentiment analysis tool. Analyze the sentiment of the following message and respond with ONLY a number between -1 and 1, where -1 is very negative, 0 is neutral, and 1 is very positive."
+      },
+      {
+        role: "user" as const,
+        content: text
+      }
+    ]) as unknown as ChatResponse;
+
+    const scoreText = response.choices[0]?.message?.content?.trim();
+    if (!scoreText) return undefined;
+
+    const score = parseFloat(scoreText);
+    // Clamp the score between -1 and 1 in case the model returns an out-of-range value
+    return Math.max(-1, Math.min(1, isNaN(score) ? 0 : score));
+  } catch (error) {
+    console.error('Error analyzing sentiment:', error);
+    return undefined;
+  }
+}
+
