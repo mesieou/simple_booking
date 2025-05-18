@@ -4,17 +4,21 @@ import { useLanguage } from "@/lib/translations/language-context";
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import LanguageSwitcher from './language-switcher';
+import { useProvider } from '@/app/context/ProviderContext';
 
 export default function Menu() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
   const { t } = useLanguage();
+  const { providerId } = useProvider();
 
   const links = [
     { href: '/', label: t('home') },
     { href: '/about', label: t('about') },
     { href: '/services', label: t('services') },
-    { href: '/booking/distance', label: t('booking') },
+    providerId
+      ? { href: `/${providerId}/booking/distance`, label: t('booking') }
+      : { href: '#', label: t('booking'), disabled: true },
   ];
 
   return (
@@ -50,17 +54,18 @@ export default function Menu() {
             </svg>
           </button>
           <ul className="space-y-4">
-            {links.map(({ href, label }) => {
+            {links.map(({ href, label, disabled }) => {
               const isActive = pathname === href;
               return (
                 <li key={href}>
                   <a
-                    href={href}
+                    href={disabled ? undefined : href}
                     className={`block py-2 px-3 rounded-sm text-lg ${
                       isActive
                         ? 'text-rose-600'
                         : 'text-gray-100 hover:bg-gray-700'
-                    }`}
+                    } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    aria-disabled={disabled}
                   >
                     {label}
                   </a>
@@ -77,17 +82,18 @@ export default function Menu() {
       {/* Menú desktop */}
       <div className="hidden md:flex md:w-auto md:order-1 items-center">
         <ul className="flex flex-col p-4 md:p-0 mt-4 font-medium border rounded-lg md:space-x-8 rtl:space-x-reverse md:flex-row md:mt-0 md:border-0 shadow-xl">
-          {links.map(({ href, label }) => {
+          {links.map(({ href, label, disabled }) => {
             const isActive = pathname === href;
             return (
               <li key={href}>
                 <a
-                  href={href}
+                  href={disabled ? undefined : href}
                   className={`block py-2 px-3 rounded-sm md:p-0 text-lg
                     ${isActive
                       ? 'text-rose-600 dark:text-blue-500'
                       : 'text-gray-100 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 md:hover:bg-transparent md:hover:text-blue-700 md:dark:hover:text-blue-500'}
-                  `}
+                    ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  aria-disabled={disabled}
                 >
                   {label}
                 </a>
