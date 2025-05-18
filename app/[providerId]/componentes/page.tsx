@@ -50,7 +50,6 @@ export default function Componentes({ params }: { params: Promise<{ providerId: 
       <Direction texto="Pick up from"/>
       <Direction texto="Move to"/>
       <Distance/>
-      <Calendar/>
       <Menu/>
       <LanguageSwitcher/>
     </>
