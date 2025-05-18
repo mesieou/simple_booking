@@ -2,8 +2,8 @@
 [
   {
     "category": "terms & conditions / legal policies",
-    "content": "approval. Note that APES GN 30 Outsourced Services is guidance only. Whilst it is not mandatory for public practice certificate holders to follow this guidance CPA Australia recommends that members consider and apply to the extent practicable when providing or utilizing outsourced services. Under Tax Practitioner Board (TPB)regulations, however, it is mandated that a tax agent must disclose this information to clients. Where you use outsourced services on a regular basis with a multitude of clients you may wish to develop a separate standard form of disclosure. Outsourced Services Acceptance of our services in conjunction with this engagement document indicates your acceptance of the use of outsourced services as described. Where the outsourced service requires the disclosure of personal information to an overseas recipient a consequence of your consent is that Y&S Accounting will be required to take reasonable steps to ensure that the Australian Privacy Principles are complied with by the overseas recipients of the Personal Information. Period of Engagement This engagement will start upon acceptance of the terms of engagement by the Client in line with this brochure. This engagement document will be effective for future years unless we issue an amended one to you.",
-    "confidence": 0.9
+    "content": "approval. Note that APES GN 30 Outsourced Services is guidance only. Whilst it is not mandatory for public practice certificate holders to follow this guidance CPA Australia recommends that members consider and apply to the extent practicable when providing or utilizing outsourced services. Under Tax Practitioner Board (TPB) regulations, however, it is mandated that a tax agent must disclose this information to clients. Where you use outsourced services on a regular basis with a multitude of clients you may wish to develop a separate standard form of disclosure. Outsourced Services Acceptance of our services in conjunction with this engagement document indicates your acceptance of the use of outsourced services as described. Where the outsourced service requires the disclosure of personal information to an overseas recipient a consequence of your consent is that Y&S Accounting will be required to take reasonable steps to ensure that the Australian Privacy Principles are complied with by the overseas recipients of the Personal Information. Period of Engagement This engagement will start upon acceptance of the terms of engagement by the Client in line with this brochure. This engagement document will be effective for future years unless we issue an amended one to you.",
+    "confidence": 0.95
   },
   {
     "category": "pricing or quotes",
@@ -13,17 +13,17 @@
   {
     "category": "terms & conditions / legal policies",
     "content": "Limitation of Liability Our liability is limited by a scheme approved under Professional Standards Legislation. Further information on the scheme is available from the Professional Standards Councils’ website: psc.gov.au. Acceptance of our services in conjunction with this information brochure indicates that you understand and accept the arrangements. This information will be effective for future engagements unless we advise you of any change.",
-    "confidence": 0.9
+    "confidence": 0.95
   },
   {
     "category": "terms & conditions / legal policies",
     "content": "Cloud computing Y&S Accounting operates on a paperless basis, meaning that we store your records electronically. In addition to our own IT infrastructure, we use off site email storage, online banking facilities, and we use online and cloud base accounting systems and documents to storage facilities including, but no limited to, the Tax Agent portal, ASIC portal, QuickBooks Online, Xero, MYOB, BGL360, Dropbox and One Drive. The cloud storage facilities and IT servers operated by the providers may be located outside of Australia. By engaging our services, you give consent that your information may be provided and stored using these systems to provide our services to you. While we make every reasonable effort to maintain data stored in these platforms securely, using methods such as firewalls, anti-virus software, encryption, digital certificates, Auskey, password protection and two step identification where available, and our vendors have covenanted to us that they will also make such a reasonable efforts, we advise you that no computer system is free from risk of data breach. Accordingly, as part of these terms of engagements you agree to indemnify and release Y&S Accounting from all claims for damages arising from the use of cloud-based storage of cloud-based accounting services arising or resulting from the provision of our services to you.",
-    "confidence": 0.9
+    "confidence": 0.95
   },
   {
     "category": "terms & conditions / legal policies",
     "content": "Problem resolution We aim to provide a high quality of services at all times. If you would like to discuss how the services can be improved or you would like to make a complaint, you can contact Yaritza Salazar, the Director of Y&S Accounting Pty Ltd. We undertake to investigate any complain promptly to resolve, the difficulties. In the event of a dispute, where fees remain unpaid beyond the due date, we reserve the right to suspend provision of the services until such time as the dispute is resolved or the fees are paid. The suspension of the services will not affect your obligation to pay us for services rendered to the date of suspension.",
-    "confidence": 0.85
+    "confidence": 0.9
   },
   {
     "category": "about / trust-building",
@@ -42,8 +42,8 @@
   },
   {
     "category": "terms & conditions / legal policies",
-    "content": "© 2023 Y&S Accounting Brisbane. All right reserved. Privacy Policy Terms of Service Cookies Settings",
-    "confidence": 0.85
+    "content": "Privacy Policy Terms of Service Cookies Settings",
+    "confidence": 0.9
   }
 ]
 ```

@@ -8,7 +8,7 @@
   {
     "category": "services offered",
     "content": "Accounting services Personal tax returns Business advise Xero health check Business registration Bookkeeping Start-up advise",
-    "confidence": 1.0
+    "confidence": 0.95
   },
   {
     "category": "contact",

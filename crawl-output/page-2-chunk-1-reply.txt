@@ -2,23 +2,28 @@
 [
   {
     "category": "about / trust-building",
-    "content": "EN10,000+Tax returns processed10+Years of experience100+Verified reviewsOur ResultsY&S Accounting has helped several businesses and thousands of individuals to stay compliant with the ATO and to achieve their financial and business goals.Our MissionTo provide superior quality accounting services for the wellbeing of the Latin American community in Australia.Our VisionTo become Australia’s most trusted accountancy and business advisory service for Latin American immigrants. We aim to achieve our vision by embracing the following statements: Equality of opportunities for people with a multicultural background. Cloud accounting and automation are key to business success.We believe starting and managing a business, should be simple and stress-free. Let’s work together",
-    "confidence": 1.0
+    "content": "EN10,000+Tax returns processed10+Years of experience100+Verified reviewsOur ResultsY&S Accounting has helped several businesses and thousands of individuals to stay compliant with the ATO and to achieve their financial and business goals.Our MissionTo provide superior quality accounting services for the wellbeing of the Latin American community in Australia.Our VisionTo become Australia’s most trusted accountancy and business advisory service for Latin American immigrants. We aim to achieve our vision by embracing the following statements: Equality of opportunities for people with a multicultural background. Cloud accounting and automation are key to business success.We believe starting and managing a business, should be simple and stress-free.",
+    "confidence": 0.95
+  },
+  {
+    "category": "booking or scheduling",
+    "content": "Let’s work together Book appointment",
+    "confidence": 0.9
   },
   {
     "category": "about / trust-building",
     "content": "Our TeamY&S Accounting is a company established since 2008, with the aim of providing accounting and tax services to individuals and businesses.Yaritza SalazarFounder and Director BioYaritza has more than 10 years of experience in the provision of financial/accounting services. She graduated from Bond University in 2004 with a bachelor of commerce majoring in accounting and completed her CPA in 2007. The combined exposure to high net worth clients at various companies throughout her career, as well as individuals and businesses at her own practice has given her a very broad view of accounting and taxation matters.Professional QualificationsBachelor of Commerce – Major in AccountingCPA MemberRegistered Tax AgentASIC Registered SMSF AuditorASIC Registered AgentSebastian GarciaBrisbane Manager BioSebastian provides a comprehensive range of professional accounting and business services to Y&S Accounting’s clients – all with the aim of helping them succeed in business. He has over 8 years of accounting experience between Argentina and Australia. Sebastian works with individuals and small to medium enterprises to structure their tax, accounts and finances to maximise financial and business outcomes and to adopt effective accounting software and systems.Professional QualificationsBachelor Degree in Management majoring in Economic and FinanceCPA AssociateCertificate IV in Small Business ManagementXero Certified AdvisorLorena AvendanoAccounting Clerk Professional QualificationsBachelor of AccountingXero Certified AdvisorAlison CifuentesAccounting Clerk Professional QualificationsBachelor of AccountingGraduate Diploma in FinanceXero Certified AdvisorEliana PenaAccounting Clerk Professional QualificationsBachelor of AccountingXero Certified AdvisorThiago Noro MessiasAccounting Clerk Professional QualificationsBachelor of AccountingXero Certified AdvisorY&S Accounting proudly specialises in providing professional consulting and accounting services to the Latin American community in Australia since 2008.",
-    "confidence": 1.0
+    "confidence": 0.95
   },
   {
     "category": "services offered",
     "content": "Accounting servicesPersonal tax returnsBusiness adviseXero health checkBusiness registrationBookkeepingStart-up advise",
-    "confidence": 1.0
+    "confidence": 0.95
   },
   {
     "category": "contact",
     "content": "Address:Level 38, 71 Eagle St, Brisbane QLD 4000Contact:1300 189 682brisbane@ysaccounting.com.au",
-    "confidence": 1.0
+    "confidence": 0.95
   },
   {
     "category": "terms & conditions / legal policies",

@@ -7,17 +7,17 @@
   },
   {
     "category": "services offered",
-    "content": "Accounting services Personal tax returns Business advise Xero health check Business registration Bookkeeping Start-up advise",
+    "content": "Accounting servicesPersonal tax returnsBusiness adviseXero health checkBusiness registrationBookkeepingStart-up advise",
     "confidence": 0.95
   },
   {
     "category": "contact",
-    "content": "Address: Level 38, 71 Eagle St, Brisbane QLD 4000 Contact: 1300 189 682 brisbane@ysaccounting.com.au",
+    "content": "Address:Level 38, 71 Eagle St, Brisbane QLD 4000Contact:1300 189 682brisbane@ysaccounting.com.au",
     "confidence": 0.95
   },
   {
     "category": "terms & conditions / legal policies",
-    "content": "Privacy Policy Terms of Service Cookies Settings",
+    "content": "© 2023 Y&S Accounting Brisbane. All right reserved.Privacy PolicyTerms of ServiceCookies Settings",
     "confidence": 0.85
   }
 ]

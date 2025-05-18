@@ -13,7 +13,7 @@
   {
     "category": "contact",
     "content": "Address:Level 38, 71 Eagle St, Brisbane QLD 4000Contact:1300 189 682brisbane@ysaccounting.com.au",
-    "confidence": 0.95
+    "confidence": 1.0
   },
   {
     "category": "terms & conditions / legal policies",

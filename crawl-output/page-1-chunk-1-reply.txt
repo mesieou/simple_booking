@@ -17,13 +17,13 @@
   },
   {
     "category": "contact",
-    "content": "Still have questions? Contact us now! Y&S Accounting proudly specialises in providing professional consulting and accounting services to the Latin American community in Australia since 2008. Address: Level 38, 71 Eagle St, Brisbane QLD 4000 Contact: 1300 189 682 brisbane@ysaccounting.com.au",
+    "content": "Still have questions? Contact us now! Address: Level 38, 71 Eagle St, Brisbane QLD 4000 Contact: 1300 189 682 brisbane@ysaccounting.com.au",
     "confidence": 1.0
   },
   {
     "category": "terms & conditions / legal policies",
-    "content": "Privacy Policy Terms of Service Cookies Settings",
-    "confidence": 0.9
+    "content": "© 2023 Y&S Accounting Brisbane. All right reserved. Privacy Policy Terms of Service Cookies Settings",
+    "confidence": 1.0
   }
 ]
 ```

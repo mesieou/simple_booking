@@ -3,7 +3,7 @@
   {
     "category": "about / trust-building",
     "content": "ENY&S Accounting proudly specialises in providing professional consulting and accounting services to the Latin American community in Australia since 2008.",
-    "confidence": 0.95
+    "confidence": 0.9
   },
   {
     "category": "services offered",

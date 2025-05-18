@@ -1,58 +1,58 @@
 ```json
 [
   {
-    "category": "about / trust-building",
-    "content": "Starting a business can be approached in various ways. While not every step may be suitable for everyone, it is advised by us to carefully consider and evaluate these recommendations.",
-    "confidence": 0.8
-  },
-  {
     "category": "services offered",
     "content": "Y&S Accounting proudly specialises in providing professional consulting and accounting services to the Latin American community in Australia since 2008. Accounting services Personal tax returns Business advise Xero health check Business registration Bookkeeping Start-up advise",
     "confidence": 0.95
   },
   {
-    "category": "services offered",
-    "content": "Steps to starting a business 1. Market Research 2. Business Plan 3. Business Budgeting and Forecasting 4. Pricing strategies and Cost of Goods Sold 5. Business Structure 6. Small Business Accounting 7. Registering a Business 8. Your Obligations",
+    "category": "about / trust-building",
+    "content": "ENStarting a business can be approached in various ways. While not every step may be suitable for everyone, it is advised by us to carefully consider and evaluate these recommendations.",
     "confidence": 0.9
   },
   {
-    "category": "about / trust-building",
-    "content": "Market Research Market research is vital when starting a business because it gives you important information about the industry, what customers want, and who your competitors are. This helps you make smart decisions and increases your chances of long-term success. Learn more",
+    "category": "services offered",
+    "content": "Steps to starting a business 1. Market Research 2. Business Plan 3. Business Budgeting and Forecasting 4. Pricing strategies and Cost of Goods Sold 5. Business Structure 6. Small Business Accounting 7. Registering a Business 8. Your Obligations",
     "confidence": 0.85
   },
   {
-    "category": "about / trust-building",
-    "content": "Creating a Solid Business Plan Writing a business plan is like crafting a roadmap for your business idea, helping you understand it better and providing a guide for making it happen. Learn more",
+    "category": "services offered",
+    "content": "1. Market Research Market research is vital when starting a business because it gives you important information about the industry, what customers want, and who your competitors are. This helps you make smart decisions and increases your chances of long-term success. Learn more",
     "confidence": 0.85
   },
   {
-    "category": "about / trust-building",
-    "content": "Managing Finances for a Small Businesses It's time to crunch some numbers for your business idea. Budgeting and forecasting play a key role in this process. Learn more",
+    "category": "services offered",
+    "content": "2. Creating a Solid Business Plan Writing a business plan is like crafting a roadmap for your business idea, helping you understand it better and providing a guide for making it happen. Learn more",
     "confidence": 0.85
   },
   {
-    "category": "about / trust-building",
-    "content": "Pricing Strategies and Cost of Goods Sold The pricing strategy you adopt has a direct impact on both your sales volume and the profitability of each transaction. Learn more",
+    "category": "services offered",
+    "content": "3. Managing Finances for a Small Businesses It's time to crunch some numbers for your business idea. Budgeting and forecasting play a key role in this process. Learn more",
     "confidence": 0.85
   },
   {
-    "category": "about / trust-building",
-    "content": "Business Structure The structure of your business determines key aspects, including administrative responsibilities, tax implications, and legal status. Learn more",
+    "category": "services offered",
+    "content": "4. Pricing Strategies and Cost of Goods Sold The pricing strategy you adopt has a direct impact on both your sales volume and the profitability of each transaction. Learn more",
     "confidence": 0.85
   },
   {
-    "category": "about / trust-building",
-    "content": "Small Business Accounting The structure of your business determines key aspects, including administrative responsibilities, tax implications, and legal status. Learn more",
+    "category": "services offered",
+    "content": "5. Business Structure The structure of your business determines key aspects, including administrative responsibilities, tax implications, and legal status. Learn more",
     "confidence": 0.85
   },
   {
-    "category": "about / trust-building",
-    "content": "Registering a Business Following the excitement of choosing to start a business, there are essential paperwork tasks ahead, including ABN application, registration with ASIC, and more. Learn more",
+    "category": "services offered",
+    "content": "6. Small Business Accounting The structure of your business determines key aspects, including administrative responsibilities, tax implications, and legal status. Learn more",
     "confidence": 0.85
   },
   {
-    "category": "about / trust-building",
-    "content": "Your obligations As a business in Australia, you are subject to various obligations at the local, state, and federal levels. These obligations cover a range of areas to ensure legal compliance, fair practices, and public safety. Learn more",
+    "category": "services offered",
+    "content": "7. Registering a Business Following the excitement of choosing to start a business, there are essential paperwork tasks ahead, including ABN application, registration with ASIC, and more. Learn more",
+    "confidence": 0.85
+  },
+  {
+    "category": "services offered",
+    "content": "8. Your obligations As a business in Australia, you are subject to various obligations at the local, state, and federal levels. These obligations cover a range of areas to ensure legal compliance, fair practices, and public safety. Learn more",
     "confidence": 0.85
   },
   {

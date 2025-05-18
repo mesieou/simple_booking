@@ -8,12 +8,12 @@
   {
     "category": "booking or scheduling",
     "content": "Book appointment",
-    "confidence": 0.9
+    "confidence": 0.8
   },
   {
     "category": "about / trust-building",
     "content": "We believe starting and managing a business, should be simple and stress-free. Let’s work together Y&S Accounting proudly specialises in providing professional consulting and accounting services to the Latin American community in Australia since 2008.",
-    "confidence": 0.95
+    "confidence": 0.9
   },
   {
     "category": "services offered",
@@ -23,7 +23,7 @@
   {
     "category": "terms & conditions / legal policies",
     "content": "Privacy Policy Terms of Service Cookies Settings",
-    "confidence": 0.85
+    "confidence": 0.9
   }
 ]
 ```

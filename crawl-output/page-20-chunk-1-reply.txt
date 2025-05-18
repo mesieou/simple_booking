@@ -2,13 +2,13 @@
 [
   {
     "category": "booking or scheduling",
-    "content": "Passwordless Login w/ Social Auth Email OR Continue with Google New here? Create an account.",
-    "confidence": 0.7
+    "content": "Passwordless Login w/ Social AuthEmailORContinue with GoogleNew here? Create an account.",
+    "confidence": 0.8
   },
   {
-    "category": "about / trust-building",
+    "category": "contact",
     "content": "Thank you! Your submission has been received!",
-    "confidence": 0.6
+    "confidence": 0.7
   }
 ]
 ```
