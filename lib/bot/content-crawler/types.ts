@@ -1,6 +1,6 @@
 import { CrawlSession } from '@/lib/models/crawl-session';
 
-export type WebPageCategory =
+export type DocumentCategory =
   | 'services offered'
   | 'pricing or quotes'
   | 'contact'
@@ -10,7 +10,7 @@ export type WebPageCategory =
   | 'terms & conditions / legal policies';
 
 // List of valid categories for runtime validation
-export const VALID_CATEGORIES: WebPageCategory[] = [
+export const VALID_CATEGORIES: DocumentCategory[] = [
   'services offered',
   'pricing or quotes',
   'contact',
@@ -36,7 +36,7 @@ export interface FastCrawlConfig {
 }
 
 export interface CategorizedContent {
-  category: WebPageCategory;
+  category: DocumentCategory;
   content: string;
   confidence: number;
 }
@@ -45,7 +45,7 @@ export interface PageContent {
   url: string;
   title: string;
   content: string;
-  category: WebPageCategory;
+  category: DocumentCategory;
   contentHash: string;
   links: string[];
   businessId: string;
@@ -89,6 +89,9 @@ export interface SimpleCrawlConfig {
   requestDelay?: number;
   maxRetries?: number;
   concurrency?: number;
+  maxDepth?: number;
+  skipProductPages?: boolean; // default true
+  skipBlogPages?: boolean;    // default true
 }
 
 export interface SimpleCrawlState {
@@ -106,4 +109,25 @@ export interface SimpleCrawlResult {
   uniqueParagraphs: number;
   businessId: string;
   websiteUrl: string;
+  crawledUrls?: string[];
+}
+
+export interface PdfProcessingConfig {
+  businessId: string;
+  originalUrl?: string;
+}
+
+export interface PdfProcessingResult {
+  mergedText: string;
+  pageCount: number;
+  uniqueParagraphs: number;
+  businessId: string;
+  originalUrl: string;
+  embeddingsStatus?: string;
+  metadata: {
+    crawlTimestamp: number;
+    status: 'success' | 'error';
+    language: string;
+    fileType: 'pdf';
+  }
 } 

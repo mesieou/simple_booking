@@ -8,7 +8,8 @@
     "start": "next start",
     "seed": "ts-node --loader ts-node/esm scripts/seed.ts",
     "test": "jest",
-    "fetch-real-main": "dotenv -e .env.local -- npx ts-node -r tsconfig-paths/register -P tsconfig.scripts.json lib/bot/website-crawler/fetch-real-main.ts"
+    "fetch-real-main": "dotenv -e .env.local -- npx ts-node -r tsconfig-paths/register -P tsconfig.scripts.json lib/bot/website-crawler/fetch-real-main.ts",
+    "upload-pdf": "npx ts-node -r tsconfig-paths/register -P tsconfig.scripts.json scripts/uploadPdf.ts"
   },
   "dependencies": {
     "@faker-js/faker": "^9.7.0",
@@ -20,7 +21,6 @@
     "@radix-ui/react-toast": "^1.2.13",
     "@supabase/ssr": "latest",
     "@supabase/supabase-js": "^2.49.4",
-    "@types/pdf-parse": "^1.1.5",
     "autoprefixer": "10.4.20",
     "axios": "^1.7.2",
     "cheerio": "^1.0.0",
@@ -30,6 +30,7 @@
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "framer-motion": "^12.9.7",
+    "franc-min": "^6.2.0",
     "got": "^14.4.7",
     "lucide-react": "^0.468.0",
     "luxon": "^3.6.1",
@@ -40,7 +41,7 @@
     "openai": "^4.96.0",
     "p-limit": "^6.2.0",
     "pdf-lib": "^1.17.1",
-    "pdf-parse": "^1.1.1",
+    "pdfjs-dist": "^5.2.133",
     "prettier": "^3.3.3",
     "puppeteer": "^24.8.2",
     "react": "19.0.0",

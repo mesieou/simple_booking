@@ -7,7 +7,7 @@
 import {createUserSchema } from "@/lib/bot/schemas";
 import { systemPrompt } from "@/lib/bot/prompts";
 import { User } from "@/lib/models/user";
-import { chatWithFunctions, chatWithOpenAI } from "@/lib/helpers/openai";
+import { chatWithFunctions, executeChatCompletion } from "@/lib/helpers/openai";
 
 // Central function: takes existing history, and returns new history
 export async function handleChat(history: any[]) {
@@ -18,6 +18,8 @@ export async function handleChat(history: any[]) {
     const msg = completion.choices[0].message;
 
     // === Create User ===
+    // OpenAI function-calling responses include a function_call property when a function is triggered.
+    // The type definition in openai.ts now supports this.
     if (msg.function_call?.name === "createUser") {
         const {firstName, lastName} = JSON.parse(msg.function_call.arguments || "{}");
 
@@ -58,7 +60,7 @@ export async function handleChat(history: any[]) {
         }
 
         // After function runs, GPT needs to respond again
-        const followUp = await chatWithOpenAI([{ role: "system", content: systemPrompt}, ...history]) as { choices: { message: any }[] };
+        const followUp = await executeChatCompletion([{ role: "system", content: systemPrompt}, ...history], "gpt-4o") as { choices: { message: any }[] };
         history.push(followUp.choices[0].message);
         return history;
     }
