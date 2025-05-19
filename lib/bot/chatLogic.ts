@@ -7,14 +7,15 @@
 import { createUserSchema } from "@/lib/bot/schemas";
 import { systemPrompt } from "@/lib/bot/prompts";
 import { User } from "@/lib/models/user";
-import { chatWithFunctions, chatWithOpenAI, classifyMessage, ChatMessage, analyzeSentiment } from "@/lib/helpers/openai";
+import { chatWithFunctions, chatWithOpenAI, clarifyMessage, ChatMessage, analyzeSentiment } from "@/lib/helpers/openai";
+import { processMoodAndCheckForAlert } from "@/lib/helpers/alertSystem";
 
 /**
  * Checks if a message needs clarification and returns an appropriate response if needed
  */
 async function checkMessageClarity(message: string, history: ChatMessage[]): Promise<{needsClarification: boolean, response?: string}> {
   try {
-    const classification = await classifyMessage(message, history);
+    const classification = await clarifyMessage(message, history);
     
     if (classification === 'unclear') {
       // Generate a natural-sounding clarification request
@@ -91,19 +92,30 @@ export async function handleChat(history: any[]) {
       // Analyze mood of the user's message (without chat history)
       let moodContext = '';
       try {
-        const sentiment = await analyzeSentiment(lastUserMessage.content);
-        if (sentiment !== undefined) {
-          // Simple threshold-based classification
-          let mood = 'neutral';
-          if (sentiment > 0.3) mood = 'positive';
-          else if (sentiment < -0.3) mood = 'negative';
-          
+        const moodResult = await analyzeSentiment(lastUserMessage.content);
+        if (moodResult !== undefined) {
           console.log(`[Mood Analysis] Message: "${lastUserMessage.content}"`);
-          console.log(`[Mood Analysis] Score: ${sentiment.toFixed(2)} (${mood})`);
+          console.log(`[Mood Analysis] Score: ${moodResult.score}/10 (${moodResult.category}: ${moodResult.description})`);
           
           // Add mood context to the system prompt if needed
-          if (mood === 'negative') {
-            moodContext = 'The user seems frustrated. Be extra patient, understanding, and solution-focused in your response.';
+          if (moodResult.category === 'frustrated') {
+            moodContext = `The user seems ${moodResult.description}. Be extra patient, understanding, and solution-focused in your response.`;
+          }
+          
+          // Check if we should alert an admin based on the mood score
+          // Using a temporary userId based on the first few characters of the message for demo purposes
+          // In a real app, you would use the actual user ID from authentication
+          const tempUserId = history.length > 0 ? 
+            `user_${history[0].content.substring(0, 10).replace(/\W/g, '')}_${new Date().toISOString().split('T')[0]}` : 
+            `anonymous_${new Date().getTime()}`;
+            
+          const alertTriggered = processMoodAndCheckForAlert(tempUserId, moodResult);
+          
+          if (alertTriggered) {
+            // In a real application, you would notify admins through a proper channel
+            // For now, we're just logging the alert
+            console.log(`[ADMIN NOTIFICATION] Alert triggered for user ${tempUserId}`);
+            console.log(`[ADMIN NOTIFICATION] Consider reaching out to this customer directly`);
           }
         }
       } catch (error) {
