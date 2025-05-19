@@ -1,0 +1,19 @@
+```json
+[
+  {
+    "category": "services offered",
+    "content": "Y&S Accounting always works to ensure the security of our clients' information and also to comply with the requirements of the Australian Taxation Office. So we ask that you upload a selfie holding one of the two documents listed below: A selfie holding your passport, showing the page of your photo and signature. Or a selfie holding your Australian driver's license. Authorization statement* I agree to the privacy policy and authorise Y&S Accounting ABN 70 233 154 233 to the following: I authorize Y&S Accounting. ABN 70 233 154 233. TAN 77030008 to: -Prepare and lodge my Australian tax returns; -Prepare a statutory declaration in the event of a loss of a PAYG payment summary; -Request and receive from my employer(s) any PAYG payment summaries, statements of earning and Tax File number; -Prepare, sign and process any agreement, consents or other documents required to refund taxes; -Prepare, sign and lodged my Medicare Levy Exemption Application if applicable. -I declare that the information provided for the preparation of this statement is true and correct.",
+    "confidence": 0.9
+  },
+  {
+    "category": "pricing or quotes",
+    "content": "Tax Return* Price: $ 175.00 Tax Return* Price: $ 109.00 Tax Return* Price: $ 155.00 Tax Return* Price: $ 109.00 Tax Return* Price: $ 155.00 Medicare Exemption* Price: $ 20.00 Property Schedule* Price: $ 65.00 Capital Gain/Loss Event* Price: $ 55.00",
+    "confidence": 1.0
+  },
+  {
+    "category": "terms & conditions / legal policies",
+    "content": "Terms of Engagement | Privacy Policy Y&S Accounting Taxation Services Terms of Engagement | Privacy Policy © 2024 Y&S Accounting",
+    "confidence": 1.0
+  }
+]
+```

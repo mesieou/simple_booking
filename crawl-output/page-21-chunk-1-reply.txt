@@ -2,48 +2,98 @@
 [
   {
     "category": "about / trust-building",
-    "content": "Y&S Accounting proudly specialises in providing professional consulting and accounting services to the Latin American community in Australia since 2008.",
+    "content": "Starting a Business in Australia? by Yaritza Salazar | Mar 2, 2020 | Entrepreneurs, Taxes Starting a successful business is very rewarding. It is a process that improves many people’s lives such us business owners, family members, employees, suppliers and the community in general. Moreover, it could be a good vehicle that helps you to obtain an Australia permanent residency, if the business idea meets the Australian government requirements base on the current Australian Migration conditions.",
     "confidence": 0.9
   },
   {
     "category": "services offered",
-    "content": "Accounting services Personal tax returns Business advise Xero health check Business registration Bookkeeping Start-up advise",
-    "confidence": 0.95
+    "content": "However, in the process of starting a new business in Australia is essential to cover the follow aspects: Business Plan: A well-written business plan is an important tool because it gives entrepreneurs the ability to lay out their goals and track their progress, as their business begins to grow. Formulating a business plan should be the first step taken at the moment of starting a new business. It is also important to attract investors so; they can have a clear picture of the business they will invest in. Many businesses are created out of passion, and while passion can be a great motivator, it’s not enough to proof how much it worth to invest in the business. In fact, planning your steps and understanding exactly how you’re going to turn that vision into a successful business is perhaps the most important step, it is when you can tell the differences between concept and reality. Business plans can help you confirm that your great idea makes some sense in the business language. An additional and key element of your business plan is the Market research, that can offer a deep insight about your customers, your competitors, and your chosen industry. It will not only enlighten the entrepreneurs in their process of starting up a business, but it can also help to improve your knowledge about the existing businesses, their activities, marketing, advertising, and releasing new products or services.",
+    "confidence": 0.85
   },
   {
     "category": "services offered",
-    "content": "Your online tax return step by step 1. Complete our online form Check that you have the necessary information ready to file your return and read the frequently asked questions. 2. One of our accountants will review your application Check that you have the necessary information ready to file your return and read the frequently asked questions. 3. Receive your Tax refund A member of the Y&S Accounting team will review your information and we will contact you if additional information is required.",
-    "confidence": 0.9
+    "content": "2. Right Business Structure: Choosing the right structure for your business is also crucial, as it has a direct effect on aspects such as: Your level of control. The amount of tax you need to pay. Regulatory obligations. Health and safety requirements in the workplace. The level of personal liability you will incur. Perpetuality of your business",
+    "confidence": 0.85
   },
   {
-    "category": "pricing or quotes",
-    "content": "How much does the service cost? The base price is $99. If you need help applying for a medicare exemption certificate, an extra $35 applies. If I don't have a bank account in Australia, can I receive my refund in someone else's account or in a bank account in another country? Yes, we can arrange for you to receive your refund in a third party bank account or a bank account in another country. A trust account fee of $55 applies.",
-    "confidence": 0.95
+    "category": "services offered",
+    "content": "3. Funding: Having sufficient working capital is a key aspect to keep your business finances healthy. On the other hand, not having enough working capital will have serious implications on the company’s future. Many businesses obtain external funding in order to gain enough working capital by doing that they expect to fulfil their growth ambitions. However, getting a loan can help to cover short-term funding needs but it is just a short term solution, while giving the business enough money, it can make it grow or even if you’re looking to expand your business to take it to the next level, you may need very well funding so you able to execute your business plans.",
+    "confidence": 0.85
   },
   {
-    "category": "faq",
-    "content": "Individual Tax returns How long does the process take? Processing time is 48 business hours. 48 hours after you send us your information, we will send you your declaration ready to be electronically signed or we will contact you to request additional information. Why should I use Y&S accounting Brisbane's online tax return service? 1. For the confidence that your tax return will be prepared by a professional tax return preparer authorised by the Australian tax office. 2. We specialise in international students and temporary residents in Australia. 3. You can complete the whole process from the comfort of your own home. What is a medicare exemption certificate and do I need one? People who are not entitled to Medicare can apply for an exemption from the Medicare levy on their tax return. To obtain an exemption, you must not be entitled to Medicare and you must apply for Medicare levy exemption certification with the Services Australia department. I am a permanent resident or Australian citizen, can I use the online declaration service? Our online service is designed for individuals on student visas in Australia. To view our services and prices for permanent residents/Australian citizens please click on the following link: Tax returns",
-    "confidence": 0.95
+    "category": "services offered",
+    "content": "4. Migration Requirements: The Australian government welcomes business owner either to start a new business or to move their businesses to Australia. This pathway is for existing business owners or entrepreneur who want to settle in Australia with their family and start businesses that can fill and meet the gaps in the Australian market. It is vital to have the right legal advice regarding your business in order to meet Immigration requirements. At YS Accounting we have join forces with ProjectRH and RC Australia to cover these important steps in any entrepreneur starting their journey, if you need any help please contact us: www.ysaccounting.com.au www.projectsrh.com.au www.rcaustralia.com.au/",
+    "confidence": 0.85
   },
   {
-    "category": "contact",
-    "content": "Contact: 1300 189 682 brisbane@ysaccounting.com.au Address: Level 38, 71 Eagle St, Brisbane QLD 4000",
-    "confidence": 0.95
+    "category": "services offered",
+    "content": "Start Your Own Business by yaritzadigital | Sep 23, 2019 | Entrepreneurs, Taxes Welcome to WordPress. This is your first post. Edit or delete it, then start writing! When you start a business, there are tax and super responsibilities you need to be aware of, including: The tax implications of your business structure Whether you’re entitled to an ABN Registering your business Records you need to keep Deductions you can claim.",
+    "confidence": 0.85
   },
   {
-    "category": "booking or scheduling",
-    "content": "Online tax return Book Online",
-    "confidence": 0.8
+    "category": "services offered",
+    "content": "As you get your business up and running, there are a few things you may need to consider, including: When your tax and other obligations start – this will depend on whether you are in business yet The implications of the structure you choose – tax and legal The location of your business (such as working from home).",
+    "confidence": 0.85
   },
   {
-    "category": "terms & conditions / legal policies",
-    "content": "Privacy Policy Terms of Service Cookies Settings",
-    "confidence": 0.9
+    "category": "services offered",
+    "content": "BUSINESS STRUCTURE There are four commonly used business structures in Australia: 🔘 Sole trader 🔘 Partnership 🔘 Company 🔘 Trust It’s important to understand the responsibilities of each structure because the structure you choose may affect: 🔘 The tax you’re liable to pay 🔘 Asset protection 🔘 Costs. You’re not locked into any structure and you can change the structure as your business changes or grows. If you’re unsure which structure to choose, we recommend you contact us.",
+    "confidence": 0.85
   },
   {
-    "category": "about / trust-building",
-    "content": "What our customers say Diana Franco I can't recommend Sebastian enough. He is a great accountant! He is very diligent, efficient and always goes above and beyond. Excellent service! Great for small businesses accounting. Orlando Guerra Very knowledgeable and professional. My return was filed quickly and I got the money back within weeks. Cristian Campo Very knowledgeable and easy to get in contact with. Excellent customer service. Highly recommended! Catalina Montoya I highly recommend Y&S accounting, and specially to Sebastian Garcia. They have an excellent customer service, they always work in a legar way trying to be the most diligent and helpful as much as possible. Looking after their economical costumer wellness. Juan Pablo Vasquez This is the 4th year making my tax return with no issues and exceptional professionalisms. Strongly recommend them.",
-    "confidence": 0.9
+    "category": "services offered",
+    "content": "As soon as your business is running you’re going to face new obligations. Understanding what you need to do from an early stage will help you stay on top of things.",
+    "confidence": 0.85
+  },
+  {
+    "category": "services offered",
+    "content": "REGISTER YOUR BUSINESS When you start your business there are a number of registrations you need to consider.",
+    "confidence": 0.85
+  },
+  {
+    "category": "services offered",
+    "content": "GET AN ABN If you’re starting a new business you may need an Australian business number (ABN). An ABN is a unique 11-digit identifier that makes it easier for businesses and all levels of government to interact. Not everyone is entitled to an ABN, so the registration process will ask specific questions to determine your entitlement to an ABN. Not everyone is entitled to an ABN. You’re entitled to an ABN if you’re: ✔️ Carrying on or starting an enterprise in Australia ✔️ Making supplies connected with Australia’s indirect tax zone ✔️A Corporations Act company. To work as a business you’ll need an ABN, which generally means you: 🔘 Provide products and services directly to your customers, whether that’s the public or other businesses 🔘 Source your own customers, for example by advertising your products and services 🔘 Quote and invoice for work, including setting or negotiating prices 🔘 Have a separate business bank account and your own business insurance such as public liability and WorkCover 🔘 Lodge and report all business income, even if the business earnings are below the tax free threshold.",
+    "confidence": 0.85
+  },
+  {
+    "category": "services offered",
+    "content": "You will need an ABN to: ✔️ Operate in the GST system, including claiming GST credits ✔️ Avoid pay as you go (PAYG) tax on payments you receive ✔️ Confirm your business identity to others when ordering and invoicing ✔️ Connect to Manage ABN Connections or get an AUSkey to transact online with government agencies ✔️ Be endorsed as a gift deductible recipient or an income tax exempt charity.",
+    "confidence": 0.85
+  },
+  {
+    "category": "services offered",
+    "content": "REGISTER YOUR BUSINESS NAME If you’re applying for an Australian business number (ABN), you can also apply for a business name and register for secure online authentication and taxes, like GST and PAYG withholding, at the same time. Most businesses will need to apply for a registered business name with the Australian Securities & Investments Commission (ASIC). You can carry on a business in your own name without registering a business name if you don’t change or add anything to your name. For example, John Smith doesn’t have to register a name to trade as J Smith or John Smith, but he does to trade as John Smith Landscaping. To apply for a registered business name you will need to have applied for or have an ABN. All businesses will need to register all trading names as a business name with ASIC in order to continue operating with it. ABN Lookup will only display business names registered with ASIC from this date.",
+    "confidence": 0.85
+  },
+  {
+    "category": "services offered",
+    "content": "GETTING AN AUSTRALIAN COMPANY NUMBER If you plan to run your business through a company, you need to register your company and get an ACN. You do this with ASIC when you start your company. You need to get your ACN before you can get your ABN and tax registrations",
+    "confidence": 0.85
+  },
+  {
+    "category": "services offered",
+    "content": "RECORD KEEPING You need to set up a good record keeping system to track your income and expenses right from the start. This helps you know how your business is going, as well as meet your tax responsibilities and be able to claim all the deductions to which you are entitled.",
+    "confidence": 0.85
+  },
+  {
+    "category": "services offered",
+    "content": "HIRING WORKERS If you’re thinking of taking on workers it’s important to understand you will have extra responsibilities. For example, you may have to: Deduct tax from their pay and send it to the ATO Pay super contributions to their nominated super fund, and Pay fringe benefits tax if you provide them with benefits in addition to their wages.",
+    "confidence": 0.85
+  },
+  {
+    "category": "services offered",
+    "content": "PAYING TAX IN YOUR FIRST YEAR In your first year of business, you can stay on top of your obligations by: Making tax pre-payments into your tax bill account Putting money aside for your expected tax bill Voluntarily entering into instalments",
+    "confidence": 0.85
+  },
+  {
+    "category": "services offered",
+    "content": "PAYING TAX BY INSTALMENTS Once you lodge your first income tax return and report a tax-payable amount above a certain threshold, you will automatically enter the pay-as-you-go (PAYG) instalment system. If you voluntarily enter into instalments prior to lodgement of your first tax return, you will be able to make quarterly payments towards you tax bill.",
+    "confidence": 0.85
+  },
+  {
+    "category": "services offered",
+    "content": "REPORTING Once you’re up and running, you’ll need to report your business income and other tax information. The key reports you should be aware of are: Business Activity Statement (BAS) 🔘 The main taxes you will report on will be GST (if you’re registered for GST) 🔘Any tax you withhold from employees’ pay 🔘 Instalments towards your own tax once you are in the pay as you go instalments system. 🔘Income tax return To report your personal and business income and claim deductions.",
+    "confidence": 0.85
   }
 ]
 ```

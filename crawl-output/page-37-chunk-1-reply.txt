@@ -1,0 +1,39 @@
+```json
+[
+  {
+    "category": "faq",
+    "content": "Instruções Por favor leia mais abaixo as perguntas frequentes. Clique em “Começar agora” e siga as instruções. Uma vez que recebermos suas informações, vamos checar os dados junto ao Australia Taxation Office e caso precise de alguma informação adicional, entraremos em contato por meio de telefone ou e-mail em horário comercial Esta opção não é um atendimento personalizado com o contador. Se você preferir atendimento no escritório, por favor agende uma consulta em nosso website.",
+    "confidence": 0.8
+  },
+  {
+    "category": "pricing or quotes",
+    "content": "Declaração de imposto online a partir de $99, solicite à sua agência um cupom de desconto Tax Return* Price: $ 175.00 Tax Return* Price: $ 109.00 Tax Return* Price: $ 155.00 Tax Return* Price: $ 109.00 Tax Return* Price: $ 155.00 Medicare Exemption* Price: $ 20.00 Investimento imobiliário Price: $ 65.00 Ganhos sobre capitais/Perdas Price: $ 55.00",
+    "confidence": 0.95
+  },
+  {
+    "category": "booking or scheduling",
+    "content": "Se você preferir atendimento no escritório, por favor agende uma consulta em nosso website.",
+    "confidence": 0.9
+  },
+  {
+    "category": "services offered",
+    "content": "Y&S Accounting sempre trabalha para garantir a segurança das imformações dos nossos clientes e também para seguir as exigências do Australian Taxation Office. Por isso pedimos que voçe faça o upload de uma selfie segurando um dos dois documentos listados abaixo: Uma selfie segurando seu passaporte, aberto na pagina com sua foto e assinatura . Ou uma selfie segurando a sua carteira de motorista Australiana . File* Declaração de autorização* Eu concordo com os termos de privacidade e autorizo a Y&S Accounting ABN 70 233 154 233 ao seguinte- Preparar e submeter minha declaração de imposto - Preparar uma declaração estatutoria em caso de perda da PAYG payment summary - Requerer e receber do empregador o PAYG payment sumaries, declaração da renda e TFN - Preparar, assinar e processar qualquer acordo, consentimento ou outros documentos requeridos para o reembolso de impostos - Preparar, assinar e submeter a isenção ao Medicare, caso necessário",
+    "confidence": 0.85
+  },
+  {
+    "category": "terms & conditions / legal policies",
+    "content": "Declaração de autorização* Eu concordo com os termos de privacidade e autorizo a Y&S Accounting ABN 70 233 154 233 ao seguinte- Preparar e submeter minha declaração de imposto - Preparar uma declaração estatutoria em caso de perda da PAYG payment summary - Requerer e receber do empregador o PAYG payment sumaries, declaração da renda e TFN - Preparar, assinar e processar qualquer acordo, consentimento ou outros documentos requeridos para o reembolso de impostos - Preparar, assinar e submeter a isenção ao Medicare, caso necessário",
+    "confidence": 0.9
+  },
+  {
+    "category": "contact",
+    "content": "Uma vez que recebermos suas informações, vamos checar os dados junto ao Australia Taxation Office e caso precise de alguma informação adicional, entraremos em contato por meio de telefone ou e-mail em horário comercial.",
+    "confidence": 0.85
+  },
+  {
+    "category": "booking or scheduling",
+    "content": "Save and Continue Later",
+    "confidence": 0.6
+  }
+]
+```

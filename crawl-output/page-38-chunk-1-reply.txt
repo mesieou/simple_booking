@@ -1,0 +1,64 @@
+```json
+[
+  {
+    "category": "booking or scheduling",
+    "content": "Tax Return Italian Step 1 of 12 - Informazione Generale 8% Istruzioni Visualizza dal menu le domande comuni e la lista di controllo. Clicca su “incomincia” e segui le istruzioni. Una volta ricevuti i tuoi dati, li controlleremo con l’ufficio tasse d’Austalia. Se manca qualcosa sarai contattato da uno dei nostri impiegati con un e-mail o una chiamata durante le ore lavorative.",
+    "confidence": 0.8
+  },
+  {
+    "category": "pricing or quotes",
+    "content": "Dichiarazione dei redditi Online da $99 puoi chiedere un voucher alla tua agenzia di studenti per uno sconto.",
+    "confidence": 0.9
+  },
+  {
+    "category": "booking or scheduling",
+    "content": "Save and Continue Later",
+    "confidence": 0.6
+  },
+  {
+    "category": "booking or scheduling",
+    "content": "Anno Finanziario*2024 (01/07/2023 al 30/06/2024)2023 (01/07/2022 al 30/06/2023)2022 (01/07/2021 al 30/06/2022)2021 (01/07/2020 al 30/06/2021)2020 (01/07/2019 al 30/06/2020)2019 (01/07/2018 al 30/06/2019)2018 (01/07/2017 al 30/06/2018)2017 (01/07/2019 al 30/06/2018)Seleziona L’anno finanziario che intendi processare",
+    "confidence": 0.7
+  },
+  {
+    "category": "contact",
+    "content": "Email* Numero di Cellulare*Indirizzo* Via Via Città Stato/Provincia Codice postale",
+    "confidence": 0.85
+  },
+  {
+    "category": "booking or scheduling",
+    "content": "Save and Continue Later",
+    "confidence": 0.6
+  },
+  {
+    "category": "pricing or quotes",
+    "content": "Se non hai un conto bancario australiano, possiamo transferire il tuo rimborso (se possible) su un altro conto in Australia o all’estero, per un costo ulteriore di $22 (tariffa conto fiduciario).",
+    "confidence": 0.9
+  },
+  {
+    "category": "booking or scheduling",
+    "content": "Save and Continue Later",
+    "confidence": 0.6
+  },
+  {
+    "category": "pricing or quotes",
+    "content": "Medicare Exemption* Price: $ 20.00 Property Schedule* Price: $ 65.00 evento di guadagno/perdita di capitale* Price: $ 55.00",
+    "confidence": 0.9
+  },
+  {
+    "category": "pricing or quotes",
+    "content": "TASSE* Price: $ 175.00 TASSE* Price: $ 109.00 TASSE* Price: $ 155.00 TASSE* Price: $ 109.00 TASSE* Price: $ 155.00",
+    "confidence": 0.9
+  },
+  {
+    "category": "terms & conditions / legal policies",
+    "content": "Dischiarazione di autorizzazione* Sono d’accordo con il regolamento della privacy e autorizzo Y&S Accounting ABN 70 233 154 233 alle seguenti:Autorizzo Y&S Accounting. ABN 70 233 154 233. TAN 77030008 a: -Preparare e presentare la mia dischiarazione dei redditi (Australian tax returns) -Preparare uno statutory declaration/dichiarazione giurata nell’eventuale smarrimento del PAYG payment summary/totale versato; - Richiedere e ricevere dal mio datore di lavoro qualsiasi PAYG payment summaries/ totale versato, la dichirazione dei guadagni and Tax File number/codece fiscale; -Preparare, firmare e processare qualsiasi accordo, permesso o altra documentazione richiesta; -Preparare, firmare e presentare la domanda per le mie esenzioni Medicare ove possible; - Io dichiaro che le informazioni fornite per la preparazione di questa dichiarazione sono vere e correte.Firma/Signature*Io sono autorizzato a fare questa dichiarazione.Data di autorizzazione* Date Format: DD slash MM slash YYYY",
+    "confidence": 0.95
+  },
+  {
+    "category": "terms & conditions / legal policies",
+    "content": "Terms of Engagement | Privacy Policy",
+    "confidence": 0.9
+  }
+]
+```

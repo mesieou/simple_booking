@@ -1,29 +1,19 @@
 ```json
 [
   {
-    "category": "contact",
-    "content": "Brisbane office Level 38 71 Eagle St Brisbane QLD 4000 1300 189 682 +61 439 095 870 brisbane@ysaccounting.com.au",
-    "confidence": 1.0
-  },
-  {
-    "category": "booking or scheduling",
-    "content": "Book appointment",
-    "confidence": 0.8
+    "category": "terms & conditions / legal policies",
+    "content": "Terms of Engagement | Privacy Policy",
+    "confidence": 0.9
   },
   {
     "category": "about / trust-building",
-    "content": "We believe starting and managing a business, should be simple and stress-free. Let’s work together Y&S Accounting proudly specialises in providing professional consulting and accounting services to the Latin American community in Australia since 2008.",
-    "confidence": 0.9
-  },
-  {
-    "category": "services offered",
-    "content": "Accounting services Personal tax returns Business advise Xero health check Business registration Bookkeeping Start-up advise",
-    "confidence": 1.0
+    "content": "Y&S Accounting Taxation Services",
+    "confidence": 0.7
   },
   {
     "category": "terms & conditions / legal policies",
-    "content": "Privacy Policy Terms of Service Cookies Settings",
-    "confidence": 0.9
+    "content": "© 2024 Y&S Accounting",
+    "confidence": 0.8
   }
 ]
 ```
