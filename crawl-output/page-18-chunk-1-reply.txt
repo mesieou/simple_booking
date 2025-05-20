@@ -1,24 +1,29 @@
 ```json
 [
   {
-    "category": "about / trust-building",
-    "content": "ENY&S Accounting proudly specialises in providing professional consulting and accounting services to the Latin American community in Australia since 2008.",
+    "category": "services offered",
+    "content": "Less Tax. More Profit, Big Wealth We provide expert guidance for optimizing your individual and business operations, including tax return preparation and business/tax advice. Accounting Services Personal Tax Return Business Advise Business Registration Financial Analysis Personal Tax Return Business Registration Business Advise Financial Analysis Tax Return Online Start your process online and save time and money. We do the rest. Taxation Seminars Click on calendar and have a look at our seminars. We participate and promote events which are linked with accounting subjects Business Tax Consultation Our experts are able to provide upstanding advisory along with the latests information and tools you need to excel your business.",
     "confidence": 0.95
   },
   {
-    "category": "services offered",
-    "content": "Accounting services Personal tax returns Business advise Xero health check Business registration Bookkeeping Start-up advise",
-    "confidence": 0.95
+    "category": "booking or scheduling",
+    "content": "Book an appointment Web tax return online",
+    "confidence": 0.85
+  },
+  {
+    "category": "about / trust-building",
+    "content": "Why choosing us Our staff are experienced, perfectly qualified and highly trained specialists in all areas of personal and business accounting and taxation advice. You are in the best hands Y&S Accounting, since 2008, has continued to provide exceptional accounting and tax services to both individuals and businesses in Melbourne, Sydney, Adelaide and Brisbane regardless of their industry. WHO WE ARE",
+    "confidence": 0.90
   },
   {
     "category": "contact",
-    "content": "Address: Level 38, 71 Eagle St, Brisbane QLD 4000 Contact: 1300 189 682 brisbane@ysaccounting.com.au",
+    "content": "Our Offices Melbourne Address Suite 4.10 level 4/365 Little Collins St. Melbourne VIC 3000 Contact M: (+61) 0421 737 733 P: 03 86099296 Email info@ysaccounting.com.au Sydney Address Suite 2/ 1 Kings Cross Rd, Darlinghurst NSW 2010 Contact M: (+61) 0421 737 733 P: (03) 8609 9296 Email info@ysaccounting.com.au Brisbane Address Level 37/71 Eagle Street Brisbane, QLD 4000 Contact M: (+61) 439 095 870 P: (03) 8609 9296 Email info@ysaccounting.com.au Adelaide Address Level 21 Office 2126 / 25 Grenfell St Adelaide, SA 5000 Contact M: (+61) 0421 737 733 P: (03) 8609 9296 Email info@ysaccounting.com.au Perth Address 45 St Georges Terrace Perth WA 6000 Contact M: (+61) 0421 737 733 P: (03) 8609 9296 Email info@ysaccounting.com.au",
     "confidence": 0.95
   },
   {
     "category": "terms & conditions / legal policies",
-    "content": "Privacy Policy Terms of Service Cookies Settings",
-    "confidence": 0.9
+    "content": "Terms of Engagement | Privacy Policy © 2024 Y&S Accounting",
+    "confidence": 0.90
   }
 ]
 ```

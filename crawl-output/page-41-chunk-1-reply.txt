@@ -1,0 +1,19 @@
+```json
+[
+  {
+    "category": "booking or scheduling",
+    "content": "Book a Consultation in Melbourne I need help with*My Tax Return I'm Leaving Australia Business Consultation What's your preferred language*English Spanish Portuguese What is your preferred language*English Portuguese Spanish Would you like to include your partner?*No, just me Yes, me and my partner (or more than 1 tax return) I'd like to have my Tax Return Consultation over*Videocall/Phone Face to face appointment What is your current visa?*I'm Permanent Resident / Citizen Student Visa Other Temporal Visa",
+    "confidence": 0.95
+  },
+  {
+    "category": "terms & conditions / legal policies",
+    "content": "Terms of Engagement | Privacy Policy",
+    "confidence": 0.9
+  },
+  {
+    "category": "about / trust-building",
+    "content": "© 2024 Y&S Accounting",
+    "confidence": 0.6
+  }
+]
+```

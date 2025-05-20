@@ -1,49 +1,24 @@
 ```json
 [
   {
+    "category": "contact",
+    "content": "Y&S Accounting Contact Us Send us a message! Name Email Message Number 5 + 13 = Submit",
+    "confidence": 0.9
+  },
+  {
     "category": "booking or scheduling",
-    "content": "Book your appointment One of our accountants will solve your questions 100% guaranteed professional service We can help you with your DASP (Departing Australia Superannuation Payment) and your Early Tax return 1 Book your appointment Start the process by booking an appointment with ease, choosing your preferred mode of communication: face-to-face, video call, or phone call.",
-    "confidence": 0.95
-  },
-  {
-    "category": "services offered",
-    "content": "Comprehensive Information Check During the scheduled appointment, our dedicated professionals will conduct a thorough check of your information. Whether it's a face-to-face meeting, a video call, or a phone call, we will ensure accuracy by verifying your details with the Australian Taxation Office (ATO) and your superfund. Our knowledgeable team will also explain the processes involved in both tax return and superannuation refund, addressing any questions or concerns you may have.",
-    "confidence": 0.9
-  },
-  {
-    "category": "pricing or quotes",
-    "content": "Receive a quote for the service Following the information check, we will provide you with a detailed quote for our services. Regardless of the chosen mode of communication, our quote will encompass the specific requirements of your tax return and superannuation refund, tailored to your unique circumstances. Rest assured that our pricing remains competitive, while upholding the highest standards of professionalism and efficiency.",
-    "confidence": 0.95
-  },
-  {
-    "category": "about / trust-building",
-    "content": "What our customers say Diana Franco I can't recommend Sebastian enough. He is a great accountant! He is very diligent, efficient and always goes above and beyond. Excellent service! Great for small businesses accounting. Orlando Guerra Very knowledgeable and professional. My return was filed quickly and I got the money back within weeks. Cristian Campo Very knowledgeable and easy to get in contact with. Excellent customer service. Highly recommended! Catalina Montoya I highly recommend Y&S accounting, and specially to Sebastian Garcia. They have an excellent customer service, they always work in a legar way trying to be the most diligent and helpful as much as possible. Looking after their economical costumer wellness. Juan Pablo Vasquez This is the 4th year making my tax return with no issues and exceptional professionalisms. Strongly recommend them.",
-    "confidence": 0.9
-  },
-  {
-    "category": "faq",
-    "content": "Frequently asked questions Early Tax return ¿How long does the Tax Return process takes? Electronic tax returns are usually processed by the ATO within two weeks. We expect that most refunds will be out within 10 working days after lodgement of your tax return, but some people will wait a bit longer for the ATO to get it done. Who is eligible for an early tax return? To be eligible for an early tax return, you must meet the following criteria: 1. Leaving Australia permanently: You need to be departing Australia with no intention of returning before the end of the financial year for which you are filing the tax return. It applies to individuals who are leaving the country permanently. 2. ATO's acceptance deadline: The Australian Taxation Office (ATO) typically accepts early tax returns until the 15th of June. To be eligible, you must file your tax return within this timeframe. What documents and information do I need to provide for the early tax return? To facilitate the early tax return process, you will need to provide relevant documents such as income statements, expense receipts, and any other supporting documentation related to your financial affairs. Our team will guide you on the specific documents required based on your situation. How do I get started with the early tax return service? Getting started is easy! Simply reach out to Y&S Accounting to schedule an appointment or book online. Our professionals will guide you through the process, answer any additional questions you may have, and ensure a smooth experience.",
-    "confidence": 0.95
+    "content": "Business Consultation Looking for professional advice? Book a consultation with one of our experts now! DISCOVER MORE",
+    "confidence": 0.85
   },
   {
     "category": "contact",
-    "content": "If you have any further questions or need personalized assistance, feel free to contact our knowledgeable team. We are here to help you make the most of your early tax return experience. Still have questions? Contact us now! Address: Level 38, 71 Eagle St, Brisbane QLD 4000 Contact: 1300 189 682 brisbane@ysaccounting.com.au",
-    "confidence": 0.95
-  },
-  {
-    "category": "about / trust-building",
-    "content": "Y&S Accounting proudly specialises in providing professional consulting and accounting services to the Latin American community in Australia since 2008.",
-    "confidence": 0.9
-  },
-  {
-    "category": "services offered",
-    "content": "Accounting services Personal tax returns Business advise Xero health check Business registration Bookkeeping Start-up advise",
+    "content": "Our Offices Melbourne Address Suite 4.10 level 4/365 Little Collins St. Melbourne VIC 3000 Contact M: (+61) 0421 737 733P: 03 86099296 Email info@ysaccounting.com.au Sydney Address Suite 2/ 1 Kings Cross Rd, Darlinghurst NSW 2010 Contact M: (+61) 0421 737 733 P: (03) 8609 9296 Email info@ysaccounting.com.au Brisbane Address Level 37/71 Eagle StreetBrisbane, QLD 4000 Contact M: (+61) 439 095 870 P: (03) 8609 9296 Email info@ysaccounting.com.au Adelaide Address Level 21 Office 2126 / 25 Grenfell St Adelaide, SA 5000 Contact M: (+61) 0421 737 733 P: (03) 8609 9296 Email info@ysaccounting.com.au Perth Address 45 St Georges Terrace Perth WA 6000 Contact M: (+61) 0421 737 733 P: (03) 8609 9296 Email info@ysaccounting.com.au",
     "confidence": 0.95
   },
   {
     "category": "terms & conditions / legal policies",
-    "content": "Privacy Policy Terms of Service Cookies Settings",
-    "confidence": 0.85
+    "content": "Terms of Engagement | Privacy Policy",
+    "confidence": 0.9
   }
 ]
 ```

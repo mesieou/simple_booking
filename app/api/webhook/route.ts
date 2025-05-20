@@ -1,7 +1,6 @@
 // app/api/webhook/route.ts
 
-import { NextRequest, NextResponse } from "next/server";
-import { generateEmbedding } from "@/lib/helpers/openai";
+import { NextRequest } from "next/server";
 
 const VERIFY_TOKEN = process.env.WABA_API;
 

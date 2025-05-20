@@ -7,6 +7,6 @@
         "@/*": ["./*"]
       }
     },
-    "include": ["lib/bot/website-crawler/fetch-real-main.ts"]
+    "include": ["lib/bot/website-crawler/fetch-real-main.ts", "scripts/uploadPdf.ts"]
   }
   

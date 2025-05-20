@@ -1,0 +1,39 @@
+```json
+[
+  {
+    "category": "services offered",
+    "content": "Demande en ligne de Tax Return à partir de 99$. Demandez à votre agence étudiante un coupon pour obtenir une réduction.",
+    "confidence": 0.9
+  },
+  {
+    "category": "pricing or quotes",
+    "content": "Demande en ligne de Tax Return à partir de 99$. Demandez à votre agence étudiante un coupon pour obtenir une réduction.",
+    "confidence": 0.85
+  },
+  {
+    "category": "booking or scheduling",
+    "content": "Cette option n'est pas un rendez-vous personnalisé avec un comptable, si vous préférez un service en face à face; veuillez réserver une consultation sur notre site Web.",
+    "confidence": 0.9
+  },
+  {
+    "category": "faq",
+    "content": "Instructions Veuillez faire défiler la page vers le bas pour voir les questions les plus fréquentes et la checklist. Cliquez sur le bouton 'Commencer' et suivez les instructions.",
+    "confidence": 0.8
+  },
+  {
+    "category": "contact",
+    "content": "Dès que nous aurons reçu vos informations, nous les vérifierons auprès de l'Australian Taxation Office et si des informations supplémentaires sont nécessaires, l'un des membres de notre équipe vous contactera par e-mail ou par téléphone durant les heures d’ouverture.",
+    "confidence": 0.85
+  },
+  {
+    "category": "booking or scheduling",
+    "content": "Save and Continue Later",
+    "confidence": 0.7
+  },
+  {
+    "category": "services offered",
+    "content": "Avez-vous besoin d'aide pour demander le certificat d'exemption de prélèvement Medicare?*NonOuiSi vous avez gagné plus de $26,000 et avez un visa étudiant, demander le certificat d'exemption de prélèvement Medicare vous fera économiser des $$$. Nous pouvons vous aider avec la demande. Sinon, vous pouvez faire la demande vous-même et nous envoyer le certificat d'exemption lorsque vous le recevrez. Pour plus d'informations sur le processus, vous pouvez cliquer sur le lien suivant: Cliquez ici",
+    "confidence": 0.9
+  }
+]
+```
