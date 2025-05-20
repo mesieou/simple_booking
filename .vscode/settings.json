@@ -15,6 +15,10 @@
         {
             "folderPath": "simple_booking\\lib\\services\\",
             "color": "foldercolorizer.color_3366cc"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\helpers\\openai\\",
+            "color": "foldercolorizer.color_33cc00"
         }
     ]
 }

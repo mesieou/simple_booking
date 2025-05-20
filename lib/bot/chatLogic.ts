@@ -7,10 +7,11 @@
 import { createUserSchema } from "@/lib/bot/schemas";
 import { systemPrompt } from "@/lib/bot/prompts";
 import { User } from "@/lib/models/user";
-import { executeChatCompletion, ChatMessage, OpenAIChatMessage, OpenAIChatCompletionResponse } from "@/lib/helpers/openai/openai-core";
-import { clarifyMessage } from "@/lib/helpers/openai/functions/conversation";
+import { executeChatCompletion, ChatMessage, OpenAIChatMessage, OpenAIChatCompletionResponse, MoodAnalysisResult } from "@/lib/helpers/openai/openai-core";
+import { clarifyMessage, checkMessageAnswerability, ClarityCheckResult } from "@/lib/helpers/openai/functions/conversation";
 import { analyzeSentiment } from "@/lib/helpers/openai/functions/sentiment";
 import { processMoodAndCheckForAlert } from "@/lib/helpers/alertSystem";
+import { enhancePromptForCategory, getClarificationThreshold, getCategoryFollowUp } from "@/lib/helpers/openai/functions/categoryHandler";
 
 /**
  * Checks if a message needs clarification and returns an appropriate response if needed
@@ -88,9 +89,11 @@ export async function handleChat(history: OpenAIChatMessage[]) {
       .reverse()
       .find(m => m.role === 'user');
 
+    let answerabilityCheck: ClarityCheckResult | null = null;
+
     // If there's a user message, analyze its mood and check clarity in parallel
     if (lastUserMessage) {
-      const [moodResult, clarityCheck] = await Promise.all([
+      const [moodResult, clarityCheck, answerabilityResult] = await Promise.all([
         // Mood analysis
         (async () => {
           try {
@@ -119,22 +122,64 @@ export async function handleChat(history: OpenAIChatMessage[]) {
           return undefined;
         })(),
         
-        // Clarity check
+        // Standard clarity check
         (async () => {
           const chatHistory = history.filter(m => m.role === 'user' || m.role === 'assistant').map(m => ({
             role: m.role as 'user' | 'assistant',
             content: m.content
           }));
           return await checkMessageClarity(lastUserMessage.content, chatHistory);
+        })(),
+        
+        // Enhanced answerability check with categories
+        (async () => {
+          try {
+            const chatHistory = history.filter(m => m.role !== 'system').map(m => ({
+              role: m.role === 'function' ? 'assistant' as const : m.role as 'user' | 'assistant',
+              content: m.content
+            }));
+            return await checkMessageAnswerability(lastUserMessage.content, chatHistory);
+          } catch (error) {
+            console.error('[Answerability Check] Error:', error);
+            return null;
+          }
         })()
       ]);
 
-      // Handle clarity check result
-      if (clarityCheck.needsClarification && clarityCheck.response) {
-        const shouldClarify = Math.random() > 0.3; // 70% chance to clarify
-        if (shouldClarify) {
-          return [...history, { role: 'assistant', content: clarityCheck.response }];
+      // Store enhanced answerability check for later use
+      answerabilityCheck = answerabilityResult;
+
+      if (answerabilityCheck) {
+        console.log(`[Answerability Check] Message: "${lastUserMessage.content}"`);
+        console.log(`[Answerability Check] Is answerable: ${answerabilityCheck.is_answerable}`);
+        console.log(`[Answerability Check] Category: ${answerabilityCheck.category}`);
+        console.log(`[Answerability Check] Confidence: ${answerabilityCheck.confidence.toFixed(2)}`);
+        
+        // Get category-specific threshold
+        const categoryThreshold = getClarificationThreshold(answerabilityCheck.category as any);
+        
+        // If the message is not answerable or has low confidence, ask for clarification
+        if (!answerabilityCheck.is_answerable && answerabilityCheck.clarification_prompt) {
+          // Use confidence-based decision making with category-specific thresholds
+          const isVeryShort = lastUserMessage.content.trim().split(/\s+/).length <= 3;
+          const isEarlyInConversation = history.filter(m => m.role === 'user').length <= 2;
+          const isLowConfidence = answerabilityCheck.confidence < categoryThreshold;
+          
+          // Decide whether to clarify based on multiple factors
+          if (isLowConfidence || (isVeryShort && isEarlyInConversation)) {
+            // Use the provided clarification prompt or a category-specific follow-up
+            const clarificationResponse = answerabilityCheck.clarification_prompt || 
+              getCategoryFollowUp(answerabilityCheck.category as any);
+            
+            console.log(`[Category Handler] Using clarification for category: ${answerabilityCheck.category}`);
+            console.log(`[Category Handler] Threshold: ${categoryThreshold}, Confidence: ${answerabilityCheck.confidence}`);
+            
+            return [...history, { role: 'assistant', content: clarificationResponse }];
+          }
         }
+      } else if (clarityCheck.needsClarification && clarityCheck.response) {
+        // Fall back to the standard clarity check if enhanced check fails
+        return [...history, { role: 'assistant', content: clarityCheck.response }];
       }
 
       // Add mood context if needed
@@ -145,8 +190,16 @@ export async function handleChat(history: OpenAIChatMessage[]) {
     }
 
     // Proceed with normal processing if no clarification is needed
+    
+    // Enhance the system prompt based on the message category if available
+    let enhancedPrompt = systemPrompt;
+    if (answerabilityCheck && answerabilityCheck.category) {
+      enhancedPrompt = enhancePromptForCategory(systemPrompt, answerabilityCheck.category as any);
+      console.log(`[Category Handler] Enhanced prompt for category: ${answerabilityCheck.category}`);
+    }
+    
     const messages: OpenAIChatMessage[] = [
-      { role: "system", content: systemPrompt },
+      { role: "system", content: enhancedPrompt },
       ...history.map(msg => {
         if (msg.role === 'function') {
           return {
@@ -215,7 +268,7 @@ export async function handleChat(history: OpenAIChatMessage[]) {
         }
 
         // After function runs, GPT needs to respond again
-        const followUp = await executeChatCompletion([{ role: "system", content: systemPrompt}, ...history], "gpt-4o");
+        const followUp = await executeChatCompletion([{ role: "system", content: enhancedPrompt}, ...history], "gpt-4o");
         history.push({ 
             role: 'assistant', 
             content: followUp.choices[0].message.content || '' 
