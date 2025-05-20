@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server';
 import { Document } from '@/lib/models/documents';
 import { Embedding } from '@/lib/models/embeddings';
-import { generateEmbedding } from '@/lib/helpers/openai';
+import { generateEmbedding } from '@/lib/helpers/openai/openai-helpers';
+import { pushToQueue } from '@/lib/helpers/openai/rate-limiter';
 import { VALID_CATEGORIES, DocumentCategory } from './types';
 import { retry } from 'ts-retry-promise';
 import { EMBEDDING_CONSTANTS } from './constants';
@@ -14,6 +15,20 @@ interface CategorizedSection {
   category: DocumentCategory;
   content: string;
   confidence: number;
+}
+
+// Helper to wrap generateEmbedding in the OpenAI queue
+function embeddingInQueue(text: string): Promise<number[]> {
+  return new Promise((resolve, reject) => {
+    pushToQueue(async () => {
+      try {
+        const result = await generateEmbedding(text);
+        resolve(result);
+      } catch (e) {
+        reject(e);
+      }
+    });
+  });
 }
 
 /**
@@ -182,7 +197,7 @@ export async function createEmbeddingsFromCategorizedSections(
       for (let i = 0; i < chunks.length; i += EMBEDDING_CONSTANTS.BATCH_SIZE) {
         const batch = chunks.slice(i, i + EMBEDDING_CONSTANTS.BATCH_SIZE);
         // Limit parallel embedding generation
-        const embeddingTasks = batch.map(chunk => () => generateEmbedding(chunk.content));
+        const embeddingTasks = batch.map(chunk => () => embeddingInQueue(chunk.content));
         const embeddings = await limit(embeddingTasks, concurrencyLimit);
         const addTasks = batch.map((chunk, j) => async () => {
           try {
