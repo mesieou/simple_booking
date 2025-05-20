@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { Document } from '@/lib/models/documents';
 import { Embedding } from '@/lib/models/embeddings';
-import { generateEmbedding } from '@/lib/helpers/openai/openai-helpers';
+import { generateEmbedding } from '@/lib/helpers/openai/functions/embeddings';
 import { pushToQueue } from '@/lib/helpers/openai/rate-limiter';
 import { DocumentCategory } from './types';
 import { retry } from 'ts-retry-promise';

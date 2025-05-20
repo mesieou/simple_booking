@@ -1,5 +1,5 @@
 import { pushToQueue } from '@/lib/helpers/openai/rate-limiter';
-import { categorizeWebsiteContent } from '@/lib/helpers/openai/openai-helpers';
+import { categorizeWebsiteContent } from '@/lib/helpers/openai/functions/content-analysis';
 import { CategorizedContent } from './types';
 
 // Helper to split text into chunks with overlap

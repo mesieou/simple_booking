@@ -4,7 +4,7 @@ import { getAllDomainLinksRecursive } from './url-fetcher';
 import { createEmbeddingsFromCategorizedSections } from './embeddings';
 import fs from 'fs';
 import { detectLanguage, isLowValueContent, cleanContent } from './utils';
-import { categorizeWebsiteContent } from '@/lib/helpers/openai/openai-helpers';
+import { categorizeWebsiteContent } from '@/lib/helpers/openai/functions/content-analysis';
 import { pushToQueue } from '@/lib/helpers/openai/rate-limiter';
 import { textSplitterAndCategoriser } from './text-splitter-categoriser';
 
