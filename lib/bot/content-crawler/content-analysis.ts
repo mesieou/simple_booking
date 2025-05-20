@@ -1,5 +1,5 @@
 import { CategorizedContent } from './types';
-import { analyzeCategoryQualityWithGPT } from '@/lib/helpers/openai/openai-helpers';
+import { analyzeCategoryQualityWithGPT } from '@/lib/helpers/openai/functions/content-analysis';
 import { VALID_CATEGORIES } from './types';
 
 export interface ContentAnalysisResult {
