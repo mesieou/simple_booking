@@ -4,13 +4,15 @@ const RATE_LIMIT = {
   maxTokensPerMinute: 16000,
   backoffBase: 1000,
   maxBackoff: 30000,
+  maxConcurrent: 5, // Maximum number of concurrent requests
 };
 
 let requestCount = 0;
 let tokenCount = 0;
 let lastResetTime = Date.now();
+let activeRequests = 0;
 
-export async function waitForRateLimit(tokens: number): Promise<void> {
+async function checkRateLimit(tokens: number): Promise<void> {
   const now = Date.now();
   if (now - lastResetTime >= 60000) {
     requestCount = 0;
@@ -18,23 +20,32 @@ export async function waitForRateLimit(tokens: number): Promise<void> {
     lastResetTime = now;
   }
 
-  if (
+  // Wait if we've hit rate limits
+  while (
     requestCount >= RATE_LIMIT.maxRequestsPerMinute ||
-    tokenCount + tokens >= RATE_LIMIT.maxTokensPerMinute
+    tokenCount + tokens >= RATE_LIMIT.maxTokensPerMinute ||
+    activeRequests >= RATE_LIMIT.maxConcurrent
   ) {
     const waitTime = Math.min(
       RATE_LIMIT.maxBackoff,
       RATE_LIMIT.backoffBase * Math.pow(2, requestCount)
     );
     await new Promise((resolve) => setTimeout(resolve, waitTime));
-    return waitForRateLimit(tokens);
+    
+    // Reset counters if a minute has passed
+    if (Date.now() - lastResetTime >= 60000) {
+      requestCount = 0;
+      tokenCount = 0;
+      lastResetTime = Date.now();
+    }
   }
 
   requestCount++;
   tokenCount += tokens;
+  activeRequests++;
 }
 
-// Optional: queue system for ordered processing
+// Queue system for ordered processing
 const requestQueue: Array<() => Promise<any>> = [];
 let isProcessingQueue = false;
 
@@ -43,15 +54,23 @@ export function pushToQueue(request: () => Promise<any>) {
   processQueue();
 }
 
-export async function processQueue() {
+async function processQueue() {
   if (isProcessingQueue) return;
   isProcessingQueue = true;
 
   while (requestQueue.length > 0) {
-    const request = requestQueue.shift();
-    if (request) {
-      await request();
-    }
+    const batch = requestQueue.splice(0, RATE_LIMIT.maxConcurrent);
+    const promises = batch.map(async (request) => {
+      try {
+        await request();
+      } catch (error) {
+        console.error('Error processing queued request:', error);
+      } finally {
+        activeRequests--;
+      }
+    });
+
+    await Promise.all(promises);
   }
 
   isProcessingQueue = false;
