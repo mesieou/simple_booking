@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { AuthProvider } from "./context/auth-context";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { ProviderContextProvider } from './context/ProviderContext';
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -54,6 +55,7 @@ export default function RootLayout({
               enableSystem
               disableTransitionOnChange
             >
+              <ProviderContextProvider>
               <main className="min-h-screen flex flex-col">
                 <div className="flex-1 w-full flex flex-col items-center">
                   <nav className="w-full flex justify-center border-b border-b-foreground/10 h-16">
@@ -88,6 +90,7 @@ export default function RootLayout({
                 </div>
               </main>
               <Toaster />
+              </ProviderContextProvider>
             </ThemeProvider>
           </LanguageProvider>
         </AuthProvider>

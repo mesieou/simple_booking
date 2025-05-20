@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { CalendarDay } from '@/components/ui/calendar-day';
 import Horarios from '@/components/hour';
+import { useProvider } from '@/app/context/ProviderContext';
 
 const getNextDays = (count: number): Date[] => {
   const days: Date[] = [];
@@ -17,17 +18,26 @@ const getNextDays = (count: number): Date[] => {
   return days;
 };
 
+const SIZES = [
+  { value: 'one', label: 'Un ítem' },
+  { value: 'few', label: 'Pocos ítems' },
+  { value: 'house', label: 'Mudanza completa' }
+] as const;
+
+type SizeType = typeof SIZES[number]['value'];
+
 export default function Calendar() {
   const [showFullMonth, setShowFullMonth] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [size, setSize] = useState<SizeType>('one');
+  const { providerId } = useProvider();
+
   const daysToShow = showFullMonth ? 30 : 5;
-  
   const days = useMemo(() => getNextDays(daysToShow), [daysToShow]);
 
   const handleDateSelect = (date: Date) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
     if (date >= today) {
       setSelectedDate(date);
     }
@@ -64,13 +74,37 @@ export default function Calendar() {
         </button>
       </div>
 
-      {selectedDate && (
+      {/* Selector de tamaño de servicio */}
+      <div className="flex justify-center gap-4 mt-4">
+        <label htmlFor="size-select" className="text-white">Tipo de servicio:</label>
+        <select
+          id="size-select"
+          className="border rounded px-2 py-1"
+          value={size}
+          onChange={e => setSize(e.target.value as SizeType)}
+          aria-label="Seleccionar tipo de servicio"
+        >
+          {SIZES.map(s => (
+            <option key={s.value} value={s.value}>{s.label}</option>
+          ))}
+        </select>
+      </div>
+
+      {selectedDate && providerId && (
         <div className="mt-8" role="region" aria-label="Available schedules">
           <h3 className="text-xl text-white mb-4" id="horarios-title">
             Available schedules for {selectedDate.toDateString()}
           </h3>
-          <Horarios date={selectedDate} aria-labelledby="horarios-title" />
+          <Horarios
+            date={selectedDate}
+            providerId={providerId}
+            size={size}
+            aria-labelledby="horarios-title"
+          />
         </div>
+      )}
+      {selectedDate && !providerId && (
+        <div className="mt-8 text-red-500">Selecciona un proveedor para ver los horarios disponibles.</div>
       )}
     </div>
   );
