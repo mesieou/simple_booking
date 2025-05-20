@@ -7,8 +7,8 @@
 import { createUserSchema } from "@/lib/bot/schemas";
 import { systemPrompt } from "@/lib/bot/prompts";
 import { User } from "@/lib/models/user";
-import { executeChatCompletion } from "@/lib/helpers/openai/openai-core";
-import { chatWithFunctions, chatWithOpenAI, clarifyMessage, ChatMessage, analyzeSentiment } from "@/lib/helpers/openai/openai-helper";
+import { executeChatCompletion, ChatMessage, OpenAIChatMessage, OpenAIChatCompletionResponse } from "@/lib/helpers/openai/openai-core";
+import { chatWithFunctions, clarifyMessage, analyzeSentiment } from "@/lib/helpers/openai/openai-helpers";
 import { processMoodAndCheckForAlert } from "@/lib/helpers/alertSystem";
 
 /**
@@ -40,7 +40,7 @@ async function checkMessageClarity(message: string, history: ChatMessage[]): Pro
         }
       ];
       
-      const response = await chatWithOpenAI(clarificationPrompt);
+      const response = await executeChatCompletion(clarificationPrompt, "gpt-4o", 0.3, 500);
       return {
         needsClarification: true,
         response: response.choices[0]?.message?.content || "Could you please clarify what you mean?"
@@ -66,7 +66,7 @@ async function checkMessageClarity(message: string, history: ChatMessage[]): Pro
         }
       ];
       
-      const response = await chatWithOpenAI(guidancePrompt);
+      const response = await executeChatCompletion(guidancePrompt, "gpt-4o", 0.3, 500);
       return {
         needsClarification: true,
         response: response.choices[0]?.message?.content || "I'm here to help with your moving and storage needs. Could you tell me more about what you're looking for?"
@@ -80,74 +80,92 @@ async function checkMessageClarity(message: string, history: ChatMessage[]): Pro
   }
 }
 // Central function: takes existing history, and returns new history
-export async function handleChat(history: any[]) {
+export async function handleChat(history: OpenAIChatMessage[]) {
     // Get the last user message
     const lastUserMessage = history
       .slice()
       .reverse()
       .find(m => m.role === 'user');
 
-    // If there's a user message, analyze its mood and check clarity
+    // If there's a user message, analyze its mood and check clarity in parallel
     if (lastUserMessage) {
-      // Analyze mood of the user's message (without chat history)
-      let moodContext = '';
-      try {
-        const moodResult = await analyzeSentiment(lastUserMessage.content);
-        if (moodResult !== undefined) {
-          console.log(`[Mood Analysis] Message: "${lastUserMessage.content}"`);
-          console.log(`[Mood Analysis] Score: ${moodResult.score}/10 (${moodResult.category}: ${moodResult.description})`);
-          
-          // Add mood context to the system prompt if needed
-          if (moodResult.category === 'frustrated') {
-            moodContext = `The user seems ${moodResult.description}. Be extra patient, understanding, and solution-focused in your response.`;
+      const [moodResult, clarityCheck] = await Promise.all([
+        // Mood analysis
+        (async () => {
+          try {
+            const result = await analyzeSentiment(lastUserMessage.content);
+            if (result !== undefined) {
+              console.log(`[Mood Analysis] Message: "${lastUserMessage.content}"`);
+              console.log(`[Mood Analysis] Score: ${result.score}/10 (${result.category}: ${result.description})`);
+              
+              // Check if we should alert an admin based on the mood score
+              const tempUserId = history.length > 0 ? 
+                `user_${history[0].content.substring(0, 10).replace(/\W/g, '')}_${new Date().toISOString().split('T')[0]}` : 
+                `anonymous_${new Date().getTime()}`;
+                
+              const alertTriggered = processMoodAndCheckForAlert(tempUserId, result);
+              
+              if (alertTriggered) {
+                console.log(`[ADMIN NOTIFICATION] Alert triggered for user ${tempUserId}`);
+                console.log(`[ADMIN NOTIFICATION] Consider reaching out to this customer directly`);
+              }
+              
+              return result;
+            }
+          } catch (error) {
+            console.error('[Mood Analysis] Error:', error);
           }
-          
-          // Check if we should alert an admin based on the mood score
-          // Using a temporary userId based on the first few characters of the message for demo purposes
-          // In a real app, you would use the actual user ID from authentication
-          const tempUserId = history.length > 0 ? 
-            `user_${history[0].content.substring(0, 10).replace(/\W/g, '')}_${new Date().toISOString().split('T')[0]}` : 
-            `anonymous_${new Date().getTime()}`;
-            
-          const alertTriggered = processMoodAndCheckForAlert(tempUserId, moodResult);
-          
-          if (alertTriggered) {
-            // In a real application, you would notify admins through a proper channel
-            // For now, we're just logging the alert
-            console.log(`[ADMIN NOTIFICATION] Alert triggered for user ${tempUserId}`);
-            console.log(`[ADMIN NOTIFICATION] Consider reaching out to this customer directly`);
-          }
-        }
-      } catch (error) {
-        console.error('[Mood Analysis] Error:', error);
-      }
+          return undefined;
+        })(),
+        
+        // Clarity check
+        (async () => {
+          const chatHistory = history.filter(m => m.role === 'user' || m.role === 'assistant').map(m => ({
+            role: m.role as 'user' | 'assistant',
+            content: m.content
+          }));
+          return await checkMessageClarity(lastUserMessage.content, chatHistory);
+        })()
+      ]);
 
-      // Check message clarity while maintaining conversation flow
-      const clarityCheck = await checkMessageClarity(
-        lastUserMessage.content, 
-        history.filter(m => m.role !== 'system')
-      );
-
+      // Handle clarity check result
       if (clarityCheck.needsClarification && clarityCheck.response) {
-        // Only use the clarification response if we're confident it's needed
-        // and the response is natural-sounding
         const shouldClarify = Math.random() > 0.3; // 70% chance to clarify
         if (shouldClarify) {
           return [...history, { role: 'assistant', content: clarityCheck.response }];
         }
       }
+
+      // Add mood context if needed
+      let moodContext = '';
+      if (moodResult?.category === 'frustrated') {
+        moodContext = `The user seems ${moodResult.description}. Be extra patient, understanding, and solution-focused in your response.`;
+      }
     }
 
     // Proceed with normal processing if no clarification is needed
-    const messages = [{ role: "system", content: systemPrompt }, ...history];
+    const messages: OpenAIChatMessage[] = [
+      { role: "system", content: systemPrompt },
+      ...history.map(msg => {
+        if (msg.role === 'function') {
+          return {
+            role: 'function' as const,
+            name: msg.name,
+            content: msg.content
+          };
+        }
+        return {
+          role: msg.role as "system" | "user" | "assistant",
+          content: msg.content
+        };
+      })
+    ];
     
     // Check if GPT wants to call a function
     const completion = await chatWithFunctions(messages, [createUserSchema]);
     const msg = completion.choices[0].message;
 
     // === Create User ===
-    // OpenAI function-calling responses include a function_call property when a function is triggered.
-    // The type definition in openai.ts now supports this.
     if (msg.function_call?.name === "createUser") {
         const {firstName, lastName} = JSON.parse(msg.function_call.arguments || "{}");
 
@@ -164,7 +182,11 @@ export async function handleChat(history: any[]) {
             const result = await user.add();
 
             // Push the function call and result to history
-            history.push(msg);
+            history.push({ 
+                role: 'assistant', 
+                content: msg.content || '',
+                function_call: msg.function_call
+            });
             history.push({
                 role: "function",
                 name: "createUser",
@@ -176,7 +198,11 @@ export async function handleChat(history: any[]) {
 
         } catch (err) {
             console.error("User creation error:", err);
-            history.push(msg);
+            history.push({ 
+                role: 'assistant', 
+                content: msg.content || '',
+                function_call: msg.function_call
+            });
             history.push({
                 role: "function",
                 name: "createUser",
@@ -188,13 +214,19 @@ export async function handleChat(history: any[]) {
         }
 
         // After function runs, GPT needs to respond again
-        const followUp = await executeChatCompletion([{ role: "system", content: systemPrompt}, ...history], "gpt-4o") as { choices: { message: any }[] };
-        history.push(followUp.choices[0].message);
+        const followUp = await executeChatCompletion([{ role: "system", content: systemPrompt}, ...history], "gpt-4o");
+        history.push({ 
+            role: 'assistant', 
+            content: followUp.choices[0].message.content || '' 
+        });
         return history;
     }
 
     // If there was no function call, just push GPT's answer
-    history.push(msg);
+    history.push({ 
+        role: 'assistant', 
+        content: msg.content || '' 
+    });
     return history;
 }
 

@@ -1,6 +1,8 @@
-import { executeChatCompletion, OpenAIChatMessage, OpenAIChatCompletionResponse } from "./openai-core";
+import { executeChatCompletion, OpenAIChatMessage, OpenAIChatCompletionResponse, ChatMessage, MoodAnalysisResult, ChatResponse } from "./openai-core";
 import OpenAI from "openai";
 import { CategorizedContent, VALID_CATEGORIES } from "@/lib/bot/content-crawler/types";
+
+export type { MoodAnalysisResult };
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -135,4 +137,131 @@ export async function detectConversationCategory(
   // Return the best matching category (case-insensitive)
   const match = categories.find(cat => cat.toLowerCase() === result.toLowerCase());
   return match || undefined;
-} 
+}
+
+export async function analyzeSentiment(text: string): Promise<MoodAnalysisResult | undefined> {
+  try {
+    const prompt = `Analyze the mood/sentiment of the following text and return a JSON object with the following properties:
+- score: a number between 1 and 10, where 1 is very frustrated/angry and 10 is very happy/positive
+- category: one of these categories: 'frustrated' (for scores 1-3), 'neutral' (for scores 4-6), or 'positive' (for scores 7-10)
+- description: a brief phrase describing the specific emotion detected (e.g., "slightly annoyed", "very satisfied")
+
+IMPORTANT GUIDELINES:
+1. Do NOT confuse short or direct messages with frustration unless there is clear emotional or negative language present.
+2. Informational or factual statements should generally be scored as neutral (4-6) even if they are brief.
+3. Only classify as 'frustrated' (1-3) when there are clear indicators of negative emotion such as:
+   - Explicit complaints
+   - Negative emotional words
+   - Expressions of dissatisfaction
+   - Repeated questions or statements indicating impatience
+
+Examples:
+- "its a local move, and i need to move an refrigerator" → score: 5, category: neutral, description: informative
+- "seriously? this is the third time I've asked" → score: 2, category: frustrated, description: annoyed
+- "thank you so much for the help!" → score: 9, category: positive, description: appreciative
+
+IMPORTANT: Return ONLY the raw JSON object without any markdown formatting, code blocks, or additional explanation. Do not wrap the JSON in \`\`\` tags.
+
+Text: "${text}"`;
+
+    const response = await executeChatCompletion([
+      {
+        role: "system" as const,
+        content: "You are a mood analysis tool that returns a JSON object with score, category, and description. You must return only raw JSON without markdown formatting or code blocks. Do not confuse direct or short messages with frustration unless there is clear negative emotional content."
+      },
+      {
+        role: "user" as const,
+        content: prompt
+      }
+    ], "gpt-4o", 0.3, 500) as unknown as ChatResponse;
+
+    let resultText = response.choices[0]?.message?.content?.trim();
+    if (!resultText) return undefined;
+
+    try {
+      // Clean up the result text if it contains markdown code blocks
+      if (resultText.includes('```')) {
+        // Extract JSON from markdown code blocks
+        const jsonMatch = resultText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+        if (jsonMatch && jsonMatch[1]) {
+          resultText = jsonMatch[1].trim();
+        } else {
+          // If we can't extract from code blocks, try to remove markdown markers
+          resultText = resultText.replace(/```json|```/g, '').trim();
+        }
+      }
+
+      console.log('Cleaned JSON result:', resultText);
+      
+      const result = JSON.parse(resultText);
+      
+      // Validate and normalize the result
+      const score = Math.max(1, Math.min(10, isNaN(result.score) ? 5 : result.score));
+      
+      // Ensure category is one of the expected values
+      let category = result.category?.toLowerCase() || '';
+      if (!['frustrated', 'neutral', 'positive'].includes(category)) {
+        // Derive category from score if not valid
+        if (score <= 3) category = 'frustrated';
+        else if (score <= 6) category = 'neutral';
+        else category = 'positive';
+      }
+      
+      return {
+        score,
+        category,
+        description: result.description || ''
+      };
+    } catch (parseError) {
+      console.error('Error parsing mood analysis result:', parseError);
+      return undefined;
+    }
+  } catch (error) {
+    console.error('Error analyzing sentiment:', error);
+    return undefined;
+  }
+}
+
+export async function clarifyMessage(
+  message: string, 
+  chatHistory: ChatMessage[] = []
+): Promise<'clear' | 'unclear' | 'irrelevant' | undefined> {
+  try {
+    
+    // Format the chat history for context
+    const historyContext = chatHistory.length > 0 
+      ? `\n\nPrevious conversation context (most recent first):\n` +
+        chatHistory
+          .slice(-5) // Limit to last 5 messages to avoid too much context
+          .reverse() // Show most recent first
+          .map(msg => `${msg.role}: ${msg.content}`)
+          .join('\n')
+      : '';
+
+    const prompt = `You are a message clarity classifier.\n\nYour job is to receive a user message and its conversation context, then classify it into one of the following labels:\n\n- clear → the message is well-formed and understandable; the bot can reply without needing more context\n- unclear → the message is vague, ambiguous, or lacks context; it would require clarification before responding\n- irrelevant → the message has nothing to do with customer service or is off-topic (e.g., emojis, jokes, random text)\n\nImportant considerations:\n1. If the message refers to something in the conversation history, it might be clear\n2. If the message is a follow-up without context (e.g., \"What about that thing?\"), it's likely unclear\n3. If the message is completely out of context from the conversation, it might be irrelevant\n\nInstructions:\n- Only reply with one of the three labels: \`clear\`, \`unclear\`, or \`irrelevant\`\n- Do not provide any explanation or extra text\n- Be strict — if there is any doubt or ambiguity, classify it as \`unclear\`\n\nExamples with context:\n1. Previous: user: \"I want to book a moving service\"\n   New: \"For next Monday\" → clear  \n2. Previous: (no context)\n   New: \"For next Monday\" → unclear  \n3. New: \"😂😂😂\" → irrelevant\n\nNow classify this message:${historyContext}\n\nNew message to classify:\n${message}`;
+
+    const messages = [
+      {
+        role: "system" as const,
+        content: "You are a helpful assistant that classifies message clarity based on both the message and conversation context."
+      },
+      {
+        role: "user" as const,
+        content: prompt
+      }
+    ];
+    const response = await executeChatCompletion(messages, "gpt-4o", 0.3, 500) as unknown as ChatResponse;
+
+    const classification = response.choices[0]?.message?.content?.trim().toLowerCase();
+
+    // Validate the response is one of the expected values
+    if (classification === 'clear' || classification === 'unclear' || classification === 'irrelevant') {
+      return classification;
+    }
+
+    return 'unclear'; // Default to 'unclear' if the response is not as expected
+  } catch (error) {
+    console.error('Error classifying message:', error);
+    return undefined;
+  }
+}
