@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { crawlAndMergeText } from '@/lib/bot/content-crawler/crawler';
-import { SimpleCrawlConfig } from '@/lib/bot/content-crawler/types';
+import { CrawlConfig } from '@/lib/bot/content-crawler/config';
+import { crawlAndProcess } from '@/lib/bot/content-crawler/html-crawler';
 
 export async function POST(request: Request) {
   try {
@@ -46,8 +46,8 @@ export async function POST(request: Request) {
             { status: 400 }
           );
         }
-        const config: SimpleCrawlConfig = { websiteUrl, businessId };
-        const result = await crawlAndMergeText(config);
+        const config: CrawlConfig = { websiteUrl, businessId };
+        const result = await crawlAndProcess(config);
         return NextResponse.json({
           message: 'Content processing and embedding completed successfully',
           businessId,

@@ -50,6 +50,7 @@ const requestQueue: Array<() => Promise<any>> = [];
 let isProcessingQueue = false;
 
 export function pushToQueue(request: () => Promise<any>) {
+  console.log(`[RateLimiter] Adding request to queue. Queue length before: ${requestQueue.length}`);
   requestQueue.push(request);
   processQueue();
 }
@@ -60,18 +61,23 @@ async function processQueue() {
 
   while (requestQueue.length > 0) {
     const batch = requestQueue.splice(0, RATE_LIMIT.maxConcurrent);
-    const promises = batch.map(async (request) => {
+    console.log(`[RateLimiter] Processing batch of ${batch.length}. Remaining in queue: ${requestQueue.length}`);
+    const promises = batch.map(async (request, idx) => {
       try {
+        console.log(`[RateLimiter] Starting request ${idx + 1} in batch`);
         await request();
+        console.log(`[RateLimiter] Finished request ${idx + 1} in batch`);
       } catch (error) {
-        console.error('Error processing queued request:', error);
+        console.error('[RateLimiter] Error processing queued request:', error);
       } finally {
         activeRequests--;
       }
     });
 
     await Promise.all(promises);
+    console.log(`[RateLimiter] Finished processing batch.`);
   }
 
   isProcessingQueue = false;
+  console.log('[RateLimiter] Queue is empty, all requests processed.');
 } 
