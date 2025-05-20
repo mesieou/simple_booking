@@ -1,12 +1,4 @@
-import { JobType } from '../models/quote';
 import { Service } from '../models/service';
-
-// Job durations in minutes
-export const JOB_DURATIONS: Record<JobType, number> = {
-  "one item": 30,
-  "few items": 60,
-  "house/apartment move": 180
-};
 
 export function calculateTravelCostEstimate(
   travelTimeEstimate: number,
