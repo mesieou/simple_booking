@@ -3,11 +3,10 @@ import { Document } from '@/lib/models/documents';
 import { Embedding } from '@/lib/models/embeddings';
 import { generateEmbedding } from '@/lib/helpers/openai/openai-helpers';
 import { pushToQueue } from '@/lib/helpers/openai/rate-limiter';
-import { VALID_CATEGORIES, DocumentCategory } from './types';
+import { DocumentCategory } from './types';
 import { retry } from 'ts-retry-promise';
 import { EMBEDDING_CONSTANTS } from './constants';
 import { splitIntoSentences, generateContentHash, normalizeText } from './utils';
-import { deduplicateParagraphs } from './content-processor';
 import { v4 as uuidv4 } from 'uuid';
 import { analyzeContent } from './content-analysis';
 
