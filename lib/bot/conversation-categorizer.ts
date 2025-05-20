@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { detectConversationCategory } from "@/lib/helpers/openai/openai-helpers";
+import { detectConversationCategory } from "@/lib/helpers/openai/functions/conversation";
 
 /**
  * Gets unique categories from the documents table in Supabase
