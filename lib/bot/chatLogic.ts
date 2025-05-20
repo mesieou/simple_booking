@@ -7,7 +7,8 @@
 import {createUserSchema } from "@/lib/bot/schemas";
 import { systemPrompt } from "@/lib/bot/prompts";
 import { User } from "@/lib/models/user";
-import { chatWithFunctions, executeChatCompletion } from "@/lib/helpers/openai";
+import { chatWithFunctions } from "@/lib/helpers/openai/openai-helpers";
+import { executeChatCompletion } from "@/lib/helpers/openai/openai-core";
 
 // Central function: takes existing history, and returns new history
 export async function handleChat(history: any[]) {

@@ -1,10 +1,12 @@
-import { SimpleCrawlConfig, SimpleCrawlResult, PdfProcessingConfig, PdfProcessingResult, CategorizedContent } from './types';
-import { extractAndCleanContent, processPdfContent } from './content-processor';
+import { SimpleCrawlConfig, SimpleCrawlResult, CategorizedContent } from './types';
+import { extractAndCleanContent } from './content-processor';
 import { getAllDomainLinksRecursive } from './url-fetcher';
 import { createEmbeddingsFromCategorizedSections } from './embeddings';
 import fs from 'fs';
 import { detectLanguage, isLowValueContent, cleanContent } from './utils';
-import { categorizeWebsiteContent } from '@/lib/helpers/openai';
+import { categorizeWebsiteContent } from '@/lib/helpers/openai/openai-helpers';
+import { pushToQueue } from '@/lib/helpers/openai/rate-limiter';
+import { textSplitterAndCategoriser } from './text-splitter-categoriser';
 
 async function fetchHtml(url: string): Promise<string | null> {
   try {
@@ -37,6 +39,20 @@ function splitTextIntoChunks(text: string, maxWords: number, overlapWords: numbe
     if (start < 0) start = 0;
   }
   return chunks;
+}
+
+// Helper to wrap categorizeWebsiteContent in the OpenAI queue
+function categorizeInQueue(text: string, businessId: string, url: string) {
+  return new Promise<CategorizedContent[]>((resolve, reject) => {
+    pushToQueue(async () => {
+      try {
+        const result = await categorizeWebsiteContent(text, businessId, url);
+        resolve(result);
+      } catch (e) {
+        reject(e);
+      }
+    });
+  });
 }
 
 // NOTE: Language detection and content filtering now use robust logic and detailed logging (see utils.ts)
@@ -132,38 +148,15 @@ export async function crawlAndMergeText(config: SimpleCrawlConfig): Promise<Simp
   const inputWords = allTexts.reduce((acc, t) => acc + t.split(/\s+/).length, 0);
   const inputTokens = Math.round(inputWords * 1.33);
 
-  const gptConcurrency = 1;
-  let gptIdx = 0;
-  const categorizedSections: CategorizedContent[] = [];
-  async function gptWorker() {
-    while (true) {
-      const i = gptIdx++;
-      if (i >= allTexts.length) break;
-      const pageText = allTexts[i];
-      if (!pageText) continue;
-      const wordCount = pageText.split(/\s+/).length;
-      let chunks: string[];
-      if (wordCount > 2000) {
-        chunks = splitTextIntoChunks(pageText, 1500, 100);
-      } else {
-        chunks = [pageText];
-      }
-      const allChunkResults: CategorizedContent[] = [];
-      for (let c = 0; c < chunks.length; c++) {
-        const chunkText = chunks[c];
-        try {
-          console.log(`[Crawler] Sending chunk ${c + 1}/${chunks.length} of page ${i + 1} to ChatGPT...`);
-          const categorized = await categorizeWebsiteContent(chunkText, config.businessId, urls[i]);
-          console.log(`[Crawler] Received categorized content for chunk ${c + 1}/${chunks.length} of page ${i + 1}.`);
-          allChunkResults.push(...categorized);
-        } catch (e) {
-          // No per-chunk error log
-        }
-      }
-      categorizedSections.push(...allChunkResults);
-    }
-  }
-  await Promise.all(Array.from({ length: gptConcurrency }, () => gptWorker()));
+  // Use the new modularized categorization function
+  const categorizedSections = await textSplitterAndCategoriser(
+    allTexts,
+    config.businessId,
+    urls,
+    2000, // chunkSize
+    100,  // chunkOverlap
+    5     // gptConcurrency
+  );
 
   const DEFAULT_CHUNK_SIZE = 1000;
   const DEFAULT_CONCURRENCY_LIMIT = 3;
@@ -191,75 +184,5 @@ export async function crawlAndMergeText(config: SimpleCrawlConfig): Promise<Simp
     businessId: config.businessId,
     websiteUrl: config.websiteUrl,
     ...(embeddingsStatus ? { embeddingsStatus } : {})
-  };
-}
-
-export async function processPdfAndCreateEmbeddings(
-  pdfBuffer: ArrayBuffer,
-  config: PdfProcessingConfig
-): Promise<PdfProcessingResult> {
-  if (!fs.existsSync('crawl-output')) fs.mkdirSync('crawl-output');
-
-  // Process PDF content
-  const pdfResult = await processPdfContent(pdfBuffer, config.businessId, config.originalUrl);
-  if (!pdfResult) {
-    throw new Error('Failed to process PDF content');
-  }
-
-  // Save cleaned content
-  fs.writeFileSync('crawl-output/pdf-cleaned.txt', pdfResult.content, 'utf8');
-
-  // Split content into chunks if needed
-  const wordCount = pdfResult.content.split(/\s+/).length;
-  let chunks: string[];
-  if (wordCount > 2000) {
-    chunks = splitTextIntoChunks(pdfResult.content, 1500, 100);
-  } else {
-    chunks = [pdfResult.content];
-  }
-
-  // Process chunks with GPT
-  const categorizedSections: CategorizedContent[] = [];
-  for (const chunk of chunks) {
-    try {
-      const categorized = await categorizeWebsiteContent(chunk, config.businessId, config.originalUrl || 'local-pdf');
-      categorizedSections.push(...categorized);
-    } catch (e) {
-      console.error('Error categorizing PDF chunk:', e);
-    }
-  }
-
-  // Create embeddings
-  const DEFAULT_CHUNK_SIZE = 1000;
-  const DEFAULT_CONCURRENCY_LIMIT = 3;
-  let embeddingsStatus;
-  try {
-    await createEmbeddingsFromCategorizedSections(
-      config.businessId,
-      config.originalUrl || 'local-pdf',
-      categorizedSections,
-      DEFAULT_CHUNK_SIZE,
-      DEFAULT_CONCURRENCY_LIMIT,
-      1, // totalPages
-      [config.originalUrl || 'local-pdf'] // embeddedUrls
-    );
-    embeddingsStatus = 'success';
-  } catch (e) {
-    embeddingsStatus = `error: ${e instanceof Error ? e.message : String(e)}`;
-  }
-
-  return {
-    mergedText: pdfResult.content,
-    pageCount: 1,
-    uniqueParagraphs: chunks.length,
-    businessId: config.businessId,
-    originalUrl: config.originalUrl || 'local-pdf',
-    embeddingsStatus,
-    metadata: {
-      crawlTimestamp: Date.now(),
-      status: 'success',
-      language: 'en',
-      fileType: 'pdf'
-    }
   };
 } 

@@ -1,142 +1,12 @@
-/**
- * OpenAI Service - Centralized ChatGPT API Calls
- *
- * This module provides centralized utility functions to interact with the OpenAI Chat API.
- * It separates standard message generation and function-calling behavior into reusable functions
- * to keep the rest of the codebase clean and consistent.
- *
- * Usage:
- *
- * 1. Basic chat without function calls:
- *    const response = await chatWithOpenAI([
- *      { role: "system", content: systemPrompt },
- *      { role: "user", content: "Hello, I need help moving." }
- *    ]);
- *
- * 2. Chat with function call support:
- *    const response = await chatWithFunctions(
- *      [{ role: "system", content: systemPrompt }, ...history],
- *      [createUserSchema, getQuoteSchema, bookSlotSchema] // your defined function schemas
- *    );
- *
- * 3. Generate embeddings:
- *    const embedding = await generateEmbedding("Your text here");
- *
- * The returned object follows OpenAI's chat completion format.
- * Use response.choices[0].message to get the assistant's reply or function call trigger.
- */
+import { executeChatCompletion, OpenAIChatMessage, OpenAIChatCompletionResponse } from "./openai-core";
 import OpenAI from "openai";
-import {
-  CategorizedContent,
-  VALID_CATEGORIES,
-} from "@/lib/bot/content-crawler/types";
-
-interface OpenAIChatMessage {
-  role: "system" | "user" | "assistant";
-  content: string;
-}
-
-interface OpenAIChatCompletionResponse {
-  choices: Array<{
-    message: {
-      content: string | null;
-      function_call?: {
-        name: string;
-        arguments: string;
-      };
-    };
-  }>;
-}
+import { CategorizedContent, VALID_CATEGORIES } from "@/lib/bot/content-crawler/types";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
   maxRetries: 3,
-  timeout: 30000, // 30 seconds
+  timeout: 30000,
 });
-
-// Rate limiting configuration
-const RATE_LIMIT = {
-  maxRequestsPerMinute: 20,
-  maxTokensPerMinute: 16000,
-  backoffBase: 1000,
-  maxBackoff: 30000,
-};
-
-let requestCount = 0;
-let tokenCount = 0;
-let lastResetTime = Date.now();
-let requestQueue: Array<() => Promise<OpenAIChatCompletionResponse>> = [];
-let isProcessingQueue = false;
-
-async function processQueue() {
-  if (isProcessingQueue) return;
-  isProcessingQueue = true;
-
-  while (requestQueue.length > 0) {
-    const request = requestQueue.shift();
-    if (request) {
-      await request();
-    }
-  }
-
-  isProcessingQueue = false;
-}
-
-async function waitForRateLimit(tokens: number): Promise<void> {
-  const now = Date.now();
-  if (now - lastResetTime >= 60000) {
-    requestCount = 0;
-    tokenCount = 0;
-    lastResetTime = now;
-  }
-
-  if (
-    requestCount >= RATE_LIMIT.maxRequestsPerMinute ||
-    tokenCount + tokens >= RATE_LIMIT.maxTokensPerMinute
-  ) {
-    const waitTime = Math.min(
-      RATE_LIMIT.maxBackoff,
-      RATE_LIMIT.backoffBase * Math.pow(2, requestCount)
-    );
-    await new Promise((resolve) => setTimeout(resolve, waitTime));
-    return waitForRateLimit(tokens);
-  }
-
-  requestCount++;
-  tokenCount += tokens;
-}
-
-async function executeChatCompletion(
-  messages: OpenAIChatMessage[],
-  model: string = "gpt-4o",
-  temperature: number = 0.3,
-  maxTokens: number = 1000,
-  functions?: any[]
-): Promise<OpenAIChatCompletionResponse> {
-  await waitForRateLimit(maxTokens);
-  
-  const request = async () => {
-    try {
-      const response = await openai.chat.completions.create({
-        model,
-        messages,
-        temperature,
-        max_tokens: maxTokens,
-        ...(functions && { functions, function_call: "auto" }),
-      });
-      return response;
-    } catch (error) {
-      console.error("Error executing chat completion:", error);
-      throw error;
-    }
-  };
-
-  requestQueue.push(request);
-  processQueue();
-  return request();
-}
-
-// All OpenAI chat completions should use executeChatCompletion directly for clarity and control.
 
 export async function chatWithFunctions(
   messages: OpenAIChatMessage[],
@@ -157,7 +27,6 @@ export async function generateEmbedding(text: string): Promise<number[]> {
     throw new Error("Failed to generate embedding");
   }
 }
-
 
 export async function detectMissingInformation(
   categorizedContent: { category: string; content: string }[]
@@ -191,15 +60,6 @@ export async function detectMissingInformation(
   return result;
 }
 
-/**
- * Detect which category a conversation belongs to based on a short dialogue.
- * Useful for narrowing down embedding search space to relevant categories.
- * @param conversation The conversation to categorize
- * @param categories List of available categories from the database
- * @returns The best matching category or undefined if no match found
- */
-
-
 export async function categorizeWebsiteContent(
   text: string,
   businessId: string,
@@ -231,13 +91,12 @@ export function safeParseOpenAIJson<T>(raw: string | undefined): T {
   }
 }
 
-
 export async function analyzeCategoryQualityWithGPT(
   category: string,
   content: string,
   websiteUrl: string
 ): Promise<{ issues: string[]; recommendations: string[]; score: number }> {
-  const prompt = `You are reviewing the content for the "${category}" section of a business website (website: ${websiteUrl}).\n\nThis content will be used by a customer service bot to assist and inform customers.\n\n1. Assess the quality and completeness of the content below for this category, specifically for customer support and user experience.\n2. List any issues, missing details, or improvements needed (as an array of strings) that would help the bot provide excellent customer service.\n3. Provide specific recommendations for improvement (as an array of strings) to ensure the bot can answer customer questions accurately and helpfully.\n4. Give an overall quality score from 0-100 (as a number), focused on customer-facing usefulness.\n\nReturn a JSON object with this structure:\n{\n  "issues": ["issue1", "issue2"],\n  "recommendations": ["recommendation1", "recommendation2"],\n  "score": 75\n}\n\nHere is the content for this category:\n${content}`;
+  const prompt = `You are reviewing the content for the \"${category}\" section of a business website (website: ${websiteUrl}).\n\nThis content will be used by a customer service bot to assist and inform customers.\n\n1. Assess the quality and completeness of the content below for this category, specifically for customer support and user experience.\n2. List any issues, missing details, or improvements needed (as an array of strings) that would help the bot provide excellent customer service.\n3. Provide specific recommendations for improvement (as an array of strings) to ensure the bot can answer customer questions accurately and helpfully.\n4. Give an overall quality score from 0-100 (as a number), focused on customer-facing usefulness.\n\nReturn a JSON object with this structure:\n{\n  "issues": ["issue1", "issue2"],\n  "recommendations": ["recommendation1", "recommendation2"],\n  "score": 75\n}\n\nHere is the content for this category:\n${content}`;
 
   try {
     const response = await executeChatCompletion([
@@ -260,5 +119,20 @@ export async function analyzeCategoryQualityWithGPT(
   }
 }
 
-export { executeChatCompletion };
+export async function detectConversationCategory(
+  conversation: { role: 'user' | 'assistant', content: string }[],
+  categories: string[]
+): Promise<string | undefined> {
+  const prompt = `You are an expert assistant. Given the following conversation, select the best matching category from this list:\n${categories.map(c => `- ${c}`).join('\n')}\n\nConversation:\n${conversation.map(m => `${m.role}: ${m.content}`).join('\n')}\n\nReturn ONLY the category name, nothing else.`;
 
+  const response = await executeChatCompletion([
+    { role: 'system', content: 'You are a helpful assistant that categorizes conversations.' },
+    { role: 'user', content: prompt }
+  ], 'gpt-4o', 0.3, 256);
+
+  const result = response.choices[0]?.message?.content?.trim();
+  if (!result) return undefined;
+  // Return the best matching category (case-insensitive)
+  const match = categories.find(cat => cat.toLowerCase() === result.toLowerCase());
+  return match || undefined;
+} 

@@ -1,9 +1,7 @@
 import * as cheerio from 'cheerio';
-import { PDFDocument } from 'pdf-lib';
-import { detectLanguage, normalizeText, PRICE_REGEX, isLowValueContent } from './utils';
+import { detectLanguage, PRICE_REGEX, isLowValueContent } from './utils';
 import crypto from 'crypto';
 import { cleanContent } from './utils';
-import { categorizeWebsiteContent } from '@/lib/helpers/openai';
 
 interface Section {
   title: string;
@@ -105,87 +103,6 @@ export function extractMainContent($: cheerio.CheerioAPI): string {
   $('body script').remove();
   return $('body').text().trim();
 }
-
-// export async function processPdfContent(pdfBuffer: ArrayBuffer, businessId: string, originalUrl?: string): Promise<{
-//   url: string;
-//   title: string;
-//   content: string;
-//   businessId: string;
-//   metadata: {
-//     crawlTimestamp: number;
-//     depth: number;
-//     status: 'success' | 'error';
-//     language: string;
-//     originalUrl: string;
-//     fileType: 'pdf';
-//   }
-// } | null> {
-//   try {
-//     // Convert ArrayBuffer to Buffer for pdf-parse
-//     const buffer = Buffer.from(pdfBuffer);
-    
-//     // Extract text using pdf-parse
-//     const data = await pdfParse.default(buffer);
-//     let content = data.text;
-    
-//     // If no content was extracted, try with pdf-lib as fallback
-//     if (!content.trim()) {
-//       console.warn('No text extracted with pdf-parse, trying fallback');
-//       const pdfDoc = await PDFDocument.load(pdfBuffer);
-//       const pages = pdfDoc.getPages();
-//       content = pages.map((page, i) => {
-//         const { width, height } = page.getSize();
-//         return `Page ${i + 1}: ${width}x${height} (No text content could be extracted)`;
-//       }).join('\n');
-//     }
-
-//     // Get PDF metadata
-//     let title = 'Untitled PDF';
-//     try {
-//       const pdfDoc = await PDFDocument.load(pdfBuffer);
-//       title = pdfDoc.getTitle() || 
-//         (originalUrl ? decodeURIComponent(new URL(originalUrl).pathname.replace(/\//g, ' ').trim()) : 'Untitled PDF');
-//     } catch (e) {
-//       console.warn('Could not load PDF metadata, using default title');
-//     }
-
-//     // Clean and process content using the same pipeline as web content
-//     const cleanedContent = cleanContent(content);
-
-//     if (!cleanedContent) {
-//       console.warn('No content found in PDF');
-//       return null;
-//     }
-
-//     // Detect language but don't restrict by language
-//     const language = detectLanguage(originalUrl || '', cleanedContent);
-
-//     // Check for low value content
-//     const lowValueReason = isLowValueContent(cleanedContent);
-//     if (lowValueReason) {
-//       console.warn(`Skipping low value PDF content: ${lowValueReason}`);
-//       return null;
-//     }
-
-//     return {
-//       url: originalUrl || 'local-pdf',
-//       title,
-//       content: cleanedContent,
-//       businessId,
-//       metadata: {
-//         crawlTimestamp: Date.now(),
-//         depth: 0,
-//         status: 'success',
-//         language,
-//         originalUrl: originalUrl || 'local-pdf',
-//         fileType: 'pdf'
-//       }
-//     };
-//   } catch (error) {
-//     console.error('Error processing PDF:', error);
-//     return null;
-//   }
-// }
 
 // --- Modularized HTML Content Processing ---
 
