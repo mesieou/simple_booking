@@ -15,10 +15,12 @@ import Calendar from '@/components/calendar';
 import Menu from '@/components/menu';
 import LanguageSwitcher from '@/components/language-switcher';
 import BookingSummary from '@/components/BookingSummary';
+import ProviderTitle from '@/app/components/ProviderTitle';
+import { use } from 'react';
 
-export default async function Componentes() {
+export default function Componentes({ params }: { params: Promise<{ providerId: string }> }) {
     const mensajeExito = { success: "¡Datos guardados exitosamente!" };
-    
+    const { providerId } = use(params);
     return (
     <>
       <BookingSummary
@@ -34,6 +36,7 @@ export default async function Componentes() {
         moving="2 cajas grandes, 1 sofá"
       />
       <DeployButton/>
+      <ProviderTitle providerId={providerId}/>
       <EnvVarWarning/>
       <FormMessage message={mensajeExito}/>
       <AuthButton/>
@@ -47,7 +50,6 @@ export default async function Componentes() {
       <Direction texto="Pick up from"/>
       <Direction texto="Move to"/>
       <Distance/>
-      <Calendar/>
       <Menu/>
       <LanguageSwitcher/>
     </>
