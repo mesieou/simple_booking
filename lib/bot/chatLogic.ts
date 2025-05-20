@@ -8,7 +8,8 @@ import { createUserSchema } from "@/lib/bot/schemas";
 import { systemPrompt } from "@/lib/bot/prompts";
 import { User } from "@/lib/models/user";
 import { executeChatCompletion, ChatMessage, OpenAIChatMessage, OpenAIChatCompletionResponse } from "@/lib/helpers/openai/openai-core";
-import { chatWithFunctions, clarifyMessage, analyzeSentiment } from "@/lib/helpers/openai/openai-helpers";
+import { clarifyMessage } from "@/lib/helpers/openai/functions/conversation";
+import { analyzeSentiment } from "@/lib/helpers/openai/functions/sentiment";
 import { processMoodAndCheckForAlert } from "@/lib/helpers/alertSystem";
 
 /**
@@ -162,7 +163,7 @@ export async function handleChat(history: OpenAIChatMessage[]) {
     ];
     
     // Check if GPT wants to call a function
-    const completion = await chatWithFunctions(messages, [createUserSchema]);
+    const completion = await executeChatCompletion(messages, "gpt-4o", 0.3, 1000, [createUserSchema]);
     const msg = completion.choices[0].message;
 
     // === Create User ===
