@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { extractTextFromPdf } from "@/lib/bot/content-crawler/pdf/extractor";
-import { createEmbeddingsFromCategorizedSections } from "@/lib/bot/content-crawler/embeddings";
-import { textSplitterAndCategoriser } from "@/lib/bot/content-crawler/text-splitter-categoriser";
+import { extractTextFromPdf } from "@/lib/bot/content-crawler/pdf-fetcher/extractor";
+import { processContent } from "@/lib/bot/content-crawler/process-content/grouping-storing-content";
+import { textSplitterAndCategoriser } from "@/lib/bot/content-crawler/process-content/text-splitting-categorisation";
 
 export const POST = async (req: NextRequest) => {
   const formData = await req.formData();
@@ -12,16 +12,13 @@ export const POST = async (req: NextRequest) => {
   const businessId = formData.get("businessId") as string;
   const url = formData.get("url") as string;
   // Use the modularized categorization function
-  const categorized = await textSplitterAndCategoriser([text], businessId, [url], 2000, 100, 5);
-  await createEmbeddingsFromCategorizedSections(
-    businessId,
-    url,
+  const categorized = await textSplitterAndCategoriser([text.text], businessId, [url], 2000, 100, 5);
+  await processContent(
+    { businessId, websiteUrl: url },
     categorized,
-    1000, // chunk size
-    3,    // concurrency
-    1,    // totalPages
+    [url],
     [url]
   );
 
-  return NextResponse.json({ text, categorized });
+  return NextResponse.json({ text: text.text, categorized });
 }; 

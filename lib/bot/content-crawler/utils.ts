@@ -1,6 +1,7 @@
 import crypto from 'crypto';
-import { CrawlState } from './types';
+import { CrawlState } from './config';
 import { franc } from 'franc-min';
+import { fetchHtml } from './url-fetcher/fetchHtml';
 
 // Improved language detection using franc-min, robust content filtering, and detailed logging for debugging. Whitelist for important URLs and stricter thresholds for meaningful content.
 
@@ -168,5 +169,19 @@ export function extractNavAndFooterLinks(html: string): string[] {
     if (href) links.add(href);
   });
   return Array.from(links);
+}
+
+export async function runConcurrentTasks<T>(
+  taskGenerator: () => AsyncGenerator<() => Promise<T>, void, unknown>,
+  concurrency: number
+): Promise<T[]> {
+  const results: T[] = [];
+  const workers = Array.from({ length: concurrency }, async () => {
+    for await (const task of taskGenerator()) {
+      results.push(await task());
+    }
+  });
+  await Promise.all(workers);
+  return results;
 }
 
