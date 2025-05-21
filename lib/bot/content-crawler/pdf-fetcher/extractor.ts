@@ -11,13 +11,38 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<PdfExtractionR
 
     pdfParser.on("pdfParser_dataReady", (pdfData: any) => {
       try {
-        const pages = pdfData.formImage.Pages as any[];
+        // Check if pdfData is valid
+        if (!pdfData || typeof pdfData !== 'object') {
+          throw new Error('Invalid PDF data structure');
+        }
+
+        // The Pages array is directly in the root of pdfData
+        const pages = pdfData.Pages;
+        if (!Array.isArray(pages)) {
+          throw new Error('No pages found in PDF');
+        }
+
         const text = pages
-          .map((page: any) =>
-            (page.Texts as any[]).map((t: any) =>
-              decodeURIComponent((t.R as any[]).map((r: any) => r.T).join(""))
-            ).join(" ")
-          ).join("\n");
+          .map((page: any) => {
+            if (!page.Texts || !Array.isArray(page.Texts)) {
+              return '';
+            }
+            return page.Texts
+              .map((t: any) => {
+                if (!t.R || !Array.isArray(t.R)) {
+                  return '';
+                }
+                return t.R
+                  .map((r: any) => (r.T ? decodeURIComponent(r.T) : ''))
+                  .join('');
+              })
+              .join(' ');
+          })
+          .join('\n');
+
+        if (!text.trim()) {
+          throw new Error('No text content found in PDF');
+        }
 
         resolve({
           text,
@@ -32,6 +57,10 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<PdfExtractionR
       }
     });
 
-    pdfParser.parseBuffer(buffer);
+    try {
+      pdfParser.parseBuffer(buffer);
+    } catch (error) {
+      reject(new Error(`Failed to parse PDF buffer: ${error instanceof Error ? error.message : String(error)}`));
+    }
   });
 } 

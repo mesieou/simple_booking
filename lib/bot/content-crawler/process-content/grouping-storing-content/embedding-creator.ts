@@ -3,6 +3,7 @@ import { DocumentCategory, EMBEDDING_CONFIG, ContentChunk } from '../../config';
 import { generateEmbedding } from '@/lib/helpers/openai/functions/embeddings';
 import { pushToQueue } from '@/lib/helpers/openai/rate-limiter';
 import { retry } from 'ts-retry-promise';
+import { logger } from '../logger';
 
 // Helper to wrap generateEmbedding in the OpenAI queue
 function embeddingInQueue(text: string): Promise<number[]> {
@@ -30,6 +31,7 @@ export async function createEmbeddingsForChunks(
     const chunk = chunks[j];
     try {
       const embedding = await embeddingInQueue(chunk.content);
+      
       await retry(
         () => Embedding.add({
           documentId: documentRecord.id!,
@@ -53,25 +55,10 @@ export async function createEmbeddingsForChunks(
           timeout: EMBEDDING_CONFIG.FETCH_TIMEOUT
         }
       );
+      logger.logEmbedding(`${documentRecord.id}-${j}`, documentRecord.id, 'processed');
     } catch (err) {
-      console.error('Failed to insert embedding', {
-        error: err,
-        payload: {
-          documentId: documentRecord.id!,
-          content: chunk.content,
-          chunkIndex: j,
-          category,
-          metadata: {
-            pageTitle: `${category} - Website Content`,
-            sourceUrl: websiteUrl,
-            contentHash,
-            crawlTimestamp: Date.now(),
-            language: 'en',
-            confidence: chunk.confidence
-          }
-        },
-        stack: err instanceof Error ? err.stack : undefined
-      });
+      logger.logEmbedding(`${documentRecord.id}-${j}`, documentRecord.id, 'failed', err instanceof Error ? err.message : String(err));
+      throw err; // Propagate error to trigger retry
     }
   }
 } 

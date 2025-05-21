@@ -64,6 +64,8 @@ export interface CrawlConfig {
     urls?: number;
     seconds?: number;
   };
+  chunkSize?: number;  // Maximum words per chunk
+  chunkOverlap?: number;  // Number of words to overlap between chunks
 }
 
 export const defaultConfig: Partial<CrawlConfig> = {
@@ -73,6 +75,8 @@ export const defaultConfig: Partial<CrawlConfig> = {
   skipProductPages: true,
   skipBlogPages: true,
   requestDelay: 0,
+  chunkSize: 2000,  // Default chunk size
+  chunkOverlap: 100  // Default overlap
 };
 
 // Extended configuration for processing
@@ -166,6 +170,12 @@ export interface TextChunk {
   text: string;
   url: string;
   textIndex: number;
+  metadata?: {
+    chunkIndex: number;
+    totalChunks: number;
+    wordCount: number;
+    charCount: number;
+  };
 }
 
 export interface CategorizedSection {

@@ -48,17 +48,17 @@ const PDFParser = () => {
         </div>
       )}
       {parsedText && (
-        <div className="mt-6 w-full max-w-3xl bg-white p-4 rounded shadow">
+        <div className="mt-6 w-full max-w-3xl p-4 rounded shadow">
           <h3 className="text-xl font-semibold mb-2">Parsed Text</h3>
-          <p className="bg-gray-100 p-4 rounded whitespace-pre-wrap">
+          <p className=" p-4 rounded whitespace-pre-wrap">
             {parsedText}
           </p>
         </div>
       )}
       {categorized && categorized.length > 0 && (
-        <div className="mt-6 w-full max-w-3xl bg-white p-4 rounded shadow">
+        <div className="mt-6 w-full max-w-3xl p-4 rounded shadow">
           <h3 className="text-xl font-semibold mb-2">Categorized Content</h3>
-          <pre className="bg-gray-100 p-4 rounded whitespace-pre-wrap text-xs overflow-x-auto">
+          <pre className="p-4 rounded whitespace-pre-wrap text-xs overflow-x-auto">
             {JSON.stringify(categorized, null, 2)}
           </pre>
         </div>
