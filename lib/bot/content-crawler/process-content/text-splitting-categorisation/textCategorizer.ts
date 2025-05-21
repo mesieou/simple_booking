@@ -1,25 +1,24 @@
-import { pushToQueue } from '@/lib/helpers/openai/rate-limiter';
 import { categorizeWebsiteContent } from '@/lib/helpers/openai/functions/content-analysis';
 import { CategorizedContent } from '../../config';
+import { logger } from '../logger';
 
 /**
- * Wraps the categorization function in the OpenAI queue for rate limiting
+ * Categorizes text content using OpenAI
  * @param text Text to categorize
  * @param businessId Business ID for context
  * @param url Source URL for context
  * @returns Promise resolving to categorized content
  */
-export function categorizeInQueue(text: string, businessId: string, url: string): Promise<CategorizedContent[]> {
-  return new Promise<CategorizedContent[]>((resolve, reject) => {
-    pushToQueue(async () => {
-      try {
-        const result = await categorizeWebsiteContent(text, businessId, url);
-        resolve(result);
-      } catch (e) {
-        reject(e);
-      }
-    });
-  });
+export async function categorizeText(text: string, businessId: string, url: string): Promise<CategorizedContent[]> {
+  try {
+    const result = await categorizeWebsiteContent(text, businessId, url);
+    return result.map(content => ({
+      ...content,
+      confidence: content.confidence || 0.8 // Default confidence if not provided
+    }));
+  } catch (error) {
+    throw new Error(`Failed to categorize text: ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
 
 /**
@@ -42,10 +41,33 @@ export async function processTextChunk(
   totalChunks: number
 ): Promise<void> {
   try {
-    const result = await categorizeInQueue(chunkText, businessId, url);
-    categorizedSections.push(...result);
-    console.log(`[Text Categorizer] Worker ${workerId} completed chunk ${chunkIdx + 1}/${totalChunks}`);
+    // Skip empty or very short chunks
+    if (!chunkText || chunkText.trim().length < 50) {
+      throw new Error('Chunk too short to process');
+    }
+
+    const result = await categorizeWebsiteContent(chunkText, businessId, url);
+    
+    // Validate categorization results
+    if (!result || result.length === 0) {
+      throw new Error('No categories returned from categorization');
+    }
+
+    // Add confidence scores if not present
+    const processedResults = result.map(section => ({
+      ...section,
+      confidence: section.confidence || 0.8
+    }));
+
+    categorizedSections.push(...processedResults);
+    logger.logChunkProcessed();
+    
+    // Log each category processed
+    processedResults.forEach(section => {
+      logger.logCategoryProcessed(section.category);
+    });
   } catch (error) {
-    console.error(`[Text Categorizer] Worker ${workerId} error in chunk ${chunkIdx + 1}/${totalChunks}:`, error);
+    logger.logChunkFailed();
+    throw error; // Propagate error for retry handling
   }
 } 
