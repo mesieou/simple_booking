@@ -14,6 +14,7 @@ import { processMoodAndCheckForAlert } from "@/lib/helpers/alertSystem";
 import { enhancePromptForCategory, getClarificationThreshold, getCategoryFollowUp } from "@/lib/helpers/openai/functions/categoryHandler";
 import { evaluateResponseConfidence, ConfidenceEvaluation } from "@/lib/helpers/openai/functions/confidenceEvaluator";
 import { checkFeedbackTrigger, createFeedbackEntry, BotFeedback } from "@/lib/helpers/openai/functions/feedback";
+import { generateEmbedding } from "@/lib/helpers/openai/functions/embeddings";
 
 /**
  * Checks if a message needs clarification and returns an appropriate response if needed
@@ -46,9 +47,18 @@ export async function handleChat(history: OpenAIChatMessage[]) {
 
     let answerabilityCheck: ClarityCheckResult | null = null;
     let moodResult: MoodAnalysisResult | undefined;
+    let userMessageEmbedding: number[] | null = null;
 
-    // If there's a user message, analyze its mood and check clarity in parallel
+    // If there's a user message, analyze its mood and check clarity in parallel, also generate embedding for the user message
     if (lastUserMessage) {
+      // Generate embedding for the user message
+      try {
+        userMessageEmbedding = await generateEmbedding(lastUserMessage.content);
+        console.log('[Embedding] Generated embedding for user message');
+      } catch (error) {
+        console.error('[Embedding] Error generating embedding:', error);
+      }
+
       const [moodAnalysisResult, clarityCheck, answerabilityResult] = await Promise.all([
         // Mood analysis
         (async () => {
