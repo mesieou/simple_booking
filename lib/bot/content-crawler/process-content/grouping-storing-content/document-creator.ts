@@ -3,6 +3,7 @@ import { DocumentCategory, EMBEDDING_CONFIG, CategorizedSection } from '../../co
 import { generateContentHash } from '../../utils';
 import { retry } from 'ts-retry-promise';
 import { createChunksForEmbeddings } from './embedding-content-chunker';
+import { logger } from '../logger';
 
 export async function createDocument(
   businessId: string,
@@ -11,23 +12,32 @@ export async function createDocument(
   websiteUrl: string
 ): Promise<any> {
   const contentHash = generateContentHash(content, 'en');
-  return await retry(
-    () => Document.add({
-      businessId,
-      content,
-      title: `${category} - Website Content`,
-      source: websiteUrl,
-      type: 'website_page',
-      category: category as DocumentCategory,
-      contentHash
-    }),
-    {
-      retries: EMBEDDING_CONFIG.MAX_RETRIES,
-      backoff: 'exponential',
-      backoffBase: EMBEDDING_CONFIG.INITIAL_RETRY_DELAY,
-      timeout: EMBEDDING_CONFIG.FETCH_TIMEOUT
-    }
-  );
+
+  try {
+    const result = await retry(
+      () => Document.add({
+        businessId,
+        content,
+        title: `${category} - Website Content`,
+        source: websiteUrl,
+        type: 'website_page',
+        category: category as DocumentCategory,
+        contentHash
+      }),
+      {
+        retries: EMBEDDING_CONFIG.MAX_RETRIES,
+        backoff: 'exponential',
+        backoffBase: EMBEDDING_CONFIG.INITIAL_RETRY_DELAY,
+        timeout: EMBEDDING_CONFIG.FETCH_TIMEOUT
+      }
+    );
+
+    logger.logDocument(String(result.id || 'unknown'), String(result.title || `${category} - Website Content`), 'processed');
+    return result;
+  } catch (error) {
+    logger.logDocument('unknown', `${category} - Website Content`, 'failed', error instanceof Error ? error.message : String(error));
+    throw error; // Propagate error for retry mechanism
+  }
 }
 
 export function createChunks(
@@ -35,5 +45,6 @@ export function createChunks(
   category: string,
   chunkSize: number
 ) {
-  return createChunksForEmbeddings(categorizedSections, category, chunkSize);
+  const chunks = createChunksForEmbeddings(categorizedSections, category, chunkSize);
+  return chunks;
 } 

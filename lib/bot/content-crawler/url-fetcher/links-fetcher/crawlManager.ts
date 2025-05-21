@@ -1,4 +1,4 @@
-import { CrawlConfig } from '../config';
+import { CrawlConfig } from '../../config';
 import { getAllDomainLinksRecursive } from './linkCrawler';
 
 /**

@@ -50,7 +50,6 @@ const requestQueue: Array<() => Promise<any>> = [];
 let isProcessingQueue = false;
 
 export function pushToQueue(request: () => Promise<any>) {
-  console.log(`[RateLimiter] Adding request to queue. Queue length before: ${requestQueue.length}`);
   requestQueue.push(request);
   processQueue();
 }
