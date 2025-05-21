@@ -8,70 +8,25 @@ import { createUserSchema } from "@/lib/bot/schemas";
 import { systemPrompt } from "@/lib/bot/prompts";
 import { User } from "@/lib/models/user";
 import { executeChatCompletion, ChatMessage, OpenAIChatMessage, OpenAIChatCompletionResponse, MoodAnalysisResult } from "@/lib/helpers/openai/openai-core";
-import { clarifyMessage, checkMessageAnswerability, ClarityCheckResult } from "@/lib/helpers/openai/functions/conversation";
+import { checkMessageAnswerability, ClarityCheckResult } from "@/lib/helpers/openai/functions/conversation";
 import { analyzeSentiment } from "@/lib/helpers/openai/functions/sentiment";
 import { processMoodAndCheckForAlert } from "@/lib/helpers/alertSystem";
 import { enhancePromptForCategory, getClarificationThreshold, getCategoryFollowUp } from "@/lib/helpers/openai/functions/categoryHandler";
+import { evaluateResponseConfidence, ConfidenceEvaluation } from "@/lib/helpers/openai/functions/confidenceEvaluator";
+import { checkFeedbackTrigger, createFeedbackEntry, BotFeedback } from "@/lib/helpers/openai/functions/feedback";
+import { generateEmbedding } from "@/lib/helpers/openai/functions/embeddings";
 
 /**
  * Checks if a message needs clarification and returns an appropriate response if needed
  */
 async function checkMessageClarity(message: string, history: ChatMessage[]): Promise<{needsClarification: boolean, response?: string}> {
   try {
-    const classification = await clarifyMessage(message, history);
+    const answerabilityCheck = await checkMessageAnswerability(message, history);
     
-    if (classification === 'unclear') {
-      // Generate a natural-sounding clarification request
-      // Format messages with proper spacing
-      const clarificationPrompt = [
-        { 
-          role: 'system' as const, 
-          content: systemPrompt.trim() // Ensure no extra whitespace
-        },
-        ...history.map(msg => ({
-          ...msg,
-          content: msg.content.trim() // Clean up existing messages
-        })),
-        { 
-          role: 'user' as const, 
-          content: `The user said: "${message.trim()}"`
-        },
-        {
-          role: 'system' as const,
-          content: 'The message might need clarification. Generate a single, natural question to ask for clarification without repeating the user\'s message.'
-        }
-      ];
-      
-      const response = await executeChatCompletion(clarificationPrompt, "gpt-4o", 0.3, 500);
+    if (!answerabilityCheck.is_answerable && answerabilityCheck.clarification_prompt) {
       return {
         needsClarification: true,
-        response: response.choices[0]?.message?.content || "Could you please clarify what you mean?"
-      };
-    } else if (classification === 'irrelevant') {
-      // Gently guide back to relevant topics
-      const guidancePrompt = [
-        { 
-          role: 'system' as const, 
-          content: systemPrompt.trim() // Ensure no extra whitespace
-        },
-        ...history.map(msg => ({
-          ...msg,
-          content: msg.content.trim() // Clean up existing messages
-        })),
-        { 
-          role: 'user' as const, 
-          content: `The user said: "${message.trim()}"`
-        },
-        {
-          role: 'system' as const,
-          content: 'The message seems unrelated to moving services. Generate a single, natural response to guide the conversation back to moving-related topics.'
-        }
-      ];
-      
-      const response = await executeChatCompletion(guidancePrompt, "gpt-4o", 0.3, 500);
-      return {
-        needsClarification: true,
-        response: response.choices[0]?.message?.content || "I'm here to help with your moving and storage needs. Could you tell me more about what you're looking for?"
+        response: answerabilityCheck.clarification_prompt
       };
     }
     
@@ -81,6 +36,7 @@ async function checkMessageClarity(message: string, history: ChatMessage[]): Pro
     return { needsClarification: false };
   }
 }
+
 // Central function: takes existing history, and returns new history
 export async function handleChat(history: OpenAIChatMessage[]) {
     // Get the last user message
@@ -90,10 +46,20 @@ export async function handleChat(history: OpenAIChatMessage[]) {
       .find(m => m.role === 'user');
 
     let answerabilityCheck: ClarityCheckResult | null = null;
+    let moodResult: MoodAnalysisResult | undefined;
+    let userMessageEmbedding: number[] | null = null;
 
-    // If there's a user message, analyze its mood and check clarity in parallel
+    // If there's a user message, analyze its mood and check clarity in parallel, also generate embedding for the user message
     if (lastUserMessage) {
-      const [moodResult, clarityCheck, answerabilityResult] = await Promise.all([
+      // Generate embedding for the user message
+      try {
+        userMessageEmbedding = await generateEmbedding(lastUserMessage.content);
+        console.log('[Embedding] Generated embedding for user message');
+      } catch (error) {
+        console.error('[Embedding] Error generating embedding:', error);
+      }
+
+      const [moodAnalysisResult, clarityCheck, answerabilityResult] = await Promise.all([
         // Mood analysis
         (async () => {
           try {
@@ -145,6 +111,9 @@ export async function handleChat(history: OpenAIChatMessage[]) {
           }
         })()
       ]);
+
+      // Store the mood result
+      moodResult = moodAnalysisResult;
 
       // Store enhanced answerability check for later use
       answerabilityCheck = answerabilityResult;
@@ -219,6 +188,65 @@ export async function handleChat(history: OpenAIChatMessage[]) {
     const completion = await executeChatCompletion(messages, "gpt-4o", 0.3, 1000, [createUserSchema]);
     const msg = completion.choices[0].message;
 
+    // Evaluate confidence of the response
+    let confidenceEvaluation: ConfidenceEvaluation | null = null;
+    if (lastUserMessage && msg.content) {
+      try {
+        // Get retrieved context from the conversation history
+        const retrievedContext = history
+          .filter(m => m.role === 'assistant')
+          .map(m => m.content)
+          .slice(-3); // Use last 3 assistant messages as context
+
+        confidenceEvaluation = await evaluateResponseConfidence(
+          lastUserMessage.content,
+          msg.content,
+          retrievedContext
+        );
+
+        // Log confidence evaluation results
+        console.log('[Confidence Evaluation] Results:');
+        console.log(`[Confidence Evaluation] Overall Score: ${confidenceEvaluation.confidence_score.toFixed(2)}`);
+        console.log(`[Confidence Evaluation] Context Match: ${confidenceEvaluation.context_match_score.toFixed(2)}`);
+        console.log(`[Confidence Evaluation] Response Quality: ${confidenceEvaluation.response_quality_score.toFixed(2)}`);
+        console.log(`[Confidence Evaluation] Reason: ${confidenceEvaluation.confidence_reason}`);
+        if (confidenceEvaluation.missing_information.length > 0) {
+          console.log(`[Confidence Evaluation] Missing Information: ${confidenceEvaluation.missing_information.join(', ')}`);
+        }
+
+        // Check if feedback should be triggered
+        const feedbackTrigger = checkFeedbackTrigger(
+          lastUserMessage.content,
+          moodResult,
+          confidenceEvaluation,
+          msg.content
+        );
+
+        if (feedbackTrigger.shouldTrigger) {
+          console.log('[Feedback System] Trigger detected:', feedbackTrigger.reason);
+          
+          // Create feedback entry
+          const feedbackEntry = createFeedbackEntry(
+            feedbackTrigger,
+            `msg_${Date.now()}`, // bot_message_id
+            `user_${history[0].content.substring(0, 10).replace(/\W/g, '')}_${new Date().toISOString().split('T')[0]}`, // user_id
+            `session_${Date.now()}`, // session_id
+            msg.content, // original_bot_response
+            lastUserMessage.content // triggering_user_message
+          );
+
+          // Log feedback entry
+          console.log('[Feedback System] Created feedback entry:', feedbackEntry);
+
+          // Add feedback request to the response
+          const feedbackPrompt = `I notice my response might not be fully addressing your needs. Could you please let me know if this was helpful? Your feedback will help me improve.`;
+          msg.content = `${msg.content}\n\n${feedbackPrompt}`;
+        }
+      } catch (error) {
+        console.error('[Confidence Evaluation] Error:', error);
+      }
+    }
+
     // === Create User ===
     if (msg.function_call?.name === "createUser") {
         const {firstName, lastName} = JSON.parse(msg.function_call.arguments || "{}");
@@ -276,11 +304,26 @@ export async function handleChat(history: OpenAIChatMessage[]) {
         return history;
     }
 
-    // If there was no function call, just push GPT's answer
-    history.push({ 
-        role: 'assistant', 
-        content: msg.content || '' 
-    });
-    return history;
+    // Add the response to history with confidence evaluation metadata
+    const responseMessage: OpenAIChatMessage = {
+      role: 'assistant',
+      content: msg.content || '',
+      function_call: msg.function_call
+    };
+
+    // Add confidence evaluation metadata if available
+    if (confidenceEvaluation) {
+      responseMessage.metadata = {
+        confidence: {
+          overall: confidenceEvaluation.confidence_score,
+          contextMatch: confidenceEvaluation.context_match_score,
+          responseQuality: confidenceEvaluation.response_quality_score,
+          reason: confidenceEvaluation.confidence_reason,
+          missingInformation: confidenceEvaluation.missing_information
+        }
+      };
+    }
+
+    return [...history, responseMessage];
 }
 
