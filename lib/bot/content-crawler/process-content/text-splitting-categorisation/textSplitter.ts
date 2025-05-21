@@ -1,4 +1,5 @@
 import { TextChunk } from '../../config';
+import { logger } from '../logger';
 
 /**
  * Splits text into chunks with overlap for better context preservation
@@ -8,9 +9,14 @@ import { TextChunk } from '../../config';
  * @returns Array of text chunks
  */
 export function splitTextIntoChunks(text: string, maxWords: number, overlapWords: number): string[] {
+  if (!text || text.trim().length === 0) {
+    return [];
+  }
+
   const words = text.split(/\s+/);
   // If text is short enough, return it as a single chunk
   if (words.length <= maxWords) {
+    console.log(`Text is short enough (${words.length} words), returning as single chunk`);
     return [text];
   }
   
@@ -19,12 +25,20 @@ export function splitTextIntoChunks(text: string, maxWords: number, overlapWords
   
   while (start < words.length) {
     const end = Math.min(words.length, start + maxWords);
-    chunks.push(words.slice(start, end).join(' '));
+    const chunk = words.slice(start, end).join(' ');
+    
+    // Only add non-empty chunks
+    if (chunk.trim().length > 0) {
+      chunks.push(chunk);
+      console.log(`Created chunk ${chunks.length}: ${chunk.length} chars, ${chunk.split(/\s+/).length} words`);
+    }
+    
     if (end === words.length) break;
     start = end - overlapWords;
     if (start < 0) start = 0;
   }
   
+  console.log(`Split text into ${chunks.length} chunks with ${overlapWords} word overlap`);
   return chunks;
 }
 
@@ -45,16 +59,41 @@ export function collectTextChunks(
   const allChunks: TextChunk[] = [];
   
   texts.forEach((text, i) => {
-    if (!text) {
-      console.warn(`[Text Splitter] Empty text at index ${i}, skipping.`);
+    if (!text || text.trim().length === 0) {
+      logger.logUrlSkipped(Array.isArray(urls) ? urls[i] : urls, 'empty text');
       return;
     }
+
     const url = Array.isArray(urls) ? urls[i] : urls;
+    console.log(`Processing text from URL: ${url}`);
     const chunks = splitTextIntoChunks(text, chunkSize, chunkOverlap);
-    chunks.forEach(chunk => {
-      allChunks.push({ text: chunk, url, textIndex: i });
+    
+    if (chunks.length === 0) {
+      logger.logUrlSkipped(url, 'no valid chunks generated');
+      return;
+    }
+
+    chunks.forEach((chunk, chunkIndex) => {
+      const chunkData = {
+        text: chunk,
+        url,
+        textIndex: i,
+        metadata: {
+          chunkIndex,
+          totalChunks: chunks.length,
+          wordCount: chunk.split(/\s+/).length,
+          charCount: chunk.length
+        }
+      };
+      allChunks.push(chunkData);
+      console.log(`Created chunk ${chunkIndex + 1}/${chunks.length} for ${url}:`, {
+        wordCount: chunkData.metadata.wordCount,
+        charCount: chunkData.metadata.charCount,
+        preview: chunk.substring(0, 100) + '...'
+      });
     });
   });
 
+  console.log(`Total chunks collected: ${allChunks.length}`);
   return allChunks;
 } 

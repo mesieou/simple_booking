@@ -1,8 +1,6 @@
 import crypto from 'crypto';
 import { CrawlState } from './config';
 import { franc } from 'franc-min';
-import { fetchHtml } from './url-fetcher/fetchHtml';
-
 // Improved language detection using franc-min, robust content filtering, and detailed logging for debugging. Whitelist for important URLs and stricter thresholds for meaningful content.
 
 export function normalizeText(text: string): string {
@@ -178,10 +176,11 @@ export async function runConcurrentTasks<T>(
   const results: T[] = [];
   const workers = Array.from({ length: concurrency }, async () => {
     for await (const task of taskGenerator()) {
-      results.push(await task());
+      const result = await task();
+      results.push(result);
     }
   });
   await Promise.all(workers);
-  return results;
+  return results.filter((result): result is T => result !== null);
 }
 

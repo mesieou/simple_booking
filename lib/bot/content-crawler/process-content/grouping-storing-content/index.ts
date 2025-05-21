@@ -3,6 +3,7 @@ import { groupContentByCategory } from './content-grouper';
 import { createDocument, createChunks } from './document-creator';
 import { createEmbeddingsForChunks } from './embedding-creator';
 import { updateCrawlSession } from './crawl-session-manager';
+import { logger } from '../logger';
 
 export async function processContent(
   config: CrawlConfig, 
@@ -19,7 +20,10 @@ export async function processContent(
 
     // 2. Process each category
     for (const [category, paragraphs] of Object.entries(categorizedContent)) {
-      if (paragraphs.length === 0) continue;
+      if (paragraphs.length === 0) {
+        logger.logUrlFiltered(category, 'No content to process');
+        continue;
+      }
 
       try {
         console.log(`[Content Processor] Processing category: ${category}`);
@@ -44,8 +48,10 @@ export async function processContent(
           5 // Default concurrency limit
         );
 
+        logger.logCategoryProcessed(category);
         console.log(`[Content Processor] Finished processing category: ${category}`);
       } catch (error) {
+        logger.logUrlSkipped(category, error instanceof Error ? error.message : String(error));
         console.error(`[Content Processor] Failed to process category ${category}:`, error);
       }
     }
@@ -53,7 +59,7 @@ export async function processContent(
     // 3. Update crawl session
     await updateCrawlSession(
       config.businessId,
-      urls.length,
+      urls,
       processedUrls,
       categorizedSections
     );

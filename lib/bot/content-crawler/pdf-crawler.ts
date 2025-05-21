@@ -4,12 +4,15 @@ import { processContent as processContentWithGrouping } from './process-content/
 import { runConcurrentTasks } from './utils';
 import { updateCrawlResults } from './url-fetcher/resultManager';
 import { extractTextFromPdf } from './pdf-fetcher/extractor';
+import { logger } from './process-content/logger';
 
 export async function crawlPdfs(config: CrawlConfig, pdfBuffers: Buffer[]): Promise<CrawlOutput> {
   const allTexts: string[] = [];
   const crawlResults: CrawlResult[] = [];
   const processedUrls = new Set<string>();
   const concurrency = config.concurrency || 5;
+
+  logger.initialize(pdfBuffers.length);
 
   async function* pdfProcessingTasks(buffers: Buffer[], concurrency: number) {
     for (let i = 0; i < buffers.length; i++) {
@@ -22,6 +25,7 @@ export async function crawlPdfs(config: CrawlConfig, pdfBuffers: Buffer[]): Prom
         try {
           const result = await extractTextFromPdf(buffer);
           if (result.error) {
+            logger.logUrlSkipped(url, 'extraction failed');
             updateCrawlResults(crawlResults, url, null, 'unknown', 'extraction failed');
             return;
           }
@@ -29,11 +33,13 @@ export async function crawlPdfs(config: CrawlConfig, pdfBuffers: Buffer[]): Prom
           allTexts.push(result.text);
           updateCrawlResults(crawlResults, url, result.text, result.metadata.language, 'ok');
           processedUrls.add(url);
+          logger.logUrlProcessed(url, 1);
 
           if (config.requestDelay) {
             await new Promise(res => setTimeout(res, config.requestDelay));
           }
         } catch (error) {
+          logger.logUrlSkipped(url, 'processing failed');
           updateCrawlResults(crawlResults, url, null, 'unknown', 'processing failed');
         }
       };
@@ -54,7 +60,13 @@ export async function processPdfContent(config: CrawlConfig, crawlOutput: CrawlO
   const { texts, urls } = crawlOutput;
   const embeddedUrls: string[] = [];
 
-  const categorizedSections = await textSplitterAndCategoriser(texts, config.businessId, urls, 2000, 100, 10);
+  const categorizedSections = await textSplitterAndCategoriser(
+    texts, 
+    config.businessId, 
+    urls, 
+    config.chunkSize || 2000, 
+    config.chunkOverlap || 100
+  );
   const embeddingsStatus = await processContentWithGrouping(config, categorizedSections, urls, embeddedUrls);
 
   return {

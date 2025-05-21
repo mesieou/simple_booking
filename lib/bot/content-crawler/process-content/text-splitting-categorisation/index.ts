@@ -1,7 +1,21 @@
 import { CategorizedContent } from '../../config';
-import { runConcurrentTasks } from '../../utils';
 import { collectTextChunks } from './textSplitter';
 import { processTextChunk } from './textCategorizer';
+import { logger } from '../logger';
+
+interface TextChunk {
+  text: string;
+  url: string;
+  textIndex: number;
+  metadata?: {
+    chunkIndex: number;
+    totalChunks: number;
+    wordCount: number;
+    charCount: number;
+  };
+}
+
+const MAX_RETRIES = 3;
 
 /**
  * Main function that orchestrates text splitting and categorization
@@ -10,7 +24,6 @@ import { processTextChunk } from './textCategorizer';
  * @param urls Array of source URLs (one per text, or single URL for all)
  * @param chunkSize Maximum words per chunk
  * @param chunkOverlap Number of words to overlap between chunks
- * @param gptConcurrency Number of parallel GPT calls
  * @returns Promise resolving to array of categorized content
  */
 export async function textSplitterAndCategoriser(
@@ -18,38 +31,59 @@ export async function textSplitterAndCategoriser(
   businessId: string,
   urls: string[],
   chunkSize = 2000,
-  chunkOverlap = 100,
-  gptConcurrency = 10
+  chunkOverlap = 100
 ): Promise<CategorizedContent[]> {
   const categorizedSections: CategorizedContent[] = [];
-  let processedCount = 0;
+  let failedChunks: { chunk: TextChunk; retryCount: number; error: string }[] = [];
 
   const allChunks = collectTextChunks(texts, urls, chunkSize, chunkOverlap);
-  console.log(`[Text Categorizer] Processing ${allChunks.length} chunks from ${texts.length} texts`);
+  logger.stats.totalChunks = allChunks.length; // Set correct total chunks
 
-  // Process chunks with GPT in parallel
-  async function* categorizeChunksInParallel() {
-    for (let i = 0; i < allChunks.length; i++) {
-      yield async () => {
-        const { text, url, textIndex } = allChunks[i];
-        processedCount++;
-        const percent = Math.round((processedCount / allChunks.length) * 100);
-        console.log(`[Text Categorizer] Processing chunk ${processedCount}/${allChunks.length} (${percent}%) from text ${textIndex + 1}`);
-        
-        await processTextChunk(
-          text,
-          businessId,
-          url,
-          categorizedSections,
-          textIndex + 1,
-          i,
-          allChunks.length
-        );
-      };
+  const processChunk = async (chunk: TextChunk, retryCount: number = 0): Promise<CategorizedContent[]> => {
+    const index = allChunks.indexOf(chunk);
+    try {
+      if (chunk.metadata && chunk.metadata.wordCount < 10) {
+        logger.logChunk(index, chunk.url, 'failed', `Chunk too short (${chunk.metadata.wordCount} words)`);
+        throw new Error(`Chunk too short (${chunk.metadata.wordCount} words)`);
+      }
+      const sections: CategorizedContent[] = [];
+      await processTextChunk(
+        chunk.text,
+        businessId,
+        chunk.url,
+        sections,
+        chunk.textIndex + 1,
+        index,
+        allChunks.length
+      );
+      // Only increment processed count once per chunk
+      logger.logChunk(index, chunk.url, 'processed');
+      sections.forEach(section => {
+        logger.logCategory(section.category, 'processed');
+      });
+      if (index === allChunks.length - 1 || allChunks[index + 1]?.url !== chunk.url) {
+        logger.logUrl(chunk.url, 'processed');
+      }
+      return sections;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      if (retryCount < MAX_RETRIES) {
+        return processChunk(chunk, retryCount + 1);
+      } else {
+        logger.logChunk(index, chunk.url, 'failed', errorMessage);
+        failedChunks.push({ 
+          chunk, 
+          retryCount,
+          error: errorMessage
+        });
+        return [];
+      }
     }
-  }
+  };
 
-  await runConcurrentTasks(categorizeChunksInParallel, gptConcurrency);
-  console.log(`[Text Categorizer] Completed. Processed ${processedCount} chunks`);
+  const results = await Promise.all(allChunks.map(chunk => processChunk(chunk)));
+  const allSections = results.flat();
+  categorizedSections.push(...allSections);
+  logger.printDetailedTables();
   return categorizedSections;
 } 

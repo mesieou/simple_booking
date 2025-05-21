@@ -1,6 +1,6 @@
 import * as cheerio from 'cheerio';
 import normalizeUrl from 'normalize-url';
-import { isValidLink } from './validateUrl';
+import { isValidLink } from '../validateUrl';
 
 /**
  * Extracts and filters links from HTML content
