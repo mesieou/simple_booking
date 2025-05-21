@@ -9,6 +9,15 @@ export type OpenAIChatMessage = {
     name: string;
     arguments: string;
   };
+  metadata?: {
+    confidence?: {
+      overall: number;
+      contextMatch: number;
+      responseQuality: number;
+      reason: string;
+      missingInformation: string[];
+    };
+  };
 } | {
   role: "function";
   name: string;
