@@ -1,8 +1,9 @@
-import { CrawlConfig, CategorizedContent } from '../../config';
+import { CrawlConfig, CategorizedContent, VALID_CATEGORIES } from '../../config';
 import { groupContentByCategory } from './content-grouper';
-import { createDocument, createChunks } from './document-creator';
-import { createEmbeddingsForChunks } from './embedding-creator';
-import { updateCrawlSession } from './crawl-session-manager';
+import { createChunks } from './document-creator';
+import { embeddingInQueue } from './embedding-creator';
+import { generateContentHash } from '../../utils';
+import { CrawlSession } from '@/lib/models/crawl-session';
 import { logger } from '../logger';
 
 export async function processContent(
@@ -18,7 +19,16 @@ export async function processContent(
     // 1. Group content by category
     const { categorizedContent } = groupContentByCategory(categorizedSections);
 
-    // 2. Process each category
+    // Compute missing categories for missingInformation using categorizedSections (original logic)
+    const presentCategories = new Set(categorizedSections.map(section => section.category));
+    const missingCategories = VALID_CATEGORIES.filter(
+      (category) => !presentCategories.has(category)
+    );
+
+    // 2. Prepare arrays for documents and embeddings
+    const documents = [];
+    const embeddings = [];
+
     for (const [category, paragraphs] of Object.entries(categorizedContent)) {
       if (paragraphs.length === 0) {
         logger.logUrlFiltered(category, 'No content to process');
@@ -27,26 +37,39 @@ export async function processContent(
 
       try {
         console.log(`[Content Processor] Processing category: ${category}`);
-        
-        // 2.1 Create document
+        // Prepare document
         const combinedContent = paragraphs.join('\n\n');
-        const documentRecord = await createDocument(
-          config.businessId,
+        const contentHash = generateContentHash(combinedContent, 'en');
+        documents.push({
+          businessId: config.businessId,
+          content: combinedContent,
+          title: `${category} - Website Content`,
+          source: config.websiteUrl,
+          type: config.type || 'website_page',
           category,
-          combinedContent,
-          config.websiteUrl
-        );
+          contentHash
+        });
 
-        // 2.2 Create chunks and embeddings
+        // Prepare chunks and embeddings
         const chunks = createChunks(categorizedSections, category, 1000); // Default chunk size
-        await createEmbeddingsForChunks(
-          chunks,
-          documentRecord,
-          category,
-          config.websiteUrl,
-          documentRecord.contentHash,
-          5 // Default concurrency limit
-        );
+        for (let j = 0; j < chunks.length; j++) {
+          const chunk = chunks[j];
+          const embedding = await embeddingInQueue(chunk.content);
+          embeddings.push({
+            content: chunk.content,
+            embedding,
+            chunkIndex: j,
+            category,
+            metadata: {
+              pageTitle: `${category} - Website Content`,
+              sourceUrl: config.websiteUrl,
+              contentHash,
+              crawlTimestamp: Date.now(),
+              language: 'en',
+              confidence: chunk.confidence
+            }
+          });
+        }
 
         logger.logCategoryProcessed(category);
         console.log(`[Content Processor] Finished processing category: ${category}`);
@@ -56,13 +79,21 @@ export async function processContent(
       }
     }
 
-    // 3. Update crawl session
-    await updateCrawlSession(
-      config.businessId,
-      urls,
-      processedUrls,
-      categorizedSections
-    );
+    // 3. Prepare sessionData
+    const sessionData = {
+      businessId: config.businessId,
+      startTime: Date.now(),
+      endTime: Date.now(),
+      totalPages: urls.length,
+      successfulPages: processedUrls.length,
+      failedPages: urls.length - processedUrls.length,
+      categories: Object.fromEntries(Array.from(presentCategories).map(cat => [cat, 1])),
+      errors: [],
+      missingInformation: missingCategories.join(', ')
+    };
+
+    // 4. Store everything in one go
+    await CrawlSession.addSessionWithDocumentsAndEmbeddings(sessionData, documents, embeddings);
 
     console.log(`[Content Processor] Content processing completed in ${(Date.now() - startTime)/1000}s`);
     return 'success';

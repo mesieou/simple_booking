@@ -46,7 +46,7 @@ export async function POST(request: Request) {
             { status: 400 }
           );
         }
-        const config: CrawlConfig = { websiteUrl, businessId };
+        const config: CrawlConfig = { websiteUrl, businessId, type: 'website_page' };
         const result = await crawlAndProcess(config);
         return NextResponse.json({
           message: 'Content processing and embedding completed successfully',
