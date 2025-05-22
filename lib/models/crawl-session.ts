@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server';
 import { handleModelError } from '@/lib/helpers/error';
 import { v4 as uuidv4 } from 'uuid';
+import { Document, DocumentData } from './documents';
+import { Embedding, EmbeddingData } from './embeddings';
 
 export interface CrawlSessionData {
   id?: string;
@@ -82,6 +84,58 @@ export class CrawlSession {
     const supabase = await createClient();
     const { error } = await supabase.from('crawlSessions').delete().eq('id', id);
     if (error) handleModelError('Failed to delete crawl session', error);
+  }
+
+  /**
+   * Orchestrates creation of a session, its documents, and their embeddings.
+   */
+  static async addSessionWithDocumentsAndEmbeddings(
+    sessionData: Omit<CrawlSessionData, 'id'>,
+    documents: Omit<DocumentData, 'id'>[],
+    embeddings: (Omit<EmbeddingData, 'id' | 'documentId'> & { metadata: { contentHash: string } })[]
+  ): Promise<{
+    session: CrawlSession;
+    documents: DocumentData[];
+    embeddings: EmbeddingData[];
+  }> {
+    // 1. Create session
+    const session = await CrawlSession.add(sessionData);
+    // 2. Create documents with sessionId
+    const docsWithSession = await Promise.all(
+      documents.map(doc => Document.add({ ...doc, sessionId: session.id! }))
+    );
+    // 3. Create embeddings with documentId
+    const embeddingsWithDocId = await Promise.all(
+      embeddings.map(embed => {
+        // Find the document for this embedding by contentHash or other unique field
+        const doc = docsWithSession.find(d => d.contentHash === embed.metadata?.contentHash);
+        if (!doc) throw new Error('No matching document for embedding');
+        return Embedding.add({ ...embed, documentId: doc.id! });
+      })
+    );
+    return { session, documents: docsWithSession, embeddings: embeddingsWithDocId };
+  }
+
+  /**
+   * Fetches a session, its documents, and their embeddings.
+   */
+  static async getSessionWithDocumentsAndEmbeddings(sessionId: string) {
+    const session = await CrawlSession.getById(sessionId);
+    const documents = await Document.getBySessionId(sessionId);
+    const docIds = documents.map(d => d.id!).filter(Boolean);
+    const embeddings = await Embedding.getByDocumentIds(docIds);
+    return { session, documents, embeddings };
+  }
+
+  /**
+   * Deletes a session and all its documents and embeddings (cascade).
+   */
+  static async deleteSessionCascade(sessionId: string): Promise<void> {
+    const documents = await Document.getBySessionId(sessionId);
+    const docIds = documents.map(d => d.id!).filter(Boolean);
+    await Promise.all(docIds.map(id => Embedding.deleteByDocumentId(id)));
+    await Document.deleteBySessionId(sessionId);
+    await CrawlSession.deleteById(sessionId);
   }
 
   // Getters

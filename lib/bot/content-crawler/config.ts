@@ -66,6 +66,7 @@ export interface CrawlConfig {
   };
   chunkSize?: number;  // Maximum words per chunk
   chunkOverlap?: number;  // Number of words to overlap between chunks
+  type?: 'website_page' | 'pdf'; // Added for dynamic document type
 }
 
 export const defaultConfig: Partial<CrawlConfig> = {
