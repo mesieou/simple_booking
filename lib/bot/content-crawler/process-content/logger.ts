@@ -292,7 +292,10 @@ class ContentProcessorLogger {
     // Chunking
     console.log('\n[Chunking Results]');
     if (this.chunkLogs.length > 0) {
-      console.table(this.chunkLogs);
+      const sorted = [...this.chunkLogs].sort((a, b) =>
+        a.url.localeCompare(b.url) || a.chunkId - b.chunkId
+      );
+      console.table(sorted);
     }
     // Categorizing
     console.log('\n[Categorizing Results]');

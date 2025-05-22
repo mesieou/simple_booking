@@ -64,15 +64,20 @@ export class Embedding {
   }
 
   static async getByDocumentId(documentId: string): Promise<EmbeddingData[]> {
-    const supa = await createClient();
-    const { data, error } = await supa.from("embeddings").select("*").eq("documentId", documentId);
-    if (error) handleModelError("Failed to fetch embeddings", error);
-    return data || [];
+    return Embedding.getByDocumentIds([documentId]);
   }
 
   static async deleteByDocumentId(documentId: string): Promise<void> {
     const supa = await createClient();
     const { error } = await supa.from("embeddings").delete().eq("documentId", documentId);
     if (error) handleModelError("Failed to delete embeddings", error);
+  }
+
+  static async getByDocumentIds(documentIds: string[]): Promise<EmbeddingData[]> {
+    if (!documentIds.length) return [];
+    const supabase = await createClient();
+    const { data, error } = await supabase.from("embeddings").select("*").in("documentId", documentIds);
+    if (error) handleModelError("Failed to fetch embeddings by documentIds", error);
+    return data || [];
   }
 } 

@@ -11,6 +11,7 @@ export interface DocumentData {
   source?: string;
   createdAt?: string;
   contentHash?: string;
+  sessionId?: string;
 }
 
 export class DocumentError extends Error {
@@ -101,5 +102,18 @@ export class Document {
     const supabase = await createClient();
     const { error } = await supabase.from("documents").delete().eq("id", id);
     if (error) handleModelError("Failed to delete document", error);
+  }
+
+  static async getBySessionId(sessionId: string): Promise<DocumentData[]> {
+    const supabase = await createClient();
+    const { data, error } = await supabase.from("documents").select("*").eq("sessionId", sessionId);
+    if (error) handleModelError("Failed to fetch documents by sessionId", error);
+    return data || [];
+  }
+
+  static async deleteBySessionId(sessionId: string): Promise<void> {
+    const supabase = await createClient();
+    const { error } = await supabase.from("documents").delete().eq("sessionId", sessionId);
+    if (error) handleModelError("Failed to delete documents by sessionId", error);
   }
 } 
