@@ -4,9 +4,10 @@ import { User } from '../models/user';
 import { Business } from '../models/business';
 import { createServices } from './create-services';
 import {
-  calculateTravelCostEstimate,
-  calculateTotalJobCostEstimation,
-  calculateTotalJobDurationEstimation
+  calculateTravelCost,
+  calculateTotalJobCost,
+  calculateTotalJobDuration,
+  computeQuoteEstimation
 } from '../helpers/quote';
 
 export async function createQuotes(
@@ -28,9 +29,9 @@ export async function createQuotes(
 
   for (let i = 0; i < numQuotes; i++) {
     const travelTimeEstimate = faker.number.int({ min: 5, max: 90 });
-    const totalJobDurationEstimation = calculateTotalJobDurationEstimation(travelTimeEstimate, service);
-    const travelCostEstimate = calculateTravelCostEstimate(travelTimeEstimate, service);
-    const totalJobCostEstimation = calculateTotalJobCostEstimation(travelTimeEstimate, service);
+    const totalJobDurationEstimation = calculateTotalJobDuration(service, business, travelTimeEstimate);
+    const travelCostEstimate = calculateTravelCost(service, business, travelTimeEstimate);
+    const totalJobCostEstimation = calculateTotalJobCost(service, business, travelTimeEstimate).totalJobCost;
 
     const quote = new Quote({
       pickUp: faker.location.streetAddress(),
