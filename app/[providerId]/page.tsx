@@ -4,6 +4,7 @@ import { useProvider } from '../context/ProviderContext';
 import { useEffect, useState } from 'react';
 import ProviderTitle from '../components/ProviderTitle';
 import { use } from 'react';
+import { createClient } from '../../lib/supabase/client';
 
 export default function ProviderPage({ params }: { params: Promise<{ providerId: string }> }) {
   const { setProviderId } = useProvider();
@@ -14,6 +15,8 @@ export default function ProviderPage({ params }: { params: Promise<{ providerId:
     const today = new Date();
     return today.toISOString().split('T')[0];
   });
+  const [businessId, setBusinessId] = useState<string | null>(null);
+  const [businessName, setBusinessName] = useState<string | null>(null);
 
   // Desempaquetar la promesa de params
   const { providerId } = use(params);
@@ -39,10 +42,52 @@ export default function ProviderPage({ params }: { params: Promise<{ providerId:
     if (providerId && date) fetchSlots();
   }, [providerId, date]);
 
+  useEffect(() => {
+    const fetchBusinessData = async () => {
+      if (!providerId) return;
+      const supabase = createClient();
+      // Buscar el usuario y obtener el businessId
+      const { data: user, error: userError } = await supabase
+        .from('users')
+        .select('businessId')
+        .eq('id', providerId)
+        .single();
+      console.log('Usuario:', user, 'Error usuario:', userError);
+      if (userError || !user?.businessId) {
+        setBusinessId(null);
+        setBusinessName(null);
+        return;
+      }
+      setBusinessId(user.businessId);
+      // Buscar el nombre del negocio
+      const { data: business, error: businessError } = await supabase
+        .from('businesses')
+        .select('name')
+        .eq('id', user.businessId)
+        .single();
+      console.log('Negocio:', business, 'Error negocio:', businessError);
+      if (businessError || !business?.name) {
+        setBusinessName(null);
+        return;
+      }
+      setBusinessName(business.name);
+    };
+    fetchBusinessData();
+  }, [providerId]);
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
         <ProviderTitle providerId={providerId} />
+        {/* Mostrar businessId y businessName debajo del ProviderId */}
+        <div className="mb-4">
+          <div className="text-sm text-gray-600 dark:text-gray-300" tabIndex={0} aria-label="ID del negocio">
+            <span className="font-semibold">Business ID:</span> {businessId ?? 'No disponible'}
+          </div>
+          <div className="text-sm text-gray-600 dark:text-gray-300" tabIndex={0} aria-label="Nombre del negocio">
+            <span className="font-semibold">Nombre del negocio:</span> {businessName ?? 'No disponible'}
+          </div>
+        </div>
         <h1 className="text-2xl font-bold mb-4">
           Selecciona una opción de reserva
         </h1>
