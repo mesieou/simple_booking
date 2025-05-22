@@ -6,7 +6,7 @@ import { retry } from 'ts-retry-promise';
 import { logger } from '../logger';
 
 // Helper to wrap generateEmbedding in the OpenAI queue
-function embeddingInQueue(text: string): Promise<number[]> {
+export function embeddingInQueue(text: string): Promise<number[]> {
   return new Promise((resolve, reject) => {
     pushToQueue(async () => {
       try {
