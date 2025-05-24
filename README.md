@@ -1,13 +1,13 @@
-<table width="100%" bgcolor="#4F36B0">
-  <tr>
-    <td align="center" style="padding: 20px;">
-      <a href="https://skedy.io/">
-        <img alt="Skedy Logo" width="200" src="https://skedy.io/_next/image?url=%2F_next%2Fstatic%2Fmedia%2FSkedyLogo.038dc846.png&w=1080&q=75">
-      </a>
-      <h1 style="color: white; font-weight: normal;">Skedy is an AI WhatsApp agent that helps service businesses with quoting, booking, and calendar management</h1>
-    </td>
-  </tr>
-</table>
+<p align="center">
+  <a href="https://skedy.io/">
+    <img width="200" src="https://skedy.io/_next/image?url=%2F_next%2Fstatic%2Fmedia%2FSkedyLogo.038dc846.png&w=1080&q=75" alt="Skedy Logo">
+  </a>
+</p>
+
+<h3 align="center">
+  Skedy is an AI WhatsApp agent that helps service businesses with quoting, booking, and calendar management
+</h3>
+
 
 
 <p align="center">
