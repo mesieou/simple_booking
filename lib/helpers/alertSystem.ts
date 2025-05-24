@@ -5,7 +5,7 @@
  * alerts for administrators when intervention may be needed.
  */
 
-import { MoodAnalysisResult } from './openai';
+import { MoodAnalysisResult } from '@/lib/helpers/openai/openai-core';
 
 // In-memory store for user mood history
 // In a production system, this would be stored in a database

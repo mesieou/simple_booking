@@ -1,24 +1,19 @@
 ```json
 [
   {
+    "category": "services offered",
+    "content": "Are you ready to learn more about business tax deductions in Australia? Contact us we can guide you through: https://ysaccounting.com.au/",
+    "confidence": 0.8
+  },
+  {
     "category": "about / trust-building",
-    "content": "ENY&S Accounting proudly specialises in providing professional consulting and accounting services to the Latin American community in Australia since 2008.",
+    "content": "Top 5 Business Tax deductions Business When you are a business owner you are always looking for opportunities to save money on your taxes, for this reason this article will help you with the Top 5 Business Tax Deductions. If you are starting a business as a small business owner or if you have been in business for a long time this article is for you. Let’s start with what are tax deductions? Tax deductions are business expenses that can lower the amount of tax you have to pay. There are three golden rules you need to meet to claim a deduction for work related expenses: You must have spent the money and you weren’t reimbursed. The expense must directly relate to earning your income. You must have a record to prove it, usually a receipt.",
     "confidence": 0.9
   },
   {
     "category": "services offered",
-    "content": "Accounting services Personal tax returns Business advise Xero health check Business registration Bookkeeping Start-up advise",
+    "content": "Top 5 Tax deductions Business can claim Motor vehicle expenses: You may be able to claim a deduction for motor vehicle expenses, if you: Use your car to perform your work duties Attend work-related conferences or meetings away from your normal workplace Travel directly between two separate place of employment Travel from your normal workplace to an alternative workplace and back to your normal workplace Travel from your home to an alternative workplace and then to your normal workplace. You can calculate your car expenses in two ways 2. Business travel expenses: the general rule is that you can claim deductions for expenses if you or your employee are traveling for business purposes. Expenses you can claim include: airfares train, tram, bus, taxi, or ride-sourcing fares car hire fees and the costs you incur (example fuel, tolls and car parking) when using a hire car for business purposes accommodation meals, if you are away overnight. To claim expenses for overnight travel, you must have a permanent home elsewhere and your business must require you to stay away from home overnight. If you are entitled to goods and services tax (GST) input tax credits, you must claim your deduction in your income tax return at the GST exclusive amount 3. Repairs, maintenance and replacement expenses: Expenses you can claim include: painting conditioning gutters maintaining plumbing repairing electrical appliances mending leaks replacing broken parts of fences or broken glass in windows repairing machinery. 4. Operating expenses: expenses you incur in the everyday running of your business. Make sure you keep accurate and complete records of these expenses General expenses: ​​purchases of trading stock, including delivery charges advertising and sponsorship public relations legal expenses, such as those incurred defending future earnings, borrowing money, discharging a mortgage or obtaining tax advice tender costs, even if the tender is unsuccessful bad debts bank fees and charges insurance premiums, including accident or disability, fire, burglary, professional indemnity, public risk, motor vehicle, loss of profits insurance, or workers compensation internet service provider fees subscription fees for off-the-shelf software transport and freight waste removal and recycling parking fees (but not parking fines) small-value items costing $100 or less 5. Tax-related operating expenses: include registered tax agent and accountant fees tax-related expenses, such as: having a bookkeeper prepare your business records, preparing and lodging tax returns and activity statements, objecting to or appealing against your assessment, attending an ATO audit, obtaining tax advice about your business, credit card/charge card payment fee associated with paying a business tax liability, for example, GST liability.",
     "confidence": 0.95
-  },
-  {
-    "category": "contact",
-    "content": "Address: Level 38, 71 Eagle St, Brisbane QLD 4000 Contact: 1300 189 682 brisbane@ysaccounting.com.au",
-    "confidence": 0.95
-  },
-  {
-    "category": "terms & conditions / legal policies",
-    "content": "Privacy Policy Terms of Service Cookies Settings",
-    "confidence": 0.85
   }
 ]
 ```

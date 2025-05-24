@@ -2,23 +2,18 @@
 [
   {
     "category": "about / trust-building",
-    "content": "ENY&S Accounting proudly specialises in providing professional consulting and accounting services to the Latin American community in Australia since 2008.",
-    "confidence": 0.9
+    "content": "Tips to improve your cash flow? Business To begin we can define cash flow as the movement of money in and out of a business, so when we speak that there is a positive cash flow it means businesses have more cash coming into the bank than they’re spending. Why is a cash flow forecast important? Cash flow statements show the net change in your company’s cash position from one period to the next, that’s why based on what your cash flow statements reveal, you might need to cut expenses or increase the cash.",
+    "confidence": 0.8
   },
   {
     "category": "services offered",
-    "content": "Accounting servicesPersonal tax returnsBusiness adviseXero health checkBusiness registrationBookkeepingStart-up advise",
-    "confidence": 0.95
+    "content": "Tips to improve your cash flow Ensure you know your target market and potential customers within that market: A more focused target market results in less marketing expenditure It’s critical to keep your records up-to-date and monitor them regularly. Make sure all your invoices and payments are entered weekly into your financial system. Understand what problems your product or services solves for your customer Keep your marketing regular Keep a database of your customers Invoice quickly: deliver products as soon as they’re ready, and invoice when the sale is completed Request a deposit: For special or large orders Follow up outstanding payments regularly Get smart digital products to help you cash flow forecast Control spending: control costs and keep hold of your cash Monitor stock levels: track the movement of your stock and have processes in place to identify when new stock should be ordered. Reward staff behavior that improves cash flow: such as setting sales targets, reducing expenditure or paying commission on collection of payment from customer. Sell unnecessary assets: this action increases cash in the business and saves on costs, such as insurance and storage.",
+    "confidence": 0.9
   },
   {
     "category": "contact",
-    "content": "Address:Level 38, 71 Eagle St, Brisbane QLD 4000Contact:1300 189 682brisbane@ysaccounting.com.au",
+    "content": "If you need business advice contact us: www.ysaccounting.com.au",
     "confidence": 0.95
-  },
-  {
-    "category": "terms & conditions / legal policies",
-    "content": "© 2023 Y&S Accounting Brisbane. All right reserved.Privacy PolicyTerms of ServiceCookies Settings",
-    "confidence": 0.85
   }
 ]
 ```

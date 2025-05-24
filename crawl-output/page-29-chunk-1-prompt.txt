@@ -1,0 +1,33 @@
+The following is visible content extracted from a business website. Your job is to analyze the full text and divide it into logical sections. For each section, return:
+
+- "category": one of the following, written EXACTLY as shown (case, spaces, and punctuation must match):
+  - "services offered"\n  - "pricing or quotes"\n  - "contact"\n  - "booking or scheduling"\n  - "about / trust-building"\n  - "faq"\n  - "terms & conditions / legal policies"
+
+Do NOT invent new categories. If content does not fit any, use the closest match from the list above.
+- "content": the full, detailed text of the section (do NOT omit or summarize any details)
+- "confidence": a score from 0.5 to 1.0 based on how well the content fits the chosen category
+
+IMPORTANT:
+- You MUST categorize ALL content. Do NOT skip, omit, or summarize any information, even if it seems repetitive or unimportant.
+- Do NOT repeat or duplicate the same information in multiple sections. Each piece of information should appear only once, in the most appropriate category.
+- If content fits multiple categories, include it in the most relevant one, but do NOT copy it to others.
+- The output will be used for a customer assistant. Missing details will degrade its performance.
+- Be as granular as needed to ensure every piece of information is included in some section.
+- If a section touches multiple themes, choose the dominant one but do NOT drop any details.
+- Do not skip generic layout/footer/header content unless it is truly boilerplate (e.g. copyright, navigation links).
+- Do NOT summarize or compress content. Include all original details.
+- Do Not add any information that is not in the text.
+
+Return a valid JSON array like this:
+
+[
+  {
+    "category": "faq",
+    "content": "How long does it take... You need to keep receipts for 5 years...",
+    "confidence": 0.95
+  }
+]
+
+Here is all the cleaned text content from the site (ID: 0919f2b7-9af2-4094-b8b7-f7a70a59599a, URL: https://ysaccounting.com.au/):
+
+Claim Education Expenses International Students, Taxes Self-education expenses are the costs you incur to undertake a course of study at a school, college, university or other recognised place of education. If you work and study and incur self-education expenses you may be eligible for tax deductions. ELIGIBILITY TO CLAIM Your current employment and the course you undertake must have sufficient connection for your self-education expenses to qualify as a work-related tax deduction. If a course of study is too general in terms of your current income-earning activities, the necessary connection between the self-education expense and your income-earning activity does not exist. A tax deduction for your self-education expenses related to your work as an employee is available if you work and study at the same time and can satisfy any of these conditions: ✅ You are upgrading your qualifications for your current employment – for example, upgrading from a Bachelor qualification to a Masters qualification ✅ You are improving specific skills or knowledge used in your current employment – for example, a course that will allow you to operate more machinery at work ✅ You are employed as a trainee and you are undertaking a course that forms part of that traineeship – for example, an overseas trained person employed as an intern while doing a bridging course ✅ You can show that at the time you were working and studying, your course led, or was likely to lead to an increase in employment income – for example, a teacher who will automatically get a pay increase as a result of completing the course. ELIGIBLE COURSES Self-education expenses are deductible when the course you undertake leads to a formal qualification and meets the following conditions. The course must have a sufficient connection to your current work activities as an employee and: ✅ Maintain or improve the specific skills or knowledge you require in your current work activities ✅ Result in, or is likely to result in, an increase in your income from your current work activities. You can’t claim a deduction for self-education expenses for a course that doesn’t have a sufficient connection to your current work activities even though it: ❌ Might be generally related to it ❌ Enables you to get new employment – such as moving employment as a nurse to employment as a doctor. EXPENSES YOU CAN CLAIM You can claim a deduction for following expenses related to your eligible self-education: ✅ Accommodation and meals (if away from home overnight) ✅ Car expenses ✅ Computer consumables ✅ Course fees ✅ Decline in value for depreciating assets (cost exceeds $300) ✅ Purchase of equipment or technical instruments (costing $300 or less) ✅ Equipment repairs ✅ Fares ✅ Home office running costs ✅ Interest ✅ Internet usage (excluding connection fees) ✅ Parking fees (only for work-related claims) ✅ Phone calls ✅ Postage ✅ Stationery ✅ Student union fees ✅ Student services and amenities fees ✅ Textbooks ✅ Trade, professional, or academic journals ✅ Travel to-and-from place of education (only for work-related claims). Some travel for journeys can’t be claimed, but you may be able to offset the cost of these journeys against the $250 reduction. If an expense is partly for your self-education and partly for other purposes, you can only claim the amount that relates to your self-education as a deduction. EXPENSES YOU CAN’T CLAIM You can’t claim the following expenses in relation to your self-education: ❌ Tuition fees paid by someone else ❌ Repayments of Higher Education Loan Program (HELP) loans (although the fees paid by some HELP loans are) ❌ Student Financial Supplement Scheme (SFSS) repayments ❌ Student Start-up Loan (SSL) repayments) ❌ Trade Support Loan Program (TSL) repayments ❌ Home office occupancy expenses ❌ Accommodations and meals RECORDING SELF-EDUCATION EXPENSES You may need to keep receipts or other documents showing your self-education expenses such as: 🔘 Course fees 🔘 Textbooks 🔘 Stationery 🔘 Decline in value of and repairs to depreciating assets. You must also keep receipts, documents or diary entries for travel expenses.

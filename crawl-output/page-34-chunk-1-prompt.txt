@@ -1,0 +1,33 @@
+The following is visible content extracted from a business website. Your job is to analyze the full text and divide it into logical sections. For each section, return:
+
+- "category": one of the following, written EXACTLY as shown (case, spaces, and punctuation must match):
+  - "services offered"\n  - "pricing or quotes"\n  - "contact"\n  - "booking or scheduling"\n  - "about / trust-building"\n  - "faq"\n  - "terms & conditions / legal policies"
+
+Do NOT invent new categories. If content does not fit any, use the closest match from the list above.
+- "content": the full, detailed text of the section (do NOT omit or summarize any details)
+- "confidence": a score from 0.5 to 1.0 based on how well the content fits the chosen category
+
+IMPORTANT:
+- You MUST categorize ALL content. Do NOT skip, omit, or summarize any information, even if it seems repetitive or unimportant.
+- Do NOT repeat or duplicate the same information in multiple sections. Each piece of information should appear only once, in the most appropriate category.
+- If content fits multiple categories, include it in the most relevant one, but do NOT copy it to others.
+- The output will be used for a customer assistant. Missing details will degrade its performance.
+- Be as granular as needed to ensure every piece of information is included in some section.
+- If a section touches multiple themes, choose the dominant one but do NOT drop any details.
+- Do not skip generic layout/footer/header content unless it is truly boilerplate (e.g. copyright, navigation links).
+- Do NOT summarize or compress content. Include all original details.
+- Do Not add any information that is not in the text.
+
+Return a valid JSON array like this:
+
+[
+  {
+    "category": "faq",
+    "content": "How long does it take... You need to keep receipts for 5 years...",
+    "confidence": 0.95
+  }
+]
+
+Here is all the cleaned text content from the site (ID: 0919f2b7-9af2-4094-b8b7-f7a70a59599a, URL: https://ysaccounting.com.au/):
+
+Starting a Business in Australia? by Yaritza Salazar | Mar 2, 2020 | Entrepreneurs, Taxes Starting a successful business is very rewarding. It is a process that improves many people’s lives such us business owners, family members, employees, suppliers and the community in general. Moreover, it could be a good vehicle that helps you to obtain an Australia permanent residency, if the business idea meets the Australian government requirements base on the current Australian Migration conditions. However, in the process of starting a new business in Australia is essential to cover the follow aspects: Business Plan: A well-written business plan is an important tool because it gives entrepreneurs the ability to lay out their goals and track their progress, as their business begins to grow. Formulating a business plan should be the first step taken at the moment of starting a new business. It is also important to attract investors so; they can have a clear picture of the business they will invest in. Many businesses are created out of passion, and while passion can be a great motivator, it’s not enough to proof how much it worth to invest in the business. In fact, planning your steps and understanding exactly how you’re going to turn that vision into a successful business is perhaps the most important step, it is when you can tell the differences between concept and reality. Business plans can help you confirm that your great idea makes some sense in the business language. An additional and key element of your business plan is the Market research, that can offer a deep insight about your customers, your competitors, and your chosen industry. It will not only enlighten the entrepreneurs in their process of starting up a business, but it can also help to improve your knowledge about the existing businesses, their activities, marketing, advertising, and releasing new products or services. 2. Right Business Structure: Choosing the right structure for your business is also crucial, as it has a direct effect on aspects such as: Your level of control.The amount of tax you need to pay.Regulatory obligations.Health and safety requirements in the workplace.The level of personal liability you will incur.Perpetuality of your business 3. Funding: Having sufficient working capital is a key aspect to keep your business finances healthy. On the other hand, not having enough working capital will have serious implications on the company’s future. Many businesses obtain external funding in order to gain enough working capital by doing that they expect to fulfil their growth ambitions. However, getting a loan can help to cover short-term funding needs but it is just a short term solution, while giving the business enough money, it can make it grow or even if you’re looking to expand your business to take it to the next level, you may need very well funding so you able to execute your business plans. 4. Migration Requirements: The Australian government welcomes business owner either to start a new business or to move their businesses to Australia. This pathway is for existing business owners or entrepreneur who want to settle in Australia with their family and start businesses that can fill and meet the gaps in the Australian market. It is vital to have the right legal advice regarding your business in order to meet Immigration requirements. At YS Accounting we have join forces with ProjectRH and RC Australia to cover these important steps in any entrepreneur starting their journey, if you need any help please contact us: www.ysaccounting.com.au www.projectsrh.com.au www.rcaustralia.com.au/

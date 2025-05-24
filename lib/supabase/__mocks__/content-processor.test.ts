@@ -4,7 +4,7 @@ jest.mock('@/lib/bot/website-crawler/url-fetcher', () => ({
 }));
 
 import { processHtmlContent } from '@/lib/bot/website-crawler/content-processor';
-import { categorizeContentSectionsBatch } from '@/lib/helpers/openai';
+import { categorizeContentSectionsBatch } from '@/lib/helpers/openai/openai-helpers';
 import { CategorizedContent, VALID_CATEGORIES, WebPageCategory } from '@/lib/bot/website-crawler/types';
 import axios from 'axios';
 import * as cheerio from 'cheerio';

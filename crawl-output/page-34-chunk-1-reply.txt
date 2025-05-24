@@ -1,0 +1,14 @@
+```json
+[
+  {
+    "category": "about / trust-building",
+    "content": "Starting a Business in Australia? by Yaritza Salazar | Mar 2, 2020 | Entrepreneurs, Taxes Starting a successful business is very rewarding. It is a process that improves many people’s lives such us business owners, family members, employees, suppliers and the community in general. Moreover, it could be a good vehicle that helps you to obtain an Australia permanent residency, if the business idea meets the Australian government requirements base on the current Australian Migration conditions.",
+    "confidence": 0.9
+  },
+  {
+    "category": "services offered",
+    "content": "At YS Accounting we have join forces with ProjectRH and RC Australia to cover these important steps in any entrepreneur starting their journey, if you need any help please contact us: www.ysaccounting.com.au www.projectsrh.com.au www.rcaustralia.com.au/",
+    "confidence": 0.85
+  }
+]
+```
