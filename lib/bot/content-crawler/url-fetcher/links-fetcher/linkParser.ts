@@ -16,10 +16,10 @@ export function parseLinksFromHtml(html: string, baseUrl: string): string[] {
       const url = new URL(href, baseUrl);
       const norm = normalizeUrl(url.href, {
         stripHash: true,
-        stripWWW: true,
-        removeTrailingSlash: true,
-        removeQueryParameters: [/^utm_/i, /^ref_/i],
-        sortQueryParameters: true
+        stripWWW: false,
+        removeTrailingSlash: false,
+        removeQueryParameters: [/^utm_/i],
+        sortQueryParameters: false
       });
       if (isValidLink(norm, base)) {
         links.add(norm);

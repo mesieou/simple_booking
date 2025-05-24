@@ -9,7 +9,8 @@ export async function createDocument(
   businessId: string,
   category: string,
   content: string,
-  websiteUrl: string
+  websiteUrl: string,
+  confidence: number
 ): Promise<any> {
   const contentHash = generateContentHash(content, 'en');
 
@@ -22,7 +23,8 @@ export async function createDocument(
         source: websiteUrl,
         type: 'website_page',
         category: category as DocumentCategory,
-        contentHash
+        contentHash,
+        confidence
       }),
       {
         retries: EMBEDDING_CONFIG.MAX_RETRIES,
