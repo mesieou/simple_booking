@@ -1,4 +1,4 @@
-<a href="https://skedy.io/">
+<a href="https://skedy.io/" style="background-color: #4F36B0; padding: 20px 0; text-align: center;">
   <img alt="Skedy Logo" width="200" src="https://skedy.io/_next/image?url=%2F_next%2Fstatic%2Fmedia%2FSkedyLogo.038dc846.png&w=1080&q=75">
   <h1 align="center"> Skedy is AI WhatsApp agent that helps service businesses with quoting, booking, and calendar management</h1>
 </a>
