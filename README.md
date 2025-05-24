@@ -1,5 +1,5 @@
 <a href="https://demo-nextjs-with-supabase.vercel.app/">
-  <img alt="Skedy Logo" src="/_next/image?url=%2F_next%2Fstatic%2Fmedia%2FSkedyLogo.038dc846.png&w=2048&q=75">
+  <img alt="Skedy Logo" srcset="/_next/image?url=%2F_next%2Fstatic%2Fmedia%2FSkedyLogo.038dc846.png&w=1080&q=75 1x, /_next/image?url=%2F_next%2Fstatic%2Fmedia%2FSkedyLogo.038dc846.png&w=2048&q=75 2x" src="/_next/image?url=%2F_next%2Fstatic%2Fmedia%2FSkedyLogo.038dc846.png&w=2048&q=75">
   <h1 align="center"> Skedy is AI WhatsApp agent that helps service businesses with quoting, booking, and calendar management</h1>
 </a>
 
