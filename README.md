@@ -15,28 +15,20 @@
 </p>
 
 <p align="center">
-  <a href="#features"><strong>Features</strong></a> ·
-  <a href="#demo"><strong>AI WhatsApp agent 24/7</strong></a> ·
-  <a href="#deploy-to-vercel"><strong>Booking management from whatsapp or from a website</strong></a> ·
-  <a href="#clone-and-run-locally"><strong>Uber like dynamic quoting</strong></a> ·
-  <a href="#feedback-and-issues"><strong>Calendar Management</strong></a>
+  <a href="#features"><strong>Reduce costs</strong></a> ·
+  <a href="#demo"><strong>Instant Customer Service</strong></a> ·
+  <a href="#deploy-to-vercel"><strong>Any language</strong></a> ·
+  <a href="#clone-and-run-locally"><strong>Customisable</strong></a> ·
+  <a href="#feedback-and-issues"><strong>Scalable</strong></a>
 </p>
 <br/>
 
 ## Features
 
-- Works across the entire [Next.js](https://nextjs.org) stack
-  - App Router
-  - Pages Router
-  - Middleware
-  - Client
-  - Server
-  - It just works!
-- supabase-ssr. A package to configure Supabase Auth to use cookies
-- Styling with [Tailwind CSS](https://tailwindcss.com)
-- Components with [shadcn/ui](https://ui.shadcn.com/)
-- Optional deployment with [Supabase Vercel Integration and Vercel deploy](#deploy-your-own)
-  - Environment variables automatically assigned to Vercel project
+  - AI WhatsApp agent 24/7
+  - Booking management from whatsapp or from a website
+  - Uber-like dynamic quoting
+  - Calendar Management
 
 ## Demo
 
