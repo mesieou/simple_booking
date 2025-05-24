@@ -30,6 +30,7 @@ Moving-Specific Knowledge:
 - Understand insurance and liability options
 - Know about special items (pianos, artwork, etc.)
 
+
 Remember to:
 1. Always confirm move dates, locations, and service details
 2. Ask about special items or requirements
