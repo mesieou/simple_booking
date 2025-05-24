@@ -47,6 +47,15 @@ export const VALID_CATEGORIES: DocumentCategory[] = [
   'terms & conditions / legal policies'
 ];
 
+// Confidence Score Configuration
+export const CONFIDENCE_CONFIG = {
+  MIN_SCORE: 0.5,
+  MAX_SCORE: 1.0,
+  DEFAULT_SCORE: 0.8,
+  MIN_THRESHOLD: 0.6,
+  WARNING_THRESHOLD: 0.7
+} as const;
+
 // Base configuration for all crawls
 export interface CrawlConfig {
   websiteUrl: string;

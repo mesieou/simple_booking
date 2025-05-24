@@ -11,22 +11,29 @@ const SKIPPED_EXTENSIONS = [
   '.css', '.js', '.json', '.xml', '.txt'
 ];
 const SKIPPED_PATTERNS = [
-  /\/tag\//i, /\/category\/page\//i, /\/archive\//i, /\/feed\//i, /\/rss\//i, /\/atom\//i,
-  /\/sitemap\//i, /\/wp-/i, /\/wp-content\//i, /\/wp-includes\//i, /\/wp-admin\//i,
-  /\/(page|p)[-_]?\d+/i, // e.g. /page_2
-  /\/\d{4}\/\d{2}\/\d{2}/i, // date-based blog traps
-  /\/product\/.+/i, /\/blog\//i, /\/news\//i, /\/article\//i, /\/posts\//i,
-  /\?page=\d+/i, /\?p=\d+/i, /\/search\//i, /\/cart\//i, /\/checkout\//i,
-  /\/admin\//i, /\/user\//i, /\/profile\//i
+  /\/wp-admin\//i,
+  /\/wp-includes\//i,
+  /\/wp-content\//i,
+  /\/cart\//i,
+  /\/checkout\//i,
+  /\/admin\//i,
+  /\/user\//i,
+  /\/profile\//i,
+  /\/login\//i,
+  /\/signup\//i,
+  /\/register\//i,
+  /\/password\//i,
+  /\/reset\//i,
+  /\/logout\//i
 ];
 
 // Function to validate URLs
 function isValidLink(url: string, baseUrl: URL): boolean {
   try {
     const parsedUrl = new URL(url);
-    // Only allow same domain or subdomain
+    // Allow same domain and its subdomains
     if (
-      parsedUrl.hostname !== baseUrl.hostname &&
+      parsedUrl.hostname !== baseUrl.hostname && 
       !parsedUrl.hostname.endsWith('.' + baseUrl.hostname)
     ) {
       return false;

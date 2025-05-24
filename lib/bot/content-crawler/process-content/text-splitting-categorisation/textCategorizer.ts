@@ -1,6 +1,7 @@
 import { categorizeWebsiteContent } from '@/lib/helpers/openai/functions/content-analysis';
-import { CategorizedContent } from '../../config';
+import { CategorizedContent, CONFIDENCE_CONFIG } from '../../config';
 import { logger } from '../logger';
+import { validateConfidence, meetsConfidenceThreshold, logConfidence } from '../../utils';
 
 /**
  * Categorizes text content using OpenAI
@@ -12,10 +13,14 @@ import { logger } from '../logger';
 export async function categorizeText(text: string, businessId: string, url: string): Promise<CategorizedContent[]> {
   try {
     const result = await categorizeWebsiteContent(text, businessId, url);
-    return result.map(content => ({
-      ...content,
-      confidence: content.confidence || 0.8 // Default confidence if not provided
-    }));
+    return result.map(content => {
+      const validatedConfidence = validateConfidence(content.confidence || CONFIDENCE_CONFIG.DEFAULT_SCORE);
+      logConfidence(content.category, validatedConfidence, 'categorization');
+      return {
+        ...content,
+        confidence: validatedConfidence
+      };
+    }).filter(content => meetsConfidenceThreshold(content.confidence));
   } catch (error) {
     throw new Error(`Failed to categorize text: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -53,11 +58,22 @@ export async function processTextChunk(
       throw new Error('No categories returned from categorization');
     }
 
-    // Add confidence scores if not present
-    const processedResults = result.map(section => ({
-      ...section,
-      confidence: section.confidence || 0.8
-    }));
+    // Process and validate confidence scores
+    const processedResults = result
+      .map(section => ({
+        ...section,
+        confidence: validateConfidence(section.confidence || CONFIDENCE_CONFIG.DEFAULT_SCORE)
+      }))
+      .filter(section => {
+        const meetsThreshold = meetsConfidenceThreshold(section.confidence);
+        logConfidence(section.category, section.confidence, 'chunk-processing');
+        return meetsThreshold;
+      });
+
+    if (processedResults.length === 0) {
+      logger.logChunkFailed();
+      throw new Error('No valid categories after confidence filtering');
+    }
 
     categorizedSections.push(...processedResults);
     logger.logChunkProcessed();
