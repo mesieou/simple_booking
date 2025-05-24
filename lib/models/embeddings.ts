@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { handleModelError } from '@/lib/helpers/error';
+import { CONFIDENCE_CONFIG } from '@/lib/bot/content-crawler/config';
 
 export interface EmbeddingData {
   id?: string;
@@ -25,7 +26,14 @@ export class Embedding {
   constructor(data: EmbeddingData) {
     if (!data.documentId) handleModelError("documentId is required", new Error("Missing documentId"));
     if (!data.content) handleModelError("content is required", new Error("Missing content"));
-    if (!Array.isArray(data.embedding)) handleModelError("embedding must be an array", new Error("Invalid embedding format"));
+    if (!data.embedding) handleModelError("embedding is required", new Error("Missing embedding"));
+    if (data.metadata?.confidence !== undefined) {
+      if (data.metadata.confidence < CONFIDENCE_CONFIG.MIN_SCORE || 
+          data.metadata.confidence > CONFIDENCE_CONFIG.MAX_SCORE) {
+        handleModelError("Invalid confidence score", 
+          new Error(`Confidence must be between ${CONFIDENCE_CONFIG.MIN_SCORE} and ${CONFIDENCE_CONFIG.MAX_SCORE}`));
+      }
+    }
     this.data = data;
   }
 

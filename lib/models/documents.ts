@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { handleModelError } from '@/lib/helpers/error';
+import { CONFIDENCE_CONFIG } from '@/lib/bot/content-crawler/config';
 
 export interface DocumentData {
   id?: string;
@@ -12,6 +13,7 @@ export interface DocumentData {
   createdAt?: string;
   contentHash?: string;
   sessionId?: string;
+  confidence?: number;
 }
 
 export class DocumentError extends Error {
@@ -27,6 +29,11 @@ export class Document {
   constructor(data: DocumentData) {
     if (!data.businessId) handleModelError("businessId is required", new Error("Missing businessId"));
     if (!data.content) handleModelError("content is required", new Error("Missing content"));
+    if (data.confidence !== undefined) {
+      if (data.confidence < CONFIDENCE_CONFIG.MIN_SCORE || data.confidence > CONFIDENCE_CONFIG.MAX_SCORE) {
+        handleModelError("Invalid confidence score", new Error(`Confidence must be between ${CONFIDENCE_CONFIG.MIN_SCORE} and ${CONFIDENCE_CONFIG.MAX_SCORE}`));
+      }
+    }
     this.data = data;
   }
 
@@ -37,8 +44,16 @@ export class Document {
       type: data.type,
       title: data.title,
       contentLength: data.content.length,
-      contentHash: data.contentHash
+      contentHash: data.contentHash,
+      confidence: data.confidence
     });
+
+    // Validate confidence if provided
+    if (data.confidence !== undefined) {
+      if (data.confidence < CONFIDENCE_CONFIG.MIN_SCORE || data.confidence > CONFIDENCE_CONFIG.MAX_SCORE) {
+        handleModelError("Invalid confidence score", new Error(`Confidence must be between ${CONFIDENCE_CONFIG.MIN_SCORE} and ${CONFIDENCE_CONFIG.MAX_SCORE}`));
+      }
+    }
 
     const supabase = await createClient();
     const insertData = {
@@ -65,7 +80,8 @@ export class Document {
     console.log('Successfully added document:', {
       id: result.id,
       businessId: result.businessId,
-      category: result.category
+      category: result.category,
+      confidence: result.confidence
     });
 
     return result;
