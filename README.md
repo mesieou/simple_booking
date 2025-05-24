@@ -1,19 +1,18 @@
 <a href="https://demo-nextjs-with-supabase.vercel.app/">
   <img alt="Next.js and Supabase Starter Kit - the fastest way to build apps with Next.js and Supabase" src="https://demo-nextjs-with-supabase.vercel.app/opengraph-image.png">
-  <h1 align="center">Next.js and Supabase Starter Kit</h1>
+  <h1 align="center"> Skedy is AI WhatsApp agent that helps service businesses with quoting, booking, and calendar management</h1>
 </a>
 
 <p align="center">
- The fastest way to build apps with Next.js and Supabase
+ The best way to save costs in customer service and have higher customer service ratings.
 </p>
 
 <p align="center">
   <a href="#features"><strong>Features</strong></a> ·
-  <a href="#demo"><strong>Demo</strong></a> ·
-  <a href="#deploy-to-vercel"><strong>Deploy to Vercel</strong></a> ·
-  <a href="#clone-and-run-locally"><strong>Clone and run locally</strong></a> ·
-  <a href="#feedback-and-issues"><strong>Feedback and issues</strong></a>
-  <a href="#more-supabase-examples"><strong>More Examples</strong></a>
+  <a href="#demo"><strong>AI WhatsApp agent 24/7</strong></a> ·
+  <a href="#deploy-to-vercel"><strong>Booking management from whatsapp or from a website</strong></a> ·
+  <a href="#clone-and-run-locally"><strong>Uber like dynamic quoting</strong></a> ·
+  <a href="#feedback-and-issues"><strong>Calendar Management</strong></a>
 </p>
 <br/>
 
@@ -34,7 +33,7 @@
 
 ## Demo
 
-You can view a fully working demo at [demo-nextjs-with-supabase.vercel.app](https://demo-nextjs-with-supabase.vercel.app/).
+You can view a fully working demo at [skedy.io](https://skedy.io/).
 
 ## Deploy to Vercel
 
