@@ -32,13 +32,27 @@ export async function createEmbeddingsForChunks(
     try {
       const embedding = await embeddingInQueue(chunk.content);
       
+      logger.logEmbeddingAttempt({
+        embeddingId: `${documentRecord.id}-${j}`,
+        docId: documentRecord.id!,
+        category,
+        chunkIndex: j,
+        metadata: {
+          pageTitle: `${category} - Website Content`,
+          sourceUrl: websiteUrl,
+          contentHash,
+          crawlTimestamp: Date.now(),
+          language: 'en',
+          confidence: chunk.confidence
+        }
+      });
       await retry(
         () => Embedding.add({
           documentId: documentRecord.id!,
           content: chunk.content,
           embedding,
           chunkIndex: j,
-          category: category as DocumentCategory,
+          category,
           metadata: {
             pageTitle: `${category} - Website Content`,
             sourceUrl: websiteUrl,

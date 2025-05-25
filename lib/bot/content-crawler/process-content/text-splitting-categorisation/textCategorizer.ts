@@ -1,7 +1,7 @@
 import { categorizeWebsiteContent } from '@/lib/helpers/openai/functions/content-analysis';
-import { CategorizedContent, CONFIDENCE_CONFIG } from '../../config';
+import { CategorizedContent, CONFIDENCE_CONFIG, Category, CATEGORY_DISPLAY_NAMES } from '../../config';
 import { logger } from '../logger';
-import { validateConfidence, meetsConfidenceThreshold, logConfidence } from '../../utils';
+import { validateConfidence, logConfidence } from '../../utils';
 
 /**
  * Categorizes text content using OpenAI
@@ -15,12 +15,13 @@ export async function categorizeText(text: string, businessId: string, url: stri
     const result = await categorizeWebsiteContent(text, businessId, url);
     return result.map(content => {
       const validatedConfidence = validateConfidence(content.confidence || CONFIDENCE_CONFIG.DEFAULT_SCORE);
-      logConfidence(content.category, validatedConfidence, 'categorization');
+      logConfidence(CATEGORY_DISPLAY_NAMES[content.category], validatedConfidence, 'categorization');
       return {
         ...content,
-        confidence: validatedConfidence
+        confidence: validatedConfidence,
+        confidenceReason: content.confidenceReason
       };
-    }).filter(content => meetsConfidenceThreshold(content.confidence));
+    });
   } catch (error) {
     throw new Error(`Failed to categorize text: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -58,29 +59,23 @@ export async function processTextChunk(
       throw new Error('No categories returned from categorization');
     }
 
-    // Process and validate confidence scores
-    const processedResults = result
-      .map(section => ({
-        ...section,
-        confidence: validateConfidence(section.confidence || CONFIDENCE_CONFIG.DEFAULT_SCORE)
-      }))
-      .filter(section => {
-        const meetsThreshold = meetsConfidenceThreshold(section.confidence);
-        logConfidence(section.category, section.confidence, 'chunk-processing');
-        return meetsThreshold;
-      });
+    // No confidence filtering, just validate and push
+    const processedResults = result.map(section => ({
+      ...section,
+      confidence: validateConfidence(section.confidence || CONFIDENCE_CONFIG.DEFAULT_SCORE),
+      confidenceReason: section.confidenceReason
+    }));
 
     if (processedResults.length === 0) {
       logger.logChunkFailed();
-      throw new Error('No valid categories after confidence filtering');
+      throw new Error('No valid categories after categorization');
     }
 
     categorizedSections.push(...processedResults);
     logger.logChunkProcessed();
-    
     // Log each category processed
     processedResults.forEach(section => {
-      logger.logCategoryProcessed(section.category);
+      logger.logCategoryProcessed(CATEGORY_DISPLAY_NAMES[section.category]);
     });
   } catch (error) {
     logger.logChunkFailed();

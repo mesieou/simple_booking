@@ -44,10 +44,13 @@ export class Embedding {
       chunkIndex: data.chunkIndex ?? 0,
       createdAt: new Date().toISOString(),
     };
+    console.log(`[Embedding] Attempting to insert embedding for document ${data.documentId}, chunk ${data.chunkIndex}`);
     const { data: result, error } = await supa.from("embeddings").insert(insertData).select().single();
     
     if (error) {
       console.error('Failed to insert embedding:', {
+        documentId: data.documentId,
+        chunkIndex: data.chunkIndex,
         error: error.message,
         details: error.details,
         code: error.code,
