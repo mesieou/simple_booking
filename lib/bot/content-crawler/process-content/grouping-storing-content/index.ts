@@ -1,10 +1,11 @@
-import { CrawlConfig, CategorizedContent, VALID_CATEGORIES, CONFIDENCE_CONFIG } from '../../config';
+import { CrawlConfig, CategorizedContent, VALID_CATEGORIES, CONFIDENCE_CONFIG, Category, CATEGORY_DISPLAY_NAMES } from '../../config';
 import { groupContentByCategory } from './content-grouper';
 import { generateContentHash } from '../../utils';
 import { CrawlSession } from '@/lib/models/crawl-session';
 import { logger } from '../logger';
 import { validateConfidence, meetsConfidenceThreshold, logConfidence } from '../../utils';
 import { embeddingInQueue } from './embedding-creator';
+import { DocumentData } from '@/lib/models/documents';
 
 export async function processContent(
   config: CrawlConfig, 
@@ -21,81 +22,98 @@ export async function processContent(
 
     // Compute missing categories for missingInformation using categorizedSections (original logic)
     const presentCategories = new Set(categorizedSections.map(section => section.category));
-    const missingCategories = VALID_CATEGORIES.filter(
-      (category) => !presentCategories.has(category)
-    );
+    const missingCategories = Object.values(Category)
+      .filter(cat => typeof cat === 'number' && !presentCategories.has(cat))
+      .map(cat => CATEGORY_DISPLAY_NAMES[cat as Category]);
 
     // 2. Prepare arrays for documents and embeddings
-    const documents = [];
-    const embeddings = [];
+    const documents: DocumentData[] = [];
+    const embeddings: any[] = [];
+
+    // --- Debug: Log all document and section categories before embedding creation ---
+    console.log('Document categories:', documents.map(d => d.category));
+    console.log('Section categories:', categorizedSections.map(s => CATEGORY_DISPLAY_NAMES[s.category]));
 
     // --- Document creation: one per category ---
-    for (const [category, paragraphs] of Object.entries(categorizedContent)) {
-      if (paragraphs.length === 0) {
-        logger.logUrlFiltered(category, 'No content to process');
+    for (const [categoryName, paragraphs] of Object.entries(categorizedContent)) {
+      const categoryEntry = Object.entries(CATEGORY_DISPLAY_NAMES)
+        .find(([_, name]) => name === categoryName);
+      
+      if (!categoryEntry || paragraphs.length === 0) {
+        logger.logUrlFiltered(categoryName, 'No content to process');
         continue;
       }
 
+      const category = Number(categoryEntry[0]) as Category;
+
       try {
-        console.log(`[Content Processor] Processing category: ${category}`);
-        // Calculate average confidence for this category
+        console.log(`[Content Processor] Processing category: ${categoryName}`);
+        // Calculate average confidence for this category (no longer used for filtering)
         const categorySections = categorizedSections.filter(section => section.category === category);
-        const avgConfidence = validateConfidence(
-          categorySections.reduce((sum, section) => sum + section.confidence, 0) / categorySections.length
-        );
-
-        // Skip if confidence is too low
-        if (!meetsConfidenceThreshold(avgConfidence)) {
-          logger.logUrlFiltered(category, `Low confidence: ${avgConfidence.toFixed(2)}`);
-          continue;
-        }
-
-        logConfidence(category, avgConfidence, 'document-creation');
-
         // Prepare document
         const combinedContent = paragraphs.join('\n\n');
         const contentHash = generateContentHash(combinedContent, 'en');
         documents.push({
           businessId: config.businessId,
           content: combinedContent,
-          title: `${category} - Website Content`,
+          title: `${categoryName} - Website Content`,
           source: config.websiteUrl,
           type: config.type || 'website_page',
-          category,
+          category: categoryName,
           contentHash,
-          confidence: avgConfidence
+          confidence: categorySections.reduce((sum, section) => sum + section.confidence, 0) / categorySections.length,
         });
       } catch (error) {
-        logger.logUrlSkipped(category, error instanceof Error ? error.message : String(error));
-        console.error(`[Content Processor] Failed to process category ${category}:`, error);
+        logger.logUrlSkipped(categoryName, error instanceof Error ? error.message : String(error));
+        console.error(`[Content Processor] Failed to process category ${categoryName}:`, error);
       }
     }
 
     // --- Embedding creation: one per original categorized chunk ---
     for (let i = 0; i < categorizedSections.length; i++) {
       const section = categorizedSections[i];
-      // Find the document for this embedding by category
-      const doc = documents.find(d => d.category === section.category);
-      if (!doc) continue; // Should not happen, but safety check
+      // Find the document for this embedding by category display name
+      const doc = documents.find(d => d.category === CATEGORY_DISPLAY_NAMES[section.category]);
+      if (!doc) {
+        console.warn(`[Embedding Skipped] No document found for chunk index ${i}, category: ${CATEGORY_DISPLAY_NAMES[section.category]}`);
+        console.warn('Available document categories:', documents.map(d => d.category));
+        continue;
+      }
       try {
         const embedding = await embeddingInQueue(section.content);
+        logger.logEmbeddingAttempt({
+          embeddingId: `${doc.contentHash ?? ''}-${i}`,
+          docId: doc.contentHash ?? '',
+          category: CATEGORY_DISPLAY_NAMES[section.category],
+          chunkIndex: i,
+          metadata: {
+            pageTitle: `${CATEGORY_DISPLAY_NAMES[section.category]} - Website Content`,
+            sourceUrl: config.websiteUrl,
+            contentHash: doc.contentHash ?? '',
+            crawlTimestamp: Date.now(),
+            language: 'en',
+            confidence: section.confidence,
+            confidenceReason: section.confidenceReason
+          }
+        });
         embeddings.push({
-          content: section.content,
+          content: section.content ?? '',
           embedding,
           chunkIndex: i,
           category: section.category,
           metadata: {
-            pageTitle: `${section.category} - Website Content`,
+            pageTitle: `${CATEGORY_DISPLAY_NAMES[section.category]} - Website Content`,
             sourceUrl: config.websiteUrl,
-            contentHash: doc.contentHash,
+            contentHash: doc.contentHash ?? '',
             crawlTimestamp: Date.now(),
             language: 'en',
-            confidence: section.confidence
+            confidence: section.confidence,
+            confidenceReason: section.confidenceReason
           }
         });
-        logger.logEmbedding(`${doc.contentHash}-${i}`, doc.contentHash, 'processed');
+        logger.logEmbedding(`${doc.contentHash}-${i}`, doc.contentHash ?? '', 'processed');
       } catch (error) {
-        logger.logEmbedding(`${doc.contentHash}-${i}`, doc.contentHash, 'failed', error instanceof Error ? error.message : String(error));
+        logger.logEmbedding(`${doc.contentHash}-${i}`, doc.contentHash ?? '', 'failed', error instanceof Error ? error.message : String(error));
       }
     }
 
@@ -107,7 +125,7 @@ export async function processContent(
       totalPages: urls.length,
       successfulPages: processedUrls.length,
       failedPages: urls.length - processedUrls.length,
-      categories: Object.fromEntries(Array.from(presentCategories).map(cat => [cat, 1])),
+      categories: Object.fromEntries(Array.from(presentCategories).map(cat => [CATEGORY_DISPLAY_NAMES[cat], 1])),
       errors: [],
       missingInformation: missingCategories.join(', '),
       confidenceStats: {
@@ -116,7 +134,7 @@ export async function processContent(
           .filter(doc => doc.confidence && doc.confidence < CONFIDENCE_CONFIG.WARNING_THRESHOLD)
           .map(doc => doc.category),
         totalCategories: documents.length,
-        filteredCategories: VALID_CATEGORIES.length - documents.length
+        filteredCategories: Object.keys(CATEGORY_DISPLAY_NAMES).length - documents.length
       }
     };
 
