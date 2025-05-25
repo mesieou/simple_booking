@@ -1,31 +1,11 @@
+import { Category, CATEGORY_DISPLAY_NAMES } from "@/lib/bot/content-crawler/config";
+
 /**
  * Category Handler
  * 
  * This module provides functionality to handle user messages based on their category.
  * It customizes responses, clarification prompts, and behavior based on the message category.
  */
-
-/**
- * Valid categories for web pages
- */
-export type WebPageCategory = 
-  | 'booking or scheduling'
-  | 'pricing or quotes'
-  | 'services offered'
-  | 'contact'
-  | 'about / trust-building'
-  | 'faq'
-  | 'terms & conditions / legal policies';
-
-export const VALID_CATEGORIES: WebPageCategory[] = [
-  'booking or scheduling',
-  'pricing or quotes',
-  'services offered',
-  'contact',
-  'about / trust-building',
-  'faq',
-  'terms & conditions / legal policies'
-];
 
 /**
  * Configuration for category-specific handling
@@ -41,8 +21,8 @@ export interface CategoryConfig {
 /**
  * Category-specific configurations
  */
-export const CATEGORY_CONFIGS: Record<WebPageCategory, CategoryConfig> = {
-  'booking or scheduling': {
+export const CATEGORY_CONFIGS: Record<Category, CategoryConfig> = {
+  [Category.BOOKING_SCHEDULING]: {
     priorityLevel: 5,
     clarificationThreshold: 0.7,
     followUpQuestions: [
@@ -53,7 +33,7 @@ export const CATEGORY_CONFIGS: Record<WebPageCategory, CategoryConfig> = {
     keyPhrases: ["book", "schedule", "appointment", "when can you", "availability"],
     customPromptAddition: "This user is interested in booking a service. Focus on collecting essential information like date, time, location, and service type."
   },
-  'pricing or quotes': {
+  [Category.PRICING_QUOTES]: {
     priorityLevel: 4,
     clarificationThreshold: 0.65,
     followUpQuestions: [
@@ -64,7 +44,7 @@ export const CATEGORY_CONFIGS: Record<WebPageCategory, CategoryConfig> = {
     keyPhrases: ["cost", "price", "quote", "estimate", "how much", "pricing"],
     customPromptAddition: "This user is interested in pricing. Be transparent about costs and explain what factors affect the price."
   },
-  'services offered': {
+  [Category.SERVICES_OFFERED]: {
     priorityLevel: 3,
     clarificationThreshold: 0.6,
     followUpQuestions: [
@@ -75,7 +55,7 @@ export const CATEGORY_CONFIGS: Record<WebPageCategory, CategoryConfig> = {
     keyPhrases: ["service", "offer", "provide", "do you", "can you", "help with"],
     customPromptAddition: "This user is inquiring about our services. Highlight our main services and what makes them unique."
   },
-  'contact': {
+  [Category.CONTACT]: {
     priorityLevel: 3,
     clarificationThreshold: 0.55,
     followUpQuestions: [
@@ -86,7 +66,7 @@ export const CATEGORY_CONFIGS: Record<WebPageCategory, CategoryConfig> = {
     keyPhrases: ["contact", "reach", "phone", "email", "talk to", "representative"],
     customPromptAddition: "This user wants to make contact. Provide contact information and offer to connect them with the right person."
   },
-  'about / trust-building': {
+  [Category.ABOUT_TRUST_BUILDING]: {
     priorityLevel: 2,
     clarificationThreshold: 0.5,
     followUpQuestions: [
@@ -97,7 +77,7 @@ export const CATEGORY_CONFIGS: Record<WebPageCategory, CategoryConfig> = {
     keyPhrases: ["about", "company", "experience", "history", "background", "trust"],
     customPromptAddition: "This user is seeking information about our company. Emphasize our experience, values, and customer satisfaction."
   },
-  'faq': {
+  [Category.FAQ]: {
     priorityLevel: 2,
     clarificationThreshold: 0.5,
     followUpQuestions: [
@@ -108,7 +88,7 @@ export const CATEGORY_CONFIGS: Record<WebPageCategory, CategoryConfig> = {
     keyPhrases: ["question", "faq", "frequently", "ask", "wonder", "curious"],
     customPromptAddition: "This user has general questions. Provide clear, concise answers and anticipate follow-up questions."
   },
-  'terms & conditions / legal policies': {
+  [Category.TERMS_CONDITIONS]: {
     priorityLevel: 1,
     clarificationThreshold: 0.75, // Higher threshold for legal matters
     followUpQuestions: [
@@ -127,7 +107,7 @@ export const CATEGORY_CONFIGS: Record<WebPageCategory, CategoryConfig> = {
  * @param category The message category
  * @returns A follow-up question appropriate for the category
  */
-export function getCategoryFollowUp(category: WebPageCategory): string {
+export function getCategoryFollowUp(category: Category): string {
   const config = CATEGORY_CONFIGS[category];
   if (!config || !config.followUpQuestions.length) {
     return "Is there anything specific you'd like to know about our services?";
@@ -145,7 +125,7 @@ export function getCategoryFollowUp(category: WebPageCategory): string {
  * @param category The message category
  * @returns Enhanced system prompt with category-specific guidance
  */
-export function enhancePromptForCategory(basePrompt: string, category: WebPageCategory): string {
+export function enhancePromptForCategory(basePrompt: string, category: Category): string {
   const config = CATEGORY_CONFIGS[category];
   if (!config || !config.customPromptAddition) {
     return basePrompt;
@@ -160,7 +140,7 @@ export function enhancePromptForCategory(basePrompt: string, category: WebPageCa
  * @param category The message category
  * @returns The confidence threshold below which to ask for clarification
  */
-export function getClarificationThreshold(category: WebPageCategory): number {
+export function getClarificationThreshold(category: Category): number {
   return CATEGORY_CONFIGS[category]?.clarificationThreshold || 0.6; // Default threshold
 }
 
@@ -171,7 +151,7 @@ export function getClarificationThreshold(category: WebPageCategory): number {
  * @param category The category to check for
  * @returns True if the message contains key phrases for the category
  */
-export function containsCategoryKeyPhrases(message: string, category: WebPageCategory): boolean {
+export function containsCategoryKeyPhrases(message: string, category: Category): boolean {
   const config = CATEGORY_CONFIGS[category];
   if (!config || !config.keyPhrases.length) {
     return false;

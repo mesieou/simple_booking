@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { CrawlState, CONFIDENCE_CONFIG } from './config';
+import { CrawlState, CONFIDENCE_CONFIG, Category, CATEGORY_DISPLAY_NAMES } from './config';
 import { franc } from 'franc-min';
 // Improved language detection using franc-min, robust content filtering, and detailed logging for debugging. Whitelist for important URLs and stricter thresholds for meaningful content.
 
@@ -214,3 +214,11 @@ export function logConfidence(category: string, confidence: number, source: stri
   console.log(`[Confidence ${status}] Category: ${category}, Score: ${confidence.toFixed(2)}, Source: ${source}`);
 }
 
+/**
+ * Maps a category number to its display name
+ * @param category The category number
+ * @returns The display name for the category
+ */
+export function getCategoryDisplayName(category: number): string {
+  return CATEGORY_DISPLAY_NAMES[category as Category] || 'unknown';
+}

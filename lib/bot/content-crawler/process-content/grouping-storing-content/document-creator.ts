@@ -22,7 +22,7 @@ export async function createDocument(
         title: `${category} - Website Content`,
         source: websiteUrl,
         type: 'website_page',
-        category: category as DocumentCategory,
+        category,
         contentHash,
         confidence
       }),
