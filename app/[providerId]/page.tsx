@@ -5,6 +5,46 @@ import { useEffect, useState } from 'react';
 import ProviderTitle from '../components/ProviderTitle';
 import { use } from 'react';
 import { createClient } from '../../lib/supabase/client';
+import { useFormContext } from '@/utils/FormContext';
+import { useRouter } from 'next/navigation';
+
+// Componente hijo para manejar el contexto y la redirección
+const ContinueButtonWithContext = ({ providerId, businessId }: { providerId: string, businessId: string | null }) => {
+  const { setData } = useFormContext();
+  const router = useRouter();
+  const handleContinue = () => {
+    if (providerId && businessId) {
+      setData(prev => ({
+        ...prev,
+        userid: providerId,
+        businessid: businessId,
+      }));
+      router.push(`/${providerId}/booking/distance`);
+    }
+  };
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (e.key === 'Enter' && providerId && businessId) {
+      setData(prev => ({
+        ...prev,
+        userid: providerId,
+        businessid: businessId,
+      }));
+      router.push(`/${providerId}/booking/distance`);
+    }
+  };
+  return (
+    <button
+      className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-lg focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50"
+      tabIndex={0}
+      aria-label="Continuar a la reserva"
+      onClick={handleContinue}
+      disabled={!providerId || !businessId}
+      onKeyDown={handleKeyDown}
+    >
+      Continuar
+    </button>
+  );
+};
 
 export default function ProviderPage({ params }: { params: Promise<{ providerId: string }> }) {
   const { setProviderId } = useProvider();
@@ -52,7 +92,7 @@ export default function ProviderPage({ params }: { params: Promise<{ providerId:
         .select('businessId')
         .eq('id', providerId)
         .single();
-      console.log('Usuario:', user, 'Error usuario:', userError);
+      // console.log('Usuario:', user, 'Error usuario:', userError);
       if (userError || !user?.businessId) {
         setBusinessId(null);
         setBusinessName(null);
@@ -65,7 +105,7 @@ export default function ProviderPage({ params }: { params: Promise<{ providerId:
         .select('name')
         .eq('id', user.businessId)
         .single();
-      console.log('Negocio:', business, 'Error negocio:', businessError);
+      // console.log('Negocio:', business, 'Error negocio:', businessError);
       if (businessError || !business?.name) {
         setBusinessName(null);
         return;
@@ -87,6 +127,8 @@ export default function ProviderPage({ params }: { params: Promise<{ providerId:
           <div className="text-sm text-gray-600 dark:text-gray-300" tabIndex={0} aria-label="Nombre del negocio">
             <span className="font-semibold">Nombre del negocio:</span> {businessName ?? 'No disponible'}
           </div>
+          {/* Botón de continuar con contexto */}
+          <ContinueButtonWithContext providerId={providerId} businessId={businessId} />
         </div>
         <h1 className="text-2xl font-bold mb-4">
           Selecciona una opción de reserva
