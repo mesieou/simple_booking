@@ -1,10 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
 import { detectConversationCategory } from "@/lib/helpers/openai/functions/conversation";
+import { Category } from "@/lib/bot/content-crawler/config";
 
 /**
  * Gets unique categories from the documents table in Supabase
  */
-async function getUniqueCategories(): Promise<string[]> {
+async function getUniqueCategories(): Promise<Category[]> {
   const supabase = await createClient();
   const { data: uniqueCategories } = await supabase
     .from("documents")
@@ -17,7 +18,7 @@ async function getUniqueCategories(): Promise<string[]> {
   }
 
   // Get unique categories and clean them
-  return Array.from(new Set(uniqueCategories.map(c => c.category.trim().toLowerCase())));
+  return Array.from(new Set(uniqueCategories.map(c => parseInt(c.category.trim()))));
 }
 
 /**
@@ -25,7 +26,7 @@ async function getUniqueCategories(): Promise<string[]> {
  */
 export async function categorizeConversation(
   conversation: { role: 'user' | 'assistant', content: string }[]
-): Promise<string | undefined> {
+): Promise<Category | undefined> {
   try {
     // Get categories from database
     const categories = await getUniqueCategories();

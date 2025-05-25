@@ -1,5 +1,5 @@
-import { CategorizedSection, ContentChunk, CONFIDENCE_CONFIG } from '../../config';
-import { normalizeText, splitIntoSentences, validateConfidence, meetsConfidenceThreshold, logConfidence } from '../../utils';
+import { CategorizedSection, ContentChunk, CONFIDENCE_CONFIG, CATEGORY_DISPLAY_NAMES } from '../../config';
+import { normalizeText, splitIntoSentences, validateConfidence, logConfidence } from '../../utils';
 
 interface Sentence {
   text: string;
@@ -24,7 +24,7 @@ export function createChunksForEmbeddings(
 
 function extractSentences(categorizedSections: CategorizedSection[], category: string): Sentence[] {
   const sentences: Sentence[] = [];
-  const originalSections = categorizedSections.filter(s => normalizeText(s.category) === category);
+  const originalSections = categorizedSections.filter(s => normalizeText(CATEGORY_DISPLAY_NAMES[s.category]) === category);
   
   for (const section of originalSections) {
     // Remove confidence from text content
@@ -47,13 +47,16 @@ function createChunksFromSentences(sentences: Sentence[], chunkSize: number): Co
   for (const sentence of sentences) {
     if ((currentChunk + (currentChunk ? ' ' : '') + sentence.text).length > chunkSize) {
       if (currentChunk) {
-        const avgConfidence = validateConfidence(currentConfidence / chunkCount);
-        if (meetsConfidenceThreshold(avgConfidence)) {
-          chunks.push({
-            content: currentChunk,
-            confidence: avgConfidence
-          });
+        if (chunkCount === 0) {
+          console.warn(`[Chunker] Attempted to create a chunk with no sentences (mid-loop). Content: "${currentChunk}"`);
         }
+        const avgConfidence = chunkCount > 0
+          ? validateConfidence(currentConfidence / chunkCount)
+          : CONFIDENCE_CONFIG.DEFAULT_SCORE;
+        chunks.push({
+          content: currentChunk,
+          confidence: avgConfidence
+        });
       }
       currentChunk = sentence.text;
       currentConfidence = sentence.confidence;
@@ -65,15 +68,18 @@ function createChunksFromSentences(sentences: Sentence[], chunkSize: number): Co
     }
   }
 
-  // Add the last chunk if it exists and meets threshold
+  // Add the last chunk if it exists
   if (currentChunk) {
-    const avgConfidence = validateConfidence(currentConfidence / chunkCount);
-    if (meetsConfidenceThreshold(avgConfidence)) {
-      chunks.push({
-        content: currentChunk,
-        confidence: avgConfidence
-      });
+    if (chunkCount === 0) {
+      console.warn(`[Chunker] Attempted to create a chunk with no sentences (final chunk). Content: "${currentChunk}"`);
     }
+    const avgConfidence = chunkCount > 0
+      ? validateConfidence(currentConfidence / chunkCount)
+      : CONFIDENCE_CONFIG.DEFAULT_SCORE;
+    chunks.push({
+      content: currentChunk,
+      confidence: avgConfidence
+    });
   }
 
   return chunks;

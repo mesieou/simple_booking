@@ -1,5 +1,3 @@
-import { CategorizedContent } from '../config';
-
 interface ProcessingStats {
   // Crawling stats
   totalUrls: number;
@@ -255,6 +253,16 @@ class ContentProcessorLogger {
 
   public logEmbedding(embeddingId: string, docId: string, status: 'processed' | 'failed', reason?: string) {
     this.embeddingLogs.push({ embeddingId, docId, status, reason });
+  }
+
+  public logEmbeddingAttempt({ embeddingId, docId, category, chunkIndex, metadata }: { embeddingId: string, docId: string, category: string, chunkIndex: number, metadata: any }) {
+    console.log('Attempting to add embedding:', {
+      embeddingId,
+      docId,
+      category,
+      chunkIndex,
+      metadata
+    });
   }
 
   public printDetailedTables() {

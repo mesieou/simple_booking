@@ -1,4 +1,4 @@
-import { CategorizedContent } from '../../config';
+import { CategorizedContent, CATEGORY_DISPLAY_NAMES } from '../../config';
 import { collectTextChunks } from './textSplitter';
 import { processTextChunk } from './textCategorizer';
 import { logger } from '../logger';
@@ -59,7 +59,7 @@ export async function textSplitterAndCategoriser(
       // Only increment processed count once per chunk
       logger.logChunk(index, chunk.url, 'processed');
       sections.forEach(section => {
-        logger.logCategory(section.category, 'processed');
+        logger.logCategory(CATEGORY_DISPLAY_NAMES[section.category], 'processed');
       });
       if (index === allChunks.length - 1 || allChunks[index + 1]?.url !== chunk.url) {
         logger.logUrl(chunk.url, 'processed');

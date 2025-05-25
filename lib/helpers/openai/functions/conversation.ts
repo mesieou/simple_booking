@@ -1,11 +1,13 @@
 import { executeChatCompletion, ChatMessage, ChatResponse } from "../openai-core";
-import { VALID_CATEGORIES, WebPageCategory } from "./categoryHandler";
+import { Category, CATEGORY_DISPLAY_NAMES } from "@/lib/bot/content-crawler/config";
+
+const CATEGORY_COUNT = Object.keys(Category).length / 2; // Divide by 2 because enum has both numeric and string keys
 
 export async function detectConversationCategory(
   conversation: { role: 'user' | 'assistant', content: string }[],
-  categories: string[]
-): Promise<string | undefined> {
-  const prompt = `You are an expert assistant. Given the following conversation, select the best matching category from this list:\n${categories.map(c => `- ${c}`).join('\n')}\n\nConversation:\n${conversation.map(m => `${m.role}: ${m.content}`).join('\n')}\n\nReturn ONLY the category name, nothing else.`;
+  categories: Category[]
+): Promise<Category | undefined> {
+  const prompt = `You are an expert assistant. Given the following conversation, select the best matching category from this list:\n${categories.map(c => `- ${CATEGORY_DISPLAY_NAMES[c]}`).join('\n')}\n\nConversation:\n${conversation.map(m => `${m.role}: ${m.content}`).join('\n')}\n\nReturn ONLY the category number (0-${CATEGORY_COUNT - 1}), nothing else.`;
 
   const response = await executeChatCompletion([
     { role: 'system', content: 'You are a helpful assistant that categorizes conversations.' },
@@ -14,9 +16,12 @@ export async function detectConversationCategory(
 
   const result = response.choices[0]?.message?.content?.trim();
   if (!result) return undefined;
-  // Return the best matching category (case-insensitive)
-  const match = categories.find(cat => cat.toLowerCase() === result.toLowerCase());
-  return match || undefined;
+  
+  // Parse the category number
+  const categoryNum = parseInt(result);
+  if (isNaN(categoryNum) || categoryNum < 0 || categoryNum >= CATEGORY_COUNT) return undefined;
+  
+  return categoryNum as Category;
 }
 
 /**
@@ -24,7 +29,7 @@ export async function detectConversationCategory(
  */
 export interface ClarityCheckResult {
   is_answerable: boolean;
-  category: string;
+  category: Category;
   confidence: number;
   clarification_prompt: string | null;
 }
@@ -50,14 +55,16 @@ export async function checkMessageAnswerability(
       : 'No previous conversation.';
 
     // Create the categories list for the prompt
-    const categoriesList = VALID_CATEGORIES.map(cat => `"${cat}"`).join(', ');
+    const categoriesList = Object.entries(CATEGORY_DISPLAY_NAMES)
+      .map(([num, name]) => `${num}: ${name}`)
+      .join(', ');
     
     // Create the system prompt
     const systemPrompt = 
       `You are a clarity validator for a customer service chatbot for a moving company. Your task is to:
       1. Determine whether the user's most recent message can be answered reliably using the current conversation context.
       2. If the message is too vague or ambiguous, classify it as "not answerable".
-      3. Also, classify the user's message into one of the following categories:
+      3. Also, classify the user's message into one of the following categories (return the number):
       [${categoriesList}]
       4. Provide a confidence score between 0 and 1 (where 1 is highest confidence)
       5. If the message is not answerable, provide a natural-sounding clarification question
@@ -65,7 +72,7 @@ export async function checkMessageAnswerability(
       Only respond in this JSON format:
       {
         "is_answerable": true | false,
-        "category": "one of the categories listed above",
+        "category": number (0-${CATEGORY_COUNT - 1}),
         "confidence": 0.1 to 1.0,
         "clarification_prompt": "If not answerable, return a clarification question, otherwise null"
       }`;
@@ -104,7 +111,12 @@ export async function checkMessageAnswerability(
         }
       }
 
-      const result = JSON.parse(jsonText) as ClarityCheckResult;
+      const result = JSON.parse(jsonText) as { 
+        is_answerable: boolean;
+        category: number;
+        confidence: number;
+        clarification_prompt: string | null;
+      };
       
       // Validate and normalize the result
       return {
@@ -125,20 +137,13 @@ export async function checkMessageAnswerability(
 }
 
 /**
- * Validates and normalizes a category name
+ * Validates and normalizes a category number
  */
-function validateCategory(category: string): string {
-  if (!category) return 'services offered'; // Default category
-
-  const normalizedCategory = category.toLowerCase().trim();
-  
-  // Check if it matches any valid category
-  const match = VALID_CATEGORIES.find(cat => 
-    cat.toLowerCase() === normalizedCategory ||
-    normalizedCategory.includes(cat.toLowerCase())
-  );
-  
-  return match || 'services offered'; // Return match or default
+function validateCategory(category: number): Category {
+  if (typeof category !== 'number' || category < 0 || category >= CATEGORY_COUNT) {
+    return Category.SERVICES_OFFERED; // Default category
+  }
+  return category as Category;
 }
 
 /**
@@ -147,7 +152,7 @@ function validateCategory(category: string): string {
 function getDefaultClarityResult(): ClarityCheckResult {
   return {
     is_answerable: true, // Default to answerable to avoid excessive clarification
-    category: 'services offered',
+    category: Category.SERVICES_OFFERED,
     confidence: 0.5,
     clarification_prompt: null
   };
