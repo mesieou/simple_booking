@@ -5,6 +5,10 @@ import { getAllDomainLinksRecursive } from './linkCrawler';
  * Manages the crawling process to extract all relevant links from a website
  */
 export async function crawlWebsiteForLinks(config: CrawlConfig, mainLanguage: string): Promise<string[]> {
+  if (!config.websiteUrl) {
+    throw new Error('websiteUrl is required for crawling');
+  }
+  
   console.log('[Crawler] Starting link extraction from:', config.websiteUrl);
   const startTime = Date.now();
   const urls = await getAllDomainLinksRecursive(
