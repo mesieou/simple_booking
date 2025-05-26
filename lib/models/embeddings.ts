@@ -84,6 +84,14 @@ export class Embedding {
     if (error) handleModelError("Failed to delete embeddings", error);
   }
 
+  static async getByCategory(category: string): Promise<EmbeddingData[]> {
+    const supa = await createClient();
+    const { data, error } = await supa.from("embeddings").select("*").eq("category", category);
+    if (error) handleModelError("Failed to fetch embeddings by category", error);
+
+    return data || [];
+  }
+
   static async getByDocumentIds(documentIds: string[]): Promise<EmbeddingData[]> {
     if (!documentIds.length) return [];
     const supabase = await createClient();
