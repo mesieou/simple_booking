@@ -8,6 +8,8 @@ import { fetchCleanAndDetectLanguageFromPage } from './url-fetcher/fetchCleanAnd
 import { logger } from './process-content/logger';
 
 export async function crawlWebsite(config: CrawlConfig): Promise<CrawlOutput> {
+  if (!config.websiteUrl) throw new Error('websiteUrl is required for HTML crawling');
+  
   const { html: rootHtml, language: mainLanguage } = await fetchCleanAndDetectLanguageFromPage(config.websiteUrl);
   if (!rootHtml) throw new Error('Failed to fetch root page for language detection');
 
@@ -18,30 +20,39 @@ export async function crawlWebsite(config: CrawlConfig): Promise<CrawlOutput> {
   const processedUrls = new Set<string>();
   const concurrency = config.concurrency || 5;
 
+  // Extract domain from websiteUrl
+  const domain = new URL(config.websiteUrl).hostname;
+
   async function* urlProcessingTasks(urls: string[], concurrency: number) {
     for (let i = 0; i < urls.length; i++) {
       yield async () => {
         const url = urls[i];
-        searchedUrls.push(url);
-        if (processedUrls.has(url)) return;
-        processedUrls.add(url);
+        // Keep the domain for document organization
+        const documentUrl = domain;
+        // Use full URL path for embeddings
+        const fullUrl = new URL(url).pathname ? url : `${config.websiteUrl}${url.startsWith('/') ? url : `/${url}`}`;
+        
+        searchedUrls.push(fullUrl);
+        if (processedUrls.has(fullUrl)) return;
+        processedUrls.add(fullUrl);
 
-        const { html, language: pageLang } = await fetchCleanAndDetectLanguageFromPage(url);
+        const { html, language: pageLang } = await fetchCleanAndDetectLanguageFromPage(fullUrl);
         if (!html) {
-          logger.logUrl(url, 'skipped', 'fetch failed');
-          updateCrawlResults(crawlResults, url, null, 'unknown', 'fetch failed');
+          logger.logUrl(fullUrl, 'skipped', 'fetch failed');
+          updateCrawlResults(crawlResults, documentUrl, null, 'unknown', 'fetch failed');
           return;
         }
 
         if (pageLang !== mainLanguage) {
-          logger.logUrl(url, 'filtered', 'language mismatch');
-          updateCrawlResults(crawlResults, url, null, pageLang, 'language mismatch');
+          logger.logUrl(fullUrl, 'filtered', 'language mismatch');
+          updateCrawlResults(crawlResults, documentUrl, null, pageLang, 'language mismatch');
           return;
         }
 
         allTexts.push(html);
-        updateCrawlResults(crawlResults, url, html, pageLang, 'ok');
-        logger.logUrl(url, 'processed');
+        // Store domain in crawl results for document organization, but use full URL for embeddings
+        updateCrawlResults(crawlResults, documentUrl, html, pageLang, 'ok', fullUrl);
+        logger.logUrl(fullUrl, 'processed');
 
         if (config.requestDelay) {
           await new Promise(res => setTimeout(res, config.requestDelay));
@@ -82,7 +93,7 @@ export async function processHtmlContent(config: CrawlConfig, crawlOutput: Crawl
     pageCount: urls.length,
     uniqueParagraphs: texts.length,
     businessId: config.businessId,
-    websiteUrl: config.websiteUrl,
+    source: config.websiteUrl!,
     ...(embeddingsStatus ? { embeddingsStatus } : {})
   };
 }
