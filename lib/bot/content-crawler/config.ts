@@ -64,7 +64,7 @@ export const CONFIDENCE_CONFIG = {
 
 // Base configuration for all crawls
 export interface CrawlConfig {
-  websiteUrl: string;
+  websiteUrl?: string;
   businessId: string;
   maxPages?: number;
   requestDelay?: number;
@@ -82,6 +82,7 @@ export interface CrawlConfig {
   chunkSize?: number;  // Maximum words per chunk
   chunkOverlap?: number;  // Number of words to overlap between chunks
   type?: 'website_page' | 'pdf'; // Added for dynamic document type
+  pdfNames?: string[]; // Array of PDF filenames for PDF processing
 }
 
 export const defaultConfig: Partial<CrawlConfig> = {
@@ -94,6 +95,18 @@ export const defaultConfig: Partial<CrawlConfig> = {
   chunkSize: 2000,  // Default chunk size
   chunkOverlap: 100  // Default overlap
 };
+
+// Create PDF-specific config
+export function createPdfConfig(businessId: string, pdfNames: string[]): CrawlConfig {
+  return {
+    businessId,
+    type: 'pdf',
+    pdfNames,
+    chunkSize: defaultConfig.chunkSize,
+    chunkOverlap: defaultConfig.chunkOverlap,
+    concurrency: defaultConfig.concurrency
+  };
+}
 
 // Extended configuration for processing
 export interface ExtendedCrawlConfig extends Omit<CrawlConfig, 'businessId'> {
@@ -152,7 +165,8 @@ export interface CrawlState {
 }
 
 export interface CrawlResult {
-  url: string;
+  url: string; // Document URL for organization
+  fullUrl: string; // Full URL for embeddings
   status: 'crawled' | 'skipped';
   reason: string;
   detectedLanguage: string;
@@ -172,7 +186,7 @@ export interface CrawlProcessingResult {
   pageCount: number;
   uniqueParagraphs: number;
   businessId: string;
-  websiteUrl: string;
+  source: string;
   crawledUrls?: string[];
   embeddingsStatus?: string;
   metadata?: {

@@ -1,0 +1,136 @@
+# Content Processing Pipeline Report
+
+## 1. URL Fetching Process
+- **Initial URL**: Starts with the root website URL
+- **Language Detection**: Detects main language from root page
+- **Link Crawling**:
+  - Maximum pages: 100 (default)
+  - Concurrency: 5 requests (default)
+  - Max depth: 2 levels (default)
+  - Skips product and blog pages by default
+  - Respects same-language content only
+
+## 2. Content Processing
+### Text Splitting
+- Chunk size: 2000 words (default)
+- Chunk overlap: 100 words (default)
+- Minimum chunk length: 50 characters
+- Skips empty or very short chunks
+
+### Content Categorization
+- Uses GPT-4 for categorization
+- Categories are numbered (0 to N-1)
+- Each section includes:
+  - Category number
+  - Full content
+  - Confidence score (0.5 to 1.0)
+  - Confidence reason
+- Maximum retries: 3
+- Temperature: 0.3
+
+## 3. Document Creation
+- One document per category
+- Document properties:
+  - Business ID
+  - Content (combined paragraphs)
+  - Title (Category name + "Website Content")
+  - Source URL
+  - Type (website_page/pdf)
+  - Category
+  - Content hash
+  - Confidence score
+
+## 4. Embedding Generation
+- Model: text-embedding-3-small
+- Rate limits:
+  - Max requests per minute: 20
+  - Max tokens per minute: 16,000
+  - Max concurrent requests: 5
+- Retry configuration:
+  - Max retries: 3
+  - Initial retry delay: 1 second
+  - Exponential backoff
+  - Max backoff: 30 seconds
+- Timeout: 30 seconds
+
+## 5. Error Handling
+### Rate Limiting
+- Exponential backoff starting at 1 second
+- Maximum backoff of 30 seconds
+- Resets counters every minute
+- Tracks:
+  - Request count
+  - Token count
+  - Active requests
+
+### Embedding Failures
+- Logs failed embedding attempts
+- Includes:
+  - Embedding ID
+  - Document ID
+  - Category
+  - Chunk index
+  - Metadata
+- Retries with exponential backoff
+
+## 6. Performance Metrics
+- Tracks:
+  - Total chunks processed
+  - Failed chunks
+  - Processing time
+  - URL processing status
+  - Embedding success/failure rates
+
+## 7. Common Issues
+1. **Timeout Issues**:
+   - 30-second timeout for API requests
+   - Can occur with large content chunks
+   - Solution: Increase timeout or reduce chunk size
+
+2. **Rate Limiting**:
+   - Hit when exceeding 20 requests/minute
+   - Hit when exceeding 16,000 tokens/minute
+   - Solution: Implement better batching or increase limits
+
+3. **Embedding Failures**:
+   - Can occur due to rate limits
+   - Can occur due to timeouts
+   - Solution: Implement better retry logic and error handling
+
+## 8. Recommendations
+1. **Optimize Chunk Size**:
+   - Consider reducing chunk size for better embedding success
+   - Balance between content coherence and processing efficiency
+
+2. **Improve Rate Limiting**:
+   - Implement better token counting
+   - Add more sophisticated backoff strategies
+   - Consider implementing request queuing
+
+3. **Enhanced Error Handling**:
+   - Add more detailed error logging
+   - Implement better retry strategies
+   - Add monitoring for rate limit proximity
+
+4. **Performance Monitoring**:
+   - Add detailed metrics collection
+   - Monitor embedding success rates
+   - Track processing times per stage
+
+## 9. Configuration Options
+```typescript
+interface CrawlConfig {
+  websiteUrl?: string;
+  businessId: string;
+  maxPages?: number;        // Default: 100
+  requestDelay?: number;    // Optional delay between requests
+  maxRetries?: number;      // Default: 3
+  concurrency?: number;     // Default: 5
+  maxDepth?: number;        // Default: 2
+  skipProductPages?: boolean; // Default: true
+  skipBlogPages?: boolean;    // Default: true
+  chunkSize?: number;       // Default: 2000
+  chunkOverlap?: number;    // Default: 100
+  type?: 'website_page' | 'pdf';
+}
+``` 

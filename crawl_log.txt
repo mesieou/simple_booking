@@ -1,0 +1,2 @@
+Script started on Mon May 26 16:33:31 2025
+[1m[7m%[27m[1m[0m                                                                                                            ]2;juanbernal@Juans-MacBook-Pro-2:~/code/mesieou/2025/simple_booking]1;..imple_booking]7;file://Juans-MacBook-Pro-2.local/Users/juanbernal/code/mesieou/2025/simple_booking\[0m[27m[24m[J(base) [01;32m➜  [36msimple_booking[00m [K[?1h=[?2004h[0m[27m[24m[J(base) [01;32m➜  [36msimple_booking[00m [01;34mgit:([31morganise-testing-files[34m) [33m✗[00m [K
