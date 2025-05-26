@@ -3,7 +3,6 @@ import { groupContentByCategory } from './content-grouper';
 import { generateContentHash } from '../../utils';
 import { CrawlSession } from '@/lib/models/crawl-session';
 import { logger } from '../logger';
-import { validateConfidence, meetsConfidenceThreshold, logConfidence } from '../../utils';
 import { embeddingInQueue } from './embedding-creator';
 import { DocumentData } from '@/lib/models/documents';
 
@@ -57,7 +56,7 @@ export async function processContent(
           businessId: config.businessId,
           content: combinedContent,
           title: `${categoryName} - Website Content`,
-          source: config.websiteUrl,
+          source: config.type === 'pdf' ? config.pdfNames?.[0] : config.websiteUrl,
           type: config.type || 'website_page',
           category: categoryName,
           contentHash,
@@ -88,7 +87,7 @@ export async function processContent(
           chunkIndex: i,
           metadata: {
             pageTitle: `${CATEGORY_DISPLAY_NAMES[section.category]} - Website Content`,
-            sourceUrl: config.websiteUrl,
+            sourceUrl: urls[i],
             contentHash: doc.contentHash ?? '',
             crawlTimestamp: Date.now(),
             language: 'en',
@@ -103,7 +102,7 @@ export async function processContent(
           category: section.category,
           metadata: {
             pageTitle: `${CATEGORY_DISPLAY_NAMES[section.category]} - Website Content`,
-            sourceUrl: config.websiteUrl,
+            sourceUrl: urls[i],
             contentHash: doc.contentHash ?? '',
             crawlTimestamp: Date.now(),
             language: 'en',
