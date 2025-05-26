@@ -6,7 +6,7 @@ import { retry } from 'ts-retry-promise';
 import { logger } from '../logger';
 
 // Helper to wrap generateEmbedding in the OpenAI queue
-function embeddingInQueue(text: string): Promise<number[]> {
+export function embeddingInQueue(text: string): Promise<number[]> {
   return new Promise((resolve, reject) => {
     pushToQueue(async () => {
       try {
@@ -32,13 +32,27 @@ export async function createEmbeddingsForChunks(
     try {
       const embedding = await embeddingInQueue(chunk.content);
       
+      logger.logEmbeddingAttempt({
+        embeddingId: `${documentRecord.id}-${j}`,
+        docId: documentRecord.id!,
+        category,
+        chunkIndex: j,
+        metadata: {
+          pageTitle: `${category} - Website Content`,
+          sourceUrl: websiteUrl,
+          contentHash,
+          crawlTimestamp: Date.now(),
+          language: 'en',
+          confidence: chunk.confidence
+        }
+      });
       await retry(
         () => Embedding.add({
           documentId: documentRecord.id!,
           content: chunk.content,
           embedding,
           chunkIndex: j,
-          category: category as DocumentCategory,
+          category,
           metadata: {
             pageTitle: `${category} - Website Content`,
             sourceUrl: websiteUrl,

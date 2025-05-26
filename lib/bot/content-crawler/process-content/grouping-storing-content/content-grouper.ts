@@ -1,4 +1,4 @@
-import { CategorizedSection, GroupedContent } from '../../config';
+import { CategorizedSection, GroupedContent, Category, CATEGORY_DISPLAY_NAMES } from '../../config';
 import { normalizeText } from '../../utils';
 
 function hashParagraph(text: string): string {
@@ -17,19 +17,19 @@ export function groupContentByCategory(categorizedSections: CategorizedSection[]
   const paragraphHashes: Record<string, Set<string>> = {};
 
   for (const section of categorizedSections) {
-    const category = normalizeText(section.category);
-    if (!categorizedContent[category]) {
-      categorizedContent[category] = [];
-      paragraphHashes[category] = new Set();
+    const categoryName = CATEGORY_DISPLAY_NAMES[section.category];
+    if (!categorizedContent[categoryName]) {
+      categorizedContent[categoryName] = [];
+      paragraphHashes[categoryName] = new Set();
     }
     const paragraphs = section.content.split(/\n{2,}/);
     for (let para of paragraphs) {
       const norm = normalizeText(para);
       if (norm.length < 40) continue; // Skip very short paragraphs
       const hash = hashParagraph(norm);
-      if (!paragraphHashes[category].has(hash)) {
-        paragraphHashes[category].add(hash);
-        categorizedContent[category].push(para.trim());
+      if (!paragraphHashes[categoryName].has(hash)) {
+        paragraphHashes[categoryName].add(hash);
+        categorizedContent[categoryName].push(para.trim());
       }
     }
   }
