@@ -1,3 +1,31 @@
+/**
+ * OpenAI Core Module
+ * 
+ * This module serves as the central interface for all OpenAI API interactions in the application.
+ * It provides core functionality for chat completions, message handling, and type definitions.
+ * 
+ * Key Features:
+ * 1. Type Definitions:
+ *    - OpenAIChatMessage: Defines the structure of messages in the chat
+ *    - ChatMessage: Simplified message structure for internal use
+ *    - ChatResponse: Standard response format from OpenAI
+ *    - MoodAnalysisResult: Structure for sentiment analysis results
+ * 
+ * 2. Core Functions:
+ *    - executeChatCompletion: Main function for making OpenAI API calls
+ *    - Handles rate limiting through queue system
+ *    - Supports function calling capabilities
+ *    - Manages response normalization
+ * 
+ * 3. Configuration:
+ *    - OpenAI client setup with retry logic
+ *    - Default parameters for API calls
+ *    - Environment variable integration
+ * 
+ * This module is used by other components that need to interact with OpenAI's API,
+ * providing a consistent interface and standardized response formats.
+ */
+
 import OpenAI from "openai";
 import { pushToQueue } from "./rate-limiter";
 
