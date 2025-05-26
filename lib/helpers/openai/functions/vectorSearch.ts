@@ -1,7 +1,8 @@
 import { Embedding } from "@/lib/models/embeddings";
 import { Document } from "@/lib/models/documents";
-import { VALID_CATEGORIES } from "@/lib/bot/content-crawler/config";
+import { Category, CATEGORY_DISPLAY_NAMES } from "@/lib/bot/content-crawler/config";
 import { executeChatCompletion, OpenAIChatMessage } from "@/lib/helpers/openai/openai-core";
+import { generateEmbedding } from "@/lib/helpers/openai/functions/embeddings";
 
 function cosineSimilarity(vecA: number[], vecB: number[]): number {
   const dotProduct = vecA.reduce((sum, a, i) => sum + a * vecB[i], 0);
@@ -11,9 +12,12 @@ function cosineSimilarity(vecA: number[], vecB: number[]): number {
 }
 
 // Accepts string (category) and returns string (index or original)
-function getCategoryKey(category: string): string {
-  const idx = VALID_CATEGORIES.indexOf(category as any);
-  return idx === -1 ? category : idx.toString();
+function getCategoryKey(category: string | Category): string {
+  if (typeof category === 'number') return category.toString();
+  const categoryEnum = Object.values(Category).find(c => 
+    CATEGORY_DISPLAY_NAMES[c as Category] === category
+  );
+  return categoryEnum?.toString() || category;
 }
 
 export interface VectorSearchResult {
@@ -78,7 +82,7 @@ export async function findBestVectorResultByCategory(
       content: e.content,
       category: e.category || '',
       similarityScore,
-      source: doc?.source || 'unknown',
+      source: e.metadata?.sourceUrl || doc?.source || 'unknown',
       confidenceScore,
       sourceUrl: e.metadata?.sourceUrl
     };
@@ -94,17 +98,35 @@ export async function findBestVectorResultByCategory(
 }
 
 export async function getConversationalAnswer(
-  userEmbedding: number[],
   category: string,
   userMessage: string
 ): Promise<string> {
-  // 1. Get best KB match (already done)
-  const bestMatch = await findBestVectorResultByCategory(userEmbedding, category);
+  // Preprocess the user message before embedding
+  const cleanMessage = preprocessUserMessage(userMessage);
+  // Generate embedding from the cleaned message
+  const cleanedEmbedding = await generateEmbedding(cleanMessage);
+
+  // 1. Get best KB match
+  const bestMatch = await findBestVectorResultByCategory(cleanedEmbedding, category);
+
+  // Log best match details for debugging/monitoring
+  if (bestMatch) {
+    console.log('[Vector Search] Best match:', {
+      documentId: bestMatch.documentId,
+      similarityScore: bestMatch.similarityScore,
+      confidenceScore: bestMatch.confidenceScore,
+      source: bestMatch.source,
+      sourceUrl: bestMatch.sourceUrl
+    });
+  }
 
   // 2. If a match is found, construct a prompt for the LLM
   if (bestMatch) {
     const prompt = `
-You are a helpful assistant. Use the following information to answer the user's question.
+You are a helpful and friendly customer service assistant for YS Company.
+Answer the user's question using the following information from our knowledge base, but do NOT mention the source, category, or say 'based on' or similar phrases. Respond as if you are a human expert from the company.
+
+Keep your answer as short and direct as possible (ideally 1-2 sentences). If a direct answer is possible, give it directly and briefly. Do not repeat information or over-explain.
 
 Knowledge Base Info:
 "${bestMatch.content}"
@@ -112,7 +134,7 @@ Knowledge Base Info:
 User Question:
 "${userMessage}"
 
-Answer in a clear, friendly, and concise way.
+Give a concise, conversational answer.
     `;
 
     // 3. Call the LLM using centralized OpenAI core
@@ -121,7 +143,7 @@ Answer in a clear, friendly, and concise way.
       { role: "user", content: prompt }
     ];
     try {
-      const completion = await executeChatCompletion(messages, "gpt-3.5-turbo", 0.7);
+      const completion = await executeChatCompletion(messages, "gpt-4o", 0.7);
       return completion.choices[0].message.content || "I'm sorry, I couldn't generate a response.";
     } catch (error) {
       console.error("[Vector Search] Error in executeChatCompletion:", error);
@@ -130,4 +152,24 @@ Answer in a clear, friendly, and concise way.
   }
 
   return "I'm sorry, I couldn't find a relevant answer in the knowledge base.";
+}
+
+/**
+ * Preprocesses and normalizes a user message for embedding generation.
+ * - Trims whitespace
+ * - Normalizes multiple spaces
+ * - Normalizes quotes and dashes
+ * - Removes most special characters
+ * - Removes space before punctuation
+ * - Converts to lowercase
+ */
+function preprocessUserMessage(message: string): string {
+  return message
+    .trim() // Remove leading/trailing whitespace
+    .replace(/\s+/g, ' ') // Normalize multiple spaces to one
+    .replace(/[""''«»]/g, '"') // Normalize quotes
+    .replace(/[–—]/g, '-') // Normalize dashes
+    .replace(/[^a-zA-Z0-9\s.,?!'\"]/g, '') // Remove most special characters
+    .replace(/\s([?.!\"](?:\s|$))/g, '$1') // Remove space before punctuation
+    .toLowerCase(); // Convert to lowercase
 } 
