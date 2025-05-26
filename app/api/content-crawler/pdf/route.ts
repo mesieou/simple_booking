@@ -19,7 +19,7 @@ export const POST = async (req: NextRequest) => {
   // Use the modularized categorization function
   const categorized = await textSplitterAndCategoriser([text.text], businessId, [url], 2000, 100);
   await processContent(
-    { businessId, websiteUrl: url },
+    { businessId, websiteUrl: url, type: 'pdf' },
     categorized,
     [url],
     [url]

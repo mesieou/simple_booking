@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { CrawlState } from './config';
+import { CrawlState, CONFIDENCE_CONFIG, Category, CATEGORY_DISPLAY_NAMES } from './config';
 import { franc } from 'franc-min';
 // Improved language detection using franc-min, robust content filtering, and detailed logging for debugging. Whitelist for important URLs and stricter thresholds for meaningful content.
 
@@ -184,3 +184,41 @@ export async function runConcurrentTasks<T>(
   return results.filter((result): result is T => result !== null);
 }
 
+/**
+ * Validates and normalizes a confidence score
+ * @param confidence The confidence score to validate
+ * @returns Normalized confidence score between MIN_SCORE and MAX_SCORE
+ */
+export function validateConfidence(confidence: number): number {
+  return Math.max(CONFIDENCE_CONFIG.MIN_SCORE, Math.min(CONFIDENCE_CONFIG.MAX_SCORE, confidence));
+}
+
+/**
+ * Checks if a confidence score meets the minimum threshold
+ * @param confidence The confidence score to check
+ * @returns True if the score meets the minimum threshold
+ */
+export function meetsConfidenceThreshold(confidence: number): boolean {
+  return confidence >= CONFIDENCE_CONFIG.MIN_THRESHOLD;
+}
+
+/**
+ * Logs confidence score information
+ * @param category The content category
+ * @param confidence The confidence score
+ * @param source The source of the confidence score (e.g., 'categorization', 'chunking')
+ */
+export function logConfidence(category: string, confidence: number, source: string): void {
+  const status = confidence < CONFIDENCE_CONFIG.MIN_THRESHOLD ? 'LOW' :
+                confidence < CONFIDENCE_CONFIG.WARNING_THRESHOLD ? 'WARNING' : 'GOOD';
+  console.log(`[Confidence ${status}] Category: ${category}, Score: ${confidence.toFixed(2)}, Source: ${source}`);
+}
+
+/**
+ * Maps a category number to its display name
+ * @param category The category number
+ * @returns The display name for the category
+ */
+export function getCategoryDisplayName(category: number): string {
+  return CATEGORY_DISPLAY_NAMES[category as Category] || 'unknown';
+}

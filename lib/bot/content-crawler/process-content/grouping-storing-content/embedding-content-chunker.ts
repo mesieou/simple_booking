@@ -1,5 +1,5 @@
-import { CategorizedSection, ContentChunk } from '../../config';
-import { normalizeText, splitIntoSentences } from '../../utils';
+import { CategorizedSection, ContentChunk, CONFIDENCE_CONFIG, CATEGORY_DISPLAY_NAMES } from '../../config';
+import { normalizeText, splitIntoSentences, validateConfidence, logConfidence } from '../../utils';
 
 interface Sentence {
   text: string;
@@ -11,24 +11,26 @@ export function createChunksForEmbeddings(
   category: string,
   chunkSize: number
 ): ContentChunk[] {
-  const chunks: ContentChunk[] = [];
-  let currentChunk = '';
-  let currentConfidence = 0;
-  let chunkCount = 0;
-
   const sentences = extractSentences(categorizedSections, category);
-  return createChunksFromSentences(sentences, chunkSize);
+  const chunks = createChunksFromSentences(sentences, chunkSize);
+  
+  // Log confidence scores for chunks
+  chunks.forEach((chunk, index) => {
+    logConfidence(category, chunk.confidence, `chunk-${index}`);
+  });
+  
+  return chunks;
 }
 
 function extractSentences(categorizedSections: CategorizedSection[], category: string): Sentence[] {
   const sentences: Sentence[] = [];
-  const originalSections = categorizedSections.filter(s => normalizeText(s.category) === category);
+  const originalSections = categorizedSections.filter(s => normalizeText(CATEGORY_DISPLAY_NAMES[s.category]) === category);
   
   for (const section of originalSections) {
-    const sectionText = `[Confidence: ${section.confidence.toFixed(2)}] ${section.content}`;
-    const sectionSentences = splitIntoSentences(sectionText).map(s => ({ 
+    // Remove confidence from text content
+    const sectionSentences = splitIntoSentences(section.content).map(s => ({ 
       text: s, 
-      confidence: section.confidence 
+      confidence: validateConfidence(section.confidence)
     }));
     sentences.push(...sectionSentences);
   }
@@ -45,9 +47,15 @@ function createChunksFromSentences(sentences: Sentence[], chunkSize: number): Co
   for (const sentence of sentences) {
     if ((currentChunk + (currentChunk ? ' ' : '') + sentence.text).length > chunkSize) {
       if (currentChunk) {
+        if (chunkCount === 0) {
+          console.warn(`[Chunker] Attempted to create a chunk with no sentences (mid-loop). Content: "${currentChunk}"`);
+        }
+        const avgConfidence = chunkCount > 0
+          ? validateConfidence(currentConfidence / chunkCount)
+          : CONFIDENCE_CONFIG.DEFAULT_SCORE;
         chunks.push({
           content: currentChunk,
-          confidence: currentConfidence / chunkCount
+          confidence: avgConfidence
         });
       }
       currentChunk = sentence.text;
@@ -62,9 +70,15 @@ function createChunksFromSentences(sentences: Sentence[], chunkSize: number): Co
 
   // Add the last chunk if it exists
   if (currentChunk) {
+    if (chunkCount === 0) {
+      console.warn(`[Chunker] Attempted to create a chunk with no sentences (final chunk). Content: "${currentChunk}"`);
+    }
+    const avgConfidence = chunkCount > 0
+      ? validateConfidence(currentConfidence / chunkCount)
+      : CONFIDENCE_CONFIG.DEFAULT_SCORE;
     chunks.push({
       content: currentChunk,
-      confidence: currentConfidence / chunkCount
+      confidence: avgConfidence
     });
   }
 

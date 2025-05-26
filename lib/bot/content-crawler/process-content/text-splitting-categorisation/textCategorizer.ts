@@ -1,6 +1,7 @@
 import { categorizeWebsiteContent } from '@/lib/helpers/openai/functions/content-analysis';
-import { CategorizedContent } from '../../config';
+import { CategorizedContent, CONFIDENCE_CONFIG, Category, CATEGORY_DISPLAY_NAMES } from '../../config';
 import { logger } from '../logger';
+import { validateConfidence, logConfidence } from '../../utils';
 
 /**
  * Categorizes text content using OpenAI
@@ -12,10 +13,15 @@ import { logger } from '../logger';
 export async function categorizeText(text: string, businessId: string, url: string): Promise<CategorizedContent[]> {
   try {
     const result = await categorizeWebsiteContent(text, businessId, url);
-    return result.map(content => ({
-      ...content,
-      confidence: content.confidence || 0.8 // Default confidence if not provided
-    }));
+    return result.map(content => {
+      const validatedConfidence = validateConfidence(content.confidence || CONFIDENCE_CONFIG.DEFAULT_SCORE);
+      logConfidence(CATEGORY_DISPLAY_NAMES[content.category], validatedConfidence, 'categorization');
+      return {
+        ...content,
+        confidence: validatedConfidence,
+        confidenceReason: content.confidenceReason
+      };
+    });
   } catch (error) {
     throw new Error(`Failed to categorize text: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -53,18 +59,23 @@ export async function processTextChunk(
       throw new Error('No categories returned from categorization');
     }
 
-    // Add confidence scores if not present
+    // No confidence filtering, just validate and push
     const processedResults = result.map(section => ({
       ...section,
-      confidence: section.confidence || 0.8
+      confidence: validateConfidence(section.confidence || CONFIDENCE_CONFIG.DEFAULT_SCORE),
+      confidenceReason: section.confidenceReason
     }));
+
+    if (processedResults.length === 0) {
+      logger.logChunkFailed();
+      throw new Error('No valid categories after categorization');
+    }
 
     categorizedSections.push(...processedResults);
     logger.logChunkProcessed();
-    
     // Log each category processed
     processedResults.forEach(section => {
-      logger.logCategoryProcessed(section.category);
+      logger.logCategoryProcessed(CATEGORY_DISPLAY_NAMES[section.category]);
     });
   } catch (error) {
     logger.logChunkFailed();

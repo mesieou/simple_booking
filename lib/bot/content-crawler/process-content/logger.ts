@@ -1,5 +1,3 @@
-import { CategorizedContent } from '../config';
-
 interface ProcessingStats {
   // Crawling stats
   totalUrls: number;
@@ -257,6 +255,16 @@ class ContentProcessorLogger {
     this.embeddingLogs.push({ embeddingId, docId, status, reason });
   }
 
+  public logEmbeddingAttempt({ embeddingId, docId, category, chunkIndex, metadata }: { embeddingId: string, docId: string, category: string, chunkIndex: number, metadata: any }) {
+    console.log('Attempting to add embedding:', {
+      embeddingId,
+      docId,
+      category,
+      chunkIndex,
+      metadata
+    });
+  }
+
   public printDetailedTables() {
     // Crawling
     console.log('\n[Crawling Results]');
@@ -292,7 +300,10 @@ class ContentProcessorLogger {
     // Chunking
     console.log('\n[Chunking Results]');
     if (this.chunkLogs.length > 0) {
-      console.table(this.chunkLogs);
+      const sorted = [...this.chunkLogs].sort((a, b) =>
+        a.url.localeCompare(b.url) || a.chunkId - b.chunkId
+      );
+      console.table(sorted);
     }
     // Categorizing
     console.log('\n[Categorizing Results]');

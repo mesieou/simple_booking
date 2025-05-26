@@ -20,32 +20,47 @@ export const DEFAULT_HEADERS = {
 // Embedding Configuration
 export const EMBEDDING_CONFIG = {
   BATCH_SIZE: 16,
-  MAX_RETRIES: 5,
-  INITIAL_RETRY_DELAY: 1000,
+  MAX_RETRIES: 10,
+  INITIAL_RETRY_DELAY: 2000,
   SUPABASE_BATCH_SIZE: 50,
   SUPABASE_DELAY: 100,
-  FETCH_TIMEOUT: 10000 // 10 seconds timeout for fetch operations
+  FETCH_TIMEOUT: 30000
 };
 
-export type DocumentCategory =
-  | 'services offered'
-  | 'pricing or quotes'
-  | 'contact'
-  | 'booking or scheduling'
-  | 'about / trust-building'
-  | 'faq'
-  | 'terms & conditions / legal policies';
+export enum Category {
+  SERVICES_OFFERED = 0,
+  PRICING_QUOTES = 1,
+  CONTACT = 2,
+  BOOKING_SCHEDULING = 3,
+  ABOUT_TRUST_BUILDING = 4,
+  FAQ = 5,
+  TERMS_CONDITIONS = 6
+}
 
-// List of valid categories for runtime validation
-export const VALID_CATEGORIES: DocumentCategory[] = [
-  'services offered',
-  'pricing or quotes',
-  'contact',
-  'booking or scheduling',
-  'about / trust-building',
-  'faq',
-  'terms & conditions / legal policies'
-];
+// Map enum to display strings
+export const CATEGORY_DISPLAY_NAMES: Record<Category, string> = {
+  [Category.SERVICES_OFFERED]: 'services offered',
+  [Category.PRICING_QUOTES]: 'pricing or quotes',
+  [Category.CONTACT]: 'contact',
+  [Category.BOOKING_SCHEDULING]: 'booking or scheduling',
+  [Category.ABOUT_TRUST_BUILDING]: 'about / trust-building',
+  [Category.FAQ]: 'faq',
+  [Category.TERMS_CONDITIONS]: 'terms & conditions / legal policies'
+};
+
+// List of valid categories for runtime validation (keeping for backward compatibility)
+export const VALID_CATEGORIES: string[] = Object.values(CATEGORY_DISPLAY_NAMES);
+
+export type DocumentCategory = Category;
+
+// Confidence Score Configuration
+export const CONFIDENCE_CONFIG = {
+  MIN_SCORE: 0.5,
+  MAX_SCORE: 1.0,
+  DEFAULT_SCORE: 0.8,
+  MIN_THRESHOLD: 0.6,
+  WARNING_THRESHOLD: 0.7
+} as const;
 
 // Base configuration for all crawls
 export interface CrawlConfig {
@@ -66,6 +81,7 @@ export interface CrawlConfig {
   };
   chunkSize?: number;  // Maximum words per chunk
   chunkOverlap?: number;  // Number of words to overlap between chunks
+  type?: 'website_page' | 'pdf'; // Added for dynamic document type
 }
 
 export const defaultConfig: Partial<CrawlConfig> = {
@@ -87,9 +103,10 @@ export interface ExtendedCrawlConfig extends Omit<CrawlConfig, 'businessId'> {
 }
 
 export interface CategorizedContent {
-  category: DocumentCategory;
+  category: Category;
   content: string;
   confidence: number;
+  confidenceReason: string;
 }
 
 export interface PageContent {
