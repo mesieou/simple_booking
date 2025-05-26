@@ -23,16 +23,35 @@ const PDFParser = () => {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("businessId", "test-business-id"); // Replace as needed
-    formData.append("url", "uploaded-pdf"); // Replace as needed
-    // Call API
-    const res = await fetch("/api/content-crawler/pdf", {
-      method: "POST",
-      body: formData,
-    });
-    const data = await res.json();
-    setParsedText(data.text);
-    setCategorized(data.categorized);
-    setLoading(false);
+    
+    try {
+      // Call API
+      const res = await fetch("/api/content-crawler/pdf", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      
+      if (data.result) {
+        setParsedText(data.result.mergedText);
+        setCategorized(data.result.categorizedSections || []);
+        toast({
+          variant: "default",
+          title: "Processing Complete",
+          description: `PDF "${data.pdfName}" has been processed successfully.`,
+        });
+      } else {
+        throw new Error('No result data received');
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Failed to process PDF: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -50,7 +69,7 @@ const PDFParser = () => {
       {parsedText && (
         <div className="mt-6 w-full max-w-3xl p-4 rounded shadow">
           <h3 className="text-xl font-semibold mb-2">Parsed Text</h3>
-          <p className=" p-4 rounded whitespace-pre-wrap">
+          <p className="p-4 rounded whitespace-pre-wrap">
             {parsedText}
           </p>
         </div>

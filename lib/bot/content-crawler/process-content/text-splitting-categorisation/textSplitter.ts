@@ -60,11 +60,17 @@ export function collectTextChunks(
   
   texts.forEach((text, i) => {
     if (!text || text.trim().length === 0) {
-      logger.logUrlSkipped(Array.isArray(urls) ? urls[i] : urls, 'empty text');
+      const url = Array.isArray(urls) ? urls[i] : urls[0];
+      logger.logUrlSkipped(url || 'unknown', 'empty text');
       return;
     }
 
-    const url = Array.isArray(urls) ? urls[i] : urls;
+    const url = Array.isArray(urls) ? urls[i] : urls[0];
+    if (!url) {
+      logger.logUrlSkipped('unknown', 'missing URL');
+      return;
+    }
+
     console.log(`Processing text from URL: ${url}`);
     const chunks = splitTextIntoChunks(text, chunkSize, chunkOverlap);
     

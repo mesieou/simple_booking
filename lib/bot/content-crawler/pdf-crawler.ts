@@ -8,6 +8,7 @@ import { logger } from './process-content/logger';
 
 export async function crawlPdfs(config: CrawlConfig, pdfBuffers: Buffer[]): Promise<CrawlOutput> {
   const allTexts: string[] = [];
+  const allUrls: string[] = [];
   const crawlResults: CrawlResult[] = [];
   const processedUrls = new Set<string>();
   const concurrency = config.concurrency || 5;
@@ -18,29 +19,43 @@ export async function crawlPdfs(config: CrawlConfig, pdfBuffers: Buffer[]): Prom
     for (let i = 0; i < buffers.length; i++) {
       yield async () => {
         const buffer = buffers[i];
-        const url = `pdf-${i + 1}`; // Generate a unique identifier for each PDF
+        // Use the actual PDF filename from the config if available, otherwise generate a name
+        const pdfName = config.pdfNames?.[i] || `document-${i + 1}.pdf`;
+        // Store just the PDF name for document organization
+        const documentUrl = pdfName;
+        // Use full source path with page numbers for embeddings
+        const baseUrl = `pdf:${pdfName}`; // Format: pdf:filename.pdf
 
-        if (processedUrls.has(url)) return;
+        if (processedUrls.has(baseUrl)) return;
 
         try {
           const result = await extractTextFromPdf(buffer);
           if (result.error) {
-            logger.logUrlSkipped(url, 'extraction failed');
-            updateCrawlResults(crawlResults, url, null, 'unknown', 'extraction failed');
+            logger.logUrlSkipped(baseUrl, 'extraction failed');
+            updateCrawlResults(crawlResults, documentUrl, null, 'unknown', 'extraction failed');
             return;
           }
 
-          allTexts.push(result.text);
-          updateCrawlResults(crawlResults, url, result.text, result.metadata.language, 'ok');
-          processedUrls.add(url);
-          logger.logUrlProcessed(url, 1);
+          // Split the text into pages and create separate entries for each page
+          const pages = result.text.split(/\f/); // Split by form feed character
+          pages.forEach((pageText, pageNum) => {
+            if (pageText.trim()) {
+              const pageUrl = `${baseUrl}#page=${pageNum + 1}`;
+              allTexts.push(pageText);
+              allUrls.push(pageUrl);
+              // Store PDF name in crawl results for document organization, but use full page URL for embeddings
+              updateCrawlResults(crawlResults, documentUrl, pageText, result.metadata.language, 'ok', pageUrl);
+              processedUrls.add(pageUrl);
+              logger.logUrlProcessed(pageUrl, 1);
+            }
+          });
 
           if (config.requestDelay) {
             await new Promise(res => setTimeout(res, config.requestDelay));
           }
         } catch (error) {
-          logger.logUrlSkipped(url, 'processing failed');
-          updateCrawlResults(crawlResults, url, null, 'unknown', 'processing failed');
+          logger.logUrlSkipped(baseUrl, 'processing failed');
+          updateCrawlResults(crawlResults, documentUrl, null, 'unknown', 'processing failed');
         }
       };
     }
@@ -51,7 +66,7 @@ export async function crawlPdfs(config: CrawlConfig, pdfBuffers: Buffer[]): Prom
   return {
     texts: allTexts,
     results: crawlResults,
-    urls: Array.from(processedUrls),
+    urls: allUrls,
     mainLanguage: 'en' // Default to English for PDFs
   };
 }
@@ -74,7 +89,7 @@ export async function processPdfContent(config: CrawlConfig, crawlOutput: CrawlO
     pageCount: urls.length,
     uniqueParagraphs: texts.length,
     businessId: config.businessId,
-    websiteUrl: config.websiteUrl,
+    source: config.pdfNames?.[0] || 'unknown.pdf', // Use PDF name as source instead of websiteUrl
     ...(embeddingsStatus ? { embeddingsStatus } : {})
   };
 }
