@@ -63,7 +63,8 @@ export default function BookingDistanceStep({ params }: { params: Promise<{ prov
       ...prev,
       pickup: origen,
       dropoff: destino,
-      traveltimeestimate: element.duration.value // en segundos
+      traveltimeestimate: duracionLegible, // legible
+      traveltimeestimatenumber: minutos    // en minutos (número)
     }));
     router.push(`/${providerId}/booking/size`);
   };

@@ -57,6 +57,7 @@ export default function ProviderPage({ params }: { params: Promise<{ providerId:
   });
   const [businessId, setBusinessId] = useState<string | null>(null);
   const [businessName, setBusinessName] = useState<string | null>(null);
+  const { setData } = useFormContext();
 
   // Desempaquetar la promesa de params
   const { providerId } = use(params);
@@ -92,28 +93,30 @@ export default function ProviderPage({ params }: { params: Promise<{ providerId:
         .select('businessId')
         .eq('id', providerId)
         .single();
-      // console.log('Usuario:', user, 'Error usuario:', userError);
       if (userError || !user?.businessId) {
         setBusinessId(null);
         setBusinessName(null);
         return;
       }
       setBusinessId(user.businessId);
-      // Buscar el nombre del negocio
+      // Buscar el nombre del negocio y si es mobile
       const { data: business, error: businessError } = await supabase
         .from('businesses')
-        .select('name')
+        .select('name, mobile')
         .eq('id', user.businessId)
         .single();
-      // console.log('Negocio:', business, 'Error negocio:', businessError);
       if (businessError || !business?.name) {
         setBusinessName(null);
         return;
       }
       setBusinessName(business.name);
+      setData(prev => ({
+        ...prev,
+        isBusinessMobile: !!business.mobile,
+      }));
     };
     fetchBusinessData();
-  }, [providerId]);
+  }, [providerId, setData]);
 
   return (
     <div className="container mx-auto px-4 py-8">
