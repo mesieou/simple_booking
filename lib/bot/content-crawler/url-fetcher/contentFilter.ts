@@ -16,7 +16,10 @@ export function filterAndSaveContent(content: string, url: string, index: number
   if (saveToFile) {
     try {
       fs.mkdirSync('crawl-output', { recursive: true });
-      fs.writeFileSync(`crawl-output/page-${index+1}-cleaned.txt`, content, 'utf8');
+      // Create a safe filename from the URL
+      const safeUrl = url.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_');
+      const filename = `crawl-output/page-${index+1}-${safeUrl}-cleaned.txt`;
+      fs.writeFileSync(filename, content, 'utf8');
     } catch (error) {
       console.error(`[Content Filter] Failed to save content from ${url}:`, error);
     }
