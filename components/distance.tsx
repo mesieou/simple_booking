@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Direction from '@/components/direction';
 import { validarUbicacion, obtenerMensajeError, ciudadesPermitidas } from '@/utils/locations';
+import { useFormContext } from '@/utils/FormContext';
 
 interface ErrorResult {
   error: string;
@@ -20,6 +21,7 @@ export default function Distance({ onChange, onContinue }: DistanceProps) {
   const [duracion, setDuracion] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const { setData } = useFormContext();
 
   useEffect(() => {
     if (onChange) {
@@ -90,6 +92,13 @@ export default function Distance({ onChange, onContinue }: DistanceProps) {
         // Usar duration_in_traffic si está disponible, sino usar duration
         const tiempoEstimado = element.duration_in_traffic?.text || element.duration.text;
         setDuracion(tiempoEstimado);
+        // Actualizar el contexto global con los datos
+        setData(prev => ({
+          ...prev,
+          pickup: origen,
+          dropoff: destino,
+          traveltimeestimete: tiempoEstimado,
+        }));
         // Llamar a onContinue con la duración
         onContinue && onContinue(tiempoEstimado);
       } else if (data.error) {

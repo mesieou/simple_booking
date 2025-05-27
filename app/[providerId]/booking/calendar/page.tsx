@@ -1,15 +1,17 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import BookingSummary from '@/components/BookingSummary';
 import Calendar from '@/components/calendar';
 import React, { useState } from 'react';
 import ProviderTitle from '@/app/components/ProviderTitle';
+import ViewForm from '@/app/components/viewform';
+import { useFormContext } from '@/utils/FormContext';
 
 export default function BookingCalendarStep({ params }: { params: Promise<{ providerId: string }> }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { providerId } = React.use(params);
+  const { data, setData } = useFormContext();
 
   // Obtener los datos de la URL
   const origen = searchParams.get('origen') || '--';
@@ -44,6 +46,7 @@ export default function BookingCalendarStep({ params }: { params: Promise<{ prov
 
   // Al continuar, navegar al siguiente paso con los datos
   const handleContinue = () => {
+    setData(prev => ({ ...prev, arrivaldate: arrival }));
     router.push(`/${providerId}/booking/moving?origen=${encodeURIComponent(origen)}&destino=${encodeURIComponent(destino)}&arrival=${encodeURIComponent(arrival)}&size=${encodeURIComponent(sizeKey)}`);
   };
 
@@ -51,20 +54,9 @@ export default function BookingCalendarStep({ params }: { params: Promise<{ prov
     <div className="container mx-auto px-4 py-8">
       <ProviderTitle providerId={providerId} />
       <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row items-start justify-center p-4 md:p-12 max-w-7xl min-w-[320px] w-full mx-auto">
-        {/* Columna izquierda: Resumen */}
+        {/* Columna izquierda: ViewForm */}
         <div className="w-full md:w-1/2 mb-8 md:mb-0 md:mr-8 flex flex-col items-center">
-          <BookingSummary
-            origen={origen}
-            origenDireccion={origen}
-            destino={destino}
-            destinoDireccion={destino}
-            vehiculo={selectedSize.vehiculo}
-            luggers={selectedSize.luggers}
-            precioBase={total}
-            precioPorMinuto={1.94}
-            arrivalWindow={arrival || '--'}
-            moving="--"
-          />
+          <ViewForm />
         </div>
         {/* Columna derecha: Calendario */}
         <div className="w-full md:w-1/2 bg-white rounded-xl shadow-md p-6 flex flex-col items-start">

@@ -18,6 +18,7 @@ import BookingSummary from '@/components/BookingSummary';
 import ProviderTitle from '@/app/components/ProviderTitle';
 import { use } from 'react';
 
+
 export default function Componentes({ params }: { params: Promise<{ providerId: string }> }) {
     const mensajeExito = { success: "¡Datos guardados exitosamente!" };
     const { providerId } = use(params);
@@ -49,7 +50,7 @@ export default function Componentes({ params }: { params: Promise<{ providerId: 
       <Precios/>
       <Direction texto="Pick up from"/>
       <Direction texto="Move to"/>
-      <Distance/>
+      
       <Menu/>
       <LanguageSwitcher/>
     </>
