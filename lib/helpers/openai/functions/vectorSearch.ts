@@ -1,7 +1,8 @@
 import { Embedding } from "@/lib/models/embeddings";
 import { Document } from "@/lib/models/documents";
-import { VALID_CATEGORIES } from "@/lib/bot/content-crawler/config";
+import { Category, CATEGORY_DISPLAY_NAMES } from "@/lib/bot/content-crawler/config";
 import { executeChatCompletion, OpenAIChatMessage } from "@/lib/helpers/openai/openai-core";
+import { generateEmbedding } from "@/lib/helpers/openai/functions/embeddings";
 
 function cosineSimilarity(vecA: number[], vecB: number[]): number {
   const dotProduct = vecA.reduce((sum, a, i) => sum + a * vecB[i], 0);
@@ -11,9 +12,12 @@ function cosineSimilarity(vecA: number[], vecB: number[]): number {
 }
 
 // Accepts string (category) and returns string (index or original)
-function getCategoryKey(category: string): string {
-  const idx = VALID_CATEGORIES.indexOf(category as any);
-  return idx === -1 ? category : idx.toString();
+function getCategoryKey(category: string | Category): string {
+  if (typeof category === 'number') return category.toString();
+  const categoryEnum = Object.values(Category).find(c => 
+    CATEGORY_DISPLAY_NAMES[c as Category] === category
+  );
+  return categoryEnum?.toString() || category;
 }
 
 export interface VectorSearchResult {
@@ -29,11 +33,11 @@ export interface VectorSearchResult {
 export async function findBestVectorResultByCategory(
   userEmbedding: number[],
   category: string
-): Promise<VectorSearchResult | null> {
+): Promise<VectorSearchResult[]> {
   // 1. Get embeddings for the given category (support string or index)
   const categoryKey = getCategoryKey(category);
   const embeddings = await Embedding.getByCategory(categoryKey);
-  if (!embeddings.length) return null;
+  if (!embeddings.length) return [];
 
   // 2. Get unique referenced documents
   const documentIds = Array.from(new Set(embeddings.map(e => e.documentId)));
@@ -78,51 +82,87 @@ export async function findBestVectorResultByCategory(
       content: e.content,
       category: e.category || '',
       similarityScore,
-      source: doc?.source || 'unknown',
+      source: e.metadata?.sourceUrl || doc?.source || 'unknown',
       confidenceScore,
       sourceUrl: e.metadata?.sourceUrl
     };
   }).filter(Boolean);
 
-  // 4. Sort and return the best result
-  const validResults = results.filter(r => r !== null) as VectorSearchResult[];
-  const best = validResults.sort((a, b) => b.similarityScore - a.similarityScore)[0];
-  if (best) {
-    console.log('[Vector Search] Best match:', best);
-  }
-  return best || null;
+  // 4. Sort results by similarity
+  const validResults = results
+    .filter(r => r !== null) as VectorSearchResult[];
+  const sortedResults = validResults.sort((a, b) => b.similarityScore - a.similarityScore);
+
+  // 5. Always return the top 3 results (or all if less than 3)
+  return sortedResults.slice(0, 3);
 }
 
 export async function getConversationalAnswer(
-  userEmbedding: number[],
   category: string,
   userMessage: string
 ): Promise<string> {
-  // 1. Get best KB match (already done)
-  const bestMatch = await findBestVectorResultByCategory(userEmbedding, category);
+  // Preprocess the user message before embedding
+  const cleanMessage = preprocessUserMessage(userMessage);
+  // Generate embedding from the cleaned message
+  const cleanedEmbedding = await generateEmbedding(cleanMessage);
 
-  // 2. If a match is found, construct a prompt for the LLM
-  if (bestMatch) {
+  // 1. Get best KB matches
+  const matches = await findBestVectorResultByCategory(cleanedEmbedding, category);
+
+  // Log best match details for debugging/monitoring
+  if (matches.length > 0) {
+    console.log('[Vector Search] Best matches:', matches.map(m => ({
+      documentId: m.documentId,
+      similarityScore: m.similarityScore,
+      confidenceScore: m.confidenceScore,
+      source: m.source,
+      sourceUrl: m.sourceUrl
+    })));
+  }
+
+  // 2. If there are matches, construct a prompt with all results
+  if (matches.length > 0) {
     const prompt = `
-You are a helpful assistant. Use the following information to answer the user's question.
+You are a helpful and friendly customer service assistant for YS Company.
+
+Instructions:
+- Answer the user's question as concisely and directly as possible. If a short answer is possible, give it in one sentence.
+- After your answer, always add a friendly follow-up question that is relevant to the user's question, and dont hallucinate.
+- If the user's question is about contacting, booking, or pricing, always include the relevant link or contact detail from the knowledge base if available.
+- Do NOT mention the source, category, or say 'based on' or similar phrases. Respond as if you are a human expert from the company.
+- Do not repeat information or over-explain.
+- If none of the provided information answers the user's question, respond with a friendly negative affirmation and follow-up question that is relevant to the user's question, and dont hallucinate.
+- IMPORTANT: Below are 3 different results from the knowledge base. Choose the most relevant one to answer the user's question. Do NOT combine information from different results unless they are clearly related to the same topic.
+- After your answer, indicate which result you chose by saying "Chosen result: [result number]".
 
 Knowledge Base Info:
-"${bestMatch.content}"
+${matches.map((m, index) => `Result ${index + 1}: "${m.content}"`).join('\n')}
 
 User Question:
 "${userMessage}"
 
-Answer in a clear, friendly, and concise way.
+Give a concise, conversational answer with a follow-up.
     `;
 
-    // 3. Call the LLM using centralized OpenAI core
+    // 3. Call the LLM
     const messages: OpenAIChatMessage[] = [
       { role: "system", content: "You are a helpful assistant for a customer service chatbot." },
       { role: "user", content: prompt }
     ];
     try {
-      const completion = await executeChatCompletion(messages, "gpt-3.5-turbo", 0.7);
-      return completion.choices[0].message.content || "I'm sorry, I couldn't generate a response.";
+      const completion = await executeChatCompletion(messages, "gpt-4o", 0.7);
+      const response = completion.choices[0].message.content || "I'm sorry, I couldn't generate a response.";
+      
+      // Extract the chosen result number from the response
+      const chosenResultMatch = response.match(/Chosen result: (\d+)/);
+      if (chosenResultMatch) {
+        const chosenIndex = parseInt(chosenResultMatch[1]) - 1;
+        if (chosenIndex >= 0 && chosenIndex < matches.length) {
+          console.log('\n[Vector Search] Chosen result content:', matches[chosenIndex].content);
+        }
+      }
+      
+      return response;
     } catch (error) {
       console.error("[Vector Search] Error in executeChatCompletion:", error);
       return "I'm sorry, I couldn't generate a response.";
@@ -130,4 +170,24 @@ Answer in a clear, friendly, and concise way.
   }
 
   return "I'm sorry, I couldn't find a relevant answer in the knowledge base.";
+}
+
+/**
+ * Preprocesses and normalizes a user message for embedding generation.
+ * - Trims whitespace
+ * - Normalizes multiple spaces
+ * - Normalizes quotes and dashes
+ * - Removes most special characters
+ * - Removes space before punctuation
+ * - Converts to lowercase
+ */
+function preprocessUserMessage(message: string): string {
+  return message
+    .trim() // Remove leading/trailing whitespace
+    .replace(/\s+/g, ' ') // Normalize multiple spaces to one
+    .replace(/[""''«»]/g, '"') // Normalize quotes
+    .replace(/[–—]/g, '-') // Normalize dashes
+    .replace(/[^a-zA-Z0-9\s.,?!'\"]/g, '') // Remove most special characters
+    .replace(/\s([?.!\"](?:\s|$))/g, '$1') // Remove space before punctuation
+    .toLowerCase(); // Convert to lowercase
 } 

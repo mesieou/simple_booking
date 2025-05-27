@@ -11,7 +11,7 @@ import { executeChatCompletion, ChatMessage, OpenAIChatMessage, OpenAIChatComple
 import { analyzeSentiment } from "@/lib/helpers/openai/functions/sentimentAnalyzer";
 import { generateEmbedding } from "@/lib/helpers/openai/functions/embeddings";
 import { analyzeClientNeed } from "@/lib/helpers/openai/functions/clientNeed";
-import { findBestVectorResultByCategory } from "@/lib/helpers/openai/functions/vectorSearch";
+import { findBestVectorResultByCategory, getConversationalAnswer } from "@/lib/helpers/openai/functions/vectorSearch";
 
 // Central function: takes existing history, and returns new history
 export async function handleChat(history: OpenAIChatMessage[]) {
@@ -73,29 +73,15 @@ export async function handleChat(history: OpenAIChatMessage[]) {
           console.log(`[Client Need] Specific Category: ${clientNeedResult.category}`);
           // Generate embedding only if we have a specific category
           try {
-            userMessageEmbedding = await generateEmbedding(lastUserMessage.content);
-            console.log('[Embedding] Generated embedding for user message');
-            // Vector search for best match
-            const bestMatch = await findBestVectorResultByCategory(userMessageEmbedding, clientNeedResult.category);
-            if (bestMatch) {
-              console.log('[Vector Search] Best match:', {
-                documentId: bestMatch.documentId,
-                similarityScore: bestMatch.similarityScore,
-                confidenceScore: bestMatch.confidenceScore,
-                source: bestMatch.source,
-                sourceUrl: bestMatch.sourceUrl
-              });
-              return [...history, {
-                role: 'assistant',
-                content: `Based on our ${clientNeedResult.category} information: ${bestMatch.content}`
-              }];
-            } else {
-              console.log('[Vector Search] No relevant match found for this category.');
-              return [...history, {
-                role: 'assistant',
-                content: `I understand you're interested in ${clientNeedResult.category}, but I couldn't find a relevant answer in our knowledge base. Can you provide more details?`
-              }];
-            }
+            // Use LLM to generate a natural response
+            const llmResponse = await getConversationalAnswer(
+              clientNeedResult.category,
+              lastUserMessage.content
+            );
+            return [...history, {
+              role: 'assistant',
+              content: llmResponse
+            }];
           } catch (error) {
             console.error('[Embedding/Vector Search] Error:', error);
           }
