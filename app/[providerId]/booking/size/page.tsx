@@ -1,42 +1,64 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Precios from '@/components/precios';
 import ViewForm from '@/app/components/viewform';
-import React, { useState, use } from 'react';
+import React, { useState, useEffect } from 'react';
 import ProviderTitle from '@/app/components/ProviderTitle';
 import { useFormContext } from '@/utils/FormContext';
-
-const SIZE_OPTIONS = [
-  { key: 'one', label: 'One item', tarifa: 46, luggers: 1, vehiculo: 'Pickup', icon: '/icons_size/one_item.png' },
-  { key: 'few', label: 'Few items', tarifa: 70, luggers: 2, vehiculo: 'Pickup', icon: '/icons_size/few_items.png' },
-  { key: 'house', label: 'House', tarifa: 120, luggers: 3, vehiculo: 'Truck', icon: '/icons_size/house.png' },
-];
+import { Service, ServiceData } from '@/lib/models/service';
+import { computeQuoteEstimation } from '@/lib/helpers/quote';
 
 export default function BookingSizeStep({ params }: { params: Promise<{ providerId: string }> }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const { providerId } = use(params);
-  const { setData } = useFormContext();
+  const { setData, data } = useFormContext();
+  const providerId = data.userid;
+  const origen = data.pickup || '--';
+  const destino = data.dropoff || '--';
+  const duracion = data.traveltimeestimatenumber || null;
+  const businessid = data.businessid;
 
-  // Obtener los datos de la URL
-  const origen = searchParams.get('origen') || '--';
-  const destino = searchParams.get('destino') || '--';
-  const duracion = searchParams.get('duracion') || null;
+  // Estado para los servicios dinámicos
+  const [sizeOptions, setSizeOptions] = useState<ServiceData[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedSize, setSelectedSize] = useState<string | null>(null);
 
-  // Estado para el size seleccionado
-  const [selectedSize, setSelectedSize] = useState(SIZE_OPTIONS[0]);
+  useEffect(() => {
+    if (!businessid) return;
+    setLoading(true);
+    Service.getByBusiness(businessid)
+      .then(services => setSizeOptions(services.map(s => s.getData())))
+      .finally(() => setLoading(false));
+  }, [businessid]);
 
-  // Precio por minuto de distancia
-  const price_distance = 1.94;
+  // Obtener el servicio seleccionado del contexto
+  const selectedServiceData = sizeOptions.find(opt => opt.id === selectedSize);
+  const selectedService = selectedServiceData ? new Service(selectedServiceData) : undefined;
+  const travelTimeEstimate = Number(data.traveltimeestimatenumber) || 0;
+  console.log("travelTimeEstimate:dddd", travelTimeEstimate);
+  const business = { mobile: !!data.isBusinessMobile };
+
+  let quote = null;
+  if (selectedService) {
+    quote = computeQuoteEstimation(
+      selectedService,
+      business,
+      travelTimeEstimate
+    );
+  }
 
   // Al continuar, navegar al calendario con los datos y el size
   const handleContinue = () => {
+    if (!selectedService || !quote) return;
     setData(prev => ({
       ...prev,
-      size: selectedSize.key,
+      size: selectedService.id || '',
+      serviceid: selectedService.id || '',
+      selectedService: selectedService.getData(),
+      travelcostestimate: quote.travelCost?.toString() || '',
+      totalJobCostEstimation: quote.totalJobCost?.toString() || '',
     }));
-    router.push(`/${providerId}/booking/calendar?origen=${encodeURIComponent(origen)}&destino=${encodeURIComponent(destino)}&size=${selectedSize.key}&duracion=${encodeURIComponent(duracion || '')}`);
+    router.push(`/${providerId}/booking/calendar`);
   };
 
   return (
@@ -50,29 +72,41 @@ export default function BookingSizeStep({ params }: { params: Promise<{ provider
         {/* Columna derecha: Visual resumen y precios */}
         <div className="w-full md:w-1/2 bg-white rounded-xl shadow-md p-6 flex flex-col items-start">
           <h2 className="text-2xl font-bold mb-2 text-black">MOVES</h2>
-          <p className="text-gray-400 mb-4">Select a <span className="font-semibold">size</span></p>
-          <div className="flex gap-4 mb-6">
-            {SIZE_OPTIONS.map(option => (
-              <button
-                key={option.key}
-                className={`flex flex-col items-center border-2 rounded-xl px-6 py-4 transition-all duration-150 ${selectedSize.key === option.key ? 'border-blue-600 bg-blue-50' : 'border-gray-200 bg-white'} hover:border-blue-400`}
-                onClick={() => {
-                  setSelectedSize(option);
-                  setData(prev => ({
-                    ...prev,
-                    size: option.key,
-                  }));
-                }}
-              >
-                <img src={option.icon} alt={option.label} className="mb-2 w-16 h-16 object-contain" />
-                <span className="mb-2 text-lg font-semibold text-black">{option.label}</span>
-              </button>
-            ))}
-          </div>
+          <p className="text-gray-400 mb-4">Selecciona un <span className="font-semibold">servicio</span></p>
+          {loading ? (
+            <div className="text-blue-500">Cargando servicios...</div>
+          ) : (
+            <div className="flex gap-4 mb-6 flex-wrap">
+              {sizeOptions.map(option => (
+                <button
+                  key={option.id}
+                  className={`flex flex-col items-center border-2 rounded-xl px-6 py-4 transition-all duration-150 ${selectedSize === option.id ? 'border-blue-600 bg-blue-50' : 'border-gray-200 bg-white'} hover:border-blue-400`}
+                  onClick={() => {
+                    setSelectedSize(option.id || '');
+                    setData(prev => ({
+                      ...prev,
+                      size: option.id || '',
+                      serviceid: option.id || '',
+                      selectedService: option,
+                    }));
+                  }}
+                >
+                  <span className="mb-2 text-lg font-semibold text-black">{option.name}</span>
+                </button>
+              ))}
+            </div>
+          )}
           <Precios 
-            base={selectedSize.tarifa} 
-            labor_min={price_distance}
+            base={quote?.totalJobCost || 0}
+            labor_min={quote?.serviceCost || 0}
           />
+          <div>
+            <p className='text-black'>totalJobCost: {quote?.totalJobCost}</p>
+            <p className='text-black'>serviceCost: {quote?.serviceCost}</p>
+            <p className='text-black'>travelCost: {quote?.travelCost}</p>
+            <p className='text-black'>totalJobDuration: {quote?.totalJobDuration}</p>
+            <p className='text-black'>travelTime: {quote?.travelTime}</p>
+          </div>
           <div className="flex gap-4 self-end mt-8">
             <button
               className="flex items-center px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-lg"
@@ -86,6 +120,7 @@ export default function BookingSizeStep({ params }: { params: Promise<{ provider
             <button
               className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-lg"
               onClick={handleContinue}
+              disabled={!selectedSize}
             >
               Continuar
             </button>

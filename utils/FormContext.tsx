@@ -10,16 +10,19 @@ export type FormDataType = {
   size: string;
   userid: string;
   businessid: string;
+  
   arrivaldate: string;
   travelcostestimate: string;
   status: string;
   calculateTotalJobCostEstimation: string;
   traveltimeestimete: string;
+  traveltimeestimatenumber: number;
   totalJobCostEstimation: string;
   serviceid: string;
   createdAt: string;
   updatedAt: string;
   notes: string;
+  isBusinessMobile: boolean;
 };
 
 // Definir el tipo del contexto
@@ -48,11 +51,13 @@ export const FormProvider = ({ children }: FormProviderProps) => {
     status: '',
     calculateTotalJobCostEstimation: '',
     traveltimeestimete: '',
+    traveltimeestimatenumber: 0,
     totalJobCostEstimation: '',
     serviceid: '',
     createdAt: '',
     updatedAt: '',
     notes: '',
+    isBusinessMobile: false,
   });
 
   return (

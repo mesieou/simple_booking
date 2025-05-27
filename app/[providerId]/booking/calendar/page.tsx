@@ -5,11 +5,13 @@ import Calendar from '@/components/calendar';
 import React, { useState } from 'react';
 import ProviderTitle from '@/app/components/ProviderTitle';
 import ViewForm from '@/app/components/viewform';
+import { useFormContext } from '@/utils/FormContext';
 
 export default function BookingCalendarStep({ params }: { params: Promise<{ providerId: string }> }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { providerId } = React.use(params);
+  const { data, setData } = useFormContext();
 
   // Obtener los datos de la URL
   const origen = searchParams.get('origen') || '--';
@@ -44,6 +46,7 @@ export default function BookingCalendarStep({ params }: { params: Promise<{ prov
 
   // Al continuar, navegar al siguiente paso con los datos
   const handleContinue = () => {
+    setData(prev => ({ ...prev, arrivaldate: arrival }));
     router.push(`/${providerId}/booking/moving?origen=${encodeURIComponent(origen)}&destino=${encodeURIComponent(destino)}&arrival=${encodeURIComponent(arrival)}&size=${encodeURIComponent(sizeKey)}`);
   };
 
