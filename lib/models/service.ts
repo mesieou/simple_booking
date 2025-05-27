@@ -1,8 +1,8 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient } from "@/lib/supabase/client";
 import { v4 as uuidv4 } from 'uuid';
 import { handleModelError } from '@/lib/helpers/error';
 
-export type PricingType = 'FIXED' | 'PER_MINUTE';
+export type PricingType = 'fixed' | 'per_minute';
 
 export interface ServiceData {
     id?: string;
@@ -23,31 +23,37 @@ export class Service {
     private data: ServiceData;
 
     constructor(data: ServiceData) {
-        if (!data.businessId) handleModelError("Business ID is required", new Error("Missing businessId"));
-        if (!data.name) handleModelError("Name is required", new Error("Missing name"));
-        if (!data.pricingType || !['FIXED', 'PER_MINUTE'].includes(data.pricingType)) {
-            handleModelError("Pricing type must be 'FIXED' or 'PER_MINUTE'", new Error("Invalid pricingType"));
+        // Normalizar el tipo de pricing a minúsculas
+        const normalizedData = {
+            ...data,
+            pricingType: data.pricingType.toLowerCase() as PricingType
+        };
+
+        if (!normalizedData.businessId) handleModelError("Business ID is required", new Error("Missing businessId"));
+        if (!normalizedData.name) handleModelError("Name is required", new Error("Missing name"));
+        if (!normalizedData.pricingType || !['fixed', 'per_minute'].includes(normalizedData.pricingType)) {
+            handleModelError("Pricing type must be 'fixed' or 'per_minute'", new Error("Invalid pricingType"));
         }
-        if (data.pricingType === 'FIXED') {
-            if (data.fixedPrice === undefined || data.fixedPrice < 0) {
-                handleModelError("Fixed price is required and must be non-negative for 'FIXED' pricing type", new Error("Invalid fixedPrice"));
+        if (normalizedData.pricingType === 'fixed') {
+            if (normalizedData.fixedPrice === undefined || normalizedData.fixedPrice < 0) {
+                handleModelError("Fixed price is required and must be non-negative for 'fixed' pricing type", new Error("Invalid fixedPrice"));
             }
         }
-        if (data.pricingType === 'PER_MINUTE') {
-            if (data.ratePerMinute === undefined || data.ratePerMinute < 0) {
-                handleModelError("Rate per minute is required and must be non-negative for 'PER_MINUTE' pricing type", new Error("Invalid ratePerMinute"));
+        if (normalizedData.pricingType === 'per_minute') {
+            if (normalizedData.ratePerMinute === undefined || normalizedData.ratePerMinute < 0) {
+                handleModelError("Rate per minute is required and must be non-negative for 'per_minute' pricing type", new Error("Invalid ratePerMinute"));
             }
         }
-        if (data.baseCharge !== undefined && data.baseCharge < 0) {
+        if (normalizedData.baseCharge !== undefined && normalizedData.baseCharge < 0) {
             handleModelError("Base charge cannot be negative", new Error("Invalid baseCharge"));
         }
-        if (data.includedMinutes !== undefined && data.includedMinutes < 0) {
+        if (normalizedData.includedMinutes !== undefined && normalizedData.includedMinutes < 0) {
             handleModelError("Included minutes cannot be negative", new Error("Invalid includedMinutes"));
         }
-        if (data.durationEstimate < 0) {
+        if (normalizedData.durationEstimate < 0) {
             handleModelError("Duration estimate cannot be negative", new Error("Invalid durationEstimate"));
         }
-        this.data = data;
+        this.data = normalizedData;
     }
 
     // Getter method to access service data

@@ -4,6 +4,47 @@ import { useProvider } from '../context/ProviderContext';
 import { useEffect, useState } from 'react';
 import ProviderTitle from '../components/ProviderTitle';
 import { use } from 'react';
+import { createClient } from '../../lib/supabase/client';
+import { useFormContext } from '@/utils/FormContext';
+import { useRouter } from 'next/navigation';
+
+// Componente hijo para manejar el contexto y la redirección
+const ContinueButtonWithContext = ({ providerId, businessId }: { providerId: string, businessId: string | null }) => {
+  const { setData } = useFormContext();
+  const router = useRouter();
+  const handleContinue = () => {
+    if (providerId && businessId) {
+      setData(prev => ({
+        ...prev,
+        userid: providerId,
+        businessid: businessId,
+      }));
+      router.push(`/${providerId}/booking/distance`);
+    }
+  };
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    if (e.key === 'Enter' && providerId && businessId) {
+      setData(prev => ({
+        ...prev,
+        userid: providerId,
+        businessid: businessId,
+      }));
+      router.push(`/${providerId}/booking/distance`);
+    }
+  };
+  return (
+    <button
+      className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-lg focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50"
+      tabIndex={0}
+      aria-label="Continuar a la reserva"
+      onClick={handleContinue}
+      disabled={!providerId || !businessId}
+      onKeyDown={handleKeyDown}
+    >
+      Continuar
+    </button>
+  );
+};
 
 export default function ProviderPage({ params }: { params: Promise<{ providerId: string }> }) {
   const { setProviderId } = useProvider();
@@ -14,6 +55,9 @@ export default function ProviderPage({ params }: { params: Promise<{ providerId:
     const today = new Date();
     return today.toISOString().split('T')[0];
   });
+  const [businessId, setBusinessId] = useState<string | null>(null);
+  const [businessName, setBusinessName] = useState<string | null>(null);
+  const { setData } = useFormContext();
 
   // Desempaquetar la promesa de params
   const { providerId } = use(params);
@@ -39,10 +83,56 @@ export default function ProviderPage({ params }: { params: Promise<{ providerId:
     if (providerId && date) fetchSlots();
   }, [providerId, date]);
 
+  useEffect(() => {
+    const fetchBusinessData = async () => {
+      if (!providerId) return;
+      const supabase = createClient();
+      // Buscar el usuario y obtener el businessId
+      const { data: user, error: userError } = await supabase
+        .from('users')
+        .select('businessId')
+        .eq('id', providerId)
+        .single();
+      if (userError || !user?.businessId) {
+        setBusinessId(null);
+        setBusinessName(null);
+        return;
+      }
+      setBusinessId(user.businessId);
+      // Buscar el nombre del negocio y si es mobile
+      const { data: business, error: businessError } = await supabase
+        .from('businesses')
+        .select('name, mobile')
+        .eq('id', user.businessId)
+        .single();
+      if (businessError || !business?.name) {
+        setBusinessName(null);
+        return;
+      }
+      setBusinessName(business.name);
+      setData(prev => ({
+        ...prev,
+        isBusinessMobile: !!business.mobile,
+      }));
+    };
+    fetchBusinessData();
+  }, [providerId, setData]);
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
         <ProviderTitle providerId={providerId} />
+        {/* Mostrar businessId y businessName debajo del ProviderId */}
+        <div className="mb-4">
+          <div className="text-sm text-gray-600 dark:text-gray-300" tabIndex={0} aria-label="ID del negocio">
+            <span className="font-semibold">Business ID:</span> {businessId ?? 'No disponible'}
+          </div>
+          <div className="text-sm text-gray-600 dark:text-gray-300" tabIndex={0} aria-label="Nombre del negocio">
+            <span className="font-semibold">Nombre del negocio:</span> {businessName ?? 'No disponible'}
+          </div>
+          {/* Botón de continuar con contexto */}
+          <ContinueButtonWithContext providerId={providerId} businessId={businessId} />
+        </div>
         <h1 className="text-2xl font-bold mb-4">
           Selecciona una opción de reserva
         </h1>

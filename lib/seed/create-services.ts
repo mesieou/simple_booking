@@ -9,7 +9,7 @@ export async function createServices(
   const services: Service[] = [];
 
   for (let i = 0; i < numServices; i++) {
-    const pricingType = faker.helpers.arrayElement(['FIXED', 'PER_MINUTE']) as PricingType;
+    const pricingType = faker.helpers.arrayElement(['fixed', 'per_minute']) as PricingType;
     
     const serviceData = {
       businessId: business.id!,
@@ -17,7 +17,7 @@ export async function createServices(
       pricingType,
       description: faker.commerce.productDescription(),
       durationEstimate: faker.number.int({ min: 30, max: 180 }),
-      ...(pricingType === 'FIXED' 
+      ...(pricingType === 'fixed' 
         ? { fixedPrice: faker.number.int({ min: 50, max: 500 }) }
         : { 
             ratePerMinute: faker.number.int({ min: 1, max: 5 }),
