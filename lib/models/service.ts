@@ -32,16 +32,16 @@ export class Service {
         if (!normalizedData.businessId) handleModelError("Business ID is required", new Error("Missing businessId"));
         if (!normalizedData.name) handleModelError("Name is required", new Error("Missing name"));
         if (!normalizedData.pricingType || !['fixed', 'per_minute'].includes(normalizedData.pricingType)) {
-            handleModelError("Pricing type must be 'FIXED' or 'PER_MINUTE'", new Error("Invalid pricingType"));
+            handleModelError("Pricing type must be 'fixed' or 'per_minute'", new Error("Invalid pricingType"));
         }
         if (normalizedData.pricingType === 'fixed') {
             if (normalizedData.fixedPrice === undefined || normalizedData.fixedPrice < 0) {
-                handleModelError("Fixed price is required and must be non-negative for 'FIXED' pricing type", new Error("Invalid fixedPrice"));
+                handleModelError("Fixed price is required and must be non-negative for 'fixed' pricing type", new Error("Invalid fixedPrice"));
             }
         }
         if (normalizedData.pricingType === 'per_minute') {
             if (normalizedData.ratePerMinute === undefined || normalizedData.ratePerMinute < 0) {
-                handleModelError("Rate per minute is required and must be non-negative for 'PER_MINUTE' pricing type", new Error("Invalid ratePerMinute"));
+                handleModelError("Rate per minute is required and must be non-negative for 'per_minute' pricing type", new Error("Invalid ratePerMinute"));
             }
         }
         if (normalizedData.baseCharge !== undefined && normalizedData.baseCharge < 0) {
