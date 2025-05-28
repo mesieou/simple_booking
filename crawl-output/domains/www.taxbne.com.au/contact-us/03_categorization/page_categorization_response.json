@@ -1,13 +1,47 @@
 {
-  "modelUsed": "mock-gpt-4o-segmenter",
+  "modelUsed": "gpt-4o",
   "originalContentCharacterLength": 1017,
   "llmSegmentedChunks": [
     {
       "chunkOrder": 1,
-      "chunkText": "[NAV_START] About Us Our Services Resources Book appointment Contact Us Dashboard Signup Login [NAV_END] EN # Contact Us ## Brisbane office Level 38 71 Eagle St Brisbane QLD 4000 1300 189 682 +61 439 095 870 brisbane@ysaccounting.com.au Book appointment Tax Return Services ## How can we help you? [FORM_START] [FORM_END] Thank you! Your submission has been received! Oops! Something went wrong while submitting the form. We believe starting and managing a business, should be simple and stress-free. Let’s work together Book appointment Y&S Accounting proudly specialises in providing professional consulting and accounting services to the Latin American community in Australia since 2008. Accounting services Personal tax returns Business advise Xero health check Business registration Bookkeeping Start-up advise Address: Level 38, 71 Eagle St, Brisbane QLD 4000 Contact: 1300 189 682 brisbane@ysaccounting.com.au © 2023 Y&S Accounting Brisbane. All right reserved. Privacy Policy Terms of Service Cookies Settings",
+      "chunkText": "Contact Us\nBrisbane office\nLevel 38 71 Eagle St Brisbane QLD 4000\n1300 189 682\n+61 439 095 870\nbrisbane@ysaccounting.com.au",
+      "category": 2,
+      "categoryName": "contact",
+      "confidence": 0.95,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 2,
+      "chunkText": "Book appointment",
+      "category": 3,
+      "categoryName": "booking or scheduling",
+      "confidence": 0.9,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 3,
+      "chunkText": "We believe starting and managing a business, should be simple and stress-free. Let’s work together\nY&S Accounting proudly specialises in providing professional consulting and accounting services to the Latin American community in Australia since 2008.",
+      "category": 4,
+      "categoryName": "about / trust-building",
+      "confidence": 0.95,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 4,
+      "chunkText": "Our Services\nAccounting services\nPersonal tax returns Business advise Xero health check Business registration Bookkeeping Start-up advise",
       "category": 0,
       "categoryName": "services offered",
-      "confidence": 0.9090113800768238
+      "confidence": 0.95,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 5,
+      "chunkText": "Privacy Policy Terms of Service Cookies Settings",
+      "category": 6,
+      "categoryName": "terms & conditions / legal policies",
+      "confidence": 0.9,
+      "preChunkSourceIndex": 0
     }
-  ]
+  ],
+  "promptUsedLength": 3836
 }

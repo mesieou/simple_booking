@@ -1,41 +1,55 @@
 {
-  "modelUsed": "mock-gpt-4o-segmenter",
+  "modelUsed": "gpt-4o",
   "originalContentCharacterLength": 8693,
   "llmSegmentedChunks": [
     {
       "chunkOrder": 1,
-      "chunkText": "[NAV_START] About Us Our Services Resources Book appointment Contact Us Dashboard Signup Login [NAV_END] EN # Individual tax returns At Y&S Accounting, we understand that filing your individual tax return can be a daunting and time-consuming task. Navigating through the complex tax laws, deductions, and calculations can leave you feeling overwhelmed and uncertain about the accuracy of your filing. That's why we're here to help. See options ## Individual tax returns Tax laws can be confusing. If you don’t have the time, patience, or ability to maximise your tax return, you can take advantage of these often missed tax deductions and credits to get more money back in your pocket by seeking the advice of one of our competent tax professionals. Tax returns cover the financial year from 1 July to 30 June. As a registered tax agent, we have special lodgement schedules and can lodge returns for clients later than the 31 October deadline. Students/Temporary residents Permanent resident / Citizen ## Special discounted price ONLY for international students doing their first tax return in Australia and want a face to face or a video call appointments. (Medicare levy exemption not included) Book appointment From $115 From $109 Online Start",
+      "chunkText": "# Individual tax returns\nAt Y&S Accounting, we understand that filing your individual tax return can be a daunting and time-consuming task. Navigating through the complex tax laws, deductions, and calculations can leave you feeling overwhelmed and uncertain about the accuracy of your filing. That's why we're here to help.\nSee options\n## Individual tax returns\nTax laws can be confusing. If you don’t have the time, patience, or ability to maximise your tax return, you can take advantage of these o",
       "category": 0,
       "categoryName": "services offered",
-      "confidence": 0.8138602620917168
+      "confidence": 0.95,
+      "preChunkSourceIndex": 0
     },
     {
       "chunkOrder": 2,
-      "chunkText": "now From $132 Only TFN Book appointment From $150 TFN + ABN income Book appointment Inclusions Languages English/Español English/Español English/Español Salary and wages Interest and Dividends Deductions Business income (ABN) X 1 hour video call or face to face appointment X Extras Medicare exemption certificate +$45 + $45 + $45 Capital gains X + $55 + $55 Start now Book appointment Book appointment From $155 Only TFN Book appointment From $180 TFN + ABN Income Book appointment Inclusions Salary and wages Government Payments and Bank Interest Deductions Dividends Motor Vehicle claim 1 hour appointment to discuss your tax return Business Income X Extras Other Income: Managed Fund, Trust, Partnership, Personal Services Income, Foreign Income/Pension +$55 +$55 CGT Schedule +$55 +$55 Fee per Rental Property Schedule +$65 +$65 Book appointment Book appointment Students/Temporary residents PR/Citizen From $115 Special discounted price ONLY for international students doing their first tax return in Australia for face to face and video call appointments. Book appointment Online $109 Get started Inclusions English/Spanish Salary and wages Business income (ABN) Extras Medicare exemption certificare + $45 Only TFN $132 Book appointment Inclusions English/Spanish Salary and wages X Business income (ABN) 1 hour video call/telephone or face to face",
-      "category": 0,
-      "categoryName": "services offered",
-      "confidence": 0.7603418450529293
+      "chunkText": "## Special discounted price\nONLY for international students doing their first tax return in Australia and want a face to face or a video call appointments. (Medicare levy exemption not included)\nBook appointment\nFrom\n$115\nFrom\n$109\nOnline\nStart now\nFrom\n$132\nOnly TFN\nBook appointment\nFrom\n$150\nTFN + ABN income\nBook appointment\nInclusions\nLanguages\nEnglish/Español\nEnglish/Español\nEnglish/Español\nSalary and wages\nInterest and Dividends\nDeductions\nBusiness income (ABN)\nX\n1 hour video call or face t",
+      "category": 1,
+      "categoryName": "pricing or quotes",
+      "confidence": 0.95,
+      "preChunkSourceIndex": 0
     },
     {
       "chunkOrder": 3,
-      "chunkText": "appointment Extras Medicare exemption certificare + $45 Capital gains +$45 TFN + ABN Income $150 Book appointment Inclusions English/Spanish Salary and wages Business income (ABN) 1 hour face to face appointment Extras Medicare exemption certificare + $45 Capital gains +$45 Only TFN $155 Book appointment Inclusions English/Spanish Salary and wages Government Payments and Bank Interest Dividends Motor Vehicle claim 1 hour appointment to discuss your tax return Extras Other Income: Managed Fund, Trust, Partnership, Personal Services Income, Foreign Income/Pension + $45 Capital gains +$45 Rental property +$45 TFN + ABN income $180 From Book appointment Inclusions English/Spanish Salary and wages Government Payments and Bank Interest Dividends Motor Vehicle claim Business Income 1 hour appointment to discuss your tax return Extras Other Income: Managed Fund, Trust, Partnership, Personal Services Income, Foreign Income/Pension + $45 Capital gains +$45 Rental property +$45 ## What our customers say Diana Franco I can't recommend Sebastian enough. He is a great accountant! He is very diligent, efficient and always goes above and beyond. Excellent service! Great for small businesses accounting. Orlando Guerra Very knowledgeable and professional. My return was filed quickly and I got the money back within weeks. Cristian Campo Very knowledgeable and easy to",
-      "category": 1,
-      "categoryName": "pricing or quotes",
-      "confidence": 0.8312330539786557
+      "chunkText": "## What our customers say\nDiana Franco\nI can't recommend Sebastian enough. He is a great accountant! He is very diligent, efficient and always goes above and beyond. Excellent service! Great for small businesses accounting.\nOrlando Guerra\nVery knowledgeable and professional. My return was filed quickly and I got the money back within weeks.\nCristian Campo\nVery knowledgeable and easy to get in contact with. Excellent customer service. Highly recommended!\nCatalina Montoya\nI highly recommend Y&S ac",
+      "category": 4,
+      "categoryName": "about / trust-building",
+      "confidence": 0.9,
+      "preChunkSourceIndex": 0
     },
     {
       "chunkOrder": 4,
-      "chunkText": "get in contact with. Excellent customer service. Highly recommended! Catalina Montoya I highly recommend Y&S accounting, and specially to Sebastian Garcia.They have an excellent customer service, they always work in a legar way trying to be the most diligent and helpful as much as possible. Looking after their economical costumer wellness. Juan Pablo Vasquez This is the 4th year making my tax return with no issues and exceptional professionalisms. Strongly recommend them. ## Frequently asked questions Individual Tax returns ¿How long does the Tax Return process takes? Electronic tax returns are usually processed by the ATO within two weeks. We expect that most refunds will be out within 10 working days after lodgement of your tax return, but some people will wait a bit longer for the ATO to get it done. I work with ABN and Tax File Number, Does it affect my Tax Return declaration? ABNs are Australian Business Numbers. They are issued to businesses operating in Australia and to self-employed people. ABNs are required on invoices for work performed. For example, if you are a carpenter, fundraiser, or personal trainer, you will need an ABN.A TFN is a Tax File Number which is required by anybody who",
-      "category": 2,
-      "categoryName": "contact",
-      "confidence": 0.7642981879921268
+      "chunkText": "## Frequently asked questions\nIndividual Tax returns\n¿How long does the Tax Return process takes?\nElectronic tax returns are usually processed by the ATO within two weeks. We expect that most refunds will be out within 10 working days after lodgement of your tax return, but some people will wait a bit longer for the ATO to get it done.\nI work with ABN and Tax File Number, Does it affect my Tax Return declaration?\nABNs are Australian Business Numbers. They are issued to businesses operating in Au",
+      "category": 5,
+      "categoryName": "faq",
+      "confidence": 0.95,
+      "preChunkSourceIndex": 0
     },
     {
       "chunkOrder": 5,
-      "chunkText": "wants to work in Australia. This number is given to all employers when you start working and your employer will then deduct tax from your income under the PAYG ( Pay As You Go ) system. People usually don't have to worry about having to pay taxes at the end of the year because their employers take taxes out of their paycheck. In the case of an ABN, tax is not taken at source, the person raising the invoice and receiving the payment is receiving full payment for products or services so a portion of that income should be retained to meet the tax liability at the end of the financial year.People understand what their obligations are when they work on either the TFN or ABN model. The confusion usually only happens when people have two jobs in one year and one is TFN and the other is ABN, or if they have a full-time job that is TFN but also have a small business that generates ABN income Do I have to declare overseas income? If you are an Australian resident for tax purposes and hold a temporary visa in Australia, you are only required to declare your Australian-source",
-      "category": 3,
-      "categoryName": "booking or scheduling",
-      "confidence": 0.8604983561466435
+      "chunkText": "#### Still have questions?\nContact us now!\nY&S Accounting proudly specialises in providing professional consulting and accounting services to the Latin American community in Australia since 2008.\nAccounting services\nPersonal tax returns Business advise Xero health check Business registration Bookkeeping Start-up advise\nAddress:\nLevel 38, 71 Eagle St, Brisbane QLD 4000\nContact:\n1300 189 682\nbrisbane@ysaccounting.com.au",
+      "category": 2,
+      "categoryName": "contact",
+      "confidence": 0.95,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 6,
+      "chunkText": "© 2023 Y&S Accounting Brisbane. All right reserved.\nPrivacy Policy Terms of Service Cookies Settings",
+      "category": 6,
+      "categoryName": "terms & conditions / legal policies",
+      "confidence": 0.9,
+      "preChunkSourceIndex": 0
     }
-  ]
+  ],
+  "promptUsedLength": 11512
 }

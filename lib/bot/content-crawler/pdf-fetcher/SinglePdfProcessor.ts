@@ -2,7 +2,8 @@ import { CrawlConfig, ExtractedPatterns as CrawlExtractedPatterns, PdfExtraction
 import { logger as globalLoggerInstance } from '@/lib/bot/content-crawler/process-content/logger';
 import { savePdfRawText, savePdfPageText } from '@/lib/bot/content-crawler/process-content/logger-artifact-savers';
 import { extractTextFromPdf } from './extractor';
-import { isLowValueContent, detectLanguage } from '../utils';
+import { isLowValueContent } from '../html-utils';
+import { detectLanguage } from '../utils';
 
 interface ProcessedPdfPage {
   pageNum: number;

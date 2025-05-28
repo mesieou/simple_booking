@@ -27,7 +27,7 @@
  */
 
 import OpenAI from "openai";
-import { pushToQueue } from "./rate-limiter";
+import { scheduleTask } from "./rate-limiter";
 
 // Core interfaces
 export type OpenAIChatMessage = {
@@ -83,7 +83,9 @@ export interface OpenAIChatCompletionResponse {
         arguments: string;
       };
     };
+    finish_reason?: OpenAI.Chat.Completions.ChatCompletion.Choice['finish_reason'];
   }>;
+  usage?: OpenAI.CompletionUsage;
 }
 
 export interface MoodAnalysisResult {
@@ -96,7 +98,7 @@ export interface MoodAnalysisResult {
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
   maxRetries: 3,
-  timeout: 30000,
+  timeout: 60000,
 });
 
 // Core functions
@@ -104,38 +106,73 @@ export async function executeChatCompletion(
   messages: OpenAIChatMessage[],
   model: string = "gpt-4o",
   temperature: number = 0.3,
-  maxTokens: number = 1000,
+  maxTokens: number = 8192,
   functions?: any[]
 ): Promise<OpenAIChatCompletionResponse> {
-  return new Promise((resolve, reject) => {
-    pushToQueue(async () => {
-      try {
-        const response = await openai.chat.completions.create({
-          model,
-          messages,
-          temperature,
-          max_tokens: maxTokens,
-          ...(functions && { functions, function_call: "auto" }),
-        });
-        // Normalize the response to match OpenAIChatCompletionResponse
-        const normalized: OpenAIChatCompletionResponse = {
-          choices: response.choices.map((choice: any) => ({
-            message: {
-              role: "assistant",
-              content: choice.message.content,
-              ...(choice.message.function_call && choice.message.function_call !== null
-                ? { function_call: {
-                    name: choice.message.function_call.name,
-                    arguments: choice.message.function_call.arguments,
-                  } }
-                : {}),
-            },
-          })),
-        };
-        resolve(normalized);
-      } catch (error) {
-        reject(error);
+
+  const taskToSchedule = async (): Promise<OpenAIChatCompletionResponse> => {
+    let urlHint = 'N/A';
+    let promptSample = 'N/A';
+    try {
+      const userMessage = messages.find(m => m.role === 'user');
+      if (userMessage && userMessage.content) {
+        promptSample = userMessage.content.substring(0, 100) + (userMessage.content.length > 100 ? '...' : '');
+        const urlMatch = userMessage.content.match(/URL:\s*(\S+)/i) || 
+                         userMessage.content.match(/websiteUrl:\s*(\S+)/i) || 
+                         userMessage.content.match(/sourceUrl:\s*(\S+)/i);
+        if (urlMatch && urlMatch[1]) {
+          urlHint = urlMatch[1];
+        } else {
+          urlHint = promptSample;
+        }
       }
-    });
-  });
+
+      console.log(`[OpenAI Core] Executing chat completion. Model: ${model}, Max Tokens: ${maxTokens}, Hint: ${urlHint}`);
+      
+      const response = await openai.chat.completions.create({
+        model,
+        messages: messages as OpenAI.Chat.Completions.ChatCompletionMessageParam[],
+        temperature,
+        max_tokens: maxTokens,
+        ...(functions && { functions, function_call: "auto" }),
+      });
+
+      const firstChoice = response.choices && response.choices[0];
+      if (firstChoice) {
+        console.log(`[OpenAI Core] API Call Success. Finish Reason: ${firstChoice.finish_reason}, Hint: ${urlHint}`);
+        if (firstChoice.finish_reason === 'length') {
+          console.warn(`[OpenAI Core] WARNING: Completion for model ${model} (Hint: ${urlHint}) stopped due to max_tokens limit (${maxTokens}).`);
+        }
+      }
+      if (response.usage) {
+         console.log(`[OpenAI Core] Token Usage (Hint: ${urlHint}): Prompt: ${response.usage.prompt_tokens}, Completion: ${response.usage.completion_tokens}, Total: ${response.usage.total_tokens}`);
+      }
+
+      const normalized: OpenAIChatCompletionResponse = {
+        choices: response.choices.map((choice: OpenAI.Chat.Completions.ChatCompletion.Choice) => ({
+          message: {
+            role: choice.message.role as "assistant", 
+            content: choice.message.content,
+            ...(choice.message.function_call
+              ? { function_call: {
+                  name: choice.message.function_call.name,
+                  arguments: choice.message.function_call.arguments,
+                } }
+              : {}),
+          },
+          finish_reason: choice.finish_reason, 
+        })),
+        usage: response.usage
+      };
+      return normalized; 
+    } catch (error) {
+      console.error(`[OpenAI Core] Error during chat completion (Hint: ${urlHint}, Prompt Sample: ${promptSample}):`, error);
+      throw error; 
+    }
+  };
+  
+  const promptTokenEstimate = messages.reduce((sum, msg) => sum + (msg.content?.length || 0), 0) / 3.5;
+  const estimatedTotalTokens = promptTokenEstimate + maxTokens;
+
+  return scheduleTask(taskToSchedule, Math.ceil(estimatedTotalTokens));
 } 

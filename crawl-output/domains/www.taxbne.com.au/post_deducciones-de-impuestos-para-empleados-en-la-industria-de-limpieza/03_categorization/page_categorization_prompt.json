@@ -1,11 +1,38 @@
 {
-  "preChunkContext": "Pre-chunk 1/1",
-  "sourceUrl": "https://www.taxbne.com.au/post/deducciones-de-impuestos-para-empleados-en-la-industria-de-limpieza",
-  "pageTitle": "Tax Deductions for Employees in the Cleaning Industry",
+  "taskInstruction": "The following is visible content extracted from a business website. Your job is to analyze the full text and divide it into logical, self-contained sections of information. Strive to keep closely related content (such as a heading and its immediate subsequent text, or all steps in a numbered/bulleted list) together as a single section, provided the section remains a coherent, singular topic. For EACH distinct section you identify, provide a JSON object with these exact fields:",
+  "jsonFields": [
+    {
+      "field": "category",
+      "description": "a number from 0-8 representing one of the following categories:\n  0: services offered\n  1: pricing or quotes\n  2: contact\n  3: booking or scheduling\n  4: about / trust-building\n  5: faq\n  6: terms & conditions / legal policies\n  7: General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories.\n  8: Uncategorized"
+    },
+    {
+      "field": "content",
+      "description": "the full, detailed text of the section (do NOT omit or summarize any details). If a heading is part of the section, include it at the beginning of this content."
+    },
+    {
+      "field": "confidence",
+      "description": "a score from 0.5 to 1.0 based on how well the content fits the chosen category"
+    },
+    {
+      "field": "confidenceReason",
+      "description": "a short explanation for the confidence score, describing why the content fits (or doesn't fit) the category"
+    }
+  ],
+  "importantNotes": [
+    "You MUST categorize ALL content. Do NOT skip, omit, or summarize any information, even if it seems repetitive or unimportant.",
+    "Each piece of information should appear only once, in the most appropriate category.",
+    "Group closely related items: A heading and its direct content, or all points in a list that explain a single sub-topic, should generally be part of the SAME section unless the content under a heading is exceptionally long and diverse itself.",
+    "If a section of content under a single heading is naturally very long but still pertains to one overarching idea, keep it as one section. Do not artificially split it unless it clearly transitions to a new, distinct topic.",
+    "The output will be used for a customer assistant. Missing details or unnaturally split ideas will degrade its performance.",
+    "Be as granular as needed for distinct topics, but prioritize grouping for coherent ideas.",
+    "Do not skip generic layout/footer/header content unless it is truly boilerplate (e.g. copyright, navigation links).",
+    "Do NOT summarize or compress content. Include all original details.",
+    "Do Not add any information that is not in the text.",
+    "You MUST return a valid JSON array, even if empty. The category MUST be a number between 0 and 8."
+  ],
+  "targetContentDescription": "Here is the content to analyze:",
+  "targetContentHash": "75242615805e84319913aa65f305943a0c61dd9bcfa18c1197508e5fbc85c092",
+  "exampleResponseFormat": "[\n  {\n    \"category\": 4,\n    \"content\": \"About our company...\",\n    \"confidence\": 0.95,\n    \"confidenceReason\": \"Content describes company history and values\"\n  }\n]",
   "businessId": "0919f2b7-9af2-4094-b8b7-f7a70a59599a",
-  "contentType": "Markdown with hints (# for headings, * or - for list items, ``` for code blocks)",
-  "segmentationGoal": "Segment into distinct semantic chunks (target ~200 words each, which is roughly 266 tokens)",
-  "categorizationGoal": "Categorize each using ONLY these categories: services offered, pricing or quotes, contact, booking or scheduling, about / trust-building, faq, terms & conditions / legal policies, General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories., Uncategorized",
-  "outputFormat": "JSON: [{chunkOrder, chunkText, category (numeric enum value for Category type), confidence (0.0-1.0), sourceUrl, pageTitle}]",
-  "contentPrefix": "[NAV_START]\nAbout Us\nOur Services\nResources\nBook appointment\nContact Us\nDashboard Signup Login\n[NAV_END]\nEN\nAll Posts\nDeducciones\n5 min read\n# Tax Deductions for Employees in the Cleaning Industry\nWritten by\nSebastian Garcia\nPublished on\nJanuary 11, 2024\nWe understand how hard you work every day and that you deserve to keep as much of your hard-earned income as possible. However, are you aware that each year you might be unnecessarily giving money away to the tax office? If you don't meticulously handle your annual tax return and claim all the deductions you're entitled to as a cleaner, you could be losing a significant amount of money. Working with a registered tax agent like Y&S Accounting ensures the best outcome, with the potential for a much larger tax refund than you might have claimed on your own. We are familiar with the deductions you may be entitled to as a cleaning professional, and we'll make sure you get them all.\n## Can I claim any deductions?\nThe short answer: yes! You can claim deductions for money spent during the financial year on products or services directly related to earning your income. You must have spent the money yourself (not reimbursed by your employer) and keep a record of the expense, such as a receipt or an invoice.\n## What deductions can I claim?\nThere is a wide range of deductions you can claim as a cleaner, such as:\n- Car expenses if you must transport heavy or bulky equipment to your workplace (like a portable vacuum cleaner) and have no secure place to store them at your workplace.\n- Car and other transport expenses if you must drive between jobs during your workday (e.g., if you clean properties in multiple locations on the same day).\n- The cost of purchasing, repairing, and cleaning any distinctive work-related clothing (such as a logo T-shirt or branded overalls).\n- The cost of buying any protective items for personal use during your work, such as a vacuum cleaner or mop.\n- Phone and internet expenses for your own phone or devi"
+  "websiteUrl": "https://www.taxbne.com.au/post/deducciones-de-impuestos-para-empleados-en-la-industria-de-limpieza"
 }

@@ -1,11 +1,38 @@
 {
-  "preChunkContext": "Pre-chunk 1/1",
-  "sourceUrl": "https://www.taxbne.com.au/online-tax-return",
-  "pageTitle": "Tax return en linea",
+  "taskInstruction": "The following is visible content extracted from a business website. Your job is to analyze the full text and divide it into logical, self-contained sections of information. Strive to keep closely related content (such as a heading and its immediate subsequent text, or all steps in a numbered/bulleted list) together as a single section, provided the section remains a coherent, singular topic. For EACH distinct section you identify, provide a JSON object with these exact fields:",
+  "jsonFields": [
+    {
+      "field": "category",
+      "description": "a number from 0-8 representing one of the following categories:\n  0: services offered\n  1: pricing or quotes\n  2: contact\n  3: booking or scheduling\n  4: about / trust-building\n  5: faq\n  6: terms & conditions / legal policies\n  7: General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories.\n  8: Uncategorized"
+    },
+    {
+      "field": "content",
+      "description": "the full, detailed text of the section (do NOT omit or summarize any details). If a heading is part of the section, include it at the beginning of this content."
+    },
+    {
+      "field": "confidence",
+      "description": "a score from 0.5 to 1.0 based on how well the content fits the chosen category"
+    },
+    {
+      "field": "confidenceReason",
+      "description": "a short explanation for the confidence score, describing why the content fits (or doesn't fit) the category"
+    }
+  ],
+  "importantNotes": [
+    "You MUST categorize ALL content. Do NOT skip, omit, or summarize any information, even if it seems repetitive or unimportant.",
+    "Each piece of information should appear only once, in the most appropriate category.",
+    "Group closely related items: A heading and its direct content, or all points in a list that explain a single sub-topic, should generally be part of the SAME section unless the content under a heading is exceptionally long and diverse itself.",
+    "If a section of content under a single heading is naturally very long but still pertains to one overarching idea, keep it as one section. Do not artificially split it unless it clearly transitions to a new, distinct topic.",
+    "The output will be used for a customer assistant. Missing details or unnaturally split ideas will degrade its performance.",
+    "Be as granular as needed for distinct topics, but prioritize grouping for coherent ideas.",
+    "Do not skip generic layout/footer/header content unless it is truly boilerplate (e.g. copyright, navigation links).",
+    "Do NOT summarize or compress content. Include all original details.",
+    "Do Not add any information that is not in the text.",
+    "You MUST return a valid JSON array, even if empty. The category MUST be a number between 0 and 8."
+  ],
+  "targetContentDescription": "Here is the content to analyze:",
+  "targetContentHash": "755297d8d1098f1ab6bc255e7b9c220401528076a13db4e0cc039270622c9320",
+  "exampleResponseFormat": "[\n  {\n    \"category\": 4,\n    \"content\": \"About our company...\",\n    \"confidence\": 0.95,\n    \"confidenceReason\": \"Content describes company history and values\"\n  }\n]",
   "businessId": "0919f2b7-9af2-4094-b8b7-f7a70a59599a",
-  "contentType": "Markdown with hints (# for headings, * or - for list items, ``` for code blocks)",
-  "segmentationGoal": "Segment into distinct semantic chunks (target ~200 words each, which is roughly 266 tokens)",
-  "categorizationGoal": "Categorize each using ONLY these categories: services offered, pricing or quotes, contact, booking or scheduling, about / trust-building, faq, terms & conditions / legal policies, General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories., Uncategorized",
-  "outputFormat": "JSON: [{chunkOrder, chunkText, category (numeric enum value for Category type), confidence (0.0-1.0), sourceUrl, pageTitle}]",
-  "contentPrefix": "#### Download your Guide here\nIf you would like to stay up to date with all our latest news then please subscribe below\n[FORM_START]\n[FORM_END]\nThank you! Your submission has been received!\nOops! Something went wrong while submitting the form.\nClose\nAbout Services Contact\n1300 189 682\nOnline tax return\n[NAV_START]\nEspañol English\n[NAV_END]\nBook Online\nAbout Services Contact\n1300 189 682\nOnline tax return\nBook Online\nEN\n# Tax return online for international students in Australia- $99 aud\nStart Now\nOne of our accountants will process your application\nYou present it from the comfort of your own home\n100% guaranteed professional service\n## Your online tax return step by step\n1\n### Complete our online form\nCheck that you have the necessary information ready to file your return and read the frequently asked questions.\n2\n### One of our accountants will review your application\nCheck that you have the necessary information ready to file your return and read the frequently asked questions.\n3\n### Receive your Tax refund\nA member of the Y&S Accounting team will review your information and we will contact you if additional information is required.\n## The information you need before you start the process\nCopy of passport\nCopy of your current visa\nBanking information(BSB and account number)\nTax file number (TFN)\n## What our customers say\nDiana Franco\nI can't recommend Sebastian enough. He is a great accountant! He is very diligent, efficient and always goes above and beyond. Excellent service! Great for small businesses accounting.\nOrlando Guerra\nVery knowledgeable and professional. My return was filed quickly and I got the money back within weeks.\nCristian Campo\nVery knowledgeable and easy to get in contact with. Excellent customer service. Highly recommended!\nCatalina Montoya\nI highly recommend Y&S accounting, and specially to Sebastian Garcia.They have an excellent customer service, they always work in a legar way trying to be the most diligent and helpful as much as possible. "
+  "websiteUrl": "https://www.taxbne.com.au/online-tax-return"
 }

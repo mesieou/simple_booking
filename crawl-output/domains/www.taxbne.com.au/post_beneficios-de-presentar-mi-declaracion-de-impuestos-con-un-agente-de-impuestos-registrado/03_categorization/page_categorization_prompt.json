@@ -1,11 +1,38 @@
 {
-  "preChunkContext": "Pre-chunk 1/1",
-  "sourceUrl": "https://www.taxbne.com.au/post/beneficios-de-presentar-mi-declaracion-de-impuestos-con-un-agente-de-impuestos-registrado",
-  "pageTitle": "Benefits of filing my tax return with a registered tax agent",
+  "taskInstruction": "The following is visible content extracted from a business website. Your job is to analyze the full text and divide it into logical, self-contained sections of information. Strive to keep closely related content (such as a heading and its immediate subsequent text, or all steps in a numbered/bulleted list) together as a single section, provided the section remains a coherent, singular topic. For EACH distinct section you identify, provide a JSON object with these exact fields:",
+  "jsonFields": [
+    {
+      "field": "category",
+      "description": "a number from 0-8 representing one of the following categories:\n  0: services offered\n  1: pricing or quotes\n  2: contact\n  3: booking or scheduling\n  4: about / trust-building\n  5: faq\n  6: terms & conditions / legal policies\n  7: General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories.\n  8: Uncategorized"
+    },
+    {
+      "field": "content",
+      "description": "the full, detailed text of the section (do NOT omit or summarize any details). If a heading is part of the section, include it at the beginning of this content."
+    },
+    {
+      "field": "confidence",
+      "description": "a score from 0.5 to 1.0 based on how well the content fits the chosen category"
+    },
+    {
+      "field": "confidenceReason",
+      "description": "a short explanation for the confidence score, describing why the content fits (or doesn't fit) the category"
+    }
+  ],
+  "importantNotes": [
+    "You MUST categorize ALL content. Do NOT skip, omit, or summarize any information, even if it seems repetitive or unimportant.",
+    "Each piece of information should appear only once, in the most appropriate category.",
+    "Group closely related items: A heading and its direct content, or all points in a list that explain a single sub-topic, should generally be part of the SAME section unless the content under a heading is exceptionally long and diverse itself.",
+    "If a section of content under a single heading is naturally very long but still pertains to one overarching idea, keep it as one section. Do not artificially split it unless it clearly transitions to a new, distinct topic.",
+    "The output will be used for a customer assistant. Missing details or unnaturally split ideas will degrade its performance.",
+    "Be as granular as needed for distinct topics, but prioritize grouping for coherent ideas.",
+    "Do not skip generic layout/footer/header content unless it is truly boilerplate (e.g. copyright, navigation links).",
+    "Do NOT summarize or compress content. Include all original details.",
+    "Do Not add any information that is not in the text.",
+    "You MUST return a valid JSON array, even if empty. The category MUST be a number between 0 and 8."
+  ],
+  "targetContentDescription": "Here is the content to analyze:",
+  "targetContentHash": "5ed691d772b30ad266fbf89018a4a2e376b5a1ee2ef5532699500486b22b9d56",
+  "exampleResponseFormat": "[\n  {\n    \"category\": 4,\n    \"content\": \"About our company...\",\n    \"confidence\": 0.95,\n    \"confidenceReason\": \"Content describes company history and values\"\n  }\n]",
   "businessId": "0919f2b7-9af2-4094-b8b7-f7a70a59599a",
-  "contentType": "Markdown with hints (# for headings, * or - for list items, ``` for code blocks)",
-  "segmentationGoal": "Segment into distinct semantic chunks (target ~200 words each, which is roughly 266 tokens)",
-  "categorizationGoal": "Categorize each using ONLY these categories: services offered, pricing or quotes, contact, booking or scheduling, about / trust-building, faq, terms & conditions / legal policies, General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories., Uncategorized",
-  "outputFormat": "JSON: [{chunkOrder, chunkText, category (numeric enum value for Category type), confidence (0.0-1.0), sourceUrl, pageTitle}]",
-  "contentPrefix": "[NAV_START]\nAbout Us\nOur Services\nResources\nBook appointment\nContact Us\nDashboard Signup Login\n[NAV_END]\nEN\nAll Posts\nGeneral\n5 min read\n# Benefits of filing my tax return with a registered tax agent\nWritten by\nSebastian Garcia\nPublished on\nJanuary 11, 2024\nIn Australia, when we engage a tax agent, we obtain certain benefits. But before understanding what benefits we can gain, it's essential to know who tax agents are. A tax agent is a qualified professional who must be registered with the Tax Practitioners Board (TPB) and is trained to:\n- Assist you in preparing and filing your tax return.\n- Provide services either online or in person.\n- Be the only professionals authorized to charge for preparing and filing your tax return.\n- Utilize a system for preparing your return shared with the Australian Taxation Office (ATO).\n- Handle audits required by the tax office.\n## What should I consider when choosing my tax agent?\n- The tax agent must be registered with the Tax Practitioners Board (TPB). You can verify this information on the TPB website.\n- The tax agent must be qualified and have the required experience.\n- Adhere to the Professional Code of Conduct.\n### Benefits\n1. Ensuring correct filing\nHiring a tax agent guarantees that the tax return is filed correctly the first time, following current tax laws. It's important to note that information must be provided by the client, and omitting any details can impact the accuracy of the return.\n2. 100% Deductible Fees\nThe fees paid for the services provided by a tax agent are 100% deductible for the following fiscal year. This means that if you paid $120 for the preparation and filing of your return in 2022, you can deduct the entire amount from your taxes payable in 2023.\n3. Extended deadline\nIndividuals who engage a tax agent have an extended deadline for filing their tax return until May 17 of the following year. It's crucial to be up to date with your declarations to access this benefit.\n4. Timely and Adequate Response to"
+  "websiteUrl": "https://www.taxbne.com.au/post/beneficios-de-presentar-mi-declaracion-de-impuestos-con-un-agente-de-impuestos-registrado"
 }

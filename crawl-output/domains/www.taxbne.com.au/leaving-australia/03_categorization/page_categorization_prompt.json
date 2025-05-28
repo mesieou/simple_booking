@@ -1,11 +1,38 @@
 {
-  "preChunkContext": "Pre-chunk 1/1",
-  "sourceUrl": "https://www.taxbne.com.au/leaving-australia",
-  "pageTitle": "Leaving Australia: Superannuation refund and Early Tax Return",
+  "taskInstruction": "The following is visible content extracted from a business website. Your job is to analyze the full text and divide it into logical, self-contained sections of information. Strive to keep closely related content (such as a heading and its immediate subsequent text, or all steps in a numbered/bulleted list) together as a single section, provided the section remains a coherent, singular topic. For EACH distinct section you identify, provide a JSON object with these exact fields:",
+  "jsonFields": [
+    {
+      "field": "category",
+      "description": "a number from 0-8 representing one of the following categories:\n  0: services offered\n  1: pricing or quotes\n  2: contact\n  3: booking or scheduling\n  4: about / trust-building\n  5: faq\n  6: terms & conditions / legal policies\n  7: General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories.\n  8: Uncategorized"
+    },
+    {
+      "field": "content",
+      "description": "the full, detailed text of the section (do NOT omit or summarize any details). If a heading is part of the section, include it at the beginning of this content."
+    },
+    {
+      "field": "confidence",
+      "description": "a score from 0.5 to 1.0 based on how well the content fits the chosen category"
+    },
+    {
+      "field": "confidenceReason",
+      "description": "a short explanation for the confidence score, describing why the content fits (or doesn't fit) the category"
+    }
+  ],
+  "importantNotes": [
+    "You MUST categorize ALL content. Do NOT skip, omit, or summarize any information, even if it seems repetitive or unimportant.",
+    "Each piece of information should appear only once, in the most appropriate category.",
+    "Group closely related items: A heading and its direct content, or all points in a list that explain a single sub-topic, should generally be part of the SAME section unless the content under a heading is exceptionally long and diverse itself.",
+    "If a section of content under a single heading is naturally very long but still pertains to one overarching idea, keep it as one section. Do not artificially split it unless it clearly transitions to a new, distinct topic.",
+    "The output will be used for a customer assistant. Missing details or unnaturally split ideas will degrade its performance.",
+    "Be as granular as needed for distinct topics, but prioritize grouping for coherent ideas.",
+    "Do not skip generic layout/footer/header content unless it is truly boilerplate (e.g. copyright, navigation links).",
+    "Do NOT summarize or compress content. Include all original details.",
+    "Do Not add any information that is not in the text.",
+    "You MUST return a valid JSON array, even if empty. The category MUST be a number between 0 and 8."
+  ],
+  "targetContentDescription": "Here is the content to analyze:",
+  "targetContentHash": "90a14f795ad26d8be889f02c02bcb283a69cc2b62851ac1c77a9a52b6c81555d",
+  "exampleResponseFormat": "[\n  {\n    \"category\": 4,\n    \"content\": \"About our company...\",\n    \"confidence\": 0.95,\n    \"confidenceReason\": \"Content describes company history and values\"\n  }\n]",
   "businessId": "0919f2b7-9af2-4094-b8b7-f7a70a59599a",
-  "contentType": "Markdown with hints (# for headings, * or - for list items, ``` for code blocks)",
-  "segmentationGoal": "Segment into distinct semantic chunks (target ~200 words each, which is roughly 266 tokens)",
-  "categorizationGoal": "Categorize each using ONLY these categories: services offered, pricing or quotes, contact, booking or scheduling, about / trust-building, faq, terms & conditions / legal policies, General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories., Uncategorized",
-  "outputFormat": "JSON: [{chunkOrder, chunkText, category (numeric enum value for Category type), confidence (0.0-1.0), sourceUrl, pageTitle}]",
-  "contentPrefix": "[NAV_START]\nAbout Us\nOur Services\nResources\nBook appointment\nContact Us\nDashboard Signup Login\n[NAV_END]\nEN\n# Departing Australia Superannuation Payment and Early tax returns\nHassle-free early tax return and superannuation refund services. Maximise your financial benefits as you bid farewell to Australia. Let our experts handle your tax obligations and ensure a smooth departure. Contact us now!\nBook appointment\nBook your appointment\nOne of our accountants will solve your questions\n100% guaranteed professional service\n## We can help you with your DASP (Departing Australia Superannuation Payment) and your Early Tax return\n1\n### Book your appointment\nStart the process by booking an appointment with ease, choosing your preferred mode of communication: face-to-face, video call, or phone call.\n2\n### Comprehensive Information Check\nDuring the scheduled appointment, our dedicated professionals will conduct a thorough check of your information. Whether it's a face-to-face meeting, a video call, or a phone call, we will ensure accuracy by verifying your details with the Australian Taxation Office (ATO) and your superfund. Our knowledgeable team will also explain the processes involved in both tax return and superannuation refund, addressing any questions or concerns you may have.\n3\n### Receive a quote for the service\nFollowing the information check, we will provide you with a detailed quote for our services. Regardless of the chosen mode of communication, our quote will encompass the specific requirements of your tax return and superannuation refund, tailored to your unique circumstances. Rest assured that our pricing remains competitive, while upholding the highest standards of professionalism and efficiency.\n## What our customers say\nDiana Franco\nI can't recommend Sebastian enough. He is a great accountant! He is very diligent, efficient and always goes above and beyond. Excellent service! Great for small businesses accounting.\nOrlando Guerra\nVery knowledgeable and professi"
+  "websiteUrl": "https://www.taxbne.com.au/leaving-australia"
 }

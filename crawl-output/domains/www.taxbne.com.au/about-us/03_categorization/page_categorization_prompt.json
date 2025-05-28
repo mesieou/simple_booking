@@ -1,11 +1,38 @@
 {
-  "preChunkContext": "Pre-chunk 1/1",
-  "sourceUrl": "https://www.taxbne.com.au/about-us",
-  "pageTitle": "About us",
+  "taskInstruction": "The following is visible content extracted from a business website. Your job is to analyze the full text and divide it into logical, self-contained sections of information. Strive to keep closely related content (such as a heading and its immediate subsequent text, or all steps in a numbered/bulleted list) together as a single section, provided the section remains a coherent, singular topic. For EACH distinct section you identify, provide a JSON object with these exact fields:",
+  "jsonFields": [
+    {
+      "field": "category",
+      "description": "a number from 0-8 representing one of the following categories:\n  0: services offered\n  1: pricing or quotes\n  2: contact\n  3: booking or scheduling\n  4: about / trust-building\n  5: faq\n  6: terms & conditions / legal policies\n  7: General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories.\n  8: Uncategorized"
+    },
+    {
+      "field": "content",
+      "description": "the full, detailed text of the section (do NOT omit or summarize any details). If a heading is part of the section, include it at the beginning of this content."
+    },
+    {
+      "field": "confidence",
+      "description": "a score from 0.5 to 1.0 based on how well the content fits the chosen category"
+    },
+    {
+      "field": "confidenceReason",
+      "description": "a short explanation for the confidence score, describing why the content fits (or doesn't fit) the category"
+    }
+  ],
+  "importantNotes": [
+    "You MUST categorize ALL content. Do NOT skip, omit, or summarize any information, even if it seems repetitive or unimportant.",
+    "Each piece of information should appear only once, in the most appropriate category.",
+    "Group closely related items: A heading and its direct content, or all points in a list that explain a single sub-topic, should generally be part of the SAME section unless the content under a heading is exceptionally long and diverse itself.",
+    "If a section of content under a single heading is naturally very long but still pertains to one overarching idea, keep it as one section. Do not artificially split it unless it clearly transitions to a new, distinct topic.",
+    "The output will be used for a customer assistant. Missing details or unnaturally split ideas will degrade its performance.",
+    "Be as granular as needed for distinct topics, but prioritize grouping for coherent ideas.",
+    "Do not skip generic layout/footer/header content unless it is truly boilerplate (e.g. copyright, navigation links).",
+    "Do NOT summarize or compress content. Include all original details.",
+    "Do Not add any information that is not in the text.",
+    "You MUST return a valid JSON array, even if empty. The category MUST be a number between 0 and 8."
+  ],
+  "targetContentDescription": "Here is the content to analyze:",
+  "targetContentHash": "41e3743d1ae6794125c83bf1b6ee4024cc2974bd73abec1d488c9b3f89f0dad3",
+  "exampleResponseFormat": "[\n  {\n    \"category\": 4,\n    \"content\": \"About our company...\",\n    \"confidence\": 0.95,\n    \"confidenceReason\": \"Content describes company history and values\"\n  }\n]",
   "businessId": "0919f2b7-9af2-4094-b8b7-f7a70a59599a",
-  "contentType": "Markdown with hints (# for headings, * or - for list items, ``` for code blocks)",
-  "segmentationGoal": "Segment into distinct semantic chunks (target ~200 words each, which is roughly 266 tokens)",
-  "categorizationGoal": "Categorize each using ONLY these categories: services offered, pricing or quotes, contact, booking or scheduling, about / trust-building, faq, terms & conditions / legal policies, General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories., Uncategorized",
-  "outputFormat": "JSON: [{chunkOrder, chunkText, category (numeric enum value for Category type), confidence (0.0-1.0), sourceUrl, pageTitle}]",
-  "contentPrefix": "[NAV_START]\nAbout Us\nOur Services\nResources\nBook appointment\nContact Us\nDashboard Signup Login\n[NAV_END]\nEN\n# Y&S Accounting Brisbane\nY&S Accounting proudly specialises in providing professional consulting and accounting services to the Latin American community in Australia. We can speak English, Spanish and Portuguese.\n10,000+\nTax returns processed\n10+\nYears of experience\n100+\nVerified reviews\n## Our Results\nY&S Accounting has helped several businesses and thousands of individuals to stay compliant with the ATO and to achieve their financial and business goals.\n### Our Mission\nTo provide superior quality accounting services for the wellbeing of the Latin American community in Australia.\n### Our Vision\nTo become Australia’s most trusted accountancy and business advisory service for Latin American immigrants. We aim to achieve our vision by embracing the following statements:\nEquality of opportunities for people with a multicultural background.\nCloud accounting and automation are key to business success.\nWe believe starting and managing a business, should be simple and stress-free. Let’s work together\nBook appointment\n## Our Team\nY&S Accounting is a company established since 2008, with the aim of providing accounting and tax services to individuals and businesses.\nYaritza Salazar\nFounder and Director\nBio\nYaritza has more than 10 years of experience in the provision of financial/accounting services. She graduated from Bond University in 2004 with a bachelor of commerce majoring in accounting and completed her CPA in 2007.\nThe combined exposure to high net worth clients at various companies throughout her career, as well as individuals and businesses at her own practice has given her a very broad view of accounting and taxation matters.\nProfessional Qualifications\nBachelor of Commerce – Major in Accounting\nCPA Member\nRegistered Tax Agent\nASIC Registered SMSF Auditor\nASIC Registered Agent\nSebastian Garcia\nBrisbane Manager\nBio\nSebastian provides a comprehensive range of "
+  "websiteUrl": "https://www.taxbne.com.au/about-us"
 }

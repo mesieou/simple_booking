@@ -1,11 +1,38 @@
 {
-  "preChunkContext": "Pre-chunk 1/1",
-  "sourceUrl": "https://www.taxbne.com.au/tax-return",
-  "pageTitle": "Individual tax returns",
+  "taskInstruction": "The following is visible content extracted from a business website. Your job is to analyze the full text and divide it into logical, self-contained sections of information. Strive to keep closely related content (such as a heading and its immediate subsequent text, or all steps in a numbered/bulleted list) together as a single section, provided the section remains a coherent, singular topic. For EACH distinct section you identify, provide a JSON object with these exact fields:",
+  "jsonFields": [
+    {
+      "field": "category",
+      "description": "a number from 0-8 representing one of the following categories:\n  0: services offered\n  1: pricing or quotes\n  2: contact\n  3: booking or scheduling\n  4: about / trust-building\n  5: faq\n  6: terms & conditions / legal policies\n  7: General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories.\n  8: Uncategorized"
+    },
+    {
+      "field": "content",
+      "description": "the full, detailed text of the section (do NOT omit or summarize any details). If a heading is part of the section, include it at the beginning of this content."
+    },
+    {
+      "field": "confidence",
+      "description": "a score from 0.5 to 1.0 based on how well the content fits the chosen category"
+    },
+    {
+      "field": "confidenceReason",
+      "description": "a short explanation for the confidence score, describing why the content fits (or doesn't fit) the category"
+    }
+  ],
+  "importantNotes": [
+    "You MUST categorize ALL content. Do NOT skip, omit, or summarize any information, even if it seems repetitive or unimportant.",
+    "Each piece of information should appear only once, in the most appropriate category.",
+    "Group closely related items: A heading and its direct content, or all points in a list that explain a single sub-topic, should generally be part of the SAME section unless the content under a heading is exceptionally long and diverse itself.",
+    "If a section of content under a single heading is naturally very long but still pertains to one overarching idea, keep it as one section. Do not artificially split it unless it clearly transitions to a new, distinct topic.",
+    "The output will be used for a customer assistant. Missing details or unnaturally split ideas will degrade its performance.",
+    "Be as granular as needed for distinct topics, but prioritize grouping for coherent ideas.",
+    "Do not skip generic layout/footer/header content unless it is truly boilerplate (e.g. copyright, navigation links).",
+    "Do NOT summarize or compress content. Include all original details.",
+    "Do Not add any information that is not in the text.",
+    "You MUST return a valid JSON array, even if empty. The category MUST be a number between 0 and 8."
+  ],
+  "targetContentDescription": "Here is the content to analyze:",
+  "targetContentHash": "6de5a6c77145b4530a589f7efba1bfacb266685d2c69996f76745aabe0b5e5b2",
+  "exampleResponseFormat": "[\n  {\n    \"category\": 4,\n    \"content\": \"About our company...\",\n    \"confidence\": 0.95,\n    \"confidenceReason\": \"Content describes company history and values\"\n  }\n]",
   "businessId": "0919f2b7-9af2-4094-b8b7-f7a70a59599a",
-  "contentType": "Markdown with hints (# for headings, * or - for list items, ``` for code blocks)",
-  "segmentationGoal": "Segment into distinct semantic chunks (target ~200 words each, which is roughly 266 tokens)",
-  "categorizationGoal": "Categorize each using ONLY these categories: services offered, pricing or quotes, contact, booking or scheduling, about / trust-building, faq, terms & conditions / legal policies, General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories., Uncategorized",
-  "outputFormat": "JSON: [{chunkOrder, chunkText, category (numeric enum value for Category type), confidence (0.0-1.0), sourceUrl, pageTitle}]",
-  "contentPrefix": "[NAV_START]\nAbout Us\nOur Services\nResources\nBook appointment\nContact Us\nDashboard Signup Login\n[NAV_END]\nEN\n# Individual tax returns\nAt Y&S Accounting, we understand that filing your individual tax return can be a daunting and time-consuming task. Navigating through the complex tax laws, deductions, and calculations can leave you feeling overwhelmed and uncertain about the accuracy of your filing. That's why we're here to help.\nSee options\n## Individual tax returns\nTax laws can be confusing. If you don’t have the time, patience, or ability to maximise your tax return, you can take advantage of these often missed tax deductions and credits to get more money back in your pocket by seeking the advice of one of our competent tax professionals. Tax returns cover the financial year from 1 July to 30 June. As a registered tax agent, we have special lodgement schedules and can lodge returns for clients later than the 31 October deadline.\nStudents/Temporary residents\nPermanent resident / Citizen\n## Special discounted price\nONLY for international students doing their first tax return in Australia and want a face to face or a video call appointments. (Medicare levy exemption not included)\nBook appointment\nFrom\n$115\nFrom\n$109\nOnline\nStart now\nFrom\n$132\nOnly TFN\nBook appointment\nFrom\n$150\nTFN + ABN income\nBook appointment\nInclusions\nLanguages\nEnglish/Español\nEnglish/Español\nEnglish/Español\nSalary and wages\nInterest and Dividends\nDeductions\nBusiness income (ABN)\nX\n1 hour video call or face to face appointment\nX\nExtras\nMedicare exemption certificate\n+$45\n+ $45\n+ $45\nCapital gains\nX\n+ $55\n+ $55\nStart now\nBook appointment\nBook appointment\nFrom\n$155\nOnly TFN\nBook appointment\nFrom\n$180\nTFN + ABN Income\nBook appointment\nInclusions\nSalary and wages\nGovernment Payments and Bank Interest\nDeductions\nDividends\nMotor Vehicle claim\n1 hour appointment to discuss your tax return\nBusiness Income\nX\nExtras\nOther Income: Managed Fund, Trust, Partnership, Personal Services Income, Foreign Income/Pen"
+  "websiteUrl": "https://www.taxbne.com.au/tax-return"
 }

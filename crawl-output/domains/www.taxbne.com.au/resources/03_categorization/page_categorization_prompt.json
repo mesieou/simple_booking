@@ -1,11 +1,38 @@
 {
-  "preChunkContext": "Pre-chunk 1/1",
-  "sourceUrl": "https://www.taxbne.com.au/resources",
-  "pageTitle": "ebooks",
+  "taskInstruction": "The following is visible content extracted from a business website. Your job is to analyze the full text and divide it into logical, self-contained sections of information. Strive to keep closely related content (such as a heading and its immediate subsequent text, or all steps in a numbered/bulleted list) together as a single section, provided the section remains a coherent, singular topic. For EACH distinct section you identify, provide a JSON object with these exact fields:",
+  "jsonFields": [
+    {
+      "field": "category",
+      "description": "a number from 0-8 representing one of the following categories:\n  0: services offered\n  1: pricing or quotes\n  2: contact\n  3: booking or scheduling\n  4: about / trust-building\n  5: faq\n  6: terms & conditions / legal policies\n  7: General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories.\n  8: Uncategorized"
+    },
+    {
+      "field": "content",
+      "description": "the full, detailed text of the section (do NOT omit or summarize any details). If a heading is part of the section, include it at the beginning of this content."
+    },
+    {
+      "field": "confidence",
+      "description": "a score from 0.5 to 1.0 based on how well the content fits the chosen category"
+    },
+    {
+      "field": "confidenceReason",
+      "description": "a short explanation for the confidence score, describing why the content fits (or doesn't fit) the category"
+    }
+  ],
+  "importantNotes": [
+    "You MUST categorize ALL content. Do NOT skip, omit, or summarize any information, even if it seems repetitive or unimportant.",
+    "Each piece of information should appear only once, in the most appropriate category.",
+    "Group closely related items: A heading and its direct content, or all points in a list that explain a single sub-topic, should generally be part of the SAME section unless the content under a heading is exceptionally long and diverse itself.",
+    "If a section of content under a single heading is naturally very long but still pertains to one overarching idea, keep it as one section. Do not artificially split it unless it clearly transitions to a new, distinct topic.",
+    "The output will be used for a customer assistant. Missing details or unnaturally split ideas will degrade its performance.",
+    "Be as granular as needed for distinct topics, but prioritize grouping for coherent ideas.",
+    "Do not skip generic layout/footer/header content unless it is truly boilerplate (e.g. copyright, navigation links).",
+    "Do NOT summarize or compress content. Include all original details.",
+    "Do Not add any information that is not in the text.",
+    "You MUST return a valid JSON array, even if empty. The category MUST be a number between 0 and 8."
+  ],
+  "targetContentDescription": "Here is the content to analyze:",
+  "targetContentHash": "34d68f0e991eecedbe66987bbb4995fa143b53d9e8716f916b5d78decb9b2083",
+  "exampleResponseFormat": "[\n  {\n    \"category\": 4,\n    \"content\": \"About our company...\",\n    \"confidence\": 0.95,\n    \"confidenceReason\": \"Content describes company history and values\"\n  }\n]",
   "businessId": "0919f2b7-9af2-4094-b8b7-f7a70a59599a",
-  "contentType": "Markdown with hints (# for headings, * or - for list items, ``` for code blocks)",
-  "segmentationGoal": "Segment into distinct semantic chunks (target ~200 words each, which is roughly 266 tokens)",
-  "categorizationGoal": "Categorize each using ONLY these categories: services offered, pricing or quotes, contact, booking or scheduling, about / trust-building, faq, terms & conditions / legal policies, General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories., Uncategorized",
-  "outputFormat": "JSON: [{chunkOrder, chunkText, category (numeric enum value for Category type), confidence (0.0-1.0), sourceUrl, pageTitle}]",
-  "contentPrefix": "#### Download your Guide here\nIf you would like to stay up to date with all our latest news then please subscribe below\n[FORM_START]\n[FORM_END]\nThank you! Your submission has been received!\nOops! Something went wrong while submitting the form.\nClose\n# Resources\nStay up to date with the latest accounting and tax insights in Australia\nGeneral\n5 min read\n### What does the ATO data matching program consist of?\nThe Data Matching Program is designed to compare information provided by taxpayers with various databases.\nRead more\nGeneral\n5 min read\n### Benefits of filing my tax return with a registered tax agent\nIn Australia, when we engage a tax agent, we obtain certain benefits. But before understanding what benefits we can gain, it's essential to know who tax agents are.\nRead more\nDeducciones\n5 min read\n### Guide to Calculating Vehicle Deductions\nIf the use of your vehicle is related to your work activity, the expenses incurred can be deducted in your annual tax return. There are two methods for calculating the deduction of these expenses. The only restriction in choosing the method for calculating the deduction is the limitation of 5000 km per year per vehicle (see below for a more detailed explanation)\nRead more\n5 min read\n### What is the Taxable Payments Annual Report (TPAR)?\nThis is a document that reports payments made to contractors and subcontractors during the fiscal year. This is a system implemented by the ATO to prevent contractors from failing to declare their income and therefore evading taxes.\nRead more\nGeneral\n5 min read\n### What is the Medicare levy and how does it affect my tax return?\nIt's possible to obtain a reduction or exemption from paying the Medicare levy, depending on your circumstances and those of your spouse. You should consider separately your right to a reduction or exemption.\nRead more\nDeducciones\n5 min read\n### Tax Deductions for Employees in the Cleaning Industry\nWe understand how hard you work every day and that you deserve to keep as mu"
+  "websiteUrl": "https://www.taxbne.com.au/resources"
 }

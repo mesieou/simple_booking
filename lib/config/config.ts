@@ -189,7 +189,8 @@ export const PROCESS_CONTENT_CONFIG = {
     DEFAULT_CHUNK_SIZE: 200, // Reduced from 750
     DEFAULT_CHUNK_OVERLAP: 40, // Reduced from 100 (words)
     DEFAULT_SENTENCE_OVERLAP: 2, // Added new default
-    MIN_CHUNK_LENGTH: 50 // Minimum characters in a chunk to be considered valid
+    MIN_CHUNK_LENGTH: 50, // Minimum characters in a chunk to be considered valid
+    MAX_CHARS_PER_LLM_INPUT_CHUNK: 32000 // New configuration for LLM input character limit
   },
   TEXT_CATEGORIZER: {
     MIN_CHUNK_LENGTH: 50, // Minimum characters in a chunk to be processed

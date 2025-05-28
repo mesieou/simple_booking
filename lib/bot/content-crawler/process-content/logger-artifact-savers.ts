@@ -8,21 +8,15 @@ import {
     FILE_RECATEGORIZATION_OUTPUT, FILE_MANIFEST, FILE_SUMMARY_JSON
 } from './logger-constants';
 
-// New constant for LLM interactions
-export const DIR_LLM_INTERACTIONS = 'llm_interactions';
-// New constant for Markdown Pre-Chunks
+// Removed DIR_LLM_INTERACTIONS as it's unused
 export const DIR_MARKDOWN_PRE_CHUNKS = '01a_markdown_pre_chunks';
 
-// --- Path Helper & File System Methods ---
-
-// Exporting _sanitizeName as getUrlIdentifier
 export function getUrlIdentifier(name: string, maxLength: number = 200): string {
     let sanitized = name.replace(/^https?:\/\//, '');
     sanitized = sanitized.replace(/\//g, '_');
     sanitized = sanitized.replace(/[^\w.\-_]/g, '_');
     sanitized = sanitized.replace(/__+/g, '_');
     sanitized = sanitized.replace(/^_+|_+$/g, '');
-
     if (sanitized.length > maxLength) {
         const hash = createHash('md5').update(name).digest('hex').substring(0, 8);
         sanitized = `${sanitized.substring(0, maxLength - hash.length - 1)}_${hash}`;
@@ -45,7 +39,6 @@ function _getDomainFromUrl(url: string): string {
         const urlObj = new URL(url);
         return urlObj.hostname;
     } catch (e) {
-        // Try a regex for common cases if new URL fails (e.g. for base URLs without scheme)
         const Rcom = url.match(/^(?:https?:\/\/)?(?:[^@\n]+@)?(?:www\.)?([^:\/\n\.\s]+)/);
         if (Rcom && Rcom[1]) return Rcom[1];      
         console.warn(`[_getDomainFromUrl] Could not parse domain from URL: ${url}. Falling back to 'unknown_domain'.`);
@@ -53,7 +46,6 @@ function _getDomainFromUrl(url: string): string {
     }
 }
 
-// Base path for all logs, to be initialized by the main logger class
 let logsRootPathInternal: string = '';
 
 export function initializeArtifactSavers(logsRoot: string) {
@@ -77,18 +69,16 @@ function _getUrlPath(domain: string, url: string): string {
             urlPart = pathAndQuery;
         }
         if (urlPart === '/' || urlPart === '') urlPart = 'root';
-
     } catch (e) {
         if (typeof url === 'string' && domain && url.includes(domain)) {
             const afterDomain = url.substring(url.indexOf(domain) + domain.length);
-            urlPart = afterDomain.startsWith('/') ? afterDomain : ('/' + afterDomain); // Ensure leading slash for path part
+            urlPart = afterDomain.startsWith('/') ? afterDomain : ('/' + afterDomain);
         } else {
             urlPart = 'unknown_url_path';
         }
         if (!urlPart || urlPart === '/') urlPart = 'root';
     }
-
-    const urlIdentifier = getUrlIdentifier(urlPart); // Use the exported getUrlIdentifier (formerly _sanitizeName)
+    const urlIdentifier = getUrlIdentifier(urlPart);
     const urlPath = path.join(domainPath, urlIdentifier);
     _ensureDirExists(urlPath);
     return urlPath;
@@ -106,8 +96,6 @@ function _getArtifactPath(baseItemPath: string, artifactDirName: string): string
     _ensureDirExists(artifactPath);
     return artifactPath;
 }
-
-// --- Artifact Saving Methods ---
 
 export function saveRawHtml(url: string, htmlContent: string): void {
     const domain = _getDomainFromUrl(url);
@@ -170,28 +158,6 @@ export function saveUrlCategorizationResponse(url: string, chunkIndex: number, r
     }
 }
 
-export function saveUrlInitialCategories(url: string, categories: any): void {
-    const domain = _getDomainFromUrl(url);
-    const urlPath = _getUrlPath(domain, url); 
-    const categorizationPath = _getArtifactPath(urlPath, DIR_CATEGORIZATION);
-    try {
-        fs.writeFileSync(path.join(categorizationPath, FILE_INITIAL_CATEGORIES), JSON.stringify(categories, null, 2));
-    } catch (error) {
-        console.error(`Failed to save URL initial categories for ${url}: ${error}`);
-    }
-}
-
-export function saveUrlRecategorizationOutput(url: string, output: any): void {
-    const domain = _getDomainFromUrl(url);
-    const urlPath = _getUrlPath(domain, url);
-    const recategorizationPath = _getArtifactPath(urlPath, DIR_RECATEGORIZATION);
-    try {
-        fs.writeFileSync(path.join(recategorizationPath, FILE_RECATEGORIZATION_OUTPUT), JSON.stringify(output, null, 2));
-    } catch (error) {
-        console.error(`Failed to save URL recat output for ${url}: ${error}`);
-    }
-}
-
 export function saveUrlDocument(url: string, docId: string, documentData: any): void {
     const domain = _getDomainFromUrl(url);
     const urlPath = _getUrlPath(domain, url);
@@ -203,26 +169,10 @@ export function saveUrlDocument(url: string, docId: string, documentData: any): 
     }
 }
 
-/**
- * DEPRECATED: Embeddings for URLs should now be saved as part of the documentData 
- * in `saveUrlDocument` (i.e., within the doc_{id}.json file).
- * This function will no longer write a separate embedding file.
- * The calling code should add the embedding vector to the documentData object 
- * and stop calling this function.
- */
 export function saveUrlEmbedding(url: string, embeddingId: string, embeddingData: any): void {
     console.warn(`[LoggerSavers] DEPRECATION WARNING: saveUrlEmbedding for URL ${url} (embeddingId: ${embeddingId}) is deprecated.`);
     console.warn(`[LoggerSavers] The embedding should be included directly in the documentData object passed to saveUrlDocument.`);
     console.warn(`[LoggerSavers] No separate embedding_{id}.json file will be created by this function anymore.`);
-    // Original functionality (now removed):
-    // const domain = _getDomainFromUrl(url);
-    // const urlPath = _getUrlPath(domain, url);
-    // const docsEmbedsPath = _getArtifactPath(urlPath, DIR_DOCUMENTS_EMBEDDINGS);
-    // try {
-    //     fs.writeFileSync(path.join(docsEmbedsPath, `embedding_${getUrlIdentifier(embeddingId)}.json`), JSON.stringify(embeddingData, null, 2));
-    // } catch (error) {
-    //     console.error(`Failed to save URL embedding ${embeddingId} for ${url}: ${error}`);
-    // }
 }
   
 export function saveUrlManifest(url: string, manifestData: any): void {
@@ -287,26 +237,6 @@ export function savePdfCategorizationResponse(pdfName: string, identifier: strin
     }
 }
 
-export function savePdfInitialCategories(pdfName: string, categories: any): void {
-    const pdfPath = _getPdfPath(pdfName);
-    const categorizationPath = _getArtifactPath(pdfPath, DIR_CATEGORIZATION);
-    try {
-        fs.writeFileSync(path.join(categorizationPath, FILE_INITIAL_CATEGORIES), JSON.stringify(categories, null, 2));
-    } catch (error) {
-        console.error(`Failed to save PDF initial categories for ${pdfName}: ${error}`);
-    }
-}
-
-export function savePdfRecategorizationOutput(pdfName: string, output: any): void {
-    const pdfPath = _getPdfPath(pdfName);
-    const recategorizationPath = _getArtifactPath(pdfPath, DIR_RECATEGORIZATION);
-    try {
-        fs.writeFileSync(path.join(recategorizationPath, FILE_RECATEGORIZATION_OUTPUT), JSON.stringify(output, null, 2));
-    } catch (error) {
-        console.error(`Failed to save PDF recat output for ${pdfName}: ${error}`);
-    }
-}
-
 export function savePdfDocument(pdfName: string, docId: string, documentData: any): void {
     const pdfPath = _getPdfPath(pdfName);
     const docsEmbedsPath = _getArtifactPath(pdfPath, DIR_DOCUMENTS_EMBEDDINGS);
@@ -329,52 +259,10 @@ export function savePdfEmbedding(pdfName: string, embeddingId: string, embedding
 
 export function savePdfManifest(pdfName: string, manifestData: any): void {
     const pdfPath = _getPdfPath(pdfName);
-    // The manifest should be at the root of the specific PDF's log directory.
     try {
         fs.writeFileSync(path.join(pdfPath, FILE_MANIFEST), JSON.stringify(manifestData, null, 2));
     } catch (error) {
         console.error(`Failed to save PDF manifest for ${pdfName}: ${error}`);
-    }
-}
-
-export function saveSummaryJson(baseOutputPath: string, summaryData: any): void {
-    const summaryFilePath = path.join(baseOutputPath, FILE_SUMMARY_JSON);
-    
-    const replacer = (key: string, value: any) => {
-      if (value instanceof Error) {
-        const error: { [key: string]: any } = {};
-        Object.getOwnPropertyNames(value).forEach(propName => {
-          error[propName] = (value as any)[propName];
-        });
-        return error;
-      }
-      if (typeof value === 'bigint') {
-        return value.toString();
-      }
-      return value;
-    };
-
-    try {
-      const jsonString = JSON.stringify(summaryData, replacer, 2);
-      fs.writeFileSync(summaryFilePath, jsonString);
-      console.log(`\nDetailed summary written to: ${summaryFilePath}`);
-    } catch (error) {
-      console.error(`Failed to write summary.json: ${error}`);
-      try {
-        console.log('[Fallback] Attempting to write summary.json with minimal serialization...');
-        const minimalSummary = {
-          errorDuringSerialization: true,
-          message: 'Original summaryData could not be fully serialized. This is a partial log.',
-          processingStatsKeys: summaryData.processingStats ? Object.keys(summaryData.processingStats) : [],
-          durationSeconds: summaryData.durationSeconds,
-          allFoundUrlsCount: summaryData.allFoundUrls ? summaryData.allFoundUrls.length : 0,
-          urlLogsCount: summaryData.urlLogs ? summaryData.urlLogs.length : 0,
-        };
-        fs.writeFileSync(summaryFilePath, JSON.stringify(minimalSummary, null, 2));
-        console.log(`[Fallback] Minimal summary written to: ${summaryFilePath}`);
-      } catch (fallbackError) {
-        console.error(`Failed to write even a minimal fallback summary.json: ${fallbackError}`);
-      }
     }
 }
 
@@ -399,27 +287,21 @@ export async function saveLlmInteraction(url: string, interactionId: string, pro
         console.warn('[LoggerSavers] Logs root path not initialized. Skipping saveLlmInteraction.');
         return;
     }
-
-    // If interactionId contains a special marker, skip file saving as it's handled in a summary artifact
     if (interactionId.includes('_embed_data_for_summary_')) {
         console.log(`[LoggerSavers] Skipping individual file save for LLM interaction '${interactionId}' as data is part of a summary artifact.`);
         return;
     }
-
     const domain = _getDomainFromUrl(url);
     const urlPath = _getUrlPath(domain, url);
     const docsEmbeddingsPath = _getArtifactPath(urlPath, DIR_DOCUMENTS_EMBEDDINGS);
     const sanitizedInteractionId = getUrlIdentifier(interactionId, 100);
-    
     const promptFilePath = path.join(docsEmbeddingsPath, `${sanitizedInteractionId}_prompt.json`);
     const responseFilePath = path.join(docsEmbeddingsPath, `${sanitizedInteractionId}_response.json`);
-
     try {
         await fs.promises.writeFile(promptFilePath, JSON.stringify(prompt, null, 2));
     } catch (error) {
         console.error(`Failed to save LLM prompt for interaction ${interactionId} for ${url} to ${promptFilePath}: ${error}`);
     }
-
     try {
         await fs.promises.writeFile(responseFilePath, JSON.stringify(response, null, 2));
     } catch (error) {
@@ -483,10 +365,8 @@ export function saveMarkdownPreChunk(
     const domain = _getDomainFromUrl(originalUrl);
     const urlPath = _getUrlPath(domain, originalUrl);
     const preChunksArtifactPath = _getArtifactPath(urlPath, DIR_MARKDOWN_PRE_CHUNKS);
-    
     const fileName = `pre_chunk_${preChunkIndex}.txt`;
     const filePath = path.join(preChunksArtifactPath, fileName);
-
     try {
         fs.writeFileSync(filePath, content);
         return filePath;
@@ -507,9 +387,7 @@ export function saveMarkdownPreChunkManifest(
     const domain = _getDomainFromUrl(originalUrl);
     const urlPath = _getUrlPath(domain, originalUrl);
     const preChunksArtifactPath = _getArtifactPath(urlPath, DIR_MARKDOWN_PRE_CHUNKS);
-
     const manifestFilePath = path.join(preChunksArtifactPath, 'pre_chunks_manifest.json');
-
     try {
         fs.writeFileSync(manifestFilePath, JSON.stringify(manifestData, null, 2));
     } catch (error) {
@@ -517,20 +395,16 @@ export function saveMarkdownPreChunkManifest(
     }
 }
 
-// --- New function for saving consolidated page embeddings artifact for URLs ---
 export function saveUrlPageEmbeddingsArtifact(sourceUrl: string, pageEmbeddingsData: any): void {
     if (!logsRootPathInternal) {
         console.warn('[LoggerSavers] Logs root path not initialized. Skipping saveUrlPageEmbeddingsArtifact.');
         return;
     }
     const domain = _getDomainFromUrl(sourceUrl);
-    const urlPath = _getUrlPath(domain, sourceUrl); // This is the base path for the URL's artifacts
+    const urlPath = _getUrlPath(domain, sourceUrl);
     const docsEmbedsPath = _getArtifactPath(urlPath, DIR_DOCUMENTS_EMBEDDINGS);
-    
-    // Using a fixed name for the summary file, or derive from sourceUrl if more specificity is needed later
     const summaryFileName = '_page_embeddings_summary.json'; 
     const filePath = path.join(docsEmbedsPath, summaryFileName);
-
     try {
         fs.writeFileSync(filePath, JSON.stringify(pageEmbeddingsData, null, 2));
         console.log(`[LoggerSavers] Successfully saved consolidated page embeddings for ${sourceUrl} to ${filePath}`);

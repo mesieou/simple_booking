@@ -1,20 +1,63 @@
 {
-  "modelUsed": "mock-gpt-4o-segmenter",
+  "modelUsed": "gpt-4o",
   "originalContentCharacterLength": 2556,
   "llmSegmentedChunks": [
     {
       "chunkOrder": 1,
-      "chunkText": "[NAV_START] About Us Our Services Resources Book appointment Contact Us Dashboard Signup Login [NAV_END] EN All Posts 5 min read # What is the Taxable Payments Annual Report (TPAR)? Written by Published on January 11, 2024 For the current fiscal year, the businesses required to submit their Taxable Payments Annual Report (TPAR) are those in the following industries: - Construction and Building - Cleaning - Courier and delivery services - Information Technology or IT - Security, investigation, or surveillance - Road freight transport - Mixed services (involving 2 or more of the mentioned industries) The contractors or subcontractors engaged by the company can be \"sole traders\" (individuals), companies, or trusts. The information you need to collect from the contractors you've paid during the year is typically found in the invoices they generated for the services provided. Ensure you have the following information from them: - Name - Address - ABN (Australian Business Number) - Total amount paid during the year ## How to lodge the form with the ATO: Depending on the type of business you have, there are different options to submit the TPAR form to the ATO. You can do it: - Using your business software to create",
-      "category": 0,
-      "categoryName": "services offered",
-      "confidence": 0.921707370118008
+      "chunkText": "# What is the Taxable Payments Annual Report (TPAR)?\nWritten by\nPublished on\nJanuary 11, 2024\nFor the current fiscal year, the businesses required to submit their Taxable Payments Annual Report (TPAR) are those in the following industries:\n- Construction and Building\n- Cleaning\n- Courier and delivery services\n- Information Technology or IT\n- Security, investigation, or surveillance\n- Road freight transport\n- Mixed services (involving 2 or more of the mentioned industries)\nThe contractors or subc",
+      "category": 7,
+      "categoryName": "General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories.",
+      "confidence": 0.95,
+      "preChunkSourceIndex": 0
     },
     {
       "chunkOrder": 2,
-      "chunkText": "and submit the form - Uploading the form through your MyGov account linked to the ATO if you are an individual or soletrader - Through the \" ATO's Business Portal \" - Through your registered tax agent It's important to note that all businesses, contractors, or subcontractors in the mentioned industries must report the TPAR to the ATO, regardless of whether they made payments to other contractors or not. The deadline for generating the report is August 28, and failure to do so may result in penalties and fines from the ATO. ‍ ## ‍ #### Still have questions? Contact us now! Subscribe to newsletter Subscribe to receive the latest blog posts to your inbox every week. [FORM_START] By subscribing you agree to with our Privacy Policy. [FORM_END] Thank you! Your submission has been received! Oops! Something went wrong while submitting the form. Y&S Accounting proudly specialises in providing professional consulting and accounting services to the Latin American community in Australia since 2008. Accounting services Personal tax returns Business advise Xero health check Business registration Bookkeeping Start-up advise Address: Level 38, 71 Eagle St, Brisbane QLD 4000 Contact: 1300 189 682 brisbane@ysaccounting.com.au © 2023 Y&S Accounting Brisbane. All right reserved.",
+      "chunkText": "Contact us now!\nAddress:\nLevel 38, 71 Eagle St, Brisbane QLD 4000\nContact:\n1300 189 682\nbrisbane@ysaccounting.com.au",
+      "category": 2,
+      "categoryName": "contact",
+      "confidence": 0.95,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 3,
+      "chunkText": "Y&S Accounting proudly specialises in providing professional consulting and accounting services to the Latin American community in Australia since 2008.",
+      "category": 4,
+      "categoryName": "about / trust-building",
+      "confidence": 0.9,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 4,
+      "chunkText": "Accounting services\nPersonal tax returns Business advise Xero health check Business registration Bookkeeping Start-up advise",
       "category": 0,
       "categoryName": "services offered",
-      "confidence": 0.9075525202743989
+      "confidence": 0.95,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 5,
+      "chunkText": "#### Still have questions?\nContact us now!",
+      "category": 5,
+      "categoryName": "faq",
+      "confidence": 0.85,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 6,
+      "chunkText": "Privacy Policy Terms of Service Cookies Settings",
+      "category": 6,
+      "categoryName": "terms & conditions / legal policies",
+      "confidence": 0.9,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 7,
+      "chunkText": "Subscribe to newsletter\nSubscribe to receive the latest blog posts to your inbox every week.\nBy subscribing you agree to with our Privacy Policy.\nThank you! Your submission has been received!\nOops! Something went wrong while submitting the form.",
+      "category": 7,
+      "categoryName": "General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories.",
+      "confidence": 0.85,
+      "preChunkSourceIndex": 0
     }
-  ]
+  ],
+  "promptUsedLength": 5375
 }
