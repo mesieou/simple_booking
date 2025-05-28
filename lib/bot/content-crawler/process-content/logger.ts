@@ -13,6 +13,8 @@ interface UrlLogInfo {
   url: string;
   status: 'processed' | 'skipped' | 'failed';
   reason?: string;
+  prompt?: string;
+  result?: string;
 }
 
 interface ProcessingStats {
@@ -43,6 +45,7 @@ interface ProcessingStats {
   startTime: number;
   endTime?: number;
   baseOutputPath: string;
+  domainProcessingSummary?: Record<string, { prompt: string; result: string }>;
 }
 
 interface SummaryData {
@@ -88,6 +91,7 @@ class CrawlLogger {
         failedEmbeddings: 0,
         startTime: 0,
         baseOutputPath: '',
+        domainProcessingSummary: {},
       },
       allFoundUrls: new Set<string>(),
       urlLogs: [],
@@ -139,14 +143,14 @@ class CrawlLogger {
     if (!this.stats.processingStats.processedUrls.includes(url)) {
         this.stats.processingStats.processedUrls.push(url);
     }
-    this.stats.urlLogs.push({ url, status: 'processed' });
+    this.stats.urlLogs.push({ url, status: 'processed', prompt: "", result: "" });
     console.log(`[LOGGER] URL processed: ${url}`);
   }
 
   public async logUrlSkipped(url: string, reason: string): Promise<void> {
     await this.ensureInitialized();
     this.stats.processingStats.skippedUrls.push({ url, reason });
-    this.stats.urlLogs.push({ url, status: 'skipped', reason });
+    this.stats.urlLogs.push({ url, status: 'skipped', reason, prompt: "", result: "" });
     console.warn(`[LOGGER] URL skipped: ${url} - Reason: ${reason}`);
   }
 
@@ -159,7 +163,7 @@ class CrawlLogger {
   public async logUrlFailed(url: string, reason: string): Promise<void> {
     await this.ensureInitialized();
     this.stats.processingStats.failedUrls.push({ url, reason });
-    this.stats.urlLogs.push({ url, status: 'failed', reason });
+    this.stats.urlLogs.push({ url, status: 'failed', reason, prompt: "", result: "" });
     console.error(`[LOGGER] URL failed: ${url} - Reason: ${reason}`);
   }
 
@@ -259,6 +263,23 @@ class CrawlLogger {
     this.stats.processingStats.endTime = Date.now();
     this.stats.durationSeconds = parseFloat(((this.stats.processingStats.endTime - this.stats.processingStats.startTime) / 1000).toFixed(3));
 
+    // Populate domainProcessingSummary
+    const domains = new Set<string>();
+    this.stats.allFoundUrls.forEach(urlStr => {
+      try {
+        const urlObj = new URL(urlStr);
+        domains.add(urlObj.hostname);
+      } catch (e) {
+        console.warn(`[LOGGER] Could not parse URL ${urlStr} to extract domain.`);
+      }
+    });
+    this.stats.processingStats.domainProcessingSummary = {}; // Initialize
+    domains.forEach(domain => {
+      if (this.stats.processingStats.domainProcessingSummary) { // Type guard
+          this.stats.processingStats.domainProcessingSummary[domain] = { prompt: "", result: "" };
+      }
+    });
+
     const summaryToSave = {
       processingStats: this.stats.processingStats,
       durationSeconds: this.stats.durationSeconds,
@@ -284,6 +305,23 @@ class CrawlLogger {
     await this.ensureInitialized(); // Ensure it was initialized, even if by default path
     this.stats.processingStats.endTime = Date.now();
     this.stats.durationSeconds = parseFloat(((this.stats.processingStats.endTime - this.stats.processingStats.startTime) / 1000).toFixed(3));
+
+    // Populate domainProcessingSummary
+    const domains = new Set<string>();
+    this.stats.allFoundUrls.forEach(urlStr => {
+      try {
+        const urlObj = new URL(urlStr);
+        domains.add(urlObj.hostname);
+      } catch (e) {
+        console.warn(`[LOGGER] Could not parse URL ${urlStr} to extract domain.`);
+      }
+    });
+    this.stats.processingStats.domainProcessingSummary = {}; // Initialize
+    domains.forEach(domain => {
+        if (this.stats.processingStats.domainProcessingSummary) { // Type guard
+            this.stats.processingStats.domainProcessingSummary[domain] = { prompt: "", result: "" };
+        }
+    });
 
     const summaryToSave = {
       processingStats: this.stats.processingStats,

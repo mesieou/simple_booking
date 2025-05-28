@@ -10,6 +10,8 @@ import {
 
 // New constant for LLM interactions
 export const DIR_LLM_INTERACTIONS = 'llm_interactions';
+// New constant for Markdown Pre-Chunks
+export const DIR_MARKDOWN_PRE_CHUNKS = '01a_markdown_pre_chunks';
 
 // --- Path Helper & File System Methods ---
 
@@ -112,15 +114,12 @@ export function saveRawHtml(url: string, htmlContent: string): void {
     const urlPath = _getUrlPath(domain, url);
     const rawContentPath = _getArtifactPath(urlPath, DIR_RAW_CONTENT);
     const filePath = path.join(rawContentPath, FILE_SOURCE_HTML);
-    // console.log(`[LoggerSavers] Attempting to save raw HTML for ${url} to ${filePath}`);
     if (!htmlContent || htmlContent.trim() === '') {
         console.warn(`[LoggerSavers] Attempting to save empty raw HTML for ${url}. File not saved.`);
-        // fs.writeFileSync(filePath, "<!-- Empty content from source -->"); // Optionally save a placeholder
         return;
     }
     try {
         fs.writeFileSync(filePath, htmlContent);
-        // console.log(`[LoggerSavers] Successfully saved raw HTML for ${url} to ${filePath}`);
     } catch (error) {
         console.error(`[LoggerSavers] Critical error saving raw HTML for ${url} to ${filePath}:`, error);
     }
@@ -204,15 +203,26 @@ export function saveUrlDocument(url: string, docId: string, documentData: any): 
     }
 }
 
+/**
+ * DEPRECATED: Embeddings for URLs should now be saved as part of the documentData 
+ * in `saveUrlDocument` (i.e., within the doc_{id}.json file).
+ * This function will no longer write a separate embedding file.
+ * The calling code should add the embedding vector to the documentData object 
+ * and stop calling this function.
+ */
 export function saveUrlEmbedding(url: string, embeddingId: string, embeddingData: any): void {
-    const domain = _getDomainFromUrl(url);
-    const urlPath = _getUrlPath(domain, url);
-    const docsEmbedsPath = _getArtifactPath(urlPath, DIR_DOCUMENTS_EMBEDDINGS);
-    try {
-        fs.writeFileSync(path.join(docsEmbedsPath, `embedding_${getUrlIdentifier(embeddingId)}.json`), JSON.stringify(embeddingData, null, 2));
-    } catch (error) {
-        console.error(`Failed to save URL embedding ${embeddingId} for ${url}: ${error}`);
-    }
+    console.warn(`[LoggerSavers] DEPRECATION WARNING: saveUrlEmbedding for URL ${url} (embeddingId: ${embeddingId}) is deprecated.`);
+    console.warn(`[LoggerSavers] The embedding should be included directly in the documentData object passed to saveUrlDocument.`);
+    console.warn(`[LoggerSavers] No separate embedding_{id}.json file will be created by this function anymore.`);
+    // Original functionality (now removed):
+    // const domain = _getDomainFromUrl(url);
+    // const urlPath = _getUrlPath(domain, url);
+    // const docsEmbedsPath = _getArtifactPath(urlPath, DIR_DOCUMENTS_EMBEDDINGS);
+    // try {
+    //     fs.writeFileSync(path.join(docsEmbedsPath, `embedding_${getUrlIdentifier(embeddingId)}.json`), JSON.stringify(embeddingData, null, 2));
+    // } catch (error) {
+    //     console.error(`Failed to save URL embedding ${embeddingId} for ${url}: ${error}`);
+    // }
 }
   
 export function saveUrlManifest(url: string, manifestData: any): void {
@@ -330,10 +340,8 @@ export function savePdfManifest(pdfName: string, manifestData: any): void {
 export function saveSummaryJson(baseOutputPath: string, summaryData: any): void {
     const summaryFilePath = path.join(baseOutputPath, FILE_SUMMARY_JSON);
     
-    // Custom replacer function for JSON.stringify
     const replacer = (key: string, value: any) => {
       if (value instanceof Error) {
-        // Serialize error properties explicitly, as JSON.stringify by default converts Error to {}
         const error: { [key: string]: any } = {};
         Object.getOwnPropertyNames(value).forEach(propName => {
           error[propName] = (value as any)[propName];
@@ -341,9 +349,8 @@ export function saveSummaryJson(baseOutputPath: string, summaryData: any): void 
         return error;
       }
       if (typeof value === 'bigint') {
-        return value.toString(); // Convert BigInt to string
+        return value.toString();
       }
-      // Add handling for other non-serializable types if necessary
       return value;
     };
 
@@ -353,7 +360,6 @@ export function saveSummaryJson(baseOutputPath: string, summaryData: any): void 
       console.log(`\nDetailed summary written to: ${summaryFilePath}`);
     } catch (error) {
       console.error(`Failed to write summary.json: ${error}`);
-      // As a fallback, try to stringify with a very basic approach if the replacer itself causes issues or if data is too complex
       try {
         console.log('[Fallback] Attempting to write summary.json with minimal serialization...');
         const minimalSummary = {
@@ -372,7 +378,6 @@ export function saveSummaryJson(baseOutputPath: string, summaryData: any): void 
     }
 }
 
-// New function to save all chunks for a URL to a single JSON file
 export async function saveUrlChunks(url: string, chunks: Array<{ id: string, text: string, [key: string]: any }>): Promise<void> {
     if (!logsRootPathInternal) {
         console.warn('[LoggerSavers] Logs root path not initialized. Skipping saveUrlChunks.');
@@ -389,21 +394,147 @@ export async function saveUrlChunks(url: string, chunks: Array<{ id: string, tex
     }
 }
 
-// New function to save LLM interactions
 export async function saveLlmInteraction(url: string, interactionId: string, prompt: any, response: any): Promise<void> {
     if (!logsRootPathInternal) {
         console.warn('[LoggerSavers] Logs root path not initialized. Skipping saveLlmInteraction.');
         return;
     }
+
+    // If interactionId contains a special marker, skip file saving as it's handled in a summary artifact
+    if (interactionId.includes('_embed_data_for_summary_')) {
+        console.log(`[LoggerSavers] Skipping individual file save for LLM interaction '${interactionId}' as data is part of a summary artifact.`);
+        return;
+    }
+
     const domain = _getDomainFromUrl(url);
     const urlPath = _getUrlPath(domain, url);
-    const llmInteractionPath = _getArtifactPath(urlPath, DIR_LLM_INTERACTIONS);
-    const sanitizedInteractionId = getUrlIdentifier(interactionId, 100); // Sanitize interactionId as well
-    const filePath = path.join(llmInteractionPath, `${sanitizedInteractionId}.json`);
+    const docsEmbeddingsPath = _getArtifactPath(urlPath, DIR_DOCUMENTS_EMBEDDINGS);
+    const sanitizedInteractionId = getUrlIdentifier(interactionId, 100);
+    
+    const promptFilePath = path.join(docsEmbeddingsPath, `${sanitizedInteractionId}_prompt.json`);
+    const responseFilePath = path.join(docsEmbeddingsPath, `${sanitizedInteractionId}_response.json`);
+
     try {
-        const interactionData = { prompt, response };
-        await fs.promises.writeFile(filePath, JSON.stringify(interactionData, null, 2));
+        await fs.promises.writeFile(promptFilePath, JSON.stringify(prompt, null, 2));
     } catch (error) {
-        console.error(`Failed to save LLM interaction ${interactionId} for ${url} to ${filePath}: ${error}`);
+        console.error(`Failed to save LLM prompt for interaction ${interactionId} for ${url} to ${promptFilePath}: ${error}`);
+    }
+
+    try {
+        await fs.promises.writeFile(responseFilePath, JSON.stringify(response, null, 2));
+    } catch (error) {
+        console.error(`Failed to save LLM response for interaction ${interactionId} for ${url} to ${responseFilePath}: ${error}`);
+    }
+}
+
+export async function savePageMainPrompt(url: string, promptDetails: any): Promise<void> {
+    if (!logsRootPathInternal) {
+        console.warn('[LoggerSavers] Logs root path not initialized. Skipping savePageMainPrompt.');
+        return;
+    }
+    const domain = _getDomainFromUrl(url);
+    const urlPath = _getUrlPath(domain, url);
+    const categorizationArtifactPath = _getArtifactPath(urlPath, DIR_CATEGORIZATION);
+    const filePath = path.join(categorizationArtifactPath, 'page_categorization_prompt.json');
+    try {
+        const jsonToSave = JSON.stringify(promptDetails, null, 2);
+        await fs.promises.writeFile(filePath, jsonToSave);
+    } catch (error) {
+        console.error(`Failed to save page main prompt for ${url} to ${filePath}: ${error}`);
+    }
+}
+
+export async function savePageMainResponse(url: string, responseContent: any): Promise<void> {
+    if (!logsRootPathInternal) {
+        console.warn('[LoggerSavers] Logs root path not initialized. Skipping savePageMainResponse.');
+        return;
+    }
+    const domain = _getDomainFromUrl(url);
+    const urlPath = _getUrlPath(domain, url);
+    const categorizationArtifactPath = _getArtifactPath(urlPath, DIR_CATEGORIZATION);
+    const filePath = path.join(categorizationArtifactPath, 'page_categorization_response.json');
+    let contentToSave: string;
+    if (typeof responseContent === 'string') {
+        try {
+            const parsed = JSON.parse(responseContent);
+            contentToSave = JSON.stringify(parsed, null, 2);
+        } catch (e) {
+            contentToSave = responseContent;
+        }
+    } else {
+        contentToSave = JSON.stringify(responseContent, null, 2);
+    }
+    try {
+        await fs.promises.writeFile(filePath, contentToSave);
+    } catch (error) {
+        console.error(`Failed to save page main response for ${url} to ${filePath}: ${error}`);
+    }
+}
+
+export function saveMarkdownPreChunk(
+    originalUrl: string,
+    preChunkIndex: number,
+    content: string
+): string | undefined {
+    if (!logsRootPathInternal) {
+        console.warn('[LoggerSavers] Logs root path not initialized. Skipping saveMarkdownPreChunk.');
+        return undefined;
+    }
+    const domain = _getDomainFromUrl(originalUrl);
+    const urlPath = _getUrlPath(domain, originalUrl);
+    const preChunksArtifactPath = _getArtifactPath(urlPath, DIR_MARKDOWN_PRE_CHUNKS);
+    
+    const fileName = `pre_chunk_${preChunkIndex}.txt`;
+    const filePath = path.join(preChunksArtifactPath, fileName);
+
+    try {
+        fs.writeFileSync(filePath, content);
+        return filePath;
+    } catch (error) {
+        console.error(`[LoggerSavers] Failed to save markdown pre-chunk ${preChunkIndex} for ${originalUrl} to ${filePath}:`, error);
+        return undefined;
+    }
+}
+
+export function saveMarkdownPreChunkManifest(
+    originalUrl: string,
+    manifestData: any
+): void {
+    if (!logsRootPathInternal) {
+        console.warn('[LoggerSavers] Logs root path not initialized. Skipping saveMarkdownPreChunkManifest.');
+        return;
+    }
+    const domain = _getDomainFromUrl(originalUrl);
+    const urlPath = _getUrlPath(domain, originalUrl);
+    const preChunksArtifactPath = _getArtifactPath(urlPath, DIR_MARKDOWN_PRE_CHUNKS);
+
+    const manifestFilePath = path.join(preChunksArtifactPath, 'pre_chunks_manifest.json');
+
+    try {
+        fs.writeFileSync(manifestFilePath, JSON.stringify(manifestData, null, 2));
+    } catch (error) {
+        console.error(`[LoggerSavers] Failed to save markdown pre-chunk manifest for ${originalUrl} to ${manifestFilePath}:`, error);
+    }
+}
+
+// --- New function for saving consolidated page embeddings artifact for URLs ---
+export function saveUrlPageEmbeddingsArtifact(sourceUrl: string, pageEmbeddingsData: any): void {
+    if (!logsRootPathInternal) {
+        console.warn('[LoggerSavers] Logs root path not initialized. Skipping saveUrlPageEmbeddingsArtifact.');
+        return;
+    }
+    const domain = _getDomainFromUrl(sourceUrl);
+    const urlPath = _getUrlPath(domain, sourceUrl); // This is the base path for the URL's artifacts
+    const docsEmbedsPath = _getArtifactPath(urlPath, DIR_DOCUMENTS_EMBEDDINGS);
+    
+    // Using a fixed name for the summary file, or derive from sourceUrl if more specificity is needed later
+    const summaryFileName = '_page_embeddings_summary.json'; 
+    const filePath = path.join(docsEmbedsPath, summaryFileName);
+
+    try {
+        fs.writeFileSync(filePath, JSON.stringify(pageEmbeddingsData, null, 2));
+        console.log(`[LoggerSavers] Successfully saved consolidated page embeddings for ${sourceUrl} to ${filePath}`);
+    } catch (error) {
+        console.error(`[LoggerSavers] Failed to save consolidated page embeddings for ${sourceUrl} to ${filePath}:`, error);
     }
 } 

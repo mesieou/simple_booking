@@ -1,13 +1,22 @@
-import { CrawlConfig, CategorizedContent, CONFIDENCE_CONFIG, Category, CATEGORY_DISPLAY_NAMES, TextChunk, defaultConfig, ExtractedPatterns } from '@/lib/config/config';
+import { CrawlConfig, Category, CATEGORY_DISPLAY_NAMES, defaultConfig, CONFIDENCE_CONFIG } from '@/lib/config/config';
 import { generateContentHash, runConcurrentTasks } from '@/lib/bot/content-crawler/utils';
 import { CrawlSession } from '@/lib/models/crawl-session';
 import { logger } from '@/lib/bot/content-crawler/process-content/logger';
 import { embeddingInQueue } from './embedding-creator';
 import { DocumentData } from '@/lib/models/documents';
 import {
-    savePdfInitialCategories, saveUrlInitialCategories, savePdfDocument, saveUrlDocument,
-    savePdfEmbedding, saveUrlEmbedding, savePdfManifest, saveUrlManifest
+    savePdfDocument, saveUrlDocument,
+    savePdfEmbedding, savePdfManifest, saveUrlManifest,
+    saveUrlPageEmbeddingsArtifact
 } from '../logger-artifact-savers';
+import { LLMSegmentedChunk } from '../LLMSegmenterCategorizer';
+
+// Define the expected structure for the result of embeddingInQueue
+interface EmbeddingQueueResult {
+  vector: number[];
+  prompt?: any; // The prompt used to generate the embedding
+  fullLlmResponse?: any; // The full response from the LLM for the embedding
+}
 
 const extractPdfNameFromPdfUrl = (pdfUrl: string | undefined): string | null => {
     if (typeof pdfUrl !== 'string' || !pdfUrl.startsWith('pdf:')) return null;
@@ -26,168 +35,259 @@ const getSourceKey = (url: string | undefined): string => {
   return url; 
 };
 
+interface ManifestDocumentEntry {
+  documentId: string;
+  chunkOrder: number;
+  category?: string;
+  originalTextLength: number;
+  preChunkSourceIndex?: number;
+}
+
+interface SourceManifestData {
+  sourceUrl: string;
+  pageTitle?: string;
+  isPdf: boolean;
+  totalLlmChunks: number;
+  documents: ManifestDocumentEntry[];
+}
+
+interface EmbeddingDataForSession {
+  content: string;
+  embedding: number[];
+  businessId: string;
+  source: string;
+  type: 'website_page' | 'pdf' | undefined;
+  category?: string;
+  contentHash: string;
+  metadata?: { 
+    documentContentHash?: string;
+    [key: string]: any;
+  };
+}
+
+interface ProcessedUrlChunk {
+  documentId: string;
+  chunkOrder: number;
+  category?: string;
+  originalText: string;
+  originalTextLength: number;
+  preChunkSourceIndex?: number;
+  pageTitle?: string;
+  confidence?: number;
+  embeddingVector?: number[];
+  embeddingLlmPrompt?: any;
+  embeddingLlmResponse?: any;
+}
+
+interface UrlPageEmbeddingData {
+  sourceUrl: string;
+  pageTitle?: string;
+  isPdf: false;
+  totalLlmChunksOriginally: number;
+  processedUrlChunks: ProcessedUrlChunk[];
+}
+
 export async function processContent(
   config: CrawlConfig, 
-  llmDefinedCategorizedChunks: CategorizedContent[], 
+  llmSegmentedChunks: LLMSegmentedChunk[],
   processedPageUrls: string[],
-  processedRootUrls: string[],
-  llmDefinedChunksForManifest: TextChunk[] 
+  processedRootUrls: string[]
 ): Promise<string> {
   try {
-    console.log('[Content Processor] Processing LLM-defined chunks...');
+    console.log(`[Content Processor] Processing ${llmSegmentedChunks.length} LLM-defined semantic chunks...`);
     const startTime = Date.now();
-    const finalDocuments: DocumentData[] = []; 
-    const finalLoggedEmbeddings: Array<any & { originalSourceUrl: string }> = [];
+    
+    const pdfDocumentsToEmbed: Array<DocumentData & { preChunkSourceIndex?: number }> = []; 
+    const urlDocumentsDataForSession: Array<DocumentData & { embedding?: number[], preChunkSourceIndex?: number }> = [];
 
-    const initialCategoriesBySource: Record<string, { categories: Set<Category>, isPdf: boolean, pdfName?: string, representativeUrl: string }> = {};
-    llmDefinedCategorizedChunks.forEach(section => {
-      if (!section.url || section.category === undefined) {
-        console.warn('[Content Processor] Skipping LLM chunk due to invalid URL or category:', section);
-        return; 
-      }
-      const sourceKey = getSourceKey(section.url);
-      if (!initialCategoriesBySource[sourceKey]) {
-        const pdfName = extractPdfNameFromPdfUrl(section.url);
-        initialCategoriesBySource[sourceKey] = { 
-            categories: new Set(), 
-            isPdf: !!pdfName, 
-            pdfName: pdfName ?? undefined, 
-            representativeUrl: pdfName ? `pdf:${pdfName}` : sourceKey 
-        };
-      }
-      initialCategoriesBySource[sourceKey].categories.add(section.category);
-    });
+    const manifestDataBySource: Record<string, SourceManifestData> = {};
+    const urlPageEmbeddingsMap: Map<string, UrlPageEmbeddingData> = new Map();
 
-    for (const key in initialCategoriesBySource) {
-      const item = initialCategoriesBySource[key];
-      const categoryNames = Array.from(item.categories).map(c => CATEGORY_DISPLAY_NAMES[c as Category] || 'Unknown Category');
-      if (item.isPdf && item.pdfName) {
-        savePdfInitialCategories(item.pdfName, { source: item.representativeUrl, categories: categoryNames });
-      } else {
-        saveUrlInitialCategories(item.representativeUrl, { source: item.representativeUrl, categories: categoryNames });
-      }
-    }
-
-    for (const section of llmDefinedCategorizedChunks) {
+    for (const llmChunk of llmSegmentedChunks) {
       await logger.logDocumentCreationAttempt(); 
 
-      const categoryName = CATEGORY_DISPLAY_NAMES[section.category as Category] || 'Unknown Category';
-      
-      try {
-        const contentHash = generateContentHash(section.content, 'en');
+      const categoryName = llmChunk.categoryName || CATEGORY_DISPLAY_NAMES[llmChunk.category as Category] || 'Unknown Category';
+      const contentHash = generateContentHash(llmChunk.chunkText, 'en');
+      const sourceKey = getSourceKey(llmChunk.sourceUrl);
+      const isPdfChunk = !!extractPdfNameFromPdfUrl(llmChunk.sourceUrl);
 
-        const document: DocumentData = {
+      if (!manifestDataBySource[sourceKey]) {
+          manifestDataBySource[sourceKey] = {
+              sourceUrl: llmChunk.sourceUrl, 
+              pageTitle: llmChunk.pageTitle,
+              isPdf: isPdfChunk,
+              totalLlmChunks: 0,
+              documents: []
+          };
+      }
+      const manifestDocEntry: ManifestDocumentEntry = {
+          documentId: contentHash,
+          chunkOrder: llmChunk.chunkOrder,
+          category: categoryName,
+          originalTextLength: llmChunk.chunkText.length,
+          preChunkSourceIndex: llmChunk.preChunkSourceIndex
+      };
+      manifestDataBySource[sourceKey].documents.push(manifestDocEntry);
+      manifestDataBySource[sourceKey].totalLlmChunks++;
+
+      if (isPdfChunk) {
+        const pdfName = extractPdfNameFromPdfUrl(llmChunk.sourceUrl)!;
+        const document: DocumentData & { preChunkSourceIndex?: number } = {
           businessId: config.businessId,
-          content: section.content,
-          title: `${categoryName} - ${section.url}`.substring(0, 250),
-          source: section.url, 
-          type: config.type || (section.url.startsWith('pdf:') ? 'pdf' : 'website_page'),
+          content: llmChunk.chunkText,
+          title: `${llmChunk.pageTitle || 'Untitled PDF'} - ${categoryName} (Chunk ${llmChunk.chunkOrder}, Pre ${llmChunk.preChunkSourceIndex ?? 'N/A'})`.substring(0, 250),
+          source: llmChunk.sourceUrl, 
+          type: 'pdf',
           category: categoryName,
           contentHash,
-          confidence: section.confidence,
-          sessionId: undefined,
+          confidence: llmChunk.confidence,
+          sessionId: undefined, 
+          preChunkSourceIndex: llmChunk.preChunkSourceIndex
         };
-        finalDocuments.push(document);
-
-        const sectionPdfName = extractPdfNameFromPdfUrl(section.url);
-        if (sectionPdfName) {
-          savePdfDocument(sectionPdfName, contentHash, document);
-        } else {
-          saveUrlDocument(section.url, contentHash, document);
+        savePdfDocument(pdfName, contentHash, document);
+        pdfDocumentsToEmbed.push(document);
+      } else {
+        if (!urlPageEmbeddingsMap.has(llmChunk.sourceUrl)) {
+          urlPageEmbeddingsMap.set(llmChunk.sourceUrl, {
+            sourceUrl: llmChunk.sourceUrl,
+            pageTitle: llmChunk.pageTitle,
+            isPdf: false,
+            totalLlmChunksOriginally: 0,
+            processedUrlChunks: []
+          });
         }
-        await logger.logDocumentCreated();
-        await logger.logCategoryProcessed(categoryName);
+        const pageData = urlPageEmbeddingsMap.get(llmChunk.sourceUrl)!;
 
-      } catch (error) {
-        await logger.logDocumentFailed();
-        console.error(`[Content Processor] Failed to create document for LLM chunk from ${section.url}, category ${categoryName}:`, error);
-        await logger.logCategorizationFailed();
+        pageData.processedUrlChunks.push({
+          documentId: contentHash,
+          chunkOrder: llmChunk.chunkOrder,
+          category: categoryName,
+          originalText: llmChunk.chunkText,
+          originalTextLength: llmChunk.chunkText.length,
+          preChunkSourceIndex: llmChunk.preChunkSourceIndex,
+          pageTitle: llmChunk.pageTitle,
+          confidence: llmChunk.confidence
+        });
+        
+        urlDocumentsDataForSession.push({
+            businessId: config.businessId,
+            content: llmChunk.chunkText,
+            title: `${llmChunk.pageTitle || 'Untitled'} - ${categoryName} (Chunk ${llmChunk.chunkOrder}, Pre ${llmChunk.preChunkSourceIndex ?? 'N/A'})`.substring(0, 250),
+            source: llmChunk.sourceUrl,
+            type: 'website_page',
+            category: categoryName,
+            contentHash,
+            confidence: llmChunk.confidence,
+            sessionId: undefined,
+            preChunkSourceIndex: llmChunk.preChunkSourceIndex
+        });
       }
+      await logger.logDocumentCreated();
+      await logger.logCategoryProcessed(categoryName);
+    }
+
+    for (const pageData of Array.from(urlPageEmbeddingsMap.values())) {
+        pageData.totalLlmChunksOriginally = llmSegmentedChunks.filter(c => c.sourceUrl === pageData.sourceUrl).length;
     }
     
-    const embeddingCreationConcurrency = config.concurrency ?? defaultConfig.concurrency;
+    const embeddingCreationConcurrency = defaultConfig.concurrency;
+    
+    const itemsToEmbed = [
+        ...pdfDocumentsToEmbed.map(doc => ({ ...doc, isPdf: true })), 
+        ...Array.from(urlPageEmbeddingsMap.values())
+    ];
+
     const embeddingTaskGenerator = async function*(): AsyncGenerator<() => Promise<void>> {
-      for (let i = 0; i < finalDocuments.length; i++) {
-        const doc = finalDocuments[i];
-        yield async () => {
-          if (!doc.content || !doc.source || !doc.contentHash) {
-             console.warn(`[Embedding Creation] Skipped: Invalid document for embedding (index ${i})`, doc.title);
-             return;
-          }
-          try {
-            await logger.logEmbeddingAttempt();
-            const embeddingVector = await embeddingInQueue(
-              doc.content,
-              doc.source, 
-              doc.contentHash 
-            );
-            const embeddingArtifactId = `${doc.contentHash}_llm_chunk_emb`; 
-            const embeddingData = { 
-              content: doc.content,
-              embedding: embeddingVector,
-              category: doc.category,
-              metadata: {
-                pageTitle: doc.title, 
-                sourceUrl: doc.source,
-                documentContentHash: doc.contentHash,
-                crawlTimestamp: Date.now(),
-                language: 'en',
-                confidence: doc.confidence,
+      for (let i = 0; i < itemsToEmbed.length; i++) {
+        const item = itemsToEmbed[i];
+        
+        if (item.isPdf) {
+          const doc = item as DocumentData & { isPdf: true, preChunkSourceIndex?: number };
+          yield async () => {
+            if (!doc.content || !doc.source || !doc.contentHash) {
+               console.warn(`[Embedding Creation PDF] Skipped: Invalid document for embedding`, doc.title);
+               return;
+            }
+            try {
+              await logger.logEmbeddingAttempt();
+              const embeddingResult = (await embeddingInQueue(
+                doc.content,
+                doc.source,
+                `${doc.contentHash}_embed_data_for_summary_pdf_${i}`
+              )) as unknown as EmbeddingQueueResult | null;
+
+              if (!embeddingResult || !embeddingResult.vector) {
+                  console.warn(`[Embedding Creation PDF] Embedding vector is null for doc ${doc.title}.`);
+                  await logger.logEmbeddingFailure();
+                  return;
+              }
+              const pdfName = extractPdfNameFromPdfUrl(doc.source as string)!;
+              const embeddingArtifactId = `${doc.contentHash}_emb`; 
+              const embeddingDataForArtifact = { 
+                contentHash: doc.contentHash, 
+                embedding: embeddingResult.vector,
+                sourceUrl: doc.source, 
+                category: doc.category,
+                pageTitle: doc.title,
+                crawlTimestamp: new Date().toISOString(),
+              };
+              savePdfEmbedding(pdfName, embeddingArtifactId, embeddingDataForArtifact);
+              await logger.logEmbeddingSuccess();
+            } catch (error) {
+              await logger.logEmbeddingFailure();
+              console.error(`[Content Processor PDF] Failed to create embedding for doc ${doc.title} (hash: ${doc.contentHash}):`, error);
+            }
+          };
+        } else {
+          const pageData = item as UrlPageEmbeddingData;
+          for (let j = 0; j < pageData.processedUrlChunks.length; j++) {
+            const chunk = pageData.processedUrlChunks[j];
+            yield async () => {
+              if (!chunk.originalText || !chunk.documentId) {
+                 console.warn(`[Embedding Creation URL] Skipped: Invalid chunk for embedding`, chunk.documentId);
+                 return;
+              }
+              try {
+                await logger.logEmbeddingAttempt();
+                const embeddingResult = (await embeddingInQueue(
+                  chunk.originalText,
+                  pageData.sourceUrl,
+                  `${chunk.documentId}_embed_data_for_summary_url_${j}`
+                )) as unknown as EmbeddingQueueResult | null;
+
+                if (!embeddingResult || !embeddingResult.vector) {
+                    console.warn(`[Embedding Creation URL] Embedding vector is null for chunk ${chunk.documentId}.`);
+                    await logger.logEmbeddingFailure();
+                    return;
+                }
+                chunk.embeddingVector = embeddingResult.vector;
+                chunk.embeddingLlmPrompt = embeddingResult.prompt;
+                chunk.embeddingLlmResponse = embeddingResult.fullLlmResponse;
+                
+                const sessionDoc = urlDocumentsDataForSession.find(d => d.contentHash === chunk.documentId);
+                if (sessionDoc) {
+                    sessionDoc.embedding = embeddingResult.vector;
+                }
+
+                await logger.logEmbeddingSuccess();
+              } catch (error) {
+                await logger.logEmbeddingFailure();
+                console.error(`[Content Processor URL] Failed to create embedding for chunk ${chunk.documentId} from ${pageData.sourceUrl}:`, error);
               }
             };
-
-            const docPdfName = extractPdfNameFromPdfUrl(doc.source as string);
-            if (docPdfName) {
-              savePdfEmbedding(docPdfName, embeddingArtifactId, embeddingData);
-            } else {
-              saveUrlEmbedding(doc.source as string, embeddingArtifactId, embeddingData);
-            }
-            await logger.logEmbeddingSuccess();
-            finalLoggedEmbeddings.push({ 
-                ...embeddingData, 
-                originalSourceUrl: doc.source, 
-            });
-          } catch (error) {
-            await logger.logEmbeddingFailure();
-            console.error(`[Content Processor] Failed to create embedding for LLM-defined doc ${doc.title}:`, error);
           }
-        };
+        }
       }
     };
     await runConcurrentTasks(embeddingTaskGenerator, embeddingCreationConcurrency);
-
-    const manifestDataBySource: Record<string, { 
-        llmDefinedChunks: TextChunk[],
-        documents: DocumentData[],
-        embeddings: any[]
-    }> = {};
-
-    llmDefinedChunksForManifest.forEach(chunk => {
-      const sourceKey = getSourceKey(chunk.sourcePageUrl);
-      if (!manifestDataBySource[sourceKey]) {
-        manifestDataBySource[sourceKey] = { llmDefinedChunks: [], documents: [], embeddings: [] };
-      }
-      manifestDataBySource[sourceKey].llmDefinedChunks.push(chunk);
-    });
-
-    finalDocuments.forEach(doc => {
-      const sourceKey = getSourceKey(doc.source as string);
-      if (!manifestDataBySource[sourceKey]) {
-        manifestDataBySource[sourceKey] = { llmDefinedChunks: [], documents: [], embeddings: [] };
-      }
-      manifestDataBySource[sourceKey].documents.push(doc);
-    });
-
-    finalLoggedEmbeddings.forEach(emb => {
-      const sourceKey = getSourceKey(emb.originalSourceUrl);
-       if (!manifestDataBySource[sourceKey]) {
-        manifestDataBySource[sourceKey] = { llmDefinedChunks: [], documents: [], embeddings: [] };
-      }
-      manifestDataBySource[sourceKey].embeddings.push(emb);
-    });
     
+    for (const [sourceUrl, pageData] of Array.from(urlPageEmbeddingsMap.entries())) {
+      saveUrlPageEmbeddingsArtifact(sourceUrl, pageData);
+    }
+
     for (const sourceKey in manifestDataBySource) {
       const data = manifestDataBySource[sourceKey];
+      data.documents.sort((a,b) => a.chunkOrder - b.chunkOrder);
       const pdfName = extractPdfNameFromPdfUrl(sourceKey); 
       if (pdfName) {
         savePdfManifest(pdfName, data);
@@ -195,32 +295,63 @@ export async function processContent(
         saveUrlManifest(sourceKey, data);
       }
     }
+    
+    const finalDocumentsForSession: DocumentData[] = [
+        ...(pdfDocumentsToEmbed.map(doc => ({...doc, embedding: (doc as any).embeddingVectorFromStorage }))),
+        ...urlDocumentsDataForSession
+    ];
+    
+    const embeddingsForSessionStorage: EmbeddingDataForSession[] = [];
+    finalDocumentsForSession.forEach(doc => {
+        if ((doc as any).embedding && doc.contentHash) {
+            embeddingsForSessionStorage.push({
+                content: doc.content,
+                embedding: (doc as any).embedding,
+                businessId: config.businessId,
+                source: doc.source as string,
+                type: doc.type as 'website_page' | 'pdf' | undefined,
+                category: doc.category,
+                contentHash: doc.contentHash,
+                metadata: {
+                    documentContentHash: doc.contentHash,
+                    pageTitle: doc.title,
+                    chunkOrderLLM: (doc as any).metadata?.chunkOrderInSource,
+                    preChunkSourceIndex: (doc as any).preChunkSourceIndex 
+                }
+            });
+        }
+    });
 
-    const presentCategoriesFromLLM = new Set(finalDocuments.map(doc => doc.category));
+    const presentCategoriesFromLLM = new Set(finalDocumentsForSession.map(doc => doc.category));
     const sessionData = {
       businessId: config.businessId,
       startTime: startTime,
       endTime: Date.now(),
       totalPages: processedPageUrls.length,
       successfulPages: processedRootUrls.length,
-      failedPages: (config.type === 'pdf' ? (config.pdfNames?.length || 0) : (config.websiteUrl ? 1:0) ) - processedRootUrls.length,
-      categories: Object.fromEntries(Array.from(presentCategoriesFromLLM).map(catName => [catName as string, finalDocuments.filter(d => d.category === catName).length])),
-      errors: [], 
+      failedPages: processedPageUrls.length - processedRootUrls.length,
+      totalLlmChunksProcessed: llmSegmentedChunks.length,
+      totalDocumentsCreated: finalDocumentsForSession.length,
+      totalEmbeddingsCreated: embeddingsForSessionStorage.length,
+      categories: Object.fromEntries(Array.from(presentCategoriesFromLLM).map(catName => [catName as string, finalDocumentsForSession.filter(d => d.category === catName).length])),
+      errors: [],
       missingInformation: Object.values(CATEGORY_DISPLAY_NAMES)
         .filter(displayName => !presentCategoriesFromLLM.has(displayName))
         .join(', '),
       confidenceStats: { 
-        averageConfidence: finalDocuments.reduce((sum, doc) => sum + (doc.confidence || 0), 0) / (finalDocuments.length || 1),
-        lowConfidenceCategories: finalDocuments
-          .filter(doc => doc.confidence && doc.confidence < CONFIDENCE_CONFIG.WARNING_THRESHOLD)
-          .map(doc => doc.category as string),
-        totalCategories: finalDocuments.length,
+        averageConfidence: finalDocumentsForSession.reduce((sum, doc) => sum + (doc.confidence || 0), 0) / (finalDocumentsForSession.length || 1),
+        minConfidence: Math.min(...finalDocumentsForSession.map(d => d.confidence || 1.0).filter(c => c !== undefined && c !== null)),
+        maxConfidence: Math.max(...finalDocumentsForSession.map(d => d.confidence || 0.0).filter(c => c !== undefined && c !== null)),
+        lowConfidenceDocuments: finalDocumentsForSession
+          .filter(doc => doc.confidence && doc.confidence < (CONFIDENCE_CONFIG.WARNING_THRESHOLD || 0.7))
+          .map(doc => ({ id: doc.contentHash, title: doc.title, category: doc.category, confidence: doc.confidence })),
+        totalDocuments: finalDocumentsForSession.length,
       }
     };
 
-    await CrawlSession.addSessionWithDocumentsAndEmbeddings(sessionData, finalDocuments, finalLoggedEmbeddings);
+    await CrawlSession.addSessionWithDocumentsAndEmbeddings(sessionData, finalDocumentsForSession, embeddingsForSessionStorage);
 
-    console.log(`[Content Processor] Processing of LLM-defined chunks completed in ${(Date.now() - startTime)/1000}s`);
+    console.log(`[Content Processor] Processing of ${llmSegmentedChunks.length} LLM-defined chunks completed in ${(Date.now() - startTime)/1000}s. ${finalDocumentsForSession.length} documents created, ${embeddingsForSessionStorage.length} embeddings processed.`);
     return 'success';
   } catch (error) {
     console.error('[Content Processor] Processing of LLM-defined chunks failed catastrophically:', error);
