@@ -78,7 +78,7 @@ export const processSingleUrlAndSaveArtifacts = async (
   
   await saveCleanedTextForUrl(currentUrlForArtifactsAndLogs, cleanedText);
 
-  const lowValueReason = isLowValueContent(cleanedText);
+  const lowValueReason = isLowValueContent(cleanedText, currentUrlForArtifactsAndLogs);
   if (lowValueReason) {
     await globalLoggerInstance.logUrlSkipped(currentUrlForArtifactsAndLogs, `Low value content: ${lowValueReason}`);
     return { 

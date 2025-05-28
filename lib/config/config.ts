@@ -93,7 +93,23 @@ export const URL_VALIDATION_CONFIG = {
     /\/register\//i,
     /\/password\//i,
     /\/reset\//i,
-    /\/logout\//i
+    /\/logout\//i,
+    // Spanish login/signup equivalents
+    /\/iniciar-sesion\//i,
+    /\/acceso\//i,
+    /\/registrarse\//i,
+    /\/registro\//i,
+    // Adding patterns for terms, privacy, legal, disclaimer, cookies
+    /\/terms([\w-]*conditions)?\//i,
+    /\/privacy([\w-]*policy)?\//i,
+    /\/legal\//i,
+    /\/disclaimer\//i,
+    /\/cookie([\w-]*policy)?\//i,
+    // Spanish equivalents
+    /\/condiciones\//i,
+    /\/privacidad\//i,
+    /\/aviso-legal\//i,
+    /\/politica-de-cookies\//i
   ]
 } as const;
 

@@ -1,0 +1,54 @@
+{
+  "prompt": "\n    Page Content from https://www.taxbne.com.au/ (Title: Tax accountant and business advisor - Y&S Accounting Brisbane) for business ID 0919f2b7-9af2-4094-b8b7-f7a70a59599a:\n    ---\n    [NAV_START]\nAbout Us\nOur Services\nResources\nBook appointment\nContact Us\nDashboard Signup Login\n[NAV_END]\nEN\n# Tax returns & tax accountants\nin Brisbane\nWe offer advice on running your business, tax returns, refunds & more.\nSee options\nBook appointment\n## Accounting services\nWe have a range of tax and specialist accounting services for individuals and small to medium sized businesses.\nPersonal tax returns\nYour tax return prepared by an experienced tax consultant.\nLearn more\nBusiness Advice\nWe can help you navigate the accounting and tax responsibilities that come with running a business.\n‍\nXero Health Check\nWith our Xero Health Check, we review your accounts on Xero to find issues, fix them, and help you maximise XERO to run your business.\nBusiness Registration\nWe can assist you start your own business in Australia, from validating your business idea, business plan review and more.\nBookkeeping\nWe can help you set up and manage your books, payroll & superannuation, to save you time and money.\nStart-Up Advice\nWe can help you define which business structure works better for your business: sole trader, partnership, company or trust.\n### Do you need help with your Tax Return?\nLearn More\n## What our customers say\nDiana Franco\nI can't recommend Sebastian enough. He is a great accountant! He is very diligent, efficient and always goes above and beyond. Excellent service! Great for small businesses accounting.\nOrlando Guerra\nVery knowledgeable and professional. My return was filed quickly and I got the money back within weeks.\nCristian Campo\nVery knowledgeable and easy to get in contact with. Excellent customer service. Highly recommended!\nCatalina Montoya\nI highly recommend Y&S accounting, and specially to Sebastian Garcia.They have an excellent customer service, they always work in a legar way trying to be the most diligent and helpful as much as possible. Looking after their economical costumer wellness.\nJuan Pablo Vasquez\nThis is the 4th year making my tax return with no  \n    ---\n    Segment the above into distinct semantic chunks (target ~200 words each, which is roughly 266 tokens) and categorize each using: services offered, pricing or quotes, contact, booking or scheduling, about / trust-building, faq, terms & conditions / legal policies, General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories., Uncategorized.\n    Output JSON: [{chunkOrder, chunkText, category (numeric enum value for Category type), confidence (0.0-1.0), sourceUrl, pageTitle}]\n  ",
+  "response": {
+    "modelUsed": "mock-gpt-4o-segmenter",
+    "parsedChunks": [
+      {
+        "chunkOrder": 1,
+        "chunkText": "[NAV_START] About Us Our Services Resources Book appointment Contact Us Dashboard Signup Login [NAV_END] EN # Tax returns & tax accountants in Brisbane We offer advice on running your business, tax returns, refunds & more. See options Book appointment ## Accounting services We have a range of tax and specialist accounting services for individuals and small to medium sized businesses. Personal tax returns Your tax return prepared by an experienced tax consultant. Learn more Business Advice We can help you navigate the accounting and tax responsibilities that come with running a business. ‍ Xero Health Check With our Xero Health Check, we review your accounts on Xero to find issues, fix them, and help you maximise XERO to run your business. Business Registration We can assist you start your own business in Australia, from validating your business idea, business plan review and more. Bookkeeping We can help you set up and manage your books, payroll & superannuation, to save you time and money. Start-Up Advice We can help you define which business structure works better for your business: sole trader, partnership, company or trust. ### Do you need help with your Tax Return? Learn More ## What our customers say",
+        "category": 0,
+        "confidence": 0.89584952765913,
+        "sourceUrl": "https://www.taxbne.com.au/",
+        "pageTitle": "Tax accountant and business advisor - Y&S Accounting Brisbane",
+        "categoryName": "services offered"
+      },
+      {
+        "chunkOrder": 2,
+        "chunkText": "Diana Franco I can't recommend Sebastian enough. He is a great accountant! He is very diligent, efficient and always goes above and beyond. Excellent service! Great for small businesses accounting. Orlando Guerra Very knowledgeable and professional. My return was filed quickly and I got the money back within weeks. Cristian Campo Very knowledgeable and easy to get in contact with. Excellent customer service. Highly recommended! Catalina Montoya I highly recommend Y&S accounting, and specially to Sebastian Garcia.They have an excellent customer service, they always work in a legar way trying to be the most diligent and helpful as much as possible. Looking after their economical costumer wellness. Juan Pablo Vasquez This is the 4th year making my tax return with no issues and exceptional professionalisms. Strongly recommend them. About Us ## Y&S Accounting Brisbane Y&S Accounting proudly specialises in providing professional consulting and accounting services to the Latin American community in Australia. We can speak English, Spanish and Portuguese. Learn more ## Resources Stay up to date with the latest accounting and tax insights in Australia 5 min read ### Maximising Your Tax Savings: The Most Common Expenses That Are Tax Deductible in Australia When it comes to managing your",
+        "category": 0,
+        "confidence": 0.8037703888717421,
+        "sourceUrl": "https://www.taxbne.com.au/",
+        "pageTitle": "Tax accountant and business advisor - Y&S Accounting Brisbane",
+        "categoryName": "services offered"
+      },
+      {
+        "chunkOrder": 3,
+        "chunkText": "finances, it's important to take advantage of every opportunity to minimize your tax liability. One effective way to do this is by claiming tax deductions for eligible expenses. In Australia, there are numerous expenses that can be deducted, allowing individuals and businesses to retain more of their hard-earned money. In this blog post, we will explore the most common expenses that are tax deductible in Australia, empowering you to make the most of these opportunities. Read more 5 min read ### Tax treatment of trader vs investor There is no fixed list of rules to determine who is and who is not a trader. To accurately determine if you are a trader, you must consider your intention in undertaking the activity and the objective facts of the activity. Even if you have determined that you are a trader, the ATO may not agree with your interpretation. Read more Deducciones 5 min read ### Tax Deductions for Employees in the Cleaning Industry We understand how hard you work every day and that you deserve to keep as much of your hard-earned income as possible. However, are you aware that each year you might be unnecessarily giving money away to the tax",
+        "category": 1,
+        "confidence": 0.862106929813967,
+        "sourceUrl": "https://www.taxbne.com.au/",
+        "pageTitle": "Tax accountant and business advisor - Y&S Accounting Brisbane",
+        "categoryName": "pricing or quotes"
+      },
+      {
+        "chunkOrder": 4,
+        "chunkText": "office? If you don't meticulously handle your annual tax return and claim all the deductions you're entitled to as a cleaner, you could be losing a significant amount of money. Read more ## Frequently asked questions Individual Tax returns ¿How long does the Tax Return process takes? Electronic tax returns are usually processed by the ATO within two weeks. We expect that most refunds will be out within 10 working days after lodgement of your tax return, but some people will wait a bit longer for the ATO to get it done. I work with ABN and Tax File Number, Does it affect my Tax Return declaration? ABNs are Australian Business Numbers. They are issued to businesses operating in Australia and to self-employed people. ABNs are required on invoices for work performed. For example, if you are a carpenter, fundraiser, or personal trainer, you will need an ABN.A TFN is a Tax File Number which is required by anybody who wants to work in Australia. This number is given to all employers when you start working and your employer will then deduct tax from your income under the PAYG ( Pay As You Go ) system. People usually don't have",
+        "category": 2,
+        "confidence": 0.9054352057490833,
+        "sourceUrl": "https://www.taxbne.com.au/",
+        "pageTitle": "Tax accountant and business advisor - Y&S Accounting Brisbane",
+        "categoryName": "contact"
+      },
+      {
+        "chunkOrder": 5,
+        "chunkText": "to worry about having to pay taxes at the end of the year because their employers take taxes out of their paycheck. In the case of an ABN, tax is not taken at source, the person raising the invoice and receiving the payment is receiving full payment for products or services so a portion of that income should be retained to meet the tax liability at the end of the financial year.People understand what their obligations are when they work on either the TFN or ABN model. The confusion usually only happens when people have two jobs in one year and one is TFN and the other is ABN, or if they have a full-time job that is TFN but also have a small business that generates ABN income Do I have to declare overseas income? If you are an Australian resident for tax purposes and hold a temporary visa in Australia, you are only required to declare your Australian-source income in your tax return. If you are an Australian resident for tax purposes and are a permanent resident or Australian Citizen, you are required to declare your worldwide income in your tax return. I have to buy tools and",
+        "category": 3,
+        "confidence": 0.7726473649465371,
+        "sourceUrl": "https://www.taxbne.com.au/",
+        "pageTitle": "Tax accountant and business advisor - Y&S Accounting Brisbane",
+        "categoryName": "booking or scheduling"
+      }
+    ],
+    "originalContentCharacterLength": 8115
+  }
+}

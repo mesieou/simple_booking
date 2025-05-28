@@ -1,0 +1,36 @@
+{
+  "prompt": "\n    Page Content from https://www.taxbne.com.au/about-us (Title: About us) for business ID 0919f2b7-9af2-4094-b8b7-f7a70a59599a:\n    ---\n    [NAV_START]\nAbout Us\nOur Services\nResources\nBook appointment\nContact Us\nDashboard Signup Login\n[NAV_END]\nEN\n# Y&S Accounting Brisbane\nY&S Accounting proudly specialises in providing professional consulting and accounting services to the Latin American community in Australia. We can speak English, Spanish and Portuguese.\n10,000+\nTax returns processed\n10+\nYears of experience\n100+\nVerified reviews\n## Our Results\nY&S Accounting has helped several businesses and thousands of individuals to stay compliant with the ATO and to achieve their financial and business goals.\n### Our Mission\nTo provide superior quality accounting services for the wellbeing of the Latin American community in Australia.\n### Our Vision\nTo become Australia’s most trusted accountancy and business advisory service for Latin American immigrants. We aim to achieve our vision by embracing the following statements:\nEquality of opportunities for people with a multicultural background.\nCloud accounting and automation are key to business success.\nWe believe starting and managing a business, should be simple and stress-free. Let’s work together\nBook appointment\n## Our Team\nY&S Accounting is a company established since 2008, with the aim of providing accounting and tax services to individuals and businesses.\nYaritza Salazar\nFounder and Director\nBio\nYaritza has more than 10 years of experience in the provision of financial/accounting services. She graduated from Bond University in 2004 with a bachelor of commerce majoring in accounting and completed her CPA in 2007.\nThe combined exposure to high net worth clients at various companies throughout her career, as well as individuals and businesses at her own practice has given her a very broad view of accounting and taxation matters.\nProfessional Qualifications\nBachelor of Commerce – Major in Accounting\nCPA Member\nRegistered Tax Agent\nASIC Registered SMSF Auditor\nASIC Registered Agent\nSebastian Garcia\nBrisbane Manager\nBio\nSebastian provides a comprehensive range of  \n    ---\n    Segment the above into distinct semantic chunks (target ~200 words each, which is roughly 266 tokens) and categorize each using: services offered, pricing or quotes, contact, booking or scheduling, about / trust-building, faq, terms & conditions / legal policies, General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories., Uncategorized.\n    Output JSON: [{chunkOrder, chunkText, category (numeric enum value for Category type), confidence (0.0-1.0), sourceUrl, pageTitle}]\n  ",
+  "response": {
+    "modelUsed": "mock-gpt-4o-segmenter",
+    "parsedChunks": [
+      {
+        "chunkOrder": 1,
+        "chunkText": "[NAV_START] About Us Our Services Resources Book appointment Contact Us Dashboard Signup Login [NAV_END] EN # Y&S Accounting Brisbane Y&S Accounting proudly specialises in providing professional consulting and accounting services to the Latin American community in Australia. We can speak English, Spanish and Portuguese. 10,000+ Tax returns processed 10+ Years of experience 100+ Verified reviews ## Our Results Y&S Accounting has helped several businesses and thousands of individuals to stay compliant with the ATO and to achieve their financial and business goals. ### Our Mission To provide superior quality accounting services for the wellbeing of the Latin American community in Australia. ### Our Vision To become Australia’s most trusted accountancy and business advisory service for Latin American immigrants. We aim to achieve our vision by embracing the following statements: Equality of opportunities for people with a multicultural background. Cloud accounting and automation are key to business success. We believe starting and managing a business, should be simple and stress-free. Let’s work together Book appointment ## Our Team Y&S Accounting is a company established since 2008, with the aim of providing accounting and tax services to individuals and businesses. Yaritza Salazar Founder and Director Bio Yaritza has more than 10 years",
+        "category": 0,
+        "confidence": 0.7863233583138806,
+        "sourceUrl": "https://www.taxbne.com.au/about-us",
+        "pageTitle": "About us",
+        "categoryName": "services offered"
+      },
+      {
+        "chunkOrder": 2,
+        "chunkText": "of experience in the provision of financial/accounting services. She graduated from Bond University in 2004 with a bachelor of commerce majoring in accounting and completed her CPA in 2007. The combined exposure to high net worth clients at various companies throughout her career, as well as individuals and businesses at her own practice has given her a very broad view of accounting and taxation matters. Professional Qualifications Bachelor of Commerce – Major in Accounting CPA Member Registered Tax Agent ASIC Registered SMSF Auditor ASIC Registered Agent Sebastian Garcia Brisbane Manager Bio Sebastian provides a comprehensive range of professional accounting and business services to Y&S Accounting’s clients – all with the aim of helping them succeed in business. He has over 8 years of accounting experience between Argentina and Australia. Sebastian works with individuals and small to medium enterprises to structure their tax, accounts and finances to maximise financial and business outcomes and to adopt effective accounting software and systems. Professional Qualifications Bachelor Degree in Management majoring in Economic and Finance CPA Associate Certificate IV in Small Business Management Xero Certified Advisor Lorena Avendano Accounting Clerk Professional Qualifications Bachelor of Accounting Xero Certified Advisor Alison Cifuentes Accounting Clerk Professional Qualifications Bachelor",
+        "category": 0,
+        "confidence": 0.8034925381420799,
+        "sourceUrl": "https://www.taxbne.com.au/about-us",
+        "pageTitle": "About us",
+        "categoryName": "services offered"
+      },
+      {
+        "chunkOrder": 3,
+        "chunkText": "of Accounting Graduate Diploma in Finance Xero Certified Advisor Eliana Pena Accounting Clerk Professional Qualifications Bachelor of Accounting Xero Certified Advisor Thiago Noro Messias Accounting Clerk Professional Qualifications Bachelor of Accounting Xero Certified Advisor Y&S Accounting proudly specialises in providing professional consulting and accounting services to the Latin American community in Australia since 2008. Accounting services Personal tax returns Business advise Xero health check Business registration Bookkeeping Start-up advise Address: Level 38, 71 Eagle St, Brisbane QLD 4000 Contact: 1300 189 682 brisbane@ysaccounting.com.au © 2023 Y&S Accounting Brisbane. All right reserved. Privacy Policy Terms of Service Cookies Settings",
+        "category": 1,
+        "confidence": 0.8345783477898414,
+        "sourceUrl": "https://www.taxbne.com.au/about-us",
+        "pageTitle": "About us",
+        "categoryName": "pricing or quotes"
+      }
+    ],
+    "originalContentCharacterLength": 3527
+  }
+}
