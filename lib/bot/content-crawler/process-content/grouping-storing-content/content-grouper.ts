@@ -1,5 +1,5 @@
-import { CategorizedSection, GroupedContent, Category, CATEGORY_DISPLAY_NAMES } from '../../config';
-import { normalizeText } from '../../utils';
+import { CategorizedSection, GroupedContent, CATEGORY_DISPLAY_NAMES } from '@/lib/config/config';
+import { normalizeText } from '@/lib/bot/content-crawler/utils';
 
 function hashParagraph(text: string): string {
   let hash = 0, i, chr;

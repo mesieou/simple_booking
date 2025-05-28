@@ -1,14 +1,12 @@
 import { cleanAndExtractMainContent } from './htmlCleaner';
-import { filterAndSaveContent } from './contentFilter';
+// import { filterAndSaveContent } from './contentFilter'; // Removed as it's unused
 import { detectLanguage } from '../utils';
 
 /**
- * Fetches a page, cleans its HTML, detects language, and optionally saves the content
+ * Fetches a page, cleans its HTML, and detects language.
  */
 export async function fetchCleanAndDetectLanguageFromPage(
-  url: string,
-  index?: number,
-  saveToFile: boolean = false
+  url: string
 ): Promise<{ html: string | null; language: string }> {
   try {
     const response = await fetch(url);
@@ -17,13 +15,11 @@ export async function fetchCleanAndDetectLanguageFromPage(
       return { html: null, language: 'unknown' };
     }
 
-    const html = await response.text();
-    const cleanedHtml = cleanAndExtractMainContent(html);
+    const htmlContent = await response.text(); // Renamed to avoid conflict with return object property
+    const cleanedHtml = cleanAndExtractMainContent(htmlContent);
     const language = detectLanguage(url, cleanedHtml);
 
-    if (saveToFile && index !== undefined) {
-      await filterAndSaveContent(cleanedHtml, url, index);
-    }
+    // Removed unused saveToFile logic and filterAndSaveContent call
 
     return { html: cleanedHtml, language };
   } catch (error) {

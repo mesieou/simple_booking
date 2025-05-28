@@ -1,7 +1,9 @@
 import { parseLinksFromHtml } from './linkParser';
-import { fetchRootPage } from '../fetchRootPage';
-import { fetchHtml } from '../fetchHtml';
+// import { fetchRootPage } from '../fetchRootPage'; // No longer needed if fetchLinksRecursively is removed
+import { fetchRawHtmlContent } from '../fetchHtml';
 import { detectLanguage, runConcurrentTasks } from '../../utils';
+import { Mutex } from 'async-mutex';
+import { RobotsRules, isUrlAllowed } from '../robotsParser';
 
 // Utility to check if URLs belong to the same domain
 function isSameDomain(url: string, base: URL): boolean {
@@ -12,42 +14,30 @@ function isSameDomain(url: string, base: URL): boolean {
   }
 }
 
-export async function fetchLinksRecursively(url: string, maxDepth: number, currentDepth: number = 0): Promise<string[]> {
-  if (currentDepth >= maxDepth) return [];
-
-  const html = await fetchRootPage(url);
-  if (!html) return [];
-
-  const links = parseLinksFromHtml(html, url);
-  const allLinks = new Set(links);
-
-  for (const link of links) {
-    const nestedLinks = await fetchLinksRecursively(link, maxDepth, currentDepth + 1);
-    nestedLinks.forEach(l => allLinks.add(l));
-  }
-
-  return Array.from(allLinks);
-}
+// Removed unused fetchLinksRecursively function
+// export async function fetchLinksRecursively(...) { ... }
 
 // Function for concurrent, breadth-first crawling
 export async function getAllDomainLinksRecursive(
   startUrl: string,
   maxPages: number = 50,
   concurrency: number = 5,
-  mainLanguage?: string,
   maxDepth: number = 2,
-  skipProductPages: boolean = true,
-  skipBlogPages: boolean = true
-): Promise<string[]> {
+  robotsRules: RobotsRules | null
+): Promise<{ allAttemptedAbsoluteUrls: string[], processableDomainUrls: string[] }> {
   const visited = new Set<string>();
   const queue: { url: string, depth: number }[] = [{ url: startUrl, depth: 0 }];
   const base = new URL(startUrl);
+  const allAttemptedOrConsideredUrls = new Set<string>();
+  allAttemptedOrConsideredUrls.add(new URL(startUrl, base.href).href);
   let processedCount = 0;
+  const mutex = new Mutex();
 
   // Mutex-like mechanism for safe queue and visited access
   const queueManager = {
     async accessQueue<T>(fn: () => T): Promise<T> {
-      return fn(); // Use async-mutex in production for thread safety
+      // Using mutex.runExclusive to ensure fn() is executed exclusively.
+      return mutex.runExclusive(async () => fn());
     }
   };
 
@@ -58,6 +48,16 @@ export async function getAllDomainLinksRecursive(
         if (!next) break;
         const { url, depth } = next;
         const normUrl = new URL(url).href;
+
+        allAttemptedOrConsideredUrls.add(normUrl);
+
+        // Check robots.txt for the URL we are about to process (normUrl)
+        // This is important if the startUrl itself or URLs added from sitemap (if not pre-filtered by sitemap parser) are disallowed.
+        if (!isUrlAllowed(normUrl, robotsRules, base.href)) {
+          console.log(`[Crawler] Skipped (disallowed by robots.txt): ${normUrl}`);
+          yield () => Promise.resolve(null);
+          continue;
+        }
 
         if (depth >= maxDepth) {
           console.log(`[Crawler] Skipped (maxDepth): ${normUrl}`);
@@ -80,23 +80,32 @@ export async function getAllDomainLinksRecursive(
 
         yield async () => {
           try {
-            const html = await fetchHtml(normUrl);
-            if (!html) return null;
-
-            if (mainLanguage && detectLanguage(normUrl, html) !== mainLanguage) {
+            const fetchResult = await fetchRawHtmlContent(normUrl);
+            if (!fetchResult.success || !fetchResult.html) {
+              console.warn(`[LinkCrawler] Failed to fetch HTML for ${normUrl}: ${fetchResult.errorMessage || fetchResult.errorStatus}`);
               return null;
             }
+            const html = fetchResult.html;
 
-            const links = parseLinksFromHtml(html, base.href).filter(link => {
+            let discoveredLinksRaw = parseLinksFromHtml(html, base.href);
+            discoveredLinksRaw.forEach(link => allAttemptedOrConsideredUrls.add(link));
+
+            let discoveredLinksFiltered = discoveredLinksRaw.filter(link => {
               if (!isSameDomain(link, base)) return false;
+              // Further filter by robots.txt before adding to queue
+              if (!isUrlAllowed(link, robotsRules, base.href)) {
+                console.log(`[Crawler] Link from page ${normUrl} disallowed by robots.txt: ${link}`);
+                return false;
+              }
               return true;
             });
-            if (links.length > 0) {
-              console.log(`[Crawler] Found and enqueuing ${links.length} links from ${normUrl}`);
+            
+            if (discoveredLinksFiltered.length > 0) {
+              console.log(`[Crawler] Found and enqueuing ${discoveredLinksFiltered.length} allowed links from ${normUrl}`);
             }
 
             await queueManager.accessQueue(() => {
-              for (const link of links) {
+              for (const link of discoveredLinksFiltered) {
                 if (!visited.has(link) && !queue.some(q => q.url === link)) {
                   queue.push({ url: link, depth: depth + 1 });
                 }
@@ -116,9 +125,9 @@ export async function getAllDomainLinksRecursive(
   console.log(`[Crawler] Starting link extraction from: ${startUrl}`);
   const results = await runConcurrentTasks(urlProcessingTaskGenerator(), concurrency);
   const filteredResults = results.filter((r): r is string => r !== null);
-  filteredResults.forEach(link => {
-    console.log(`[Crawler] Added to crawl list: ${link}`);
-  });
-  console.log(`[Crawler] Link extraction completed. Found ${filteredResults.length} links.`);
-  return filteredResults;
+  console.log(`[Crawler] Link extraction completed. Found ${filteredResults.length} processable domain links. Encountered ${allAttemptedOrConsideredUrls.size} unique URLs in total.`);
+  return { 
+    allAttemptedAbsoluteUrls: Array.from(allAttemptedOrConsideredUrls),
+    processableDomainUrls: filteredResults 
+  };
 }

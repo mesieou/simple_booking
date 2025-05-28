@@ -1,51 +1,64 @@
-import { DEFAULT_HEADERS } from '../config';
+import { DEFAULT_HEADERS, URL_FETCHER_CONFIG } from '@/lib/config/config';
 
-async function handleRedirect(response: Response, originalUrl: string): Promise<string | null> {
-  const redirectUrl = response.headers.get('location');
-  if (!redirectUrl) return null;
+interface FetchResult {
+  success: boolean;
+  html?: string;
+  finalUrl?: string;
+  errorStatus?: number;
+  errorMessage?: string;
+  isRedirect?: boolean;
+}
 
-  const originalUrlObj = new URL(originalUrl);
-  const redirectUrlObj = new URL(redirectUrl, originalUrl);
-  
-  if (redirectUrlObj.hostname !== originalUrlObj.hostname) {
-    console.log(`[Crawler] Blocked external redirect from ${originalUrl} to ${redirectUrl}`);
-    return null;
+const MAX_REDIRECTS_FALLBACK = 5;
+const XHTML_CONTENT_TYPE_FALLBACK = 'application/xhtml+xml';
+
+// Function to fetch HTML content from a URL, handling redirects internally.
+export async function fetchRawHtmlContent(
+  initialUrl: string,
+  redirectCount: number = 0
+): Promise<FetchResult> {
+
+  if (redirectCount > MAX_REDIRECTS_FALLBACK) {
+    return { success: false, errorMessage: 'Maximum redirects exceeded', finalUrl: initialUrl };
   }
 
-  return fetchHtml(redirectUrlObj.href);
-}
-
-function isValidContentType(contentType: string | null): boolean {
-  return contentType?.includes('text/html') ?? false;
-}
-
-// Function to fetch HTML content from a URL
-async function fetchHtml(url: string): Promise<string | null> {
   try {
-    const response = await fetch(url, {
+    const response = await fetch(initialUrl, {
       headers: DEFAULT_HEADERS,
-      redirect: 'manual' // Don't automatically follow redirects
+      // Assuming URL_FETCHER_CONFIG.REDIRECT.MANUAL is guaranteed to exist by the linter errors.
+      redirect: URL_FETCHER_CONFIG.REDIRECT.MANUAL, 
     });
 
-    // Check if we got a redirect
+    // Handle redirects
     if (response.status >= 300 && response.status < 400) {
-      return handleRedirect(response, url);
+      const location = response.headers.get('location');
+      if (location) {
+        const newUrl = new URL(location, initialUrl).toString();
+        return fetchRawHtmlContent(newUrl, redirectCount + 1); // Recursive call for redirect
+      } else {
+        return { success: false, errorStatus: response.status, errorMessage: 'Redirect location header missing', finalUrl: initialUrl, isRedirect: true };
+      }
     }
 
     if (!response.ok) {
-      console.log(`[Crawler] Failed to fetch ${url}: ${response.status}`);
-      return null;
+      return { success: false, errorStatus: response.status, errorMessage: `HTTP error: ${response.status}`, finalUrl: initialUrl };
     }
 
-    if (!isValidContentType(response.headers.get('content-type'))) {
-      return null;
+    const contentType = response.headers.get('content-type');
+    // Assuming URL_FETCHER_CONFIG.CONTENT_TYPES.HTML is guaranteed to exist.
+    const htmlContentType = URL_FETCHER_CONFIG.CONTENT_TYPES.HTML;
+
+    const acceptedHtmlTypes = [htmlContentType, XHTML_CONTENT_TYPE_FALLBACK];
+    
+    if (!contentType || !acceptedHtmlTypes.some(type => type && contentType.includes(type))) {
+      return { success: false, errorMessage: `Skipped non-HTML content type: ${contentType}`, finalUrl: initialUrl };
     }
 
-    return await response.text();
-  } catch (error) {
-    console.error(`[Crawler] Error fetching ${url}:`, error);
-    return null;
+    const html = await response.text();
+    return { success: true, html, finalUrl: initialUrl };
+
+  } catch (error: any) {
+    console.error(`[fetchRawHtmlContent] Error fetching ${initialUrl}:`, error);
+    return { success: false, errorMessage: error.message || 'Unknown fetch error', finalUrl: initialUrl };
   }
-}
-
-export { fetchHtml }; 
+} 

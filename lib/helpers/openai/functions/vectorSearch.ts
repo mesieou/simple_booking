@@ -1,6 +1,6 @@
 import { Embedding } from "@/lib/models/embeddings";
 import { Document } from "@/lib/models/documents";
-import { VALID_CATEGORIES } from "@/lib/bot/content-crawler/config";
+import { VALID_CATEGORIES } from "@/lib/config/config";
 import { executeChatCompletion, OpenAIChatMessage } from "@/lib/helpers/openai/openai-core";
 
 function cosineSimilarity(vecA: number[], vecB: number[]): number {

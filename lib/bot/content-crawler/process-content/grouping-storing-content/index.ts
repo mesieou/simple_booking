@@ -1,149 +1,229 @@
-import { CrawlConfig, CategorizedContent, VALID_CATEGORIES, CONFIDENCE_CONFIG, Category, CATEGORY_DISPLAY_NAMES } from '../../config';
-import { groupContentByCategory } from './content-grouper';
-import { generateContentHash } from '../../utils';
+import { CrawlConfig, CategorizedContent, CONFIDENCE_CONFIG, Category, CATEGORY_DISPLAY_NAMES, TextChunk, defaultConfig, ExtractedPatterns } from '@/lib/config/config';
+import { generateContentHash, runConcurrentTasks } from '@/lib/bot/content-crawler/utils';
 import { CrawlSession } from '@/lib/models/crawl-session';
-import { logger } from '../logger';
+import { logger } from '@/lib/bot/content-crawler/process-content/logger';
 import { embeddingInQueue } from './embedding-creator';
 import { DocumentData } from '@/lib/models/documents';
+import {
+    savePdfInitialCategories, saveUrlInitialCategories, savePdfDocument, saveUrlDocument,
+    savePdfEmbedding, saveUrlEmbedding, savePdfManifest, saveUrlManifest
+} from '../logger-artifact-savers';
+
+const extractPdfNameFromPdfUrl = (pdfUrl: string | undefined): string | null => {
+    if (typeof pdfUrl !== 'string' || !pdfUrl.startsWith('pdf:')) return null;
+    const hashIndex = pdfUrl.indexOf('#');
+    const nameEndIndex = hashIndex !== -1 ? hashIndex : undefined;
+    return pdfUrl.substring(4, nameEndIndex);
+};
+
+const getSourceKey = (url: string | undefined): string => {
+  if (typeof url !== 'string' || !url) {
+    console.warn('[getSourceKey] Received invalid URL input:', url);
+    return 'unknown_source_key'; 
+  }
+  const pdfName = extractPdfNameFromPdfUrl(url);
+  if (pdfName) return `pdf:${pdfName}`;
+  return url; 
+};
 
 export async function processContent(
   config: CrawlConfig, 
-  categorizedSections: CategorizedContent[], 
-  urls: string[], 
-  processedUrls: string[]
+  llmDefinedCategorizedChunks: CategorizedContent[], 
+  processedPageUrls: string[],
+  processedRootUrls: string[],
+  llmDefinedChunksForManifest: TextChunk[] 
 ): Promise<string> {
   try {
-    console.log('[Content Processor] Starting content processing...');
+    console.log('[Content Processor] Processing LLM-defined chunks...');
     const startTime = Date.now();
+    const finalDocuments: DocumentData[] = []; 
+    const finalLoggedEmbeddings: Array<any & { originalSourceUrl: string }> = [];
 
-    // 1. Group content by category (for document creation only)
-    const { categorizedContent } = groupContentByCategory(categorizedSections);
-
-    // Compute missing categories for missingInformation using categorizedSections (original logic)
-    const presentCategories = new Set(categorizedSections.map(section => section.category));
-    const missingCategories = Object.values(Category)
-      .filter(cat => typeof cat === 'number' && !presentCategories.has(cat))
-      .map(cat => CATEGORY_DISPLAY_NAMES[cat as Category]);
-
-    // 2. Prepare arrays for documents and embeddings
-    const documents: DocumentData[] = [];
-    const embeddings: any[] = [];
-
-    // --- Debug: Log all document and section categories before embedding creation ---
-    console.log('Document categories:', documents.map(d => d.category));
-    console.log('Section categories:', categorizedSections.map(s => CATEGORY_DISPLAY_NAMES[s.category]));
-
-    // --- Document creation: one per category ---
-    for (const [categoryName, paragraphs] of Object.entries(categorizedContent)) {
-      const categoryEntry = Object.entries(CATEGORY_DISPLAY_NAMES)
-        .find(([_, name]) => name === categoryName);
-      
-      if (!categoryEntry || paragraphs.length === 0) {
-        logger.logUrlFiltered(categoryName, 'No content to process');
-        continue;
+    const initialCategoriesBySource: Record<string, { categories: Set<Category>, isPdf: boolean, pdfName?: string, representativeUrl: string }> = {};
+    llmDefinedCategorizedChunks.forEach(section => {
+      if (!section.url || section.category === undefined) {
+        console.warn('[Content Processor] Skipping LLM chunk due to invalid URL or category:', section);
+        return; 
       }
+      const sourceKey = getSourceKey(section.url);
+      if (!initialCategoriesBySource[sourceKey]) {
+        const pdfName = extractPdfNameFromPdfUrl(section.url);
+        initialCategoriesBySource[sourceKey] = { 
+            categories: new Set(), 
+            isPdf: !!pdfName, 
+            pdfName: pdfName ?? undefined, 
+            representativeUrl: pdfName ? `pdf:${pdfName}` : sourceKey 
+        };
+      }
+      initialCategoriesBySource[sourceKey].categories.add(section.category);
+    });
 
-      const category = Number(categoryEntry[0]) as Category;
+    for (const key in initialCategoriesBySource) {
+      const item = initialCategoriesBySource[key];
+      const categoryNames = Array.from(item.categories).map(c => CATEGORY_DISPLAY_NAMES[c as Category] || 'Unknown Category');
+      if (item.isPdf && item.pdfName) {
+        savePdfInitialCategories(item.pdfName, { source: item.representativeUrl, categories: categoryNames });
+      } else {
+        saveUrlInitialCategories(item.representativeUrl, { source: item.representativeUrl, categories: categoryNames });
+      }
+    }
 
+    for (const section of llmDefinedCategorizedChunks) {
+      await logger.logDocumentCreationAttempt(); 
+
+      const categoryName = CATEGORY_DISPLAY_NAMES[section.category as Category] || 'Unknown Category';
+      
       try {
-        console.log(`[Content Processor] Processing category: ${categoryName}`);
-        // Calculate average confidence for this category (no longer used for filtering)
-        const categorySections = categorizedSections.filter(section => section.category === category);
-        // Prepare document
-        const combinedContent = paragraphs.join('\n\n');
-        const contentHash = generateContentHash(combinedContent, 'en');
-        documents.push({
+        const contentHash = generateContentHash(section.content, 'en');
+
+        const document: DocumentData = {
           businessId: config.businessId,
-          content: combinedContent,
-          title: `${categoryName} - Website Content`,
-          source: config.type === 'pdf' ? config.pdfNames?.[0] : config.websiteUrl,
-          type: config.type || 'website_page',
+          content: section.content,
+          title: `${categoryName} - ${section.url}`.substring(0, 250),
+          source: section.url, 
+          type: config.type || (section.url.startsWith('pdf:') ? 'pdf' : 'website_page'),
           category: categoryName,
           contentHash,
-          confidence: categorySections.reduce((sum, section) => sum + section.confidence, 0) / categorySections.length,
-        });
+          confidence: section.confidence,
+          sessionId: undefined,
+        };
+        finalDocuments.push(document);
+
+        const sectionPdfName = extractPdfNameFromPdfUrl(section.url);
+        if (sectionPdfName) {
+          savePdfDocument(sectionPdfName, contentHash, document);
+        } else {
+          saveUrlDocument(section.url, contentHash, document);
+        }
+        await logger.logDocumentCreated();
+        await logger.logCategoryProcessed(categoryName);
+
       } catch (error) {
-        logger.logUrlSkipped(categoryName, error instanceof Error ? error.message : String(error));
-        console.error(`[Content Processor] Failed to process category ${categoryName}:`, error);
+        await logger.logDocumentFailed();
+        console.error(`[Content Processor] Failed to create document for LLM chunk from ${section.url}, category ${categoryName}:`, error);
+        await logger.logCategorizationFailed();
+      }
+    }
+    
+    const embeddingCreationConcurrency = config.concurrency ?? defaultConfig.concurrency;
+    const embeddingTaskGenerator = async function*(): AsyncGenerator<() => Promise<void>> {
+      for (let i = 0; i < finalDocuments.length; i++) {
+        const doc = finalDocuments[i];
+        yield async () => {
+          if (!doc.content || !doc.source || !doc.contentHash) {
+             console.warn(`[Embedding Creation] Skipped: Invalid document for embedding (index ${i})`, doc.title);
+             return;
+          }
+          try {
+            await logger.logEmbeddingAttempt();
+            const embeddingVector = await embeddingInQueue(
+              doc.content,
+              doc.source, 
+              doc.contentHash 
+            );
+            const embeddingArtifactId = `${doc.contentHash}_llm_chunk_emb`; 
+            const embeddingData = { 
+              content: doc.content,
+              embedding: embeddingVector,
+              category: doc.category,
+              metadata: {
+                pageTitle: doc.title, 
+                sourceUrl: doc.source,
+                documentContentHash: doc.contentHash,
+                crawlTimestamp: Date.now(),
+                language: 'en',
+                confidence: doc.confidence,
+              }
+            };
+
+            const docPdfName = extractPdfNameFromPdfUrl(doc.source as string);
+            if (docPdfName) {
+              savePdfEmbedding(docPdfName, embeddingArtifactId, embeddingData);
+            } else {
+              saveUrlEmbedding(doc.source as string, embeddingArtifactId, embeddingData);
+            }
+            await logger.logEmbeddingSuccess();
+            finalLoggedEmbeddings.push({ 
+                ...embeddingData, 
+                originalSourceUrl: doc.source, 
+            });
+          } catch (error) {
+            await logger.logEmbeddingFailure();
+            console.error(`[Content Processor] Failed to create embedding for LLM-defined doc ${doc.title}:`, error);
+          }
+        };
+      }
+    };
+    await runConcurrentTasks(embeddingTaskGenerator, embeddingCreationConcurrency);
+
+    const manifestDataBySource: Record<string, { 
+        llmDefinedChunks: TextChunk[],
+        documents: DocumentData[],
+        embeddings: any[]
+    }> = {};
+
+    llmDefinedChunksForManifest.forEach(chunk => {
+      const sourceKey = getSourceKey(chunk.sourcePageUrl);
+      if (!manifestDataBySource[sourceKey]) {
+        manifestDataBySource[sourceKey] = { llmDefinedChunks: [], documents: [], embeddings: [] };
+      }
+      manifestDataBySource[sourceKey].llmDefinedChunks.push(chunk);
+    });
+
+    finalDocuments.forEach(doc => {
+      const sourceKey = getSourceKey(doc.source as string);
+      if (!manifestDataBySource[sourceKey]) {
+        manifestDataBySource[sourceKey] = { llmDefinedChunks: [], documents: [], embeddings: [] };
+      }
+      manifestDataBySource[sourceKey].documents.push(doc);
+    });
+
+    finalLoggedEmbeddings.forEach(emb => {
+      const sourceKey = getSourceKey(emb.originalSourceUrl);
+       if (!manifestDataBySource[sourceKey]) {
+        manifestDataBySource[sourceKey] = { llmDefinedChunks: [], documents: [], embeddings: [] };
+      }
+      manifestDataBySource[sourceKey].embeddings.push(emb);
+    });
+    
+    for (const sourceKey in manifestDataBySource) {
+      const data = manifestDataBySource[sourceKey];
+      const pdfName = extractPdfNameFromPdfUrl(sourceKey); 
+      if (pdfName) {
+        savePdfManifest(pdfName, data);
+      } else {
+        saveUrlManifest(sourceKey, data);
       }
     }
 
-    // --- Embedding creation: one per original categorized chunk ---
-    for (let i = 0; i < categorizedSections.length; i++) {
-      const section = categorizedSections[i];
-      // Find the document for this embedding by category display name
-      const doc = documents.find(d => d.category === CATEGORY_DISPLAY_NAMES[section.category]);
-      if (!doc) {
-        console.warn(`[Embedding Skipped] No document found for chunk index ${i}, category: ${CATEGORY_DISPLAY_NAMES[section.category]}`);
-        console.warn('Available document categories:', documents.map(d => d.category));
-        continue;
-      }
-      try {
-        const embedding = await embeddingInQueue(section.content);
-        logger.logEmbeddingAttempt({
-          embeddingId: `${doc.contentHash ?? ''}-${i}`,
-          docId: doc.contentHash ?? '',
-          category: CATEGORY_DISPLAY_NAMES[section.category],
-          chunkIndex: i,
-          metadata: {
-            pageTitle: `${CATEGORY_DISPLAY_NAMES[section.category]} - Website Content`,
-            sourceUrl: urls[i],
-            contentHash: doc.contentHash ?? '',
-            crawlTimestamp: Date.now(),
-            language: 'en',
-            confidence: section.confidence,
-            confidenceReason: section.confidenceReason
-          }
-        });
-        embeddings.push({
-          content: section.content ?? '',
-          embedding,
-          chunkIndex: i,
-          category: section.category,
-          metadata: {
-            pageTitle: `${CATEGORY_DISPLAY_NAMES[section.category]} - Website Content`,
-            sourceUrl: urls[i],
-            contentHash: doc.contentHash ?? '',
-            crawlTimestamp: Date.now(),
-            language: 'en',
-            confidence: section.confidence,
-            confidenceReason: section.confidenceReason
-          }
-        });
-        logger.logEmbedding(`${doc.contentHash}-${i}`, doc.contentHash ?? '', 'processed');
-      } catch (error) {
-        logger.logEmbedding(`${doc.contentHash}-${i}`, doc.contentHash ?? '', 'failed', error instanceof Error ? error.message : String(error));
-      }
-    }
-
-    // 3. Prepare sessionData
+    const presentCategoriesFromLLM = new Set(finalDocuments.map(doc => doc.category));
     const sessionData = {
       businessId: config.businessId,
-      startTime: Date.now(),
+      startTime: startTime,
       endTime: Date.now(),
-      totalPages: urls.length,
-      successfulPages: processedUrls.length,
-      failedPages: urls.length - processedUrls.length,
-      categories: Object.fromEntries(Array.from(presentCategories).map(cat => [CATEGORY_DISPLAY_NAMES[cat], 1])),
-      errors: [],
-      missingInformation: missingCategories.join(', '),
-      confidenceStats: {
-        averageConfidence: documents.reduce((sum, doc) => sum + (doc.confidence || 0), 0) / documents.length,
-        lowConfidenceCategories: documents
+      totalPages: processedPageUrls.length,
+      successfulPages: processedRootUrls.length,
+      failedPages: (config.type === 'pdf' ? (config.pdfNames?.length || 0) : (config.websiteUrl ? 1:0) ) - processedRootUrls.length,
+      categories: Object.fromEntries(Array.from(presentCategoriesFromLLM).map(catName => [catName as string, finalDocuments.filter(d => d.category === catName).length])),
+      errors: [], 
+      missingInformation: Object.values(CATEGORY_DISPLAY_NAMES)
+        .filter(displayName => !presentCategoriesFromLLM.has(displayName))
+        .join(', '),
+      confidenceStats: { 
+        averageConfidence: finalDocuments.reduce((sum, doc) => sum + (doc.confidence || 0), 0) / (finalDocuments.length || 1),
+        lowConfidenceCategories: finalDocuments
           .filter(doc => doc.confidence && doc.confidence < CONFIDENCE_CONFIG.WARNING_THRESHOLD)
-          .map(doc => doc.category),
-        totalCategories: documents.length,
-        filteredCategories: Object.keys(CATEGORY_DISPLAY_NAMES).length - documents.length
+          .map(doc => doc.category as string),
+        totalCategories: finalDocuments.length,
       }
     };
 
-    // 4. Store everything in one go
-    await CrawlSession.addSessionWithDocumentsAndEmbeddings(sessionData, documents, embeddings);
+    await CrawlSession.addSessionWithDocumentsAndEmbeddings(sessionData, finalDocuments, finalLoggedEmbeddings);
 
-    console.log(`[Content Processor] Content processing completed in ${(Date.now() - startTime)/1000}s`);
+    console.log(`[Content Processor] Processing of LLM-defined chunks completed in ${(Date.now() - startTime)/1000}s`);
     return 'success';
   } catch (error) {
-    console.error('[Content Processor] Content processing failed:', error);
+    console.error('[Content Processor] Processing of LLM-defined chunks failed catastrophically:', error);
     return `error: ${error instanceof Error ? error.message : String(error)}`;
   }
 } 

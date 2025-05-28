@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { CrawlState, CONFIDENCE_CONFIG, Category, CATEGORY_DISPLAY_NAMES } from './config';
+import { CrawlState, CONFIDENCE_CONFIG, Category, CATEGORY_DISPLAY_NAMES } from '@/lib/config/config';
 import { franc } from 'franc-min';
 // Improved language detection using franc-min, robust content filtering, and detailed logging for debugging. Whitelist for important URLs and stricter thresholds for meaningful content.
 
@@ -44,34 +44,24 @@ export function mapIso6393to1(code: string): string {
   return iso6393to1[code] || code;
 }
 
-// Whitelist for important URLs (add more as needed)
-const IMPORTANT_URLS = [
-  '/about-us', '/contact-us', '/our-staff', '/ys-blob'
-];
+interface DetectLanguageOptions {
+  importantUrls?: string[];
+  urlLanguageHints?: Record<string, string>;
+  defaultLanguage?: string; // For the importantUrls override
+}
 
-// URL-based language overrides for common language keywords
-const URL_LANGUAGE_HINTS: Record<string, string> = {
-  portuguese: 'pt',
-  italian: 'it',
-  french: 'fr',
-  espanol: 'es',
-  spanish: 'es',
-  english: 'en',
-  deutsch: 'de',
-  german: 'de',
-  chinese: 'zh',
-  japanese: 'ja',
-  // Add more as needed
-};
+export function detectLanguage(url: string, content: string, options?: DetectLanguageOptions): string {
+  const importantUrls = options?.importantUrls || [];
+  const urlLanguageHints = options?.urlLanguageHints || {};
+  const defaultLangForImportant = options?.defaultLanguage || 'en'; // Default to 'en' if not specified
 
-export function detectLanguage(url: string, content: string): string {
   // Whitelist override for important URLs
-  if (IMPORTANT_URLS.some(imp => url.includes(imp))) {
-    return 'en'; // or your main language
+  if (importantUrls.some(imp => url.includes(imp))) {
+    return defaultLangForImportant;
   }
 
   // URL-based language hints
-  for (const [hint, lang] of Object.entries(URL_LANGUAGE_HINTS)) {
+  for (const [hint, lang] of Object.entries(urlLanguageHints)) {
     if (url.toLowerCase().includes(hint)) {
       return lang;
     }

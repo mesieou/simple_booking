@@ -1,0 +1,445 @@
+<!DOCTYPE html><!-- Last Published: Sun Mar 23 2025 23:55:05 GMT+0000 (Coordinated Universal Time) --><html data-wf-domain="www.taxbne.com.au" data-wf-page="5fd15febb3187b010e188d67" data-wf-site="5fd15febb3187ba77c188d42" lang="en"><head><meta charset="utf-8"/><title>Tax return en linea</title><meta content="Tax return en linea" property="og:title"/><meta content="Tax return en linea" property="twitter:title"/><meta content="width=device-width, initial-scale=1" name="viewport"/><link href="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/css/digitalsurftemplate.webflow.c9fda8afb.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link href="https://fonts.gstatic.com" rel="preconnect" crossorigin="anonymous"/><script src="https://ajax.googleapis.com/ajax/libs/webfont/1.6.26/webfont.js" type="text/javascript"></script><script type="text/javascript">WebFont.load({  google: {    families: ["Lato:100,100italic,300,300italic,400,400italic,700,700italic,900,900italic","Montserrat:100,100italic,200,200italic,300,300italic,400,400italic,500,500italic,600,600italic,700,700italic,800,800italic,900,900italic"]  }});</script><script type="text/javascript">!function(o,c){var n=c.documentElement,t=" w-mod-";n.className+=t+"js",("ontouchstart"in o||o.DocumentTouch&&c instanceof DocumentTouch)&&(n.className+=t+"touch")}(window,document);</script><link href="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/60dba3e064f9bd01b0889219_favicon.jpg" rel="shortcut icon" type="image/x-icon"/><link href="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/60dba3fe1dab66c563cd7a8e_webclip.jpg" rel="apple-touch-icon"/><link rel="alternate" hreflang="en" href="https://www.taxbne.com.au">
+<link rel="alternate" hreflang="es" href="https://es.taxbne.com.au">
+<link rel="alternate" hreflang="pt-br" href="https://pt-br.taxbne.com.au">
+<link rel="stylesheet" href="https://fengyuanchen.github.io/datepicker/css/datepicker.css">
+<!-- Memberstack webflow package -->
+<script data-memberstack-app="app_cluf9otyb00550stg25h8h3qn" src="https://static.memberstack.com/scripts/v1/memberstack.js" type="text/javascript"></script>
+<!-- 💙 MEMBERSCRIPT #33 v0.2 💙 AUTOMATICALLY FORMAT FORM INPUTS -->
+<script src="https://cdn.jsdelivr.net/npm/cleave.js@1.6.0"> </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cleave.js/1.6.0/addons/cleave-phone.us.js"> </script>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    // SELECT ALL ELEMENTS WITH THE ATTRIBUTE "ms-code-autoformat" OR "ms-code-autoformat-prefix"
+    const elements = document.querySelectorAll('[ms-code-autoformat], [ms-code-autoformat-prefix]');
+
+    for (let element of elements) {
+        const formatType = element.getAttribute('ms-code-autoformat');
+        const prefix = element.getAttribute('ms-code-autoformat-prefix');
+        
+        // SET PREFIX
+        let cleaveOptions = {
+            prefix: prefix || '',
+            blocks: [Infinity]
+        };
+        
+        // BASED ON THE VALUE OF "ms-code-autoformat", FORMAT THE INPUT
+        if (formatType) {
+            switch (formatType) {
+                // FORMAT PHONE NUMBERS
+                case 'phone-number':
+                    cleaveOptions.phone = true;
+                    cleaveOptions.phoneRegionCode = 'AU';
+                    break;
+                    
+                // FORMAT DATES IN 'YYYY-MM-DD' FORMAT
+                case 'date-yyyy-mm-dd':
+                    cleaveOptions.date = true;
+                    cleaveOptions.datePattern = ['Y', 'm', 'd'];
+                    break;
+                    
+                // FORMAT DATES IN 'MM-DD-YYYY' FORMAT
+                case 'date-mm-dd-yyyy':
+                    cleaveOptions.date = true;
+                    cleaveOptions.datePattern = ['m', 'd', 'Y'];
+                    break;
+                    
+                // FORMAT DATES IN 'DD-MM-YYYY' FORMAT
+                case 'date-dd-mm-yyyy':
+                    cleaveOptions.date = true;
+                    cleaveOptions.datePattern = ['d', 'm', 'Y'];
+                    break;
+                    
+                // FORMAT TIMES IN 'HH-MM-SS' FORMAT
+                case 'time-hh-mm-ss':
+                    cleaveOptions.time = true;
+                    cleaveOptions.timePattern = ['h', 'm', 's'];
+                    break;
+                    
+                // FORMAT TIMES IN 'HH-MM' FORMAT
+                case 'time-hh-mm':
+                    cleaveOptions.time = true;
+                    cleaveOptions.timePattern = ['h', 'm'];
+                    break;
+                    
+                // FORMAT NUMBERS WITH THOUSANDS SEPARATORS
+                case 'number-thousand':
+                    cleaveOptions.numeral = true;
+                    cleaveOptions.numeralThousandsGroupStyle = 'thousand';
+                    break;
+                
+                // FORMAT TAX FILE NUMBER
+                case 'tfn':
+                    cleaveOptions.blocks = [3, 3, 3];
+                    cleaveOptions.delimiter = '-';
+                    cleaveOptions.numericOnly = true;
+                    break;
+                 // FORMAT BSB
+                case 'bsb':
+                    cleaveOptions.blocks = [3, 3];
+                    cleaveOptions.delimiter = '-';
+                    cleaveOptions.numericOnly = true;
+                    break;
+            }
+        }
+        
+        new Cleave(element, cleaveOptions);
+    }
+});
+</script>
+
+<style>
+.pac-logo::after {
+display: none;
+}
+.pac-container {
+border-radius: 5px;
+border: 1px solid #ccc;
+}
+.pac-item {
+padding: 0 10px;
+}
+</style>
+
+<style>
+  h2 {font-family: montserrat!important; font-size: 1.5em!important; line-height: 32px!important;}
+  h3 {
+    font-family: 'Montserrat'!important;
+    font-size: 0.9em!important;
+}
+  h4, h5, h6 {font-family: 'Montserrat'!important;}
+  .calendly-overlay {z-index: 1000000!important;}
+  .footerl {color: text-decoration: none!important; color: rgb(51 51 51)!important; font-size: 18px!important;}
+  .cta-button a {text-decoration: none!important;}
+  .cta-button:hover > a {color: white!important;}
+  .pricebtn {margin-bottom: 33px; font-size: 1.5em; text-decoration: none;}
+  .ctnbtn {font-size: 1em; text-decoration: none;}
+  .button-secondary {display: block; text-decoration: none!important;}
+  .button-secondary.is-button-small {padding: 0.75rem 1.5rem;!important}
+  ._x82712441 ._form-label {display: none!important;}
+  ._x82712441 input {
+    border: #2F42CF solid 2px!important;
+    font-size: 12px;
+    line-height: 1.6;
+    background-color: transparent!important; 
+    color: white!important; 
+    padding: 20px 20px!important; width: 24rem!important;
+}
+  #_form_62B9389CC53C4_ ._x82712441 input {
+    color: #2F42CF!important;
+  font-size: 16px!important;
+  }
+  ._x82712441 input::placeholder {
+  color: #2F42CF;
+  font-size: 16px!important;
+    line-height: 1.6;
+}
+   ._inline-style ._button-wrapper {
+    margin-top: 0px!important; margin-right: 0px!important; margin-bottom: 0px!important;
+  }
+._inline-style ._submit {
+    font-size: 35px!important;
+    font-weight: 900;
+  	padding: 17px!important;
+  }
+  ._inline-style ._submit:hover {
+    webkit-transform: scale(1.05);
+    -ms-transform: scale(1.05);
+    transform: scale(1.05);
+  }
+  & {padding: 0px!important;}
+  @media (min-width: 320px) and (max-width: 667px){
+    ._x82712441 {
+    	width: 100%!important;
+  }
+  	._x82712441 input {
+    	width: 100%!important;
+  }
+    ._inline-style ._submit {
+    top: 8px;
+    width: 320px!important;
+    position: relative;
+    }
+    
+  }
+</style>
+<script
+src='//fw-cdn.com/11994003/4538011.js'
+chat='true' widgetId='dea80ac2-5d06-4157-ad1b-59de17b11244'>
+</script>
+<script>  window.fcWidgetMessengerConfig = {    locale: 'es'  } </script>
+
+
+</head><body><div class="google-tag-manager w-embed w-script"><!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-QG4QLYG723"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-QG4QLYG723');
+</script></div><div class="popup-bg"><div class="popup-window"><h4><a href="https://www.dropbox.com/sh/mlqdpexwe468tmr/AABXXDvVDz8xXvzVnZXQd6J3a?dl=0" target="_blank">Download your Guide here</a></h4><div class="download-popup__content-wraooer"><p class="download-popup__text">If you would like to stay up to date with all our latest news then please subscribe below</p><div class="subcribe-form w-form"><form id="email-form" name="email-form" data-name="Email Form" action="https://smartonline.us18.list-manage.com/subscribe/post?u=1e7016cb9222d4e5ae19593e8&amp;amp;id=1f534d8401" method="post" redirect="/subscribe-thanks/" data-redirect="/subscribe-thanks/" class="form" data-wf-page-id="5fd15febb3187b010e188d67" data-wf-element-id="dfe64252-f32d-190b-e564-b20a9d808e34"><input class="subcribe__text-field w-input" maxlength="256" name="email-2" data-name="Email 2" placeholder="Email" type="email" id="email-2" required=""/><input type="submit" data-wait="Please wait..." class="cta-button ghost-button footer__subscribe w-button" value="Join"/></form><div class="w-form-done"><div>Thank you! Your submission has been received!</div></div><div class="w-form-fail"><div>Oops! Something went wrong while submitting the form.</div></div></div></div><a href="#" data-w-id="dfe64252-f32d-190b-e564-b20a9d808e3d" class="cta-button w-button">Close</a></div><div class="section-nav"><div class="container nav--container"><div class="desktop-nav-wrapper"><div class="desktop-nav-wrapper__left"><a href="/" class="w-inline-block"><img src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/604ca4553fdf20410622403a_logo%20ys%20accounting.png" alt="Zest Mortgage Brokers logo" height="" sizes="100vw" srcset="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/604ca4553fdf20410622403a_logo%20ys%20accounting-p-500.png 500w, https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/604ca4553fdf20410622403a_logo%20ys%20accounting.png 768w" class="logo"/></a><a href="/about-us" class="desktop-nav-item">About</a><a href="/tax-return" class="desktop-nav-item">Services</a><a href="/contact-us" class="desktop-nav-item">Contact</a></div><div class="desktop-nav-wrapper__right"><a href="tel:+611300189682" class="desktop-nav__phone w-inline-block"><img src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/60d85ad0711eae39db4ab419_phoned.svg" alt="Phone Icon" width="40" class="phone-icon"/><div class="desktop-nav-item phine-number">1300 189 682</div></a><div data-hover="true" data-delay="0" class="dropdown w-dropdown"><div class="dropdown-toggle w-dropdown-toggle"><div class="icon-2 w-icon-dropdown-toggle"></div><div class="desktop-nav-item">Online tax return</div></div><nav class="dropdown-list w-dropdown-list"><a href="https://www.taxbne.com.au/tax-return-espanol" class="dropdown-link w-dropdown-link">Español</a><a href="#" class="dropdown-link-2 w-dropdown-link">English</a></nav></div><div class="cta-button ghost-button w-embed w-script"><!-- Calendly link widget begin -->
+<link href="https://assets.calendly.com/assets/external/widget.css" rel="stylesheet">
+<script src="https://assets.calendly.com/assets/external/widget.js" type="text/javascript" async></script>
+<a href="" onclick="Calendly.initPopupWidget({url: 'https://calendly.com/sebastiangarcia'});return false;">Book Online</a>
+<!-- Calendly link widget end --></div></div></div><div data-collapse="medium" data-animation="default" data-duration="400" data-easing="ease" data-easing2="ease" role="banner" class="tablet-nav w-nav"><div class="mobile-nav-wrapper"><a href="/" class="brand w-nav-brand"><img src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/604ca4553fdf20410622403a_logo%20ys%20accounting.png" sizes="100vw" srcset="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/604ca4553fdf20410622403a_logo%20ys%20accounting-p-500.png 500w, https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/604ca4553fdf20410622403a_logo%20ys%20accounting.png 768w" alt="" class="image-7"/></a><nav role="navigation" class="nav-menu w-nav-menu"><a href="/about-us" class="nav-link--mobile w-nav-link">About</a><a href="/tax-return" class="nav-link--mobile w-nav-link">Services</a><a href="/contact-us" class="nav-link--mobile w-nav-link">Contact</a><div class="html-embed-2 w-embed w-script"><!-- Calendly link widget begin -->
+<link href="https://assets.calendly.com/assets/external/widget.css" rel="stylesheet">
+<script src="https://assets.calendly.com/assets/external/widget.js" type="text/javascript" async></script>
+<a href="" onclick="Calendly.initPopupWidget({url: 'https://calendly.com/sebastiangarcia'});return false;">Book Online</a>
+<!-- Calendly link widget end --></div></nav><div class="menu-button w-nav-button"><div class="icon w-icon-nav-menu"></div></div></div></div></div></div><div class="section-nav"><div class="container nav--container"><div class="desktop-nav-wrapper"><div class="desktop-nav-wrapper__left"><a href="/" class="w-inline-block"><img src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/604ca4553fdf20410622403a_logo%20ys%20accounting.png" alt="Zest Mortgage Brokers logo" height="" sizes="100vw" srcset="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/604ca4553fdf20410622403a_logo%20ys%20accounting-p-500.png 500w, https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/604ca4553fdf20410622403a_logo%20ys%20accounting.png 768w" class="logo"/></a><a href="/about-us" class="desktop-nav-item">About</a><a href="/tax-return" class="desktop-nav-item">Services</a><a href="/contact-us" class="desktop-nav-item">Contact</a></div><div class="desktop-nav-wrapper__right"><a href="tel:+611300189682" class="desktop-nav__phone w-inline-block"><img src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/60d85ad0711eae39db4ab419_phoned.svg" alt="Phone Icon" width="40" class="phone-icon"/><div class="desktop-nav-item phine-number">1300 189 682</div></a><div data-hover="true" data-delay="0" class="dropdown w-dropdown"><div class="dropdown-toggle w-dropdown-toggle"><div class="icon-2 w-icon-dropdown-toggle"></div><div class="desktop-nav-item">Online tax return</div></div><nav class="dropdown-list w-dropdown-list"><a href="https://www.taxbne.com.au/tax-return-espanol" class="dropdown-link w-dropdown-link">Español</a><a href="#" class="dropdown-link-2 w-dropdown-link">English</a></nav></div><div class="cta-button ghost-button w-embed w-script"><!-- Calendly link widget begin -->
+<link href="https://assets.calendly.com/assets/external/widget.css" rel="stylesheet">
+<script src="https://assets.calendly.com/assets/external/widget.js" type="text/javascript" async></script>
+<a href="" onclick="Calendly.initPopupWidget({url: 'https://calendly.com/sebastiangarcia'});return false;">Book Online</a>
+<!-- Calendly link widget end --></div></div></div><div data-collapse="medium" data-animation="default" data-duration="400" data-easing="ease" data-easing2="ease" role="banner" class="tablet-nav w-nav"><div class="mobile-nav-wrapper"><a href="/" class="brand w-nav-brand"><img src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/604ca4553fdf20410622403a_logo%20ys%20accounting.png" sizes="100vw" srcset="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/604ca4553fdf20410622403a_logo%20ys%20accounting-p-500.png 500w, https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/604ca4553fdf20410622403a_logo%20ys%20accounting.png 768w" alt="" class="image-7"/></a><nav role="navigation" class="nav-menu w-nav-menu"><a href="/about-us" class="nav-link--mobile w-nav-link">About</a><a href="/tax-return" class="nav-link--mobile w-nav-link">Services</a><a href="/contact-us" class="nav-link--mobile w-nav-link">Contact</a><div class="html-embed-2 w-embed w-script"><!-- Calendly link widget begin -->
+<link href="https://assets.calendly.com/assets/external/widget.css" rel="stylesheet">
+<script src="https://assets.calendly.com/assets/external/widget.js" type="text/javascript" async></script>
+<a href="" onclick="Calendly.initPopupWidget({url: 'https://calendly.com/sebastiangarcia'});return false;">Book Online</a>
+<!-- Calendly link widget end --></div></nav><div class="menu-button w-nav-button"><div class="icon w-icon-nav-menu"></div></div></div></div></div></div></div><div data-w-id="f3eddb03-c4c6-ba29-8483-ec66e3a6da61" data-animation="default" data-collapse="medium" data-duration="400" data-easing="ease" data-easing2="ease" role="banner" class="navbar7_component w-nav"><div class="navbar7_container"><a href="/" class="navbar7_logo-link w-nav-brand"><img src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/62abf350449a9275051c16fd_logo%20ys%20blanco.svg" loading="lazy" width="126" alt="" class="navbar7_logo"/></a><nav role="navigation" class="navbar7_menu w-nav-menu"><div class="navbar7_menu-left"><a href="/about-us" class="navbar7_link w-nav-link">About Us</a><div data-hover="true" data-delay="300" data-w-id="f3eddb03-c4c6-ba29-8483-ec66e3a6da6d" class="navbar7_menu-dropdown w-dropdown"><div class="navbar7_dropdown-toggle w-dropdown-toggle"><div class="dropdown-icon w-icon-dropdown-toggle"></div><div class="text-block-4">Our Services</div></div><nav class="navbar7_dropdown-list w-dropdown-list"><div class="navbar7_container"><div class="navbar7_dropdown-content"><div class="navbar7_dropdown-content-left"><div class="navbar7_dropdown-link-list"><a href="/tax-return" class="navbar7_dropdown-link w-inline-block"><div class="navbar7_icon-wrapper"><img alt="" loading="lazy" src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/62a99d1a19b45c5a04f2d570_target-icon.png" class="icon-xsmall"/></div><div class="navbar7_item-right"><div class="text-weight-semibold">Individual tax returns</div><p class="text-size-small hide-mobile-landscape">Your tax return prepared by an experienced tax consultant.</p></div></a><a href="#" class="navbar7_dropdown-link w-inline-block"><div class="navbar7_icon-wrapper"><img alt="" loading="lazy" src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/62a9a03fc7aeae0ed56421ce_light-icon.png" class="icon-xsmall"/></div><div class="navbar7_item-right"><div class="text-weight-semibold">Business Registration</div><p class="text-size-small hide-mobile-landscape">We can help you define which business structure works better for your business: sole trader, partnership, company or trust.</p></div></a></div><div class="navbar7_dropdown-link-list"><a href="/starting-a-business" class="navbar7_dropdown-link w-inline-block"><div class="navbar7_icon-wrapper"><img alt="" loading="lazy" src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/62a99db39f0ce494fa0b5314_bar-icon.png" class="icon-xsmall"/></div><div class="navbar7_item-right"><div class="text-weight-semibold">Start a Business</div><p class="text-size-small hide-mobile-landscape">We can help you navigate the accounting and tax responsibilities that come with running a business.</p></div></a><a href="#" class="navbar7_dropdown-link w-inline-block"><div id="w-node-f3eddb03-c4c6-ba29-8483-ec66e3a6daa5-e3a6da61" class="navbar7_icon-wrapper"><img alt="" loading="lazy" src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/62a9a0b05fbdf29ed907830c_money-icon.png" class="icon-xsmall"/></div><div class="navbar7_item-right"><div class="text-weight-semibold">Bookkeeping</div><p class="text-size-small hide-mobile-landscape">We can help you set up and manage your books, payroll &amp; superannuation, to save you time and money.</p></div></a></div><div class="navbar7_dropdown-link-list"><a href="#" class="navbar7_dropdown-link w-inline-block"><div class="navbar7_icon-wrapper"><img alt="" loading="lazy" src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/62a99f72adf87954f64da1ca_Xero-logo.png" class="icon-xsmall"/></div><div class="navbar7_item-right"><div class="text-weight-semibold">Xero health check</div><p class="text-size-small hide-mobile-landscape">With our Xero Health Check, we review your accounts on Xero to find issues, fix them, and help you maximise XERO to run your business.</p></div></a><a href="/leaving-australia" class="navbar7_dropdown-link w-inline-block"><div class="navbar7_icon-wrapper"><img alt="" loading="lazy" src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/62a9a0c4a056b9310301e9d2_rocket.png" class="icon-xsmall"/></div><div class="navbar7_item-right"><div class="text-weight-semibold"><strong>Leaving Australia</strong></div><p class="text-size-small hide-mobile-landscape">Hassle-free early tax return and superannuation refund services. </p></div></a></div></div></div></div></nav></div><a href="/resources" class="navbar7_link w-nav-link">Resources</a><div class="html-embed-9 w-embed w-script"><!-- Calendly link widget begin -->
+<link href="https://assets.calendly.com/assets/external/widget.css" rel="stylesheet">
+<script src="https://assets.calendly.com/assets/external/widget.js" type="text/javascript" async></script>
+<a class="navbar7_link w-nav-link w--nav-link-open"  href="" onclick="Calendly.initPopupWidget({url: 'https://calendly.com/d/dky-g2s-qgb'});return false;">Book appointment</a>
+<!-- Calendly link widget end --></div><a href="/contact-us" class="navbar7_link w-nav-link">Contact Us</a></div><div class="navbar7_menu-right"><a data-ms-action="login-redirect" data-ms-content="members" href="#" class="button-yellow w-button">Dashboard</a><a data-ms-content="!members" href="/signup" class="button-yellow w-button">Signup</a><a href="#" data-ms-modal="login" data-ms-content="!members" class="navbar7_link w-nav-link">Login</a></div></nav><div data-w-id="0344b357-9a88-4197-47d3-d757f234f54b" class="wg-element-wrapper sw6"><div data-hover="true" data-delay="300" data-w-id="0344b357-9a88-4197-47d3-d757f234f54c" class="wg-dropdown-1 w-dropdown"><div lang="en" class="wg-dd-1-togle-2 w-dropdown-toggle"><div class="wg-selector-text-wrapper"><div class="wg-flag"><img src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/64853725cc8b345329e544b6_au.svg" alt="" class="wg-flag-ico"/></div><div>EN</div></div></div><nav class="wg-dd-1-list wg-dropdown-link-flag w-dropdown-list"><a lang="es" href="#" class="wg-dropdown-1-link w-inline-block"><div class="wg-selector-text-wrapper"><div class="wg-flag"><img src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/64853725dc26172c42f3cb8a_co.svg" alt="" class="wg-flag-ico"/></div><div>ES</div></div></a><a lang="br" href="#" class="wg-dropdown-1-link w-inline-block"><div class="wg-selector-text-wrapper"><div class="wg-flag"><img src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/64853725f8b87abd36dab1c5_br.svg" alt="" class="wg-flag-ico"/></div><div>PT</div></div></a></nav></div></div><div class="navbar7_menu-button w-nav-button"><div class="menu-icon"><div class="menu-icon_line-top"></div><div class="menu-icon_line-middle"><div class="menu-icon_line-middle-inner"></div></div><div class="menu-icon_line-bottom"></div></div></div></div></div><header class="section-header1-copy"><div class="page-padding-3"><div class="container-large-2"><div class="padding-vertical padding-xhuge"><div class="w-layout-grid header1_component-2"><div class="header1_content-2"><div class="margin-bottom margin-small"><h1 class="heading-30"><span class="text-span-8">Tax return online</span> for international students in Australia- $99 aud</h1></div><div class="div-block-9"><div class="button-row"><a data-w-id="c68acbd6-9f4d-5365-6f43-6afa4ca771d3" href="https://taxreturns.taxbne.com.au/" class="button-secondary w-button">Start Now</a></div></div></div><div class="header1_image-wrapper"><img src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/62b7b2687713d8f7709b9fc9_herotaxonline.jpg" loading="lazy" alt=""/></div></div></div></div></div></header><section class="section-69"><div class="page-padding"><div class="container-large"><div class="padding-vertical padding-xxlarge"><div class="w-layout-grid grid-7"><div id="w-node-_94925704-7ccd-79a7-88ce-b6447ec73b2f-0e188d67" class="layout32_item"><div class="layout32_item-icon-wrapper"><img src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/62b7bbcaf61e9132ca4c608c_noun-accountant-4029290-3C47D5%402x.png" loading="lazy" alt="" class="icon-1x1-medium"/></div><div class="layout32_item-text-wrapper"><p class="paragraph-11">One of our accountants will process your application</p></div></div><div id="w-node-caa1dffe-0684-390e-eafe-00c86967278f-0e188d67" class="layout32_item"><div class="layout32_item-icon-wrapper"><img src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/62b7bfbf43e2856893b82f53_noun-home-4505130-3C47D5%402x.png" loading="lazy" alt="" class="icon-1x1-medium"/></div><div class="layout32_item-text-wrapper"><p class="paragraph-11">You present it from the comfort of your own home</p></div></div><div id="w-node-_27a2e12a-8080-b792-031b-0379bbcca466-0e188d67" class="layout32_item"><div class="layout32_item-icon-wrapper"><img src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/62b7c00d0a874b3a4f79e6aa_noun-tax-3633667-3C47D5%402x.png" loading="lazy" alt="" class="icon-1x1-medium"/></div><div class="layout32_item-text-wrapper"><p class="paragraph-11">100% guaranteed professional service</p></div></div></div></div></div></div></section><section class="section-70"><div class="page-padding"><div class="container-large"><div class="padding-vertical padding-xhuge"><div class="margin-bottom margin-xxlarge"><div class="max-width-large-m"><div class="margin-bottom margin-small"><h2 class="heading-24">Your online tax return step by step</h2></div></div></div></div></div></div></section><section class="section-71"><div class="page-padding-3"><div class="container-large-2"><div class="padding-vertical padding-xhuge"><div class="w-layout-grid layout32_component"><div class="layout32_content"><div class="w-layout-grid layout32_item-list"><div id="w-node-_5491888e-654b-e0b2-61ae-7b8a6527a4a1-0e188d67" class="layout32_item-2"><div class="div-block-10"><div class="text-block-17">1</div></div><div class="layout32_item-text-wrapper-2"><div class="margin-bottom margin-xsmall"><h3 class="heading-small">Complete our online form</h3></div><p>Check that you have the necessary information ready to file your return and read the frequently asked questions.</p></div></div><div id="w-node-_59d51027-b988-d2c9-fd07-2de18227e33c-0e188d67" class="layout32_item-2"><div class="div-block-10"><div class="text-block-17">2</div></div><div class="layout32_item-text-wrapper-2"><div class="margin-bottom margin-xsmall"><h3 class="heading-small">One of our accountants will review your application</h3></div><p>Check that you have the necessary information ready to file your return and read the frequently asked questions.</p></div></div><div id="w-node-_22d66129-76a3-c694-09d9-2bc36f03e57d-0e188d67" class="layout32_item-2"><div class="div-block-10"><div class="text-block-17">3</div></div><div class="layout32_item-text-wrapper-2"><div class="margin-bottom margin-xsmall"><h3 class="heading-small">Receive your Tax refund</h3></div><p>A member of the Y&amp;S Accounting team will review your information and we will contact you if additional information is required.</p></div></div></div></div><div class="layout32_image-wrapper"><img src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/62b7c4aaed1f16664fe78bc3_online-tax-returnimg.jpg" loading="lazy" alt=""/></div></div></div></div></div></section><section class="section-70"><div class="page-padding"><div class="container-large"><div class="padding-vertical padding-xhuge"><div class="margin-bottom margin-xxlarge"><div class="max-width-large-m"><div class="margin-bottom margin-small"><h2 class="heading-24">The information you need before you start the process</h2></div></div></div></div></div></div></section><div class="section-72"><div class="div-block-11"><div class="w-layout-grid grid-9"><div id="w-node-e9fd7bc3-5b5e-6866-d750-a559a8c4b0d2-0e188d67" class="layout32_item-2-copy"><div class="div-block-10"><img src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/62b7ca6e4d12063468342e4b_noun-checklist-3266189-3C47D5%402x.png" loading="lazy" alt="" class="icon-1x1-medium"/></div><div class="layout32_item-text-wrapper-2"><p class="paragraph-12">Copy of passport</p></div></div><div id="w-node-_3836b5ef-3e4c-c189-9612-e0ce791327c6-0e188d67" class="layout32_item-2-copy"><div class="div-block-10"><img src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/62b7ca6e4d12063468342e4b_noun-checklist-3266189-3C47D5%402x.png" loading="lazy" alt="" class="icon-1x1-medium"/></div><div class="layout32_item-text-wrapper-2"><p class="paragraph-12">Copy of your current visa</p></div></div><div id="w-node-_67555b45-6c10-4add-11d9-527d8752a20b-0e188d67" class="layout32_item-2-copy"><div class="div-block-10"><img src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/62b7ca6e4d12063468342e4b_noun-checklist-3266189-3C47D5%402x.png" loading="lazy" alt="" class="icon-1x1-medium"/></div><div class="layout32_item-text-wrapper-2"><p class="paragraph-12">Banking information(BSB and account number)</p></div></div><div id="w-node-_696c11b8-ec4b-7252-efc1-e5d635626671-0e188d67" class="layout32_item-2-copy"><div class="div-block-10"><img src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/62b7ca6e4d12063468342e4b_noun-checklist-3266189-3C47D5%402x.png" loading="lazy" alt="" class="icon-1x1-medium"/></div><div class="layout32_item-text-wrapper-2"><p class="paragraph-12">Tax file number (TFN)</p></div></div></div></div></div><section class="section-testimonial20"><div class="page-padding"><div class="container-large"><div class="padding-vertical padding-xhuge"><div class="margin-bottom margin-xxlarge"><div class="max-width-large"><div class="margin-bottom margin-small"><h2 class="heading-24">What our customers say</h2></div></div></div><div data-delay="4000" data-animation="slide" class="testimonial20_component w-slider" data-autoplay="false" data-easing="ease" data-hide-arrows="false" data-disable-swipe="false" data-autoplay-limit="0" data-nav-spacing="3" data-duration="500" data-infinite="false"><div class="testimonial20_mask w-slider-mask"><div class="testimonial20_slide w-slide"><div class="testimonial20_content"><div class="testimonial20_client"><div class="testimonial20_client-image-wrapper"><img src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/62b2c80e54543c075017275f_Screen%20Shot%202022-06-22%20at%205.42.45%20pm.png" loading="lazy" alt="" class="testimonial20_customer-image"/></div><div class="testimonial20_client-info"><p class="text-weight-semibold">Diana Franco</p></div></div><div class="testimonial20_rating-wrapper"><div class="testimonial20_rating-icon w-embed"><svg width="100%" viewBox="0 0 18 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M8.16379 0.551109C8.47316 -0.183704 9.52684 -0.183703 9.83621 0.551111L11.6621 4.88811C11.7926 5.19789 12.0875 5.40955 12.426 5.43636L17.1654 5.81173C17.9684 5.87533 18.294 6.86532 17.6822 7.38306L14.0713 10.4388C13.8134 10.6571 13.7007 10.9996 13.7795 11.3259L14.8827 15.8949C15.0696 16.669 14.2172 17.2809 13.5297 16.8661L9.47208 14.4176C9.18225 14.2427 8.81775 14.2427 8.52793 14.4176L4.47029 16.8661C3.7828 17.2809 2.93036 16.669 3.11727 15.8949L4.22048 11.3259C4.29928 10.9996 4.18664 10.6571 3.92873 10.4388L0.317756 7.38306C-0.294046 6.86532 0.0315611 5.87533 0.834562 5.81173L5.57402 5.43636C5.91255 5.40955 6.20744 5.19789 6.33786 4.88811L8.16379 0.551109Z" fill="currentColor"/>
+</svg></div><div class="testimonial20_rating-icon w-embed"><svg width="100%" viewBox="0 0 18 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M8.16379 0.551109C8.47316 -0.183704 9.52684 -0.183703 9.83621 0.551111L11.6621 4.88811C11.7926 5.19789 12.0875 5.40955 12.426 5.43636L17.1654 5.81173C17.9684 5.87533 18.294 6.86532 17.6822 7.38306L14.0713 10.4388C13.8134 10.6571 13.7007 10.9996 13.7795 11.3259L14.8827 15.8949C15.0696 16.669 14.2172 17.2809 13.5297 16.8661L9.47208 14.4176C9.18225 14.2427 8.81775 14.2427 8.52793 14.4176L4.47029 16.8661C3.7828 17.2809 2.93036 16.669 3.11727 15.8949L4.22048 11.3259C4.29928 10.9996 4.18664 10.6571 3.92873 10.4388L0.317756 7.38306C-0.294046 6.86532 0.0315611 5.87533 0.834562 5.81173L5.57402 5.43636C5.91255 5.40955 6.20744 5.19789 6.33786 4.88811L8.16379 0.551109Z" fill="currentColor"/>
+</svg></div><div class="testimonial20_rating-icon w-embed"><svg width="100%" viewBox="0 0 18 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M8.16379 0.551109C8.47316 -0.183704 9.52684 -0.183703 9.83621 0.551111L11.6621 4.88811C11.7926 5.19789 12.0875 5.40955 12.426 5.43636L17.1654 5.81173C17.9684 5.87533 18.294 6.86532 17.6822 7.38306L14.0713 10.4388C13.8134 10.6571 13.7007 10.9996 13.7795 11.3259L14.8827 15.8949C15.0696 16.669 14.2172 17.2809 13.5297 16.8661L9.47208 14.4176C9.18225 14.2427 8.81775 14.2427 8.52793 14.4176L4.47029 16.8661C3.7828 17.2809 2.93036 16.669 3.11727 15.8949L4.22048 11.3259C4.29928 10.9996 4.18664 10.6571 3.92873 10.4388L0.317756 7.38306C-0.294046 6.86532 0.0315611 5.87533 0.834562 5.81173L5.57402 5.43636C5.91255 5.40955 6.20744 5.19789 6.33786 4.88811L8.16379 0.551109Z" fill="currentColor"/>
+</svg></div><div class="testimonial20_rating-icon w-embed"><svg width="100%" viewBox="0 0 18 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M8.16379 0.551109C8.47316 -0.183704 9.52684 -0.183703 9.83621 0.551111L11.6621 4.88811C11.7926 5.19789 12.0875 5.40955 12.426 5.43636L17.1654 5.81173C17.9684 5.87533 18.294 6.86532 17.6822 7.38306L14.0713 10.4388C13.8134 10.6571 13.7007 10.9996 13.7795 11.3259L14.8827 15.8949C15.0696 16.669 14.2172 17.2809 13.5297 16.8661L9.47208 14.4176C9.18225 14.2427 8.81775 14.2427 8.52793 14.4176L4.47029 16.8661C3.7828 17.2809 2.93036 16.669 3.11727 15.8949L4.22048 11.3259C4.29928 10.9996 4.18664 10.6571 3.92873 10.4388L0.317756 7.38306C-0.294046 6.86532 0.0315611 5.87533 0.834562 5.81173L5.57402 5.43636C5.91255 5.40955 6.20744 5.19789 6.33786 4.88811L8.16379 0.551109Z" fill="currentColor"/>
+</svg></div><div class="testimonial20_rating-icon w-embed"><svg width="100%" viewBox="0 0 18 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M8.16379 0.551109C8.47316 -0.183704 9.52684 -0.183703 9.83621 0.551111L11.6621 4.88811C11.7926 5.19789 12.0875 5.40955 12.426 5.43636L17.1654 5.81173C17.9684 5.87533 18.294 6.86532 17.6822 7.38306L14.0713 10.4388C13.8134 10.6571 13.7007 10.9996 13.7795 11.3259L14.8827 15.8949C15.0696 16.669 14.2172 17.2809 13.5297 16.8661L9.47208 14.4176C9.18225 14.2427 8.81775 14.2427 8.52793 14.4176L4.47029 16.8661C3.7828 17.2809 2.93036 16.669 3.11727 15.8949L4.22048 11.3259C4.29928 10.9996 4.18664 10.6571 3.92873 10.4388L0.317756 7.38306C-0.294046 6.86532 0.0315611 5.87533 0.834562 5.81173L5.57402 5.43636C5.91255 5.40955 6.20744 5.19789 6.33786 4.88811L8.16379 0.551109Z" fill="currentColor"/>
+</svg></div></div><div class="margin-bottom margin-small"><div class="paragraph-4">I can&#x27;t recommend Sebastian enough. He is a great accountant! He is very diligent, efficient and always goes above and beyond. Excellent service! Great for small businesses accounting.</div></div></div></div><div class="testimonial20_slide w-slide"><div class="testimonial20_content"><div class="testimonial20_client"><div class="testimonial20_client-image-wrapper"><img src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/62b2c884bbbc9927e66af995_Screen%20Shot%202022-06-22%20at%205.44.51%20pm.png" loading="lazy" alt="" class="testimonial20_customer-image"/></div><div class="testimonial20_client-info"><p class="text-weight-semibold">Orlando Guerra</p></div></div><div class="testimonial20_rating-wrapper"><div class="testimonial20_rating-icon w-embed"><svg width="100%" viewBox="0 0 18 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M8.16379 0.551109C8.47316 -0.183704 9.52684 -0.183703 9.83621 0.551111L11.6621 4.88811C11.7926 5.19789 12.0875 5.40955 12.426 5.43636L17.1654 5.81173C17.9684 5.87533 18.294 6.86532 17.6822 7.38306L14.0713 10.4388C13.8134 10.6571 13.7007 10.9996 13.7795 11.3259L14.8827 15.8949C15.0696 16.669 14.2172 17.2809 13.5297 16.8661L9.47208 14.4176C9.18225 14.2427 8.81775 14.2427 8.52793 14.4176L4.47029 16.8661C3.7828 17.2809 2.93036 16.669 3.11727 15.8949L4.22048 11.3259C4.29928 10.9996 4.18664 10.6571 3.92873 10.4388L0.317756 7.38306C-0.294046 6.86532 0.0315611 5.87533 0.834562 5.81173L5.57402 5.43636C5.91255 5.40955 6.20744 5.19789 6.33786 4.88811L8.16379 0.551109Z" fill="currentColor"/>
+</svg></div><div class="testimonial20_rating-icon w-embed"><svg width="100%" viewBox="0 0 18 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M8.16379 0.551109C8.47316 -0.183704 9.52684 -0.183703 9.83621 0.551111L11.6621 4.88811C11.7926 5.19789 12.0875 5.40955 12.426 5.43636L17.1654 5.81173C17.9684 5.87533 18.294 6.86532 17.6822 7.38306L14.0713 10.4388C13.8134 10.6571 13.7007 10.9996 13.7795 11.3259L14.8827 15.8949C15.0696 16.669 14.2172 17.2809 13.5297 16.8661L9.47208 14.4176C9.18225 14.2427 8.81775 14.2427 8.52793 14.4176L4.47029 16.8661C3.7828 17.2809 2.93036 16.669 3.11727 15.8949L4.22048 11.3259C4.29928 10.9996 4.18664 10.6571 3.92873 10.4388L0.317756 7.38306C-0.294046 6.86532 0.0315611 5.87533 0.834562 5.81173L5.57402 5.43636C5.91255 5.40955 6.20744 5.19789 6.33786 4.88811L8.16379 0.551109Z" fill="currentColor"/>
+</svg></div><div class="testimonial20_rating-icon w-embed"><svg width="100%" viewBox="0 0 18 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M8.16379 0.551109C8.47316 -0.183704 9.52684 -0.183703 9.83621 0.551111L11.6621 4.88811C11.7926 5.19789 12.0875 5.40955 12.426 5.43636L17.1654 5.81173C17.9684 5.87533 18.294 6.86532 17.6822 7.38306L14.0713 10.4388C13.8134 10.6571 13.7007 10.9996 13.7795 11.3259L14.8827 15.8949C15.0696 16.669 14.2172 17.2809 13.5297 16.8661L9.47208 14.4176C9.18225 14.2427 8.81775 14.2427 8.52793 14.4176L4.47029 16.8661C3.7828 17.2809 2.93036 16.669 3.11727 15.8949L4.22048 11.3259C4.29928 10.9996 4.18664 10.6571 3.92873 10.4388L0.317756 7.38306C-0.294046 6.86532 0.0315611 5.87533 0.834562 5.81173L5.57402 5.43636C5.91255 5.40955 6.20744 5.19789 6.33786 4.88811L8.16379 0.551109Z" fill="currentColor"/>
+</svg></div><div class="testimonial20_rating-icon w-embed"><svg width="100%" viewBox="0 0 18 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M8.16379 0.551109C8.47316 -0.183704 9.52684 -0.183703 9.83621 0.551111L11.6621 4.88811C11.7926 5.19789 12.0875 5.40955 12.426 5.43636L17.1654 5.81173C17.9684 5.87533 18.294 6.86532 17.6822 7.38306L14.0713 10.4388C13.8134 10.6571 13.7007 10.9996 13.7795 11.3259L14.8827 15.8949C15.0696 16.669 14.2172 17.2809 13.5297 16.8661L9.47208 14.4176C9.18225 14.2427 8.81775 14.2427 8.52793 14.4176L4.47029 16.8661C3.7828 17.2809 2.93036 16.669 3.11727 15.8949L4.22048 11.3259C4.29928 10.9996 4.18664 10.6571 3.92873 10.4388L0.317756 7.38306C-0.294046 6.86532 0.0315611 5.87533 0.834562 5.81173L5.57402 5.43636C5.91255 5.40955 6.20744 5.19789 6.33786 4.88811L8.16379 0.551109Z" fill="currentColor"/>
+</svg></div><div class="testimonial20_rating-icon w-embed"><svg width="100%" viewBox="0 0 18 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M8.16379 0.551109C8.47316 -0.183704 9.52684 -0.183703 9.83621 0.551111L11.6621 4.88811C11.7926 5.19789 12.0875 5.40955 12.426 5.43636L17.1654 5.81173C17.9684 5.87533 18.294 6.86532 17.6822 7.38306L14.0713 10.4388C13.8134 10.6571 13.7007 10.9996 13.7795 11.3259L14.8827 15.8949C15.0696 16.669 14.2172 17.2809 13.5297 16.8661L9.47208 14.4176C9.18225 14.2427 8.81775 14.2427 8.52793 14.4176L4.47029 16.8661C3.7828 17.2809 2.93036 16.669 3.11727 15.8949L4.22048 11.3259C4.29928 10.9996 4.18664 10.6571 3.92873 10.4388L0.317756 7.38306C-0.294046 6.86532 0.0315611 5.87533 0.834562 5.81173L5.57402 5.43636C5.91255 5.40955 6.20744 5.19789 6.33786 4.88811L8.16379 0.551109Z" fill="currentColor"/>
+</svg></div></div><div class="margin-bottom margin-small"><div class="paragraph-4">Very knowledgeable and professional. My return was filed quickly and I got the money back within weeks.</div></div></div></div><div class="testimonial20_slide w-slide"><div class="testimonial20_content"><div class="testimonial20_client"><div class="testimonial20_client-image-wrapper"><img src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/62b2c8f2bb69cb25456f2f6a_Screen%20Shot%202022-06-22%20at%205.46.43%20pm.png" loading="lazy" alt="" class="testimonial20_customer-image"/></div><div class="testimonial20_client-info"><p class="text-weight-semibold">Cristian Campo</p></div></div><div class="testimonial20_rating-wrapper"><div class="testimonial20_rating-icon w-embed"><svg width="100%" viewBox="0 0 18 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M8.16379 0.551109C8.47316 -0.183704 9.52684 -0.183703 9.83621 0.551111L11.6621 4.88811C11.7926 5.19789 12.0875 5.40955 12.426 5.43636L17.1654 5.81173C17.9684 5.87533 18.294 6.86532 17.6822 7.38306L14.0713 10.4388C13.8134 10.6571 13.7007 10.9996 13.7795 11.3259L14.8827 15.8949C15.0696 16.669 14.2172 17.2809 13.5297 16.8661L9.47208 14.4176C9.18225 14.2427 8.81775 14.2427 8.52793 14.4176L4.47029 16.8661C3.7828 17.2809 2.93036 16.669 3.11727 15.8949L4.22048 11.3259C4.29928 10.9996 4.18664 10.6571 3.92873 10.4388L0.317756 7.38306C-0.294046 6.86532 0.0315611 5.87533 0.834562 5.81173L5.57402 5.43636C5.91255 5.40955 6.20744 5.19789 6.33786 4.88811L8.16379 0.551109Z" fill="currentColor"/>
+</svg></div><div class="testimonial20_rating-icon w-embed"><svg width="100%" viewBox="0 0 18 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M8.16379 0.551109C8.47316 -0.183704 9.52684 -0.183703 9.83621 0.551111L11.6621 4.88811C11.7926 5.19789 12.0875 5.40955 12.426 5.43636L17.1654 5.81173C17.9684 5.87533 18.294 6.86532 17.6822 7.38306L14.0713 10.4388C13.8134 10.6571 13.7007 10.9996 13.7795 11.3259L14.8827 15.8949C15.0696 16.669 14.2172 17.2809 13.5297 16.8661L9.47208 14.4176C9.18225 14.2427 8.81775 14.2427 8.52793 14.4176L4.47029 16.8661C3.7828 17.2809 2.93036 16.669 3.11727 15.8949L4.22048 11.3259C4.29928 10.9996 4.18664 10.6571 3.92873 10.4388L0.317756 7.38306C-0.294046 6.86532 0.0315611 5.87533 0.834562 5.81173L5.57402 5.43636C5.91255 5.40955 6.20744 5.19789 6.33786 4.88811L8.16379 0.551109Z" fill="currentColor"/>
+</svg></div><div class="testimonial20_rating-icon w-embed"><svg width="100%" viewBox="0 0 18 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M8.16379 0.551109C8.47316 -0.183704 9.52684 -0.183703 9.83621 0.551111L11.6621 4.88811C11.7926 5.19789 12.0875 5.40955 12.426 5.43636L17.1654 5.81173C17.9684 5.87533 18.294 6.86532 17.6822 7.38306L14.0713 10.4388C13.8134 10.6571 13.7007 10.9996 13.7795 11.3259L14.8827 15.8949C15.0696 16.669 14.2172 17.2809 13.5297 16.8661L9.47208 14.4176C9.18225 14.2427 8.81775 14.2427 8.52793 14.4176L4.47029 16.8661C3.7828 17.2809 2.93036 16.669 3.11727 15.8949L4.22048 11.3259C4.29928 10.9996 4.18664 10.6571 3.92873 10.4388L0.317756 7.38306C-0.294046 6.86532 0.0315611 5.87533 0.834562 5.81173L5.57402 5.43636C5.91255 5.40955 6.20744 5.19789 6.33786 4.88811L8.16379 0.551109Z" fill="currentColor"/>
+</svg></div><div class="testimonial20_rating-icon w-embed"><svg width="100%" viewBox="0 0 18 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M8.16379 0.551109C8.47316 -0.183704 9.52684 -0.183703 9.83621 0.551111L11.6621 4.88811C11.7926 5.19789 12.0875 5.40955 12.426 5.43636L17.1654 5.81173C17.9684 5.87533 18.294 6.86532 17.6822 7.38306L14.0713 10.4388C13.8134 10.6571 13.7007 10.9996 13.7795 11.3259L14.8827 15.8949C15.0696 16.669 14.2172 17.2809 13.5297 16.8661L9.47208 14.4176C9.18225 14.2427 8.81775 14.2427 8.52793 14.4176L4.47029 16.8661C3.7828 17.2809 2.93036 16.669 3.11727 15.8949L4.22048 11.3259C4.29928 10.9996 4.18664 10.6571 3.92873 10.4388L0.317756 7.38306C-0.294046 6.86532 0.0315611 5.87533 0.834562 5.81173L5.57402 5.43636C5.91255 5.40955 6.20744 5.19789 6.33786 4.88811L8.16379 0.551109Z" fill="currentColor"/>
+</svg></div><div class="testimonial20_rating-icon w-embed"><svg width="100%" viewBox="0 0 18 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M8.16379 0.551109C8.47316 -0.183704 9.52684 -0.183703 9.83621 0.551111L11.6621 4.88811C11.7926 5.19789 12.0875 5.40955 12.426 5.43636L17.1654 5.81173C17.9684 5.87533 18.294 6.86532 17.6822 7.38306L14.0713 10.4388C13.8134 10.6571 13.7007 10.9996 13.7795 11.3259L14.8827 15.8949C15.0696 16.669 14.2172 17.2809 13.5297 16.8661L9.47208 14.4176C9.18225 14.2427 8.81775 14.2427 8.52793 14.4176L4.47029 16.8661C3.7828 17.2809 2.93036 16.669 3.11727 15.8949L4.22048 11.3259C4.29928 10.9996 4.18664 10.6571 3.92873 10.4388L0.317756 7.38306C-0.294046 6.86532 0.0315611 5.87533 0.834562 5.81173L5.57402 5.43636C5.91255 5.40955 6.20744 5.19789 6.33786 4.88811L8.16379 0.551109Z" fill="currentColor"/>
+</svg></div></div><div class="margin-bottom margin-small"><div class="paragraph-4">Very knowledgeable and easy to get in contact with. Excellent customer service. Highly recommended!<br/></div></div></div></div><div class="testimonial20_slide w-slide"><div class="testimonial20_content"><div class="testimonial20_client"><div class="testimonial20_client-image-wrapper"><img src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/62b2dda788eb55939a8153f2_Screen%20Shot%202022-06-22%20at%207.14.27%20pm.png" loading="lazy" alt="" class="testimonial20_customer-image"/></div><div class="testimonial20_client-info"><p class="text-weight-semibold">Catalina Montoya</p></div></div><div class="testimonial20_rating-wrapper"><div class="testimonial20_rating-icon w-embed"><svg width="100%" viewBox="0 0 18 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M8.16379 0.551109C8.47316 -0.183704 9.52684 -0.183703 9.83621 0.551111L11.6621 4.88811C11.7926 5.19789 12.0875 5.40955 12.426 5.43636L17.1654 5.81173C17.9684 5.87533 18.294 6.86532 17.6822 7.38306L14.0713 10.4388C13.8134 10.6571 13.7007 10.9996 13.7795 11.3259L14.8827 15.8949C15.0696 16.669 14.2172 17.2809 13.5297 16.8661L9.47208 14.4176C9.18225 14.2427 8.81775 14.2427 8.52793 14.4176L4.47029 16.8661C3.7828 17.2809 2.93036 16.669 3.11727 15.8949L4.22048 11.3259C4.29928 10.9996 4.18664 10.6571 3.92873 10.4388L0.317756 7.38306C-0.294046 6.86532 0.0315611 5.87533 0.834562 5.81173L5.57402 5.43636C5.91255 5.40955 6.20744 5.19789 6.33786 4.88811L8.16379 0.551109Z" fill="currentColor"/>
+</svg></div><div class="testimonial20_rating-icon w-embed"><svg width="100%" viewBox="0 0 18 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M8.16379 0.551109C8.47316 -0.183704 9.52684 -0.183703 9.83621 0.551111L11.6621 4.88811C11.7926 5.19789 12.0875 5.40955 12.426 5.43636L17.1654 5.81173C17.9684 5.87533 18.294 6.86532 17.6822 7.38306L14.0713 10.4388C13.8134 10.6571 13.7007 10.9996 13.7795 11.3259L14.8827 15.8949C15.0696 16.669 14.2172 17.2809 13.5297 16.8661L9.47208 14.4176C9.18225 14.2427 8.81775 14.2427 8.52793 14.4176L4.47029 16.8661C3.7828 17.2809 2.93036 16.669 3.11727 15.8949L4.22048 11.3259C4.29928 10.9996 4.18664 10.6571 3.92873 10.4388L0.317756 7.38306C-0.294046 6.86532 0.0315611 5.87533 0.834562 5.81173L5.57402 5.43636C5.91255 5.40955 6.20744 5.19789 6.33786 4.88811L8.16379 0.551109Z" fill="currentColor"/>
+</svg></div><div class="testimonial20_rating-icon w-embed"><svg width="100%" viewBox="0 0 18 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M8.16379 0.551109C8.47316 -0.183704 9.52684 -0.183703 9.83621 0.551111L11.6621 4.88811C11.7926 5.19789 12.0875 5.40955 12.426 5.43636L17.1654 5.81173C17.9684 5.87533 18.294 6.86532 17.6822 7.38306L14.0713 10.4388C13.8134 10.6571 13.7007 10.9996 13.7795 11.3259L14.8827 15.8949C15.0696 16.669 14.2172 17.2809 13.5297 16.8661L9.47208 14.4176C9.18225 14.2427 8.81775 14.2427 8.52793 14.4176L4.47029 16.8661C3.7828 17.2809 2.93036 16.669 3.11727 15.8949L4.22048 11.3259C4.29928 10.9996 4.18664 10.6571 3.92873 10.4388L0.317756 7.38306C-0.294046 6.86532 0.0315611 5.87533 0.834562 5.81173L5.57402 5.43636C5.91255 5.40955 6.20744 5.19789 6.33786 4.88811L8.16379 0.551109Z" fill="currentColor"/>
+</svg></div><div class="testimonial20_rating-icon w-embed"><svg width="100%" viewBox="0 0 18 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M8.16379 0.551109C8.47316 -0.183704 9.52684 -0.183703 9.83621 0.551111L11.6621 4.88811C11.7926 5.19789 12.0875 5.40955 12.426 5.43636L17.1654 5.81173C17.9684 5.87533 18.294 6.86532 17.6822 7.38306L14.0713 10.4388C13.8134 10.6571 13.7007 10.9996 13.7795 11.3259L14.8827 15.8949C15.0696 16.669 14.2172 17.2809 13.5297 16.8661L9.47208 14.4176C9.18225 14.2427 8.81775 14.2427 8.52793 14.4176L4.47029 16.8661C3.7828 17.2809 2.93036 16.669 3.11727 15.8949L4.22048 11.3259C4.29928 10.9996 4.18664 10.6571 3.92873 10.4388L0.317756 7.38306C-0.294046 6.86532 0.0315611 5.87533 0.834562 5.81173L5.57402 5.43636C5.91255 5.40955 6.20744 5.19789 6.33786 4.88811L8.16379 0.551109Z" fill="currentColor"/>
+</svg></div><div class="testimonial20_rating-icon w-embed"><svg width="100%" viewBox="0 0 18 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M8.16379 0.551109C8.47316 -0.183704 9.52684 -0.183703 9.83621 0.551111L11.6621 4.88811C11.7926 5.19789 12.0875 5.40955 12.426 5.43636L17.1654 5.81173C17.9684 5.87533 18.294 6.86532 17.6822 7.38306L14.0713 10.4388C13.8134 10.6571 13.7007 10.9996 13.7795 11.3259L14.8827 15.8949C15.0696 16.669 14.2172 17.2809 13.5297 16.8661L9.47208 14.4176C9.18225 14.2427 8.81775 14.2427 8.52793 14.4176L4.47029 16.8661C3.7828 17.2809 2.93036 16.669 3.11727 15.8949L4.22048 11.3259C4.29928 10.9996 4.18664 10.6571 3.92873 10.4388L0.317756 7.38306C-0.294046 6.86532 0.0315611 5.87533 0.834562 5.81173L5.57402 5.43636C5.91255 5.40955 6.20744 5.19789 6.33786 4.88811L8.16379 0.551109Z" fill="currentColor"/>
+</svg></div></div><div class="margin-bottom margin-small"><div class="paragraph-4">I highly recommend Y&amp;S accounting, and specially to Sebastian Garcia.They have an excellent customer service, they always work in a legar way trying to be the most diligent and helpful as much as possible. Looking after their economical costumer wellness.</div></div></div></div><div class="testimonial20_slide w-slide"><div class="testimonial20_content"><div class="testimonial20_client"><div class="testimonial20_client-image-wrapper"><img src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/62b2de19d79e45df58c2030a_Screen%20Shot%202022-06-22%20at%207.16.52%20pm.png" loading="lazy" alt="" class="testimonial20_customer-image"/></div><div class="testimonial20_client-info"><p class="text-weight-semibold">Juan Pablo Vasquez</p></div></div><div class="testimonial20_rating-wrapper"><div class="testimonial20_rating-icon w-embed"><svg width="100%" viewBox="0 0 18 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M8.16379 0.551109C8.47316 -0.183704 9.52684 -0.183703 9.83621 0.551111L11.6621 4.88811C11.7926 5.19789 12.0875 5.40955 12.426 5.43636L17.1654 5.81173C17.9684 5.87533 18.294 6.86532 17.6822 7.38306L14.0713 10.4388C13.8134 10.6571 13.7007 10.9996 13.7795 11.3259L14.8827 15.8949C15.0696 16.669 14.2172 17.2809 13.5297 16.8661L9.47208 14.4176C9.18225 14.2427 8.81775 14.2427 8.52793 14.4176L4.47029 16.8661C3.7828 17.2809 2.93036 16.669 3.11727 15.8949L4.22048 11.3259C4.29928 10.9996 4.18664 10.6571 3.92873 10.4388L0.317756 7.38306C-0.294046 6.86532 0.0315611 5.87533 0.834562 5.81173L5.57402 5.43636C5.91255 5.40955 6.20744 5.19789 6.33786 4.88811L8.16379 0.551109Z" fill="currentColor"/>
+</svg></div><div class="testimonial20_rating-icon w-embed"><svg width="100%" viewBox="0 0 18 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M8.16379 0.551109C8.47316 -0.183704 9.52684 -0.183703 9.83621 0.551111L11.6621 4.88811C11.7926 5.19789 12.0875 5.40955 12.426 5.43636L17.1654 5.81173C17.9684 5.87533 18.294 6.86532 17.6822 7.38306L14.0713 10.4388C13.8134 10.6571 13.7007 10.9996 13.7795 11.3259L14.8827 15.8949C15.0696 16.669 14.2172 17.2809 13.5297 16.8661L9.47208 14.4176C9.18225 14.2427 8.81775 14.2427 8.52793 14.4176L4.47029 16.8661C3.7828 17.2809 2.93036 16.669 3.11727 15.8949L4.22048 11.3259C4.29928 10.9996 4.18664 10.6571 3.92873 10.4388L0.317756 7.38306C-0.294046 6.86532 0.0315611 5.87533 0.834562 5.81173L5.57402 5.43636C5.91255 5.40955 6.20744 5.19789 6.33786 4.88811L8.16379 0.551109Z" fill="currentColor"/>
+</svg></div><div class="testimonial20_rating-icon w-embed"><svg width="100%" viewBox="0 0 18 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M8.16379 0.551109C8.47316 -0.183704 9.52684 -0.183703 9.83621 0.551111L11.6621 4.88811C11.7926 5.19789 12.0875 5.40955 12.426 5.43636L17.1654 5.81173C17.9684 5.87533 18.294 6.86532 17.6822 7.38306L14.0713 10.4388C13.8134 10.6571 13.7007 10.9996 13.7795 11.3259L14.8827 15.8949C15.0696 16.669 14.2172 17.2809 13.5297 16.8661L9.47208 14.4176C9.18225 14.2427 8.81775 14.2427 8.52793 14.4176L4.47029 16.8661C3.7828 17.2809 2.93036 16.669 3.11727 15.8949L4.22048 11.3259C4.29928 10.9996 4.18664 10.6571 3.92873 10.4388L0.317756 7.38306C-0.294046 6.86532 0.0315611 5.87533 0.834562 5.81173L5.57402 5.43636C5.91255 5.40955 6.20744 5.19789 6.33786 4.88811L8.16379 0.551109Z" fill="currentColor"/>
+</svg></div><div class="testimonial20_rating-icon w-embed"><svg width="100%" viewBox="0 0 18 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M8.16379 0.551109C8.47316 -0.183704 9.52684 -0.183703 9.83621 0.551111L11.6621 4.88811C11.7926 5.19789 12.0875 5.40955 12.426 5.43636L17.1654 5.81173C17.9684 5.87533 18.294 6.86532 17.6822 7.38306L14.0713 10.4388C13.8134 10.6571 13.7007 10.9996 13.7795 11.3259L14.8827 15.8949C15.0696 16.669 14.2172 17.2809 13.5297 16.8661L9.47208 14.4176C9.18225 14.2427 8.81775 14.2427 8.52793 14.4176L4.47029 16.8661C3.7828 17.2809 2.93036 16.669 3.11727 15.8949L4.22048 11.3259C4.29928 10.9996 4.18664 10.6571 3.92873 10.4388L0.317756 7.38306C-0.294046 6.86532 0.0315611 5.87533 0.834562 5.81173L5.57402 5.43636C5.91255 5.40955 6.20744 5.19789 6.33786 4.88811L8.16379 0.551109Z" fill="currentColor"/>
+</svg></div><div class="testimonial20_rating-icon w-embed"><svg width="100%" viewBox="0 0 18 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M8.16379 0.551109C8.47316 -0.183704 9.52684 -0.183703 9.83621 0.551111L11.6621 4.88811C11.7926 5.19789 12.0875 5.40955 12.426 5.43636L17.1654 5.81173C17.9684 5.87533 18.294 6.86532 17.6822 7.38306L14.0713 10.4388C13.8134 10.6571 13.7007 10.9996 13.7795 11.3259L14.8827 15.8949C15.0696 16.669 14.2172 17.2809 13.5297 16.8661L9.47208 14.4176C9.18225 14.2427 8.81775 14.2427 8.52793 14.4176L4.47029 16.8661C3.7828 17.2809 2.93036 16.669 3.11727 15.8949L4.22048 11.3259C4.29928 10.9996 4.18664 10.6571 3.92873 10.4388L0.317756 7.38306C-0.294046 6.86532 0.0315611 5.87533 0.834562 5.81173L5.57402 5.43636C5.91255 5.40955 6.20744 5.19789 6.33786 4.88811L8.16379 0.551109Z" fill="currentColor"/>
+</svg></div></div><div class="margin-bottom margin-small"><div class="paragraph-4">This is the 4th year making my tax return with no issues and exceptional professionalisms. Strongly recommend them.<br/></div></div></div></div></div><div class="testimonial20_arrow left w-slider-arrow-left"><img src="https://cdn.prod.website-files.com/6299b8b0e1db16aa7f896614/6299b8b0e1db1677c189665e_icon_slider-arrow-left.svg" loading="lazy" alt=""/></div><div class="testimonial20_arrow w-slider-arrow-right"><img src="https://cdn.prod.website-files.com/6299b8b0e1db16aa7f896614/6299b8b0e1db160f2f896660_icon_slider-arrow-right.svg" loading="lazy" alt=""/></div><div class="testimonial20_slide-nav w-slider-nav w-slider-nav-invert w-round"></div></div></div></div></div></section><section class="section-faq4"><div class="page-padding-2"><div class="container-small"><div class="padding-vertical padding-xhuge"><div class="margin-bottom margin-xxlarge"><div class="text-align-center"><div class="max-width-large-2"><div class="margin-bottom margin-small"><h2 class="heading-25">Frequently asked questions</h2></div><p class="text-size-medium-5">Individual Tax returns</p></div></div></div><div class="faq4_component"><div class="w-layout-grid faq4_list"><div class="faq4_accordion"><div data-w-id="8abe96f6-96f4-8a9b-acc7-73cf9df44649" class="faq4_question"><div class="text-size-medium-5 text-weight-bold">How long does the process take?</div><img src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/62abdce2714468069a00cccf_plussymbol.svg" loading="lazy" alt="" width="16" class="faq-05_icon"/></div><div style="width:100%;height:0px" class="faq4_answer"><div class="margin-bottom margin-small"><p class="paragraph-5">Processing time is 48 business hours. 48 hours after you send us your information, we will send you your declaration ready to be electronically signed or we will contact you to request additional information.</p></div></div></div><div class="faq4_accordion"><div data-w-id="8abe96f6-96f4-8a9b-acc7-73cf9df44652" class="faq4_question"><div class="text-size-medium-5 text-weight-bold">How much does the service cost?</div><img src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/62abdce2714468069a00cccf_plussymbol.svg" loading="lazy" alt="" class="faq-05_icon"/></div><div style="width:100%;height:0px" class="faq4_answer"><div class="margin-bottom margin-small"><p class="paragraph-5">The base price is $99. <br/>If you need help applying for a medicare exemption certificate, an extra $35 applies. <br/></p></div></div></div><div class="faq4_accordion"><div data-w-id="8abe96f6-96f4-8a9b-acc7-73cf9df44667" class="faq4_question"><div class="text-size-medium-5 text-weight-bold">Why should I use Y&amp;S accounting Brisbane&#x27;s online tax return service?</div><img src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/62abdce2714468069a00cccf_plussymbol.svg" loading="lazy" alt="" class="faq-05_icon"/></div><div style="width:100%;height:0px" class="faq4_answer"><div class="margin-bottom margin-small"><p class="paragraph-5">1. For the confidence that your tax return will be prepared by a professional tax return preparer authorised by the Australian tax office. <br/>2. We specialise in international students and temporary residents in Australia.<br/>3. You can complete the whole process from the comfort of your own home.</p></div></div></div><div class="faq4_accordion"><div data-w-id="8abe96f6-96f4-8a9b-acc7-73cf9df44673" class="faq4_question"><div class="text-size-medium-5 text-weight-bold">If I don&#x27;t have a bank account in Australia, can I receive my refund in someone else&#x27;s account or in a bank account in another country?</div><img src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/62abdce2714468069a00cccf_plussymbol.svg" loading="lazy" alt="" class="faq-05_icon"/></div><div style="width:100%;height:0px" class="faq4_answer"><div class="margin-bottom margin-small"><p class="paragraph-5">Yes, we can arrange for you to receive your refund in a third party bank account or a bank account in another country. A trust account fee of $55 applies.</p></div></div></div><div class="faq4_accordion"><div data-w-id="ce5c50fb-9028-ab2a-32ef-5c51af6c5273" class="faq4_question"><div class="text-size-medium-5 text-weight-bold">What is a medicare exemption certificate and do I need one?</div><img src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/62abdce2714468069a00cccf_plussymbol.svg" loading="lazy" alt="" class="faq-05_icon"/></div><div style="width:100%;height:0px" class="faq4_answer"><div class="margin-bottom margin-small"><p class="paragraph-5">People who are not entitled to Medicare can apply for an exemption from the Medicare levy on their tax return. To obtain an exemption, you must not be entitled to Medicare and you must apply for Medicare levy exemption certification with the Services Australia department.</p></div></div></div><div class="faq4_accordion"><div data-w-id="8abe96f6-96f4-8a9b-acc7-73cf9df44685" class="faq4_question"><div class="text-size-medium-5 text-weight-bold">I am a permanent resident or Australian citizen, can I use the online declaration service?</div><img src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/62abdce2714468069a00cccf_plussymbol.svg" loading="lazy" alt="" class="faq-05_icon"/></div><div style="width:100%;height:0px" class="faq4_answer"><div class="margin-bottom-copy margin-small"><p class="paragraph-5">Our online service is designed for individuals on student visas in Australia. To view our services and prices for permanent residents/Australian citizens please click on the following link:<br/></p><a href="/tax-return" class="button-secondary w-button">Tax returns</a></div></div></div></div></div><div class="margin-top-2 margin-xxlarge"><div class="text-align-center"><div class="max-width-medium align-center"><div class="margin-bottom margin-xsmall"><h4 class="heading-26">Still have questions?</h4></div><div class="margin-top margin-medium"><a href="/contact-us" class="button-secondary w-button">Contact us!</a></div><h4 class="heading-26">or </h4><div class="margin-top margin-medium"><a data-w-id="e27a6be9-206d-34ad-fb67-cf8d86bbd872" href="https://taxreturns.taxbne.com.au/" class="button-secondary w-button">Start Now</a></div></div></div></div></div></div></div></section><div class="line-divider"></div><div class="footer3_component"><div class="page-padding-2"><div class="container-large-2"><div class="padding-vertical padding-xxlarge"><div class="padding-bottom-copy"><div class="w-layout-grid footer3_top-wrapper"><div class="footer3_left-wrapper"><div class="margin-bottom margin-medium"><a href="#" class="footer3_logo-link w-nav-brand"><img src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/62abf350449a9275051c16fd_logo%20ys%20blanco.svg" loading="lazy" alt="" class="image-11"/></a></div><div class="margin-bottom-copy"><div class="footer3_details-wrapper">Y&amp;S Accounting proudly specialises in providing professional consulting and accounting services to the Latin American community in Australia since 2008.</div></div><div class="w-layout-grid footer3_social-list"><a href="https://www.facebook.com/ysaccountingbne" target="_blank" class="footer3_social-link w-inline-block"><div class="social-icon w-embed"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M16.5 6H13.5C12.9477 6 12.5 6.44772 12.5 7V10H16.5C16.6137 9.99748 16.7216 10.0504 16.7892 10.1419C16.8568 10.2334 16.8758 10.352 16.84 10.46L16.1 12.66C16.0318 12.8619 15.8431 12.9984 15.63 13H12.5V20.5C12.5 20.7761 12.2761 21 12 21H9.5C9.22386 21 9 20.7761 9 20.5V13H7.5C7.22386 13 7 12.7761 7 12.5V10.5C7 10.2239 7.22386 10 7.5 10H9V7C9 4.79086 10.7909 3 13 3H16.5C16.7761 3 17 3.22386 17 3.5V5.5C17 5.77614 16.7761 6 16.5 6Z" fill="CurrentColor"/>
+</svg></div></a><a href="https://instagram.com/taxbackbne" target="_blank" class="footer3_social-link w-inline-block"><div class="social-icon w-embed"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M16 3H8C5.23858 3 3 5.23858 3 8V16C3 18.7614 5.23858 21 8 21H16C18.7614 21 21 18.7614 21 16V8C21 5.23858 18.7614 3 16 3ZM19.25 16C19.2445 17.7926 17.7926 19.2445 16 19.25H8C6.20735 19.2445 4.75549 17.7926 4.75 16V8C4.75549 6.20735 6.20735 4.75549 8 4.75H16C17.7926 4.75549 19.2445 6.20735 19.25 8V16ZM16.75 8.25C17.3023 8.25 17.75 7.80228 17.75 7.25C17.75 6.69772 17.3023 6.25 16.75 6.25C16.1977 6.25 15.75 6.69772 15.75 7.25C15.75 7.80228 16.1977 8.25 16.75 8.25ZM12 7.5C9.51472 7.5 7.5 9.51472 7.5 12C7.5 14.4853 9.51472 16.5 12 16.5C14.4853 16.5 16.5 14.4853 16.5 12C16.5027 10.8057 16.0294 9.65957 15.1849 8.81508C14.3404 7.97059 13.1943 7.49734 12 7.5ZM9.25 12C9.25 13.5188 10.4812 14.75 12 14.75C13.5188 14.75 14.75 13.5188 14.75 12C14.75 10.4812 13.5188 9.25 12 9.25C10.4812 9.25 9.25 10.4812 9.25 12Z" fill="CurrentColor"/>
+</svg></div></a></div></div><div class="w-layout-grid footer3_menu-wrapper"><div class="footer3_link-list"><div class="text-block-7">Accounting services</div><a href="/tax-return" class="footer3_link">Personal tax returns</a><a href="#" class="footer3_link">Business advise</a><a href="#" class="footer3_link">Xero health check</a><a href="#" class="footer3_link">Business registration</a><a href="#" class="footer3_link">Bookkeeping</a><a href="#" class="footer3_link">Start-up advise</a></div><div class="footer3_link-list"><div class="text-block-7">Address:</div><a href="https://www.google.com/maps/place/Y%26S+Accounting+Brisbane,+Eagle+Street,+Brisbane+City+QLD/@-27.4580505,153.0500812,15z/data=!4m5!3m4!1s0x6b915a04a8e54201:0x6eaf672e05b0d74!8m2!3d-27.4682608!4d153.0303029" target="_blank" class="footer3_link">Level 38, 71 Eagle St, Brisbane QLD 4000</a><div class="text-size-small"><span class="text-block-7">Contact:<br/></span><a href="tel:+611300189682" class="footer3_link">1300 189 682<br/></a><a href="mailto:brisbane@ysaccounting.com.au?subject=Enquiry%20from%20your%20website" class="footer3_link">brisbane@ysaccounting.com.au</a></div></div></div></div></div><div class="line-divider"></div><div class="padding-top padding-medium"><div class="footer3_bottom-wrapper"><div class="footer3_credit-text">© 2023 Y&amp;S Accounting Brisbane. All right reserved.</div><div class="w-layout-grid footer3_legal-list"><a href="/privacy" class="footer3_legal-link">Privacy Policy</a><a href="/terms-and-conditions" class="footer3_legal-link">Terms of Service</a><a href="#" class="footer3_legal-link">Cookies Settings</a></div></div></div></div></div></div></div><script src="https://d3e54v103j8qbb.cloudfront.net/js/jquery-3.5.1.min.dc5e7f18c8.js?site=5fd15febb3187ba77c188d42" type="text/javascript" integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=" crossorigin="anonymous"></script><script src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/js/webflow.schunk.4a394eb5af8156f2.js" type="text/javascript"></script><script src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/js/webflow.schunk.c51ddd7ac7c0843a.js" type="text/javascript"></script><script src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/js/webflow.schunk.ef7080c06606ca1c.js" type="text/javascript"></script><script src="https://cdn.prod.website-files.com/5fd15febb3187ba77c188d42/js/webflow.1abe0fe9.988120b24038a991.js" type="text/javascript"></script><script src="https://fengyuanchen.github.io/datepicker/js/datepicker.js"></script>
+
+<script>
+    $(document).ready(function () {
+        $('[data-toggle="datepicker"]').datepicker({
+            format: 'dd-mm-yyyy'
+        });
+        // Available date placeholders:
+        // Year: yyyy
+        // Month: mm
+        // Day: dd
+        if (window.innerWidth < 768) {
+            $('[data-toggle="datepicker"]').attr('readonly', 'readonly')
+        }
+    });
+
+</script>
+
+<!-- You can put your custom CSS attributes -->
+<style>
+    /* You can apply your own color! 
+    --main-light-color is the light grey, 
+    --main-dark-color is the text
+    --main-active-color is the highlight
+    you can just add like red, or blue or any helx you like! */
+    :root {
+        --main-light-color: #f3f5fb;
+        --main-dark-color: #321f59;
+        --main-active-color: #642eff;
+    }
+
+    .datepicker-dropdown {
+        border-radius: 8px !important;
+        border: 0 !important;
+        -webkit-box-shadow: 0px 48px 88px rgba(23, 9, 54, 0.08);
+        box-shadow: 0px 48px 88px rgba(23, 9, 54, 0.08);
+        box-sizing: border-box;
+    }
+
+    .datepicker-panel>ul[data-view="week"]>li {
+        background-color: var(--main-light-color);
+        color: var(--main-dark-color);
+        font-weight: bold;
+        text-transform: uppercase;
+        margin: 0;
+        height: initial;
+        padding-top: 3px;
+        margin-bottom: 4px;
+    }
+
+    .datepicker-panel>ul[data-view="week"]>li:hover {
+        background-color: var(--main-light-color);
+        color: var(--main-dark-color);
+        border-radius: 0px;
+    }
+
+    .datepicker-panel>ul[data-view="week"] li:first-child {
+        border-radius: 20px 0 0 20px;
+    }
+
+    .datepicker-panel>ul[data-view="week"] li:last-child {
+        border-radius: 0 20px 20px 0;
+    }
+
+    .datepicker-top-left::before,
+    .datepicker-top-left::after {
+        display: none;
+    }
+
+    .datepicker-panel>ul>li.picked,
+    .datepicker-panel>ul>li.highlighted,
+    .datepicker-panel>ul>li.picked:hover {
+        color: var(--main-active-color);
+        background: var(--main-light-color);
+        border-radius: 8px;
+        font-style: normal;
+        font-weight: 500;
+        font-size: 14px;
+    }
+
+    li[data-view="month current"],
+    li[data-view="year current"] {
+        text-align: left;
+        color: var(--main-dark-color);
+        font-style: normal;
+        font-weight: 500;
+        font-size: 14px;
+        /* line-height: 24px; */
+        padding-left: 15px;
+        border-radius: 10px;
+    }
+
+    .datepicker-panel>ul>li:hover {
+        background: var(--main-light-color);
+        border-radius: 10px;
+    }
+
+    li[data-view="month current"],
+    li[data-view="year current"],
+    li[data-view="years current"] {
+        margin-bottom: 4px !important;
+    }
+
+    @media screen and (min-width: 768px) {
+        .datepicker-dropdown {
+            width: 364px;
+            padding: 12px;
+        }
+
+        .datepicker-panel>ul>li {
+            width: 48px;
+            height: 48px;
+            padding-top: 10px;
+        }
+
+        li[data-view="month next"],
+        li[data-view="year next"],
+        li[data-view="years next"] {
+            position: absolute;
+            right: 18px
+        }
+
+        li[data-view="month prev"],
+        li[data-view="year prev"],
+        li[data-view="years prev"] {
+            position: absolute;
+            right: 66px
+        }
+
+        ul[data-view="months"] li,
+        ul[data-view="years"] li {
+            padding-top: 0px;
+            width: 57px !important;
+        }
+    }
+
+    @media screen and (max-width: 768px) {
+        .datepicker-panel {
+            transform: scale(0.97);
+        }
+    }
+</style>
+<script type="text/javascript" src="https://cdn.weglot.com/weglot.min.js"></script>
+<script>
+// init Weglot
+Weglot.initialize({
+	api_key: 'wg_337fe9dfcb76d1f4929c73fe150ad5288'
+});
+
+// on Weglot init
+Weglot.on('initialized', ()=>{
+	// get the current active language
+  const currentLang = Weglot.getCurrentLang();
+  // call updateFlagDropdownLinks function
+  updateSW6FlagDropdownLinks(currentLang);
+});
+
+// for each of the .wg-element-wrapper language links
+document.querySelectorAll('.wg-element-wrapper.sw6 [lang]').forEach((link)=>{
+		// add a click event listener
+		link.addEventListener('click', function(e){
+    	// prevent default
+			e.preventDefault();
+      // switch to the current active language      
+      Weglot.switchTo(this.getAttribute('lang'));
+      // call updateDropdownLinks function
+      updateSW6FlagDropdownLinks(this.getAttribute('lang'));
+		});
+});
+
+// updateFlagDropdownLinks function
+function updateSW6FlagDropdownLinks(currentLang){
+	// get the wrapper element
+	const $wrapper = document.querySelector('.wg-element-wrapper.sw6'); 
+  // if the .w-dropdown-toggle is not the current active language
+ 	if($wrapper.querySelector('.w-dropdown-toggle').getAttribute('lang') !== currentLang){
+  	// swap the dropdown toggle's innerHTML with the current active language link innerHTML
+  	const $activeLangLink = $wrapper.querySelector('[lang='+currentLang+']');
+    const childDiv = $activeLangLink.innerHTML;
+    const $toggle = $wrapper.querySelector('.w-dropdown-toggle');
+    const toggleDiv = $toggle.innerHTML;
+    $toggle.innerHTML = childDiv;
+    $activeLangLink.innerHTML = toggleDiv;
+    
+    // swap the dropdown toggle's lang attr with the current active language link lang attr
+		const lang = $activeLangLink.getAttribute('lang');
+   	const toggleLang = $toggle.getAttribute('lang');
+		$toggle.setAttribute('lang', lang);
+		$activeLangLink.setAttribute('lang', toggleLang);
+  }
+}
+</script></body></html>
