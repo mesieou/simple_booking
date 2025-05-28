@@ -1,11 +1,10 @@
-import { CrawlConfig, Category, CATEGORY_DISPLAY_NAMES, ExtractedPatterns, PROCESS_CONTENT_CONFIG, defaultConfig } from '@/lib/config/config';
+import { CrawlConfig, Category, CATEGORY_DISPLAY_NAMES, PROCESS_CONTENT_CONFIG, defaultConfig, CategorizedContent } from '@/lib/config/config';
 import { 
-    saveLlmInteraction, // Will be removed for main processing, kept if other interactions exist
-    getUrlIdentifier, 
-    savePageMainPrompt, 
+    savePageMainPrompt, // savePageMainPrompt is now called within actualCategorizeWebsiteContent
     savePageMainResponse 
 } from './logger-artifact-savers';
 import crypto from 'crypto';
+import { categorizeWebsiteContent as actualCategorizeWebsiteContent, CategorizationApiOutput } from '@/lib/helpers/openai/functions/content-analysis';
 
 // Output structure for each LLM-defined chunk
 export interface LLMSegmentedChunk {
@@ -22,203 +21,79 @@ export interface LLMSegmentedChunk {
 // Result from the main function
 export interface LLMSegmenterResult {
   llmSegmentedChunks: LLMSegmentedChunk[];
-  promptUsed: string;
-  modelUsed: string;
-  originalContentCharacterLength: number; // Length of the pre-chunk processed
+  promptUsed: string;       // This will be the prompt returned by actualCategorizeWebsiteContent
+  modelUsed: string;        // This will be the model reported by actualCategorizeWebsiteContent
+  originalContentCharacterLength: number;
 }
 
-async function mockLLMForSegmentationAndCategorization(
-  preChunkContent: string, // Renamed from mainPageContent
-  sourceUrl: string,
-  pageTitle: string | undefined,
-  config: CrawlConfig,
-  preChunkIndex?: number, // New
-  totalPreChunksForUrl?: number // New
-): Promise<LLMSegmenterResult> {
-  const preChunkContext = preChunkIndex !== undefined && totalPreChunksForUrl !== undefined 
-                          ? `Pre-chunk ${preChunkIndex + 1}/${totalPreChunksForUrl}` 
-                          : `Full content`;
-
-  console.log(`[MOCK LLM Segmenter] Processing ${preChunkContext} for URL: ${sourceUrl}, Content length: ${preChunkContent.length}`);
-  
-  const categoryDisplayValues = Object.values(Category).filter(v => typeof v === 'number').map(v => CATEGORY_DISPLAY_NAMES[v as Category]).join(', ');
-  const targetWordsInPrompt = config.chunkSize ?? defaultConfig.chunkSize;
-  
-  // Create a structured object for the prompt details
-  const promptDetails = {
-    preChunkContext,
-    sourceUrl,
-    pageTitle: pageTitle || 'N/A',
-    businessId: config.businessId,
-    contentType: "Markdown with hints (# for headings, * or - for list items, ``` for code blocks)",
-    segmentationGoal: `Segment into distinct semantic chunks (target ~${targetWordsInPrompt} words each, which is roughly ${targetWordsInPrompt * 1.33} tokens)`,
-    categorizationGoal: `Categorize each using ONLY these categories: ${categoryDisplayValues}`,
-    outputFormat: "JSON: [{chunkOrder, chunkText, category (numeric enum value for Category type), confidence (0.0-1.0), sourceUrl, pageTitle}]",
-    contentPrefix: preChunkContent.substring(0, 2000) // Store a prefix of the content for reference
-    // Note: The full preChunkContent is used below to form the actual LLM prompt string, 
-    // but we log only a prefix here to keep the promptDetails object manageable if content is huge.
-    // The actual content processed by the LLM is in the 'prompt' variable below.
-  };
-
-  // Save the structured prompt details directly using the imported function
-  try {
-    await savePageMainPrompt(sourceUrl, promptDetails);
-  } catch (logError) {
-    console.error(`[MOCK LLM Segmenter] Failed to save page main prompt for ${sourceUrl}:`, logError);
-    // Decide if you want to proceed if logging fails. For now, we will.
-  }
-
-  const prompt = `
-    ${preChunkContext} from URL ${sourceUrl} (Title: ${pageTitle || 'N/A'}) for business ID ${config.businessId}:
-    The content below may contain Markdown hints: '#' for headings, '*' or '-' for list items, and \`\`\` for code blocks. Use these structural hints to guide semantic segmentation.
-    ---
-    ${preChunkContent.substring(0, 2000)} 
-    ---
-    Segment the above into distinct semantic chunks (target ~${targetWordsInPrompt} words each, which is roughly ${targetWordsInPrompt * 1.33} tokens) and categorize each using ONLY these categories: ${categoryDisplayValues}.
-    Output JSON: [{chunkOrder, chunkText, category (numeric enum value for Category type), confidence (0.0-1.0), sourceUrl, pageTitle}]
-  `;
-
-  await new Promise(resolve => setTimeout(resolve, 100)); 
-
-  const mockChunks: LLMSegmentedChunk[] = [];
-  const categories = Object.values(Category).filter(v => typeof v === 'number') as Category[];
-  
-  const approxWordsPerMockChunk = config.chunkSize ?? defaultConfig.chunkSize;
-  const words = preChunkContent.split(/\s+/).filter(w => w.length > 0);
-  let currentWordIndex = 0;
-  const minChunkWordsGlobal = PROCESS_CONTENT_CONFIG.LOGGER.MIN_CHUNK_WORDS;
-  const minChunkLengthGlobal = PROCESS_CONTENT_CONFIG.TEXT_SPLITTER.MIN_CHUNK_LENGTH;
-
-  for (let i = 0; i < Math.min(5, Math.ceil(words.length / approxWordsPerMockChunk) +1 ); i++) { 
-    if (currentWordIndex >= words.length && preChunkContent.trim()) break;
-    const chunkWords = words.slice(currentWordIndex, currentWordIndex + approxWordsPerMockChunk);
-    
-    if (chunkWords.length < minChunkWordsGlobal && !(mockChunks.length === 0 && words.length < minChunkWordsGlobal && words.length > 0) ) { 
-        if (currentWordIndex < words.length) { 
-             const lastChunkText = words.slice(currentWordIndex).join(' ').trim();
-             if (lastChunkText.length >= minChunkLengthGlobal && lastChunkText.split(/\s+/).length >= minChunkWordsGlobal) {
-                 mockChunks.push({
-                    chunkOrder: mockChunks.length + 1,
-                    chunkText: lastChunkText,
-                    category: categories[(mockChunks.length) % categories.length], 
-                    confidence: Math.random() * 0.2 + 0.75, 
-                    sourceUrl: sourceUrl,
-                    pageTitle: pageTitle,
-                    preChunkSourceIndex: preChunkIndex,
-                });
-             }
-        }
-        break;
-    } 
-    if (chunkWords.length === 0 && mockChunks.length > 0) break;
-    if (chunkWords.length === 0 && mockChunks.length === 0 && words.length === 0) break; 
-
-    const currentChunkText = chunkWords.length > 0 ? chunkWords.join(' ') : (mockChunks.length === 0 ? preChunkContent.trim() : '');
-    if (!currentChunkText.trim() && mockChunks.length === 0 && words.length > 0) { 
-        currentWordIndex += approxWordsPerMockChunk;
-        continue;
-    }
-    if (!currentChunkText.trim()) continue;
-
-    mockChunks.push({
-      chunkOrder: mockChunks.length + 1,
-      chunkText: currentChunkText,
-      category: categories[mockChunks.length === 0 ? 0 : (mockChunks.length -1) % categories.length], 
-      confidence: Math.random() * 0.2 + 0.75, 
-      sourceUrl: sourceUrl,
-      pageTitle: pageTitle,
-      preChunkSourceIndex: preChunkIndex,
-    });
-    currentWordIndex += approxWordsPerMockChunk;
-    const lastAddedChunk = mockChunks[mockChunks.length-1];
-    if(lastAddedChunk && lastAddedChunk.chunkText.trim().length < minChunkLengthGlobal && mockChunks.length > 1) {
-        mockChunks.pop(); 
-    }
-  }
-  
-  if (mockChunks.length === 0 && preChunkContent.trim().length >= minChunkLengthGlobal && preChunkContent.trim().split(/\s+/).length >= minChunkWordsGlobal) {
-       mockChunks.push({
-          chunkOrder: 1,
-          chunkText: preChunkContent.trim(),
-          category: Category.GENERAL_INFORMATION, 
-          confidence: 0.75,
-          sourceUrl: sourceUrl,
-          pageTitle: pageTitle,
-          preChunkSourceIndex: preChunkIndex,
-        });
-  }
-
-  return {
-    llmSegmentedChunks: mockChunks.filter(c => c.chunkText.trim().length >= minChunkLengthGlobal && c.chunkText.trim().split(/\s+/).length >= minChunkWordsGlobal),
-    promptUsed: prompt,
-    modelUsed: "mock-gpt-4o-segmenter",
-    originalContentCharacterLength: preChunkContent.length, // Reflects pre-chunk length
-  };
-}
+// Removed the internal mockLLMForSegmentationAndCategorization function entirely.
+// All categorization logic (real or mock) is now handled by actualCategorizeWebsiteContent.
 
 export async function segmentAndCategorizeByLLM(
-  preChunkContent: string, // Renamed from mainPageContent
+  preChunkContent: string, 
   sourceUrl: string,
   pageTitle: string | undefined,
   config: CrawlConfig,
-  preChunkIndex?: number, // New
-  totalPreChunksForUrl?: number // New
+  preChunkIndex?: number, 
+  totalPreChunksForUrl?: number 
 ): Promise<LLMSegmenterResult> {
   
-  const modelToUse = config.botType === 'mobile-quote-booking' ? "gpt-4-turbo" : "gpt-4o";
-
-  // Pass new parameters to the (mock) LLM call
-  const result = await mockLLMForSegmentationAndCategorization(
-    preChunkContent, 
-    sourceUrl, 
-    pageTitle, 
-    config,
-    preChunkIndex,
-    totalPreChunksForUrl
-  );
+  console.log(`[LLMSegmenterCategorizer] Calling actualCategorizeWebsiteContent from content-analysis.ts for URL: ${sourceUrl}`);
   
+  // Always call the function from content-analysis.ts.
+  // It will internally decide whether to use a real LLM or its own mock based on process.env.MOCK_GPT.
+  const categorizationOutput: CategorizationApiOutput = await actualCategorizeWebsiteContent(
+    preChunkContent,
+    config.businessId,
+    sourceUrl
+  );
+
+  // Adapt the output from actualCategorizeWebsiteContent to LLMSegmentedChunk[]
+  // The categorizeWebsiteContent is expected to return CategorizedContent[] which aligns well.
+  const llmSegmentedChunks: LLMSegmentedChunk[] = categorizationOutput.result.map((item: CategorizedContent, index: number) => ({
+      chunkOrder: index + 1, // Or item.chunkOrder if the API provides it for segmented chunks
+      chunkText: item.content,
+      category: item.category as Category, // Ensure type assertion if needed
+      categoryName: CATEGORY_DISPLAY_NAMES[item.category as Category] || 'Unknown',
+      confidence: item.confidence,
+      sourceUrl: item.url, // actualCategorizeWebsiteContent should set this to the sourceUrl
+      pageTitle: pageTitle, 
+      preChunkSourceIndex: preChunkIndex 
+  }));
+  
+  const result: LLMSegmenterResult = {
+    llmSegmentedChunks,
+    promptUsed: categorizationOutput.prompt, // Prompt used by actualCategorizeWebsiteContent
+    // modelUsed will be determined by what actualCategorizeWebsiteContent returns or a fixed value if not provided by it
+    modelUsed: process.env.MOCK_GPT === 'true' ? 'mock-from-content-analysis' : (config.botType === 'mobile-quote-booking' ? "gpt-4-turbo" : "gpt-4o"), // Reflects the model that would be used or was mocked by content-analysis
+    originalContentCharacterLength: preChunkContent.length,
+  };
+  
+  // Add categoryName and ensure preChunkSourceIndex for all chunks
   result.llmSegmentedChunks.forEach(chunk => {
-      chunk.categoryName = CATEGORY_DISPLAY_NAMES[chunk.category] || 'Unknown';
-      // Ensure preChunkSourceIndex is set on each chunk if not already by mock
+      if (!chunk.categoryName) { // Double check if not set during mapping
+        chunk.categoryName = CATEGORY_DISPLAY_NAMES[chunk.category] || 'Unknown';
+      }
       if (chunk.preChunkSourceIndex === undefined && preChunkIndex !== undefined) {
         chunk.preChunkSourceIndex = preChunkIndex;
       }
   });
 
-  const baseInteractionId = `semantic_segment_cat`;
-  const chunkContext = preChunkIndex !== undefined && totalPreChunksForUrl !== undefined 
-                       ? `_prechunk_${preChunkIndex + 1}_of_${totalPreChunksForUrl}` // Use 1-based index for logging
-                       : `_full`;
-  const uniqueId = crypto.randomBytes(4).toString('hex');
-  const interactionId = `${baseInteractionId}${chunkContext}_${uniqueId}`;
-  
-  // Remove the old saveLlmInteraction call for this main categorization step
-  // await saveLlmInteraction(sourceUrl, interactionId, result.promptUsed, {
-  //     modelUsed: result.modelUsed,
-  //     parsedChunks: result.llmSegmentedChunks, 
-  //     originalContentCharacterLength: result.originalContentCharacterLength, // This is pre-chunk length now
-  //     preChunkSourceIndex: preChunkIndex,
-  //     totalPreChunksForUrl: totalPreChunksForUrl
-  // });
-
-  // Use new functions to save plain text prompt and structured response
-  // if (result.promptUsed) { // This is removed as prompt is now saved as structured object by the function that creates it
-  //     await savePageMainPrompt(sourceUrl, result.promptUsed);
-  // }
-  // Save the relevant parts of the LLMSegmenterResult as the main response
+  // The prompt (promptDetails) is now saved within actualCategorizeWebsiteContent.
+  // We only need to save the response structure here.
   await savePageMainResponse(sourceUrl, {
       modelUsed: result.modelUsed,
       originalContentCharacterLength: result.originalContentCharacterLength,
+      // Log a prefix of chunk text to keep the response artifact manageable
       llmSegmentedChunks: result.llmSegmentedChunks.map(chunk => ({
           chunkOrder: chunk.chunkOrder,
-          chunkText: chunk.chunkText,
+          chunkText: chunk.chunkText.substring(0, 500), 
           category: chunk.category,
           categoryName: chunk.categoryName,
           confidence: chunk.confidence,
-          // sourceUrl and pageTitle are already known from the context of sourceUrl, 
-          // and preChunkSourceIndex might be too granular for this top-level response.txt
+          preChunkSourceIndex: chunk.preChunkSourceIndex
       })),
-      // interactionContext: interactionId // You can uncomment this if you want the ID in the response.txt too
+      promptUsedLength: result.promptUsed.length 
   });
 
   return result;

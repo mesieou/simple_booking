@@ -8,7 +8,8 @@ import {
 import { fetchRawHtmlContent } from './fetchHtml';
 import { cleanAndExtractMainContent } from './htmlCleaner';
 // import { isValidLink } from './validateUrl'; // May not be used directly if baseUrl is not available here
-import { isLowValueContent, detectLanguage } from '../utils';
+import { isLowValueContent } from '../html-utils';
+import { detectLanguage } from '../utils';
 import * as cheerio from 'cheerio';
 
 export interface ProcessedUrlResult {

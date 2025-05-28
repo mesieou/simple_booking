@@ -1,19 +1,5 @@
 import { URL_VALIDATION_CONFIG } from '@/lib/config/config';
-import cheerio from 'cheerio'; // Keep cheerio import here as it's used by extractNavAndFooterLinks
-
-/**
- * Extracts all links from <nav> and <footer> elements in the HTML.
- * Returns an array of absolute or relative hrefs.
- */
-export function extractNavAndFooterLinks(html: string): string[] {
-  const $ = cheerio.load(html);
-  const links = new Set<string>();
-  $('nav a[href], footer a[href]').each((_: number, el: cheerio.Element) => {
-    const href = $(el).attr('href');
-    if (href) links.add(href);
-  });
-  return Array.from(links);
-}
+// import cheerio from 'cheerio'; // Removed as extractNavAndFooterLinks was deleted
 
 /**
  * Heuristic filter for low-value, empty, or boilerplate content.

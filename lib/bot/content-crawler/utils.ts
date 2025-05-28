@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { CrawlState, CONFIDENCE_CONFIG, Category, CATEGORY_DISPLAY_NAMES } from '@/lib/config/config';
+import { CONFIDENCE_CONFIG } from '@/lib/config/config';
 import { franc } from 'franc-min';
 // Improved language detection using franc-min, robust content filtering, and detailed logging for debugging. Whitelist for important URLs and stricter thresholds for meaningful content.
 
@@ -8,17 +8,6 @@ export function normalizeText(text: string): string {
     .toLowerCase()
     .replace(/\s+/g, ' ')
     .replace(/[^\w\s]/g, '')
-    .trim();
-}
-
-export function cleanContent(content: string): string {
-  return content
-    .replace(/<[^>]*>/g, '') // Remove HTML tags
-    .replace(/\s+/g, ' ')    // Collapse whitespace
-    .replace(/\n+/g, '\n')   // Collapse newlines
-    .replace(/[^\S\n]+/g, ' ') // Collapse spaces except newlines
-    .replace(/^\s+|\s+$/gm, '') // Trim each line
-    .replace(/\n\s*\n/g, '\n\n') // Collapse multiple empty lines
     .trim();
 }
 
@@ -82,15 +71,6 @@ export function detectLanguage(url: string, content: string, options?: DetectLan
   return mapped;
 }
 
-export async function delayWithState(state: CrawlState): Promise<void> {
-  const now = Date.now();
-  const timeSinceLastRequest = now - state.lastRequestTime;
-  if (timeSinceLastRequest < state.config.requestDelay!) {
-    await new Promise(resolve => setTimeout(resolve, state.config.requestDelay! - timeSinceLastRequest));
-  }
-  state.lastRequestTime = Date.now();
-}
-
 export function delay(ms: number) {
   return new Promise(res => setTimeout(res, ms));
 }
@@ -102,8 +82,6 @@ export function splitIntoSentences(text: string): string[] {
   // This regex splits on period, exclamation, or question mark followed by space or end of string
   return text.match(/[^.!?\n]+[.!?]+(\s|$)|[^.!?\n]+$/g)?.map(s => s.trim()).filter(Boolean) || [];
 }
-
-export const PRICE_REGEX = /[$€£]\d+[\d,.]*/;
 
 export async function runConcurrentTasks<T>(
   taskGenerator: () => AsyncGenerator<() => Promise<T>, void, unknown>,
@@ -130,15 +108,6 @@ export function validateConfidence(confidence: number): number {
 }
 
 /**
- * Checks if a confidence score meets the minimum threshold
- * @param confidence The confidence score to check
- * @returns True if the score meets the minimum threshold
- */
-export function meetsConfidenceThreshold(confidence: number): boolean {
-  return confidence >= CONFIDENCE_CONFIG.MIN_THRESHOLD;
-}
-
-/**
  * Logs confidence score information
  * @param category The content category
  * @param confidence The confidence score
@@ -148,13 +117,4 @@ export function logConfidence(category: string, confidence: number, source: stri
   const status = confidence < CONFIDENCE_CONFIG.MIN_THRESHOLD ? 'LOW' :
                 confidence < CONFIDENCE_CONFIG.WARNING_THRESHOLD ? 'WARNING' : 'GOOD';
   console.log(`[Confidence ${status}] Category: ${category}, Score: ${confidence.toFixed(2)}, Source: ${source}`);
-}
-
-/**
- * Maps a category number to its display name
- * @param category The category number
- * @returns The display name for the category
- */
-export function getCategoryDisplayName(category: number): string {
-  return CATEGORY_DISPLAY_NAMES[category as Category] || 'unknown';
 }

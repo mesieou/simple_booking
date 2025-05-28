@@ -11,38 +11,6 @@ export interface CategorizationApiOutput {
   result: CategorizedContent[];
 }
 
-export async function detectMissingInformation(
-  categorizedContent: { category: Category; content: string }[]
-): Promise<string> {
-  console.log(
-    "\n[Missing Information Detection] Analyzing categorized content:"
-  );
-  categorizedContent.forEach((item, index) => {
-    console.log(`\nCategory ${index + 1}: ${CATEGORY_DISPLAY_NAMES[item.category]}`);
-    console.log(`Content preview: ${item.content.substring(0, 200)}...`);
-  });
-
-  const formattedContent = categorizedContent
-    .map((c) => `Category: ${CATEGORY_DISPLAY_NAMES[c.category]}\nContent:\n${c.content}`)
-    .join("\n\n");
-
-  const prompt = `You are reviewing the content of a business website that has been categorized. Based on the content in each category, identify which of the following critical items are MISSING or INCOMPLETE:\n\n${Object.entries(CATEGORY_DISPLAY_NAMES).map(([num, name]) => `${num}: ${name}`).join("\n")}\n\nCategorized Content:\n${formattedContent}`;
-
-  const response = await executeChatCompletion([
-    {
-      role: "system",
-      content: "You help identify missing business website content.",
-    },
-    { role: "user", content: prompt },
-  ], "gpt-4", 0.3, 500);
-
-  const result = response.choices[0]?.message?.content || "";
-  console.log("\nMissing information analysis result:");
-  console.log(result);
-
-  return result;
-}
-
 export async function categorizeWebsiteContent(
   text: string,
   businessId: string,
@@ -75,29 +43,22 @@ export async function categorizeWebsiteContent(
   const importantNotes = [
     "You MUST categorize ALL content. Do NOT skip, omit, or summarize any information, even if it seems repetitive or unimportant.",
     "Each piece of information should appear only once, in the most appropriate category.",
-    "If content fits multiple categories, include it in the most relevant one, but do NOT copy it to others.",
-    "The output will be used for a customer assistant. Missing details will degrade its performance.",
-    "Be as granular as needed to ensure every piece of information is included in some section.",
-    "If a section touches multiple themes, choose the dominant one but do NOT drop any details.",
+    "Group closely related items: A heading and its direct content, or all points in a list that explain a single sub-topic, should generally be part of the SAME section unless the content under a heading is exceptionally long and diverse itself.",
+    "If a section of content under a single heading is naturally very long but still pertains to one overarching idea, keep it as one section. Do not artificially split it unless it clearly transitions to a new, distinct topic.",
+    "The output will be used for a customer assistant. Missing details or unnaturally split ideas will degrade its performance.",
+    "Be as granular as needed for distinct topics, but prioritize grouping for coherent ideas.",
     "Do not skip generic layout/footer/header content unless it is truly boilerplate (e.g. copyright, navigation links).",
     "Do NOT summarize or compress content. Include all original details.",
     "Do Not add any information that is not in the text.",
     `You MUST return a valid JSON array, even if empty. The category MUST be a number between 0 and ${CATEGORY_COUNT - 1}.`
   ];
-  const exampleResponseFormat = `[
-  {
-    "category": 4,
-    "content": "About our company...",
-    "confidence": 0.95,
-    "confidenceReason": "Content describes company history and values"
-  }
-]`;
+  const exampleResponseFormat = `[\n  {\n    "category": 4,\n    "content": "About our company...",\n    "confidence": 0.95,\n    "confidenceReason": "Content describes company history and values"\n  }\n]`;
 
   const promptInputDetails = {
-    taskInstruction: "The following is visible content extracted from a business website. Your job is to analyze the full text and divide it into logical, self-contained sections of information. For EACH distinct section you identify, provide a JSON object with these exact fields:",
+    taskInstruction: "The following is visible content extracted from a business website. Your job is to analyze the full text and divide it into logical, self-contained sections of information. Strive to keep closely related content (such as a heading and its immediate subsequent text, or all steps in a numbered/bulleted list) together as a single section, provided the section remains a coherent, singular topic. For EACH distinct section you identify, provide a JSON object with these exact fields:",
     jsonFields: [
       { field: "category", description: `a number from 0-${CATEGORY_COUNT - 1} representing one of the following categories:\n${categoriesDescription}` },
-      { field: "content", description: "the full, detailed text of the section (do NOT omit or summarize any details)" },
+      { field: "content", description: "the full, detailed text of the section (do NOT omit or summarize any details). If a heading is part of the section, include it at the beginning of this content." },
       { field: "confidence", description: "a score from 0.5 to 1.0 based on how well the content fits the chosen category" },
       { field: "confidenceReason", description: "a short explanation for the confidence score, describing why the content fits (or doesn't fit) the category" }
     ],
@@ -138,10 +99,10 @@ ${promptInputDetails.exampleResponseFormat}`;
     const response = await executeChatCompletion([
       { role: "system", content: "You are a helpful assistant that analyzes business websites." },
       { role: "user", content: prompt }
-    ], "gpt-4o", 0.3, 4096);
+    ], "gpt-4o", 0.3, 8192);
     
     const rawContent = response.choices[0]?.message?.content;
-    console.log(`[Categorizer] Raw response for businessId=${businessId}, url=${websiteUrl}:`, rawContent);
+    console.log(`[Categorizer] Raw response for businessId=${businessId}, url=${websiteUrl}:`, rawContent?.substring(0, 500) + (rawContent && rawContent.length > 500 ? '...' : ''));
     
     if (!rawContent) {
       console.error(`[Categorizer] No content in response for businessId=${businessId}, url=${websiteUrl}`);
@@ -155,16 +116,16 @@ ${promptInputDetails.exampleResponseFormat}`;
     const validatedResults = parsed.map(item => { // Renamed to avoid conflict with 'result' in the return object
       const categoryNum = Number(item.category);
       if (isNaN(categoryNum) || categoryNum < 0 || categoryNum >= CATEGORY_COUNT) {
-        console.error(`[Categorizer] Invalid category number: ${item.category}`);
+        console.error(`[Categorizer] Invalid category number: ${item.category} for url ${websiteUrl}`);
         // In case of error during mapping, consider how to handle. 
         // For now, let's throw, but you might want to return the prompt with partially processed/empty results.
-        throw new Error(`Invalid category number: ${item.category}`);
+        throw new Error(`Invalid category number: ${item.category} for url ${websiteUrl}`);
       }
       // Explicitly convert number to Category enum value (ensure it's a number, not a string)
       const categoryEnum = (Object.values(Category) as number[]).find(val => val === categoryNum);
       if (typeof categoryEnum !== 'number') {
-        console.error(`[Categorizer] Failed to convert number ${categoryNum} to Category enum`);
-        throw new Error(`Failed to convert number ${categoryNum} to Category enum`);
+        console.error(`[Categorizer] Failed to convert number ${categoryNum} to Category enum for url ${websiteUrl}`);
+        throw new Error(`Failed to convert number ${categoryNum} to Category enum for url ${websiteUrl}`);
       }
       return {
         ...item,
@@ -185,6 +146,35 @@ ${promptInputDetails.exampleResponseFormat}`;
   }
 }
 
+export function safeParseOpenAIJson<T>(raw: string | undefined): T {
+  if (!raw) throw new Error("No content to parse");
+  
+  // Log the raw content for debugging
+  console.log("[JSON Parser] Attempting to parse (first 500 chars):", raw.substring(0, 500) + (raw.length > 500 ? "..." : ""));
+  
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    console.log("[JSON Parser] Initial parse failed, attempting to extract JSON array");
+    
+    // Try to extract JSON array from output using more robust regex
+    const match = raw.match(/\[\s*\{[\s\S]*\}\s*\]/);
+    if (match) {
+      try {
+        const extracted = match[0];
+        console.log("[JSON Parser] Extracted JSON (first 500 chars):", extracted.substring(0, 500) + (extracted.length > 500 ? "..." : ""));
+        return JSON.parse(extracted);
+      } catch (extractError) {
+        console.error("[JSON Parser] Failed to parse extracted JSON:", extractError);
+      }
+    }
+    
+    // If we get here, all parsing attempts failed
+    console.error("[JSON Parser] All parsing attempts failed for input (first 500 chars):", raw.substring(0, 500) + (raw.length > 500 ? "..." : ""));
+    throw new Error("Failed to parse OpenAI JSON output");
+  }
+} 
+
 export async function analyzeCategoryQualityWithGPT(
   category: Category,
   content: string,
@@ -199,7 +189,7 @@ export async function analyzeCategoryQualityWithGPT(
         content: "You are a content analysis expert that helps ensure customer service bots have all necessary information to support and inform users effectively."
       },
       { role: "user", content: prompt }
-    ], "gpt-4o", 0.3, 500);
+    ], "gpt-4o", 0.3, 500); // This call uses a smaller maxTokens, which is fine for this specific task
     const gptResponse = response.choices[0]?.message?.content || '{}';
     const result = JSON.parse(gptResponse);
     return {
@@ -210,34 +200,5 @@ export async function analyzeCategoryQualityWithGPT(
   } catch (error) {
     console.error(`Error analyzing category ${CATEGORY_DISPLAY_NAMES[category]}:`, error);
     return { issues: ["Error analyzing content"], recommendations: [], score: 0 };
-  }
-}
-
-export function safeParseOpenAIJson<T>(raw: string | undefined): T {
-  if (!raw) throw new Error("No content to parse");
-  
-  // Log the raw content for debugging
-  console.log("[JSON Parser] Attempting to parse:", raw);
-  
-  try {
-    return JSON.parse(raw);
-  } catch (error) {
-    console.log("[JSON Parser] Initial parse failed, attempting to extract JSON array");
-    
-    // Try to extract JSON array from output using more robust regex
-    const match = raw.match(/\[\s*\{[\s\S]*\}\s*\]/);
-    if (match) {
-      try {
-        const extracted = match[0];
-        console.log("[JSON Parser] Extracted JSON:", extracted);
-        return JSON.parse(extracted);
-      } catch (extractError) {
-        console.error("[JSON Parser] Failed to parse extracted JSON:", extractError);
-      }
-    }
-    
-    // If we get here, all parsing attempts failed
-    console.error("[JSON Parser] All parsing attempts failed for input:", raw);
-    throw new Error("Failed to parse OpenAI JSON output");
   }
 } 
