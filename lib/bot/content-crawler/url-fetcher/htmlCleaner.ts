@@ -203,9 +203,6 @@ export function cleanAndExtractMainContent(html: string): SimplifiedCleanedConte
                 helperEnsureLeadingNewline(textSegments);
                 textSegments.push(`[NAV_END]`);
             } else {
-                // For subsequent/nested navs, DO NOTHING with their content, effectively filtering them out.
-                const navHtmlSnippet = $el.prop('outerHTML') || 'Error getting HTML snippet';
-                console.log(`[HTMLCleaner] Skipping content of subsequent/nested <nav> element (HTML snippet: ${navHtmlSnippet.substring(0, 150)})...`);
             }
             helperEnsureLeadingNewline(textSegments); // Ensure newline after nav block handling (applies to both cases for structure)
             $el.attr('data-text-extracted', 'true'); // Mark this nav element (first or subsequent) as processed by this handler
