@@ -1,0 +1,10 @@
+{
+  "sourceUrl": "https://www.taxbne.com.au/online-tax-return",
+  "originalCleanedTextPath": "../../01_cleaned_text/cleaned.txt",
+  "maxCharsPerGptChunk": 32000,
+  "numberOfPreChunks": 1,
+  "preChunkFileNames": [
+    "pre_chunk_0.txt"
+  ],
+  "timestamp": "2025-05-28T08:34:12.203Z"
+}

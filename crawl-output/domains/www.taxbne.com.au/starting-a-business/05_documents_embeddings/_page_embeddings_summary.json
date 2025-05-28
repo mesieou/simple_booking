@@ -1,0 +1,38 @@
+{
+  "sourceUrl": "https://www.taxbne.com.au/starting-a-business",
+  "pageTitle": "Start a Business",
+  "isPdf": false,
+  "totalLlmChunksOriginally": 3,
+  "processedUrlChunks": [
+    {
+      "documentId": "0e130867358612b92ece37fcd9a2c8a17add784b6832324a1546f193f4bdce86",
+      "chunkOrder": 1,
+      "category": "services offered",
+      "originalText": "[NAV_START] About Us Our Services Resources Book appointment Contact Us Dashboard Signup Login [NAV_END] EN # How to start a business in Australia Discover the essential steps and optimal timing to kickstart your entrepreneurial journey. Get Started Starting a business can be approached in various ways. While not every step may be suitable for everyone, it is advised by us to carefully consider and evaluate these recommendations. ## Steps to starting a business 1. Market Research 2. Business Plan 3. Business Budgeting and Forecasting 4. Pricing strategies and Cost of Goods Sold 5. Business Structure 6. Small Business Accounting 7. Registering a Business 8. Your Obligations #### 1. Market Research Market research is vital when starting a business because it gives you important information about the industry, what customers want, and who your competitors are. This helps you make smart decisions and increases your chances of long-term success. Learn more #### 2. Creating a Solid Business Plan Writing abusiness plan is like crafting a roadmap for your business idea, helping youunderstand it better and providing a guide for making it happen. Learn more #### 3. Managing Finances for a Small Businesses It's time to crunch some numbers for your business",
+      "originalTextLength": 1265,
+      "preChunkSourceIndex": 0,
+      "pageTitle": "Start a Business",
+      "confidence": 0.8120595486190472
+    },
+    {
+      "documentId": "88ce812773669a427b851b4dcf08714b00d0cbf28949eb7fd6eeaadeca653ef9",
+      "chunkOrder": 2,
+      "category": "services offered",
+      "originalText": "idea. Budgeting and forecasting play a key role in this process. Learn more #### 4. Pricing Strategies and Cost of Goods Sold The pricing strategy you adopt has a direct impact on both your sales volume and the profitability of each transaction. Learn more #### 5. Business Structure The structure of your business determines key aspects, including administrative responsibilities, tax implications, and legal status. Learn more #### 6. Small Business Accounting The structure of your business determines key aspects, including administrative responsibilities, tax implications, and legal status. Learn more #### 7. Registering a Business Following the excitement of choosing to start a business, there are essential paperwork tasks ahead, including ABN application, registration with ASIC, and more. Learn more #### 8. Your obligations As a business in Australia, you are subject to various obligations at the local, state, and federal levels. These obligations cover a range of areas to ensure legal compliance, fair practices, and public safety. Learn more Y&S Accounting proudly specialises in providing professional consulting and accounting services to the Latin American community in Australia since 2008. Accounting services Personal tax returns Business advise Xero health check Business registration Bookkeeping Start-up advise Address: Level 38, 71 Eagle St,",
+      "originalTextLength": 1369,
+      "preChunkSourceIndex": 0,
+      "pageTitle": "Start a Business",
+      "confidence": 0.7561431600386695
+    },
+    {
+      "documentId": "16bd3a54da0df2aeeb4888eab0001fc22a5de9ff328afac883ee366dc2aadc95",
+      "chunkOrder": 3,
+      "category": "pricing or quotes",
+      "originalText": "Brisbane QLD 4000 Contact: 1300 189 682 brisbane@ysaccounting.com.au © 2023 Y&S Accounting Brisbane. All right reserved. Privacy Policy Terms of Service Cookies Settings",
+      "originalTextLength": 169,
+      "preChunkSourceIndex": 0,
+      "pageTitle": "Start a Business",
+      "confidence": 0.825469664499752
+    }
+  ]
+}

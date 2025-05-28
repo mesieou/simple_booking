@@ -1,14 +1,13 @@
 import { CrawlConfig, CrawlProcessingResult, CrawlResult, CrawlOutput, defaultConfig, ExtractedPatterns as CrawlExtractedPatterns, CrawlResultStatus } from '@/lib/config/config';
-import { textSplitterAndCategoriser } from './process-content/text-splitting-categorisation';
 import { processContent as processContentWithGrouping } from './process-content/grouping-storing-content';
 import { runConcurrentTasks } from './utils';
 import { updateCrawlResults } from './url-fetcher/resultManager';
 import { logger as globalLoggerInstance } from '@/lib/bot/content-crawler/process-content/logger';
-import { saveUrlChunks } from './process-content/logger-artifact-savers';
 import { processSinglePdfAndSaveArtifacts, ProcessedPdfResult } from './pdf-fetcher/SinglePdfProcessor';
 import path from 'path';
 import fs from 'fs';
 import { URL_FETCHER_CONFIG } from '@/lib/config/config';
+import { LLMSegmentedChunk, segmentAndCategorizeByLLM } from './process-content/LLMSegmenterCategorizer';
 
 export async function crawlPdfs(config: CrawlConfig, pdfBuffers: Buffer[]): Promise<CrawlOutput & { successfullyProcessedBasePdfs: string[] }> {
   const crawlResults: CrawlResult[] = [];
@@ -94,73 +93,82 @@ export async function processPdfContent(
     crawlOutput: CrawlOutput & { successfullyProcessedBasePdfs: string[] }
 ): Promise<CrawlProcessingResult & { embeddingsStatus?: string }> {
   const { results, successfullyProcessedBasePdfs } = crawlOutput;
+  const allPdfLlmSegmentedChunks: LLMSegmentedChunk[] = [];
 
-  const itemsForCategorization: Array<{text: string, url: string, lang: string, pageTitle?: string, sourcePageInfo: any}> = results
-    .filter(r => r.status === 'processed' && r.cleanedText && r.cleanedText.length > 0 && r.fullUrl.startsWith('pdf:'))
-    .map(r => ({
-      text: r.cleanedText!,
-      url: r.fullUrl, // This is the pageSpecificUrl (e.g., pdf:doc.pdf#page=1)
-      lang: r.detectedLanguage || 'unknown',
-      pageTitle: r.pageTitle,
-      sourcePageInfo: {
-          originalUrl: r.fullUrl, 
-          // blockIndex might not be relevant if each PDF page is one block for categorization
-      }
-    }));
+  const processablePdfPages = results.filter(r => 
+    r.status === 'processed' && 
+    r.cleanedText && 
+    r.cleanedText.length > 0 && 
+    r.fullUrl.startsWith('pdf:')
+  );
 
-  if (itemsForCategorization.length === 0) {
-    console.log('[PDF Crawler] No processed PDF pages to categorize.');
+  if (processablePdfPages.length === 0) {
+    console.log('[PDF Crawler] No processed PDF pages to segment and categorize.');
+    // Ensure summary is saved even if no content processing happens
+    if(globalLoggerInstance.isInitialized) await globalLoggerInstance.logSummary();
     return {
         mergedText: '',
         pageCount: 0,
         uniqueParagraphs: 0,
         businessId: config.businessId,
-        source: config.pdfNames?.[0] || 'unknown.pdf',
+        source: config.pdfNames?.[0] || (successfullyProcessedBasePdfs.length > 0 ? successfullyProcessedBasePdfs[0] : 'unknown.pdf'),
+        embeddingsStatus: 'No PDF content to process'
     };
   }
 
-  // Ensure textSplitterAndCategoriser and processContentWithGrouping can handle pageSpecificUrls
-  // and call saveUrlChunks / saveLlmInteraction using these pageSpecificUrls as identifiers.
-  const { categorizedSections, allGeneratedChunks } = await textSplitterAndCategoriser(
-    itemsForCategorization.map(item => item.text),
-    itemsForCategorization.map(item => item.url), // Pass pageSpecificUrls
-    config,
-    config.chunkSize ?? defaultConfig.chunkSize,
-    config.chunkOverlap ?? defaultConfig.chunkOverlap
-  );
+  console.log(`[PDF Crawler] Processing ${processablePdfPages.length} PDF pages with LLM segmenter...`);
 
-  // Example for saving chunks (conceptual, needs integration with textSplitterAndCategoriser output)
-  // Assuming allGeneratedChunks is an array of chunk objects, each with a sourceUrl property.
-  /*
-  const chunksByUrl = allGeneratedChunks.reduce((acc, chunk) => {
-      const url = chunk.sourcePageUrl; // Assuming chunk object has this property
-      if (!acc[url]) acc[url] = [];
-      acc[url].push(chunk);
-      return acc;
-  }, {} as Record<string, any[]>);
-  for (const [pageUrl, chunks] of Object.entries(chunksByUrl)) {
-      await saveUrlChunks(pageUrl, chunks.map(c => ({ id: c.id || crypto.randomUUID(), text: c.text })));
+  for (const pageResult of processablePdfPages) {
+    try {
+      console.log(`[PDF Crawler] Segmenting content for: ${pageResult.fullUrl}`);
+      // We treat each PDF page as one "pre-chunk" for the LLM segmenter.
+      // preChunkIndex is 0, totalPreChunksForUrl is 1 (or undefined if segmenter handles it).
+      const segmentationResult = await segmentAndCategorizeByLLM(
+        pageResult.cleanedText!, // page text
+        pageResult.fullUrl,    // page-specific URL (e.g., pdf:mydoc.pdf#page=1)
+        pageResult.pageTitle,  // page title (e.g., mydoc.pdf - Page 1)
+        config,
+        0, // preChunkIndex (treating page as the first and only pre-chunk of itself)
+        1  // totalPreChunksForUrl (page is one unit)
+      );
+      allPdfLlmSegmentedChunks.push(...segmentationResult.llmSegmentedChunks);
+      console.log(`[PDF Crawler] PDF Page ${pageResult.fullUrl} yielded ${segmentationResult.llmSegmentedChunks.length} LLM-defined chunks.`);
+    } catch (error) {
+      console.error(`[PDF Crawler] Failed to segment/categorize PDF page ${pageResult.fullUrl}:`, error);
+      await globalLoggerInstance.logUrlFailed(pageResult.fullUrl, `LLM segmentation/categorization failed for PDF page: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   }
-  */
 
-  const pageUrlsForEmbedding = itemsForCategorization.map(item => item.url);
+  if (allPdfLlmSegmentedChunks.length === 0) {
+    console.warn('[PDF Crawler] No PDF content was successfully segmented by LLM.');
+    if(globalLoggerInstance.isInitialized) await globalLoggerInstance.logSummary();
+    return {
+        mergedText: '',
+        pageCount: processablePdfPages.length, // Still count pages that were attempted
+        uniqueParagraphs: 0,
+        businessId: config.businessId,
+        source: config.pdfNames?.[0] || (successfullyProcessedBasePdfs.length > 0 ? successfullyProcessedBasePdfs[0] : 'unknown.pdf'),
+        embeddingsStatus: 'No LLM-segmented chunks from PDF to process'
+    };
+  }
+
+  const processedPageUrlsForGrouping = Array.from(new Set(allPdfLlmSegmentedChunks.map(chunk => chunk.sourceUrl)));
 
   const embeddingsStatus = await processContentWithGrouping(
     config, 
-    categorizedSections, 
-    pageUrlsForEmbedding, // URLs of the actual items being processed (PDF pages)
-    successfullyProcessedBasePdfs, // Base PDF identifiers
-    allGeneratedChunks
+    allPdfLlmSegmentedChunks, // Pass the LLM-defined chunks directly
+    processedPageUrlsForGrouping, 
+    successfullyProcessedBasePdfs // Base PDF identifiers for root/summary purposes
   );
   
-  await globalLoggerInstance.logSummary(); // Call the correct summary function
+  await globalLoggerInstance.logSummary();
 
-  const allPdfPageTexts = itemsForCategorization.map(item => item.text);
+  const allPdfTextFromLlmChunks = allPdfLlmSegmentedChunks.map(item => item.chunkText).join('\n\n');
 
   return {
-    mergedText: allPdfPageTexts.join('\n\n'),
-    pageCount: itemsForCategorization.length,
-    uniqueParagraphs: allGeneratedChunks.length, // Or a more accurate count of unique chunks
+    mergedText: allPdfTextFromLlmChunks,
+    pageCount: processablePdfPages.length, // Number of PDF pages that had content processed
+    uniqueParagraphs: allPdfLlmSegmentedChunks.length, // Number of LLM-defined semantic chunks
     businessId: config.businessId,
     source: config.pdfNames?.[0] || (successfullyProcessedBasePdfs.length > 0 ? successfullyProcessedBasePdfs[0] : 'unknown.pdf'), 
     ...(embeddingsStatus ? { embeddingsStatus } : {}),
@@ -195,7 +203,7 @@ export async function crawlAndProcessPdfs(config: CrawlConfig, pdfBuffers: Buffe
   const crawlOutput = await crawlPdfs(config, pdfBuffers);
   if (crawlOutput.results.filter(r => r.status === 'processed').length === 0) {
     console.warn('[PDF Crawler] No PDF pages were successfully processed. Skipping content processing stage.');
-    // Return a minimal result or throw an error as appropriate
+    if(globalLoggerInstance.isInitialized) await globalLoggerInstance.logSummary(); // Save summary even if aborting early
     return {
         mergedText: '',
         pageCount: 0,

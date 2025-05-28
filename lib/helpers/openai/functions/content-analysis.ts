@@ -1,5 +1,7 @@
 import { executeChatCompletion, OpenAIChatMessage, OpenAIChatCompletionResponse } from "../openai-core";
 import { CategorizedContent, Category, CATEGORY_DISPLAY_NAMES, PROCESS_CONTENT_CONFIG } from "@/lib/config/config";
+import { savePageMainPrompt } from '../../../bot/content-crawler/process-content/logger-artifact-savers';
+import { createHash } from 'crypto';
 
 const CATEGORY_COUNT = Object.keys(Category).length / 2; // Divide by 2 because enum has both numeric and string keys
 
@@ -69,33 +71,20 @@ export async function categorizeWebsiteContent(
 
   console.log(`[Categorizer] Starting categorizeWebsiteContent for businessId=${businessId}, url=${websiteUrl}`);
   
-  const prompt = `The following is visible content extracted from a business website. Your job is to analyze the full text and divide it into logical, self-contained sections of information. For EACH distinct section you identify, provide a JSON object with these exact fields:
-
-- "category": a number from 0-${CATEGORY_COUNT - 1} representing one of the following categories:
-${Object.entries(CATEGORY_DISPLAY_NAMES).map(([num, name]) => `  ${num}: ${name}`).join('\n')}
-
-- "content": the full, detailed text of the section (do NOT omit or summarize any details)
-- "confidence": a score from 0.5 to 1.0 based on how well the content fits the chosen category
-- "confidenceReason": a short explanation for the confidence score, describing why the content fits (or doesn\'t fit) the category
-
-IMPORTANT:
-- You MUST categorize ALL content. Do NOT skip, omit, or summarize any information, even if it seems repetitive or unimportant.
-- Each piece of information should appear only once, in the most appropriate category.
-- If content fits multiple categories, include it in the most relevant one, but do NOT copy it to others.
-- The output will be used for a customer assistant. Missing details will degrade its performance.
-- Be as granular as needed to ensure every piece of information is included in some section.
-- If a section touches multiple themes, choose the dominant one but do NOT drop any details.
-- Do not skip generic layout/footer/header content unless it is truly boilerplate (e.g. copyright, navigation links).
-- Do NOT summarize or compress content. Include all original details.
-- Do Not add any information that is not in the text.
-- You MUST return a valid JSON array, even if empty.
-- The category MUST be a number between 0 and ${CATEGORY_COUNT - 1}.
-
-Here is the content to analyze:
-${text}
-
-Example response format:
-[
+  const categoriesDescription = Object.entries(CATEGORY_DISPLAY_NAMES).map(([num, name]) => `  ${num}: ${name}`).join('\n');
+  const importantNotes = [
+    "You MUST categorize ALL content. Do NOT skip, omit, or summarize any information, even if it seems repetitive or unimportant.",
+    "Each piece of information should appear only once, in the most appropriate category.",
+    "If content fits multiple categories, include it in the most relevant one, but do NOT copy it to others.",
+    "The output will be used for a customer assistant. Missing details will degrade its performance.",
+    "Be as granular as needed to ensure every piece of information is included in some section.",
+    "If a section touches multiple themes, choose the dominant one but do NOT drop any details.",
+    "Do not skip generic layout/footer/header content unless it is truly boilerplate (e.g. copyright, navigation links).",
+    "Do NOT summarize or compress content. Include all original details.",
+    "Do Not add any information that is not in the text.",
+    `You MUST return a valid JSON array, even if empty. The category MUST be a number between 0 and ${CATEGORY_COUNT - 1}.`
+  ];
+  const exampleResponseFormat = `[
   {
     "category": 4,
     "content": "About our company...",
@@ -103,6 +92,47 @@ Example response format:
     "confidenceReason": "Content describes company history and values"
   }
 ]`;
+
+  const promptInputDetails = {
+    taskInstruction: "The following is visible content extracted from a business website. Your job is to analyze the full text and divide it into logical, self-contained sections of information. For EACH distinct section you identify, provide a JSON object with these exact fields:",
+    jsonFields: [
+      { field: "category", description: `a number from 0-${CATEGORY_COUNT - 1} representing one of the following categories:\n${categoriesDescription}` },
+      { field: "content", description: "the full, detailed text of the section (do NOT omit or summarize any details)" },
+      { field: "confidence", description: "a score from 0.5 to 1.0 based on how well the content fits the chosen category" },
+      { field: "confidenceReason", description: "a short explanation for the confidence score, describing why the content fits (or doesn't fit) the category" }
+    ],
+    importantNotes: importantNotes,
+    targetContentDescription: "Here is the content to analyze:",
+    targetContentHash: createHash('sha256').update(text).digest('hex'),
+    exampleResponseFormat: exampleResponseFormat,
+    businessId: businessId,
+    websiteUrl: websiteUrl
+  };
+
+  // Save the structured prompt details
+  try {
+    await savePageMainPrompt(websiteUrl, promptInputDetails);
+  } catch (logError) {
+    console.error(`[Categorizer] Failed to save page main prompt for ${websiteUrl}:`, logError);
+    // Decide if you want to proceed if logging fails. For now, we will.
+  }
+
+  const prompt = `${promptInputDetails.taskInstruction}
+
+- "category": ${promptInputDetails.jsonFields[0].description}
+
+- "content": ${promptInputDetails.jsonFields[1].description}
+- "confidence": ${promptInputDetails.jsonFields[2].description}
+- "confidenceReason": ${promptInputDetails.jsonFields[3].description}
+
+IMPORTANT:
+${promptInputDetails.importantNotes.join('\n- ')}
+
+${promptInputDetails.targetContentDescription}
+${text}
+
+Example response format:
+${promptInputDetails.exampleResponseFormat}`;
 
   try {
     const response = await executeChatCompletion([
