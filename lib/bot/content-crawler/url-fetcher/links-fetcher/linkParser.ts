@@ -17,8 +17,8 @@ export function parseLinksFromHtml(html: string, baseUrl: string): string[] {
       const norm = normalizeUrl(url.href, {
         stripHash: true,
         stripWWW: false,
-        removeTrailingSlash: false,
-        removeQueryParameters: [/^utm_/i],
+        removeTrailingSlash: true,
+        removeQueryParameters: [/^utm_/i, /^fbclid$/i, /^gclid$/i, /^msclkid$/i],
         sortQueryParameters: false
       });
       if (isValidLink(norm, base)) {

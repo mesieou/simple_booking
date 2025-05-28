@@ -1,326 +1,318 @@
+// lib/bot/content-crawler/process-content/logger.ts
+import * as fs from 'fs';
+import * as path from 'path';
+import { initializeArtifactSavers } from './logger-artifact-savers';
+
+// --- Interfaces for Stats (mirroring summary.json) ---
+interface SkippedUrlInfo {
+  url: string;
+  reason: string;
+}
+
+interface UrlLogInfo {
+  url: string;
+  status: 'processed' | 'skipped' | 'failed';
+  reason?: string;
+}
+
 interface ProcessingStats {
-  // Crawling stats
   totalUrls: number;
   processedUrls: string[];
-  filteredUrls: { url: string; reason: string }[];
-  skippedUrls: { url: string; reason: string }[];
+  filteredUrls: string[];
+  skippedUrls: SkippedUrlInfo[];
+  failedUrls: SkippedUrlInfo[];
 
-  // Chunking stats
-  totalChunks: number;
-  processedChunks: number;
-  failedChunks: number;
+  totalChunks: number;         // Sum of all sub-chunks generated
+  processedChunks: number;     // Sub-chunks successfully processed (e.g. categorized)
+  failedChunks: number;        // Sub-chunks that failed during their processing
+  skippedChunks: number;       // Sub-chunks skipped (e.g. too short, before main processing)
 
-  // Categorizing stats
-  totalCategories: number;
-  processedCategories: number;
-  failedCategories: number;
+  totalCategories: number;     // Number of chunks that yielded at least one category
+  processedCategories: number; // Sum of all individual categories identified across all chunks
+  failedCategorizations: number; // Number of chunks where categorization attempt failed
+  // skippedCategorizations is not explicitly in summary.json, can be tracked if needed
 
-  // Document and embedding stats
-  totalDocuments: number;
-  processedDocuments: number;
-  failedDocuments: number;
-  totalEmbeddings: number;
-  processedEmbeddings: number;
-  failedEmbeddings: number;
+  totalDocuments: number;      // Typically, number of chunks that became documents
+  processedDocuments: number;  // Documents successfully created/stored
+  failedDocuments: number;     // Documents that failed creation/storage
+
+  totalEmbeddings: number;     // Embeddings attempted
+  processedEmbeddings: number; // Embeddings successfully generated
+  failedEmbeddings: number;    // Embeddings generation failed
 
   startTime: number;
+  endTime?: number;
+  baseOutputPath: string;
 }
 
-interface UrlLog {
-  url: string;
-  status: 'processed' | 'filtered' | 'skipped';
-  reason?: string;
-}
-interface ChunkLog {
-  chunkId: number;
-  url: string;
-  status: 'processed' | 'failed';
-  reason?: string;
-}
-interface CategoryLog {
-  category: string;
-  status: 'processed' | 'failed';
-  reason?: string;
-}
-interface DocumentLog {
-  docId: string;
-  title: string;
-  status: 'processed' | 'failed';
-  reason?: string;
-}
-interface EmbeddingLog {
-  embeddingId: string;
-  docId: string;
-  status: 'processed' | 'failed';
-  reason?: string;
+interface SummaryData {
+  processingStats: ProcessingStats;
+  durationSeconds?: number;
+  allFoundUrls: Set<string>; // Use Set for uniqueness, convert to array for JSON
+  urlLogs: UrlLogInfo[];
 }
 
-class ContentProcessorLogger {
-  public stats: ProcessingStats;
-  private lastProgressUpdate: number = 0;
-  private readonly PROGRESS_UPDATE_INTERVAL = 1000; // Update progress every second
-  private urlLogs: UrlLog[] = [];
-  private chunkLogs: ChunkLog[] = [];
-  private categoryLogs: CategoryLog[] = [];
-  private documentLogs: DocumentLog[] = [];
-  private embeddingLogs: EmbeddingLog[] = [];
-  private allFoundUrls: string[] = [];
+class CrawlLogger {
+  private stats: SummaryData;
+  private outputDir: string = '';
+  private initialized: boolean = false;
 
   constructor() {
-    this.stats = {
-      totalUrls: 0,
-      processedUrls: [],
-      filteredUrls: [],
-      skippedUrls: [],
-      totalChunks: 0,
-      processedChunks: 0,
-      failedChunks: 0,
-      totalCategories: 0,
-      processedCategories: 0,
-      failedCategories: 0,
-      totalDocuments: 0,
-      processedDocuments: 0,
-      failedDocuments: 0,
-      totalEmbeddings: 0,
-      processedEmbeddings: 0,
-      failedEmbeddings: 0,
-      startTime: Date.now()
+    this.stats = this.getInitialStats();
+  }
+
+  public get isInitialized(): boolean {
+    return this.initialized;
+  }
+
+  private getInitialStats(): SummaryData {
+    return {
+      processingStats: {
+        totalUrls: 0,
+        processedUrls: [],
+        filteredUrls: [],
+        skippedUrls: [],
+        failedUrls: [],
+        totalChunks: 0,
+        processedChunks: 0,
+        failedChunks: 0,
+        skippedChunks: 0,
+        totalCategories: 0,
+        processedCategories: 0,
+        failedCategorizations: 0,
+        totalDocuments: 0,
+        processedDocuments: 0,
+        failedDocuments: 0,
+        totalEmbeddings: 0,
+        processedEmbeddings: 0,
+        failedEmbeddings: 0,
+        startTime: 0,
+        baseOutputPath: '',
+      },
+      allFoundUrls: new Set<string>(),
+      urlLogs: [],
     };
   }
 
-  public initialize(totalUrls: number): void {
-    this.stats.totalUrls = totalUrls;
-    console.log('\n=== Content Processing Started ===');
-  }
-
-  private shouldUpdateProgress(): boolean {
-    const now = Date.now();
-    if (now - this.lastProgressUpdate >= this.PROGRESS_UPDATE_INTERVAL) {
-      this.lastProgressUpdate = now;
-      return true;
-    }
-    return false;
-  }
-
-  private logProgress(stage: string, current: number, total: number): void {
-    if (this.shouldUpdateProgress()) {
-      const progress = Math.round((current / total) * 100);
-      process.stdout.write(`\r[${stage}] ${progress}% (${current}/${total})`);
+  private async ensureInitialized(): Promise<void> {
+    if (!this.initialized) {
+      console.warn("[LOGGER] Logger used before initialization. Call logger.initialize() first. Defaulting baseOutputPath to './crawl-output'.");
+      await this.initialize('./crawl-output'); // Default initialization
     }
   }
 
-  public logUrlFiltered(url: string, reason: string): void {
-    this.stats.filteredUrls.push({ url, reason });
-    const total = this.stats.totalUrls;
-    const current = this.stats.processedUrls.length + this.stats.filteredUrls.length;
-    this.logProgress('Crawling', current, total);
-  }
+  public async initialize(baseOutputPath: string): Promise<void> {
+    this.outputDir = baseOutputPath;
+    this.stats = this.getInitialStats();
+    this.stats.processingStats.startTime = Date.now();
+    this.stats.processingStats.baseOutputPath = this.outputDir;
 
-  public logUrlSkipped(url: string, reason: string): void {
-    this.stats.skippedUrls.push({ url, reason });
-    const total = this.stats.totalUrls;
-    const current = this.stats.processedUrls.length + this.stats.filteredUrls.length + this.stats.skippedUrls.length;
-    this.logProgress('Crawling', current, total);
-  }
-
-  public logUrlProcessed(url: string, chunks: number): void {
-    this.stats.processedUrls.push(url);
-    this.stats.totalChunks += chunks;
-    const total = this.stats.totalUrls;
-    const current = this.stats.processedUrls.length + this.stats.filteredUrls.length + this.stats.skippedUrls.length;
-    this.logProgress('Crawling', current, total);
-  }
-
-  public logChunkProcessed(): void {
-    this.stats.processedChunks++;
-    this.logProgress('Chunking', this.stats.processedChunks, this.stats.totalChunks);
-  }
-
-  public logChunkFailed(): void {
-    this.stats.failedChunks++;
-  }
-
-  public logCategoryProcessed(category: string): void {
-    this.stats.processedCategories++;
-    this.logProgress('Categorizing', this.stats.processedCategories, this.stats.totalCategories);
-  }
-
-  public logDocumentProcessed(): void {
-    this.stats.processedDocuments++;
-    this.logProgress('Documents', this.stats.processedDocuments, this.stats.totalDocuments);
-  }
-
-  public logEmbeddingProcessed(): void {
-    this.stats.processedEmbeddings++;
-    this.logProgress('Embeddings', this.stats.processedEmbeddings, this.stats.totalEmbeddings);
-  }
-
-  private createTable(headers: string[], rows: string[][]): string {
-    const columnWidths = headers.map((_, i) => 
-      Math.max(...rows.map(row => row[i]?.length || 0), headers[i].length)
-    );
-
-    const headerRow = headers.map((h, i) => h.padEnd(columnWidths[i])).join(' | ');
-    const separator = headers.map((_, i) => '-'.repeat(columnWidths[i])).join('-+-');
-    const dataRows = rows.map(row => 
-      row.map((cell, i) => (cell || '').padEnd(columnWidths[i])).join(' | ')
-    );
-
-    return [headerRow, separator, ...dataRows].join('\n');
-  }
-
-  public logSummary(): void {
-    const duration = (Date.now() - this.stats.startTime) / 1000;
-    console.log('\n\n=== Processing Summary ===');
-    
-    // Crawling summary
-    console.log('\n[Crawling Results]');
-    const crawlingRows = [
-      ['Total URLs', this.stats.totalUrls.toString()],
-      ['Processed', this.stats.processedUrls.length.toString()],
-      ['Filtered', this.stats.filteredUrls.length.toString()],
-      ['Skipped', this.stats.skippedUrls.length.toString()]
-    ];
-    console.log(this.createTable(['Metric', 'Count'], crawlingRows));
-
-    if (this.stats.filteredUrls.length > 0) {
-      console.log('\nFiltered URLs:');
-      const filteredRows = this.stats.filteredUrls.map(({ url, reason }) => [url, reason]);
-      console.log(this.createTable(['URL', 'Reason'], filteredRows));
-    }
-
-    // Chunking summary
-    console.log('\n[Chunking Results]');
-    const chunkingRows = [
-      ['Total Chunks', this.stats.totalChunks.toString()],
-      ['Processed', this.stats.processedChunks.toString()],
-      ['Failed', this.stats.failedChunks.toString()]
-    ];
-    console.log(this.createTable(['Metric', 'Count'], chunkingRows));
-
-    // Categorizing summary
-    console.log('\n[Categorizing Results]');
-    const categorizingRows = [
-      ['Total Categories', this.stats.totalCategories.toString()],
-      ['Processed', this.stats.processedCategories.toString()],
-      ['Failed', this.stats.failedCategories.toString()]
-    ];
-    console.log(this.createTable(['Metric', 'Count'], categorizingRows));
-
-    // Document and embedding summary
-    console.log('\n[Document & Embedding Results]');
-    const docEmbedRows = [
-      ['Total Documents', this.stats.totalDocuments.toString()],
-      ['Processed Documents', this.stats.processedDocuments.toString()],
-      ['Failed Documents', this.stats.failedDocuments.toString()],
-      ['Total Embeddings', this.stats.totalEmbeddings.toString()],
-      ['Processed Embeddings', this.stats.processedEmbeddings.toString()],
-      ['Failed Embeddings', this.stats.failedEmbeddings.toString()]
-    ];
-    console.log(this.createTable(['Metric', 'Count'], docEmbedRows));
-
-    console.log(`\nTotal processing time: ${duration.toFixed(2)}s`);
-  }
-
-  public setMissingCategories(categories: string[]): void {
-    if (categories.length > 0) {
-      console.log('\n=== Missing Categories ===');
-      categories.forEach(category => {
-        console.log(`- ${category}`);
-      });
-    }
-  }
-
-  public setAllFoundUrls(urls: string[]): void {
-    this.allFoundUrls = urls;
-  }
-
-  public logUrl(url: string, status: 'processed' | 'filtered' | 'skipped', reason?: string) {
-    this.urlLogs.push({ url, status, reason });
-  }
-
-  public logChunk(chunkId: number, url: string, status: 'processed' | 'failed', reason?: string) {
-    this.chunkLogs.push({ chunkId, url, status, reason });
-  }
-
-  public logCategory(category: string, status: 'processed' | 'failed', reason?: string) {
-    this.categoryLogs.push({ category, status, reason });
-  }
-
-  public logDocument(docId: string, title: string, status: 'processed' | 'failed', reason?: string) {
-    this.documentLogs.push({ docId, title, status, reason });
-  }
-
-  public logEmbedding(embeddingId: string, docId: string, status: 'processed' | 'failed', reason?: string) {
-    this.embeddingLogs.push({ embeddingId, docId, status, reason });
-  }
-
-  public logEmbeddingAttempt({ embeddingId, docId, category, chunkIndex, metadata }: { embeddingId: string, docId: string, category: string, chunkIndex: number, metadata: any }) {
-    console.log('Attempting to add embedding:', {
-      embeddingId,
-      docId,
-      category,
-      chunkIndex,
-      metadata
-    });
-  }
-
-  public printDetailedTables() {
-    // Crawling
-    console.log('\n[Crawling Results]');
-    if (this.allFoundUrls.length > 0) {
-      // Create a map of all URLs and their statuses
-      const urlStatusMap = new Map<string, { status: string; reason: string }>();
-      
-      // First, add all found URLs with 'found' status
-      this.allFoundUrls.forEach(url => {
-        urlStatusMap.set(url, { status: 'found', reason: '' });
-      });
-      
-      // Then update with actual processing statuses
-      this.urlLogs.forEach(log => {
-        urlStatusMap.set(log.url, { 
-          status: log.status, 
-          reason: log.reason || '' 
-        });
-      });
-      
-      // Convert to array and sort by URL
-      const urlTable = Array.from(urlStatusMap.entries())
-        .map(([url, { status, reason }]) => ({
-          url,
-          status,
-          reason
-        }))
-        .sort((a, b) => a.url.localeCompare(b.url));
-      
-      console.table(urlTable);
+    const logsDirPath = path.join(this.outputDir, 'logs');
+    if (!fs.existsSync(logsDirPath)) {
+      try {
+        fs.mkdirSync(logsDirPath, { recursive: true });
+      } catch (error) {
+        console.error(`[LOGGER] Failed to create logs directory at ${logsDirPath}:`, error);
+      }
     }
     
-    // Chunking
-    console.log('\n[Chunking Results]');
-    if (this.chunkLogs.length > 0) {
-      const sorted = [...this.chunkLogs].sort((a, b) =>
-        a.url.localeCompare(b.url) || a.chunkId - b.chunkId
-      );
-      console.table(sorted);
+    initializeArtifactSavers(this.outputDir);
+    this.initialized = true;
+    console.log(`[LOGGER] Initialized. Output path: ${this.outputDir}`);
+  }
+
+  // --- URL Tracking ---
+  public async recordFoundUrl(url: string): Promise<void> {
+    await this.ensureInitialized();
+    this.stats.allFoundUrls.add(url);
+    this.stats.processingStats.totalUrls = this.stats.allFoundUrls.size;
+  }
+
+  public async recordDiscoveredUrls(urls: string[]): Promise<void> {
+    await this.ensureInitialized();
+    urls.forEach(url => this.stats.allFoundUrls.add(url));
+    this.stats.processingStats.totalUrls = this.stats.allFoundUrls.size;
+  }
+
+  public async logUrlProcessed(url: string): Promise<void> {
+    await this.ensureInitialized();
+    if (!this.stats.processingStats.processedUrls.includes(url)) {
+        this.stats.processingStats.processedUrls.push(url);
     }
-    // Categorizing
-    console.log('\n[Categorizing Results]');
-    if (this.categoryLogs.length > 0) {
-      console.table(this.categoryLogs);
+    this.stats.urlLogs.push({ url, status: 'processed' });
+    console.log(`[LOGGER] URL processed: ${url}`);
+  }
+
+  public async logUrlSkipped(url: string, reason: string): Promise<void> {
+    await this.ensureInitialized();
+    this.stats.processingStats.skippedUrls.push({ url, reason });
+    this.stats.urlLogs.push({ url, status: 'skipped', reason });
+    console.warn(`[LOGGER] URL skipped: ${url} - Reason: ${reason}`);
+  }
+
+  public async logUrlFiltered(url: string, reason: string): Promise<void> {
+    await this.ensureInitialized();
+    this.stats.processingStats.filteredUrls.push(url);
+    console.log(`[LOGGER] URL filtered: ${url} - Reason: ${reason}`);
+  }
+
+  public async logUrlFailed(url: string, reason: string): Promise<void> {
+    await this.ensureInitialized();
+    this.stats.processingStats.failedUrls.push({ url, reason });
+    this.stats.urlLogs.push({ url, status: 'failed', reason });
+    console.error(`[LOGGER] URL failed: ${url} - Reason: ${reason}`);
+  }
+
+  // --- Chunk Tracking ---
+  public async addTotalChunks(count: number): Promise<void> {
+    await this.ensureInitialized();
+    this.stats.processingStats.totalChunks += count;
+  }
+
+  public async logChunkProcessed(url: string, chunkIndex?: number): Promise<void> {
+    await this.ensureInitialized();
+    this.stats.processingStats.processedChunks++;
+    // console.log(`[LOGGER] Chunk ${chunkIndex !== undefined ? chunkIndex : ''} processed for URL: ${url}`);
+  }
+  
+  public async logChunkSkipped(url: string, chunkIndex: number, reason: string): Promise<void> {
+    await this.ensureInitialized();
+    this.stats.processingStats.skippedChunks++;
+    console.warn(`[LOGGER] Chunk ${chunkIndex} skipped for URL ${url}: ${reason}`);
+  }
+
+  public async logChunkFailed(url: string, chunkIndex: number, errorMsg: string): Promise<void> {
+    await this.ensureInitialized();
+    this.stats.processingStats.failedChunks++;
+    console.error(`[LOGGER] Chunk ${chunkIndex} failed for URL ${url}: ${errorMsg}`);
+  }
+
+  // Dispatcher for general chunk logging, maps to specific handlers
+  public async logChunk(chunkIndex: number, url: string, status: 'processed' | 'failed' | 'skipped', details: string): Promise<void> {
+    await this.ensureInitialized();
+    if (status === 'processed') {
+      await this.logChunkProcessed(url, chunkIndex);
+    } else if (status === 'failed') {
+      await this.logChunkFailed(url, chunkIndex, details);
+    } else if (status === 'skipped') {
+      await this.logChunkSkipped(url, chunkIndex, details);
     }
-    // Documents
-    console.log('\n[Document Results]');
-    if (this.documentLogs.length > 0) {
-      console.table(this.documentLogs);
+  }
+
+  // --- Categorization Tracking ---
+  public async logCategorizationAttempt(): Promise<void> {
+    // this.stats.processingStats.totalCategorizationTasks++; // Not in summary.json
+    // Ensure initialized might be needed if this method is un-commented and does real work
+    await this.ensureInitialized(); 
+  }
+
+  public async logCategorizationSuccess(chunkYieldedCategories: boolean): Promise<void> {
+    await this.ensureInitialized();
+    if(chunkYieldedCategories) {
+        this.stats.processingStats.totalCategories++;
     }
-    // Embeddings
-    console.log('\n[Embedding Results]');
-    if (this.embeddingLogs.length > 0) {
-      console.table(this.embeddingLogs);
+    // `processedCategories` is incremented by `logCategoryProcessed`
+  }
+
+  public async logCategoryProcessed(categoryName: string): Promise<void> {
+    await this.ensureInitialized();
+    this.stats.processingStats.processedCategories++;
+    // console.log(`[LOGGER] Category processed: ${categoryName}`);
+  }
+
+  public async logCategorizationFailed(): Promise<void> {
+    await this.ensureInitialized();
+    this.stats.processingStats.failedCategorizations++;
+  }
+
+  // --- Document Creation ---
+  public async logDocumentCreationAttempt(): Promise<void> {
+      await this.ensureInitialized();
+      this.stats.processingStats.totalDocuments++; // Assuming totalDocuments is count of attempts
+  }
+  public async logDocumentCreated(): Promise<void> {
+      await this.ensureInitialized();
+      this.stats.processingStats.processedDocuments++;
+  }
+  public async logDocumentFailed(): Promise<void> {
+      await this.ensureInitialized();
+      this.stats.processingStats.failedDocuments++;
+  }
+
+  // --- Embedding ---
+  public async logEmbeddingAttempt(count: number = 1): Promise<void> {
+      await this.ensureInitialized();
+      this.stats.processingStats.totalEmbeddings += count;
+  }
+  public async logEmbeddingSuccess(count: number = 1): Promise<void> {
+      await this.ensureInitialized();
+      this.stats.processingStats.processedEmbeddings += count;
+  }
+  public async logEmbeddingFailure(count: number = 1): Promise<void> {
+      await this.ensureInitialized();
+      this.stats.processingStats.failedEmbeddings += count;
+  }
+
+  // --- Finalization ---
+  public async finalizeStatsAndSave(): Promise<void> {
+    await this.ensureInitialized(); // Ensure it was initialized, even if by default path
+    this.stats.processingStats.endTime = Date.now();
+    this.stats.durationSeconds = parseFloat(((this.stats.processingStats.endTime - this.stats.processingStats.startTime) / 1000).toFixed(3));
+
+    const summaryToSave = {
+      processingStats: this.stats.processingStats,
+      durationSeconds: this.stats.durationSeconds,
+      allFoundUrls: Array.from(this.stats.allFoundUrls).sort(),
+      urlLogs: this.stats.urlLogs.sort((a,b) => a.url.localeCompare(b.url)),
+    };
+
+    const summaryFilePath = path.join(this.outputDir, 'summary.json');
+    try {
+      // Ensure outputDir exists one last time
+      if (!fs.existsSync(this.outputDir)) {
+        fs.mkdirSync(this.outputDir, { recursive: true });
+      }
+      await fs.promises.writeFile(summaryFilePath, JSON.stringify(summaryToSave, null, 2));
+      console.log(`[LOGGER] Summary saved to ${summaryFilePath}`);
+    } catch (error) {
+      console.error(`[LOGGER] Error saving summary.json at ${summaryFilePath}:`, error);
     }
+    this.initialized = false; // Reset for potential reuse in same process (though typically one crawl per run)
+  }
+
+  public async logSummary(): Promise<void> {
+    await this.ensureInitialized(); // Ensure it was initialized, even if by default path
+    this.stats.processingStats.endTime = Date.now();
+    this.stats.durationSeconds = parseFloat(((this.stats.processingStats.endTime - this.stats.processingStats.startTime) / 1000).toFixed(3));
+
+    const summaryToSave = {
+      processingStats: this.stats.processingStats,
+      durationSeconds: this.stats.durationSeconds,
+      allFoundUrls: Array.from(this.stats.allFoundUrls).sort(),
+      urlLogs: this.stats.urlLogs.sort((a,b) => a.url.localeCompare(b.url)),
+    };
+
+    const summaryFilePath = path.join(this.outputDir, 'summary.json');
+    try {
+      // Ensure outputDir exists one last time
+      if (!fs.existsSync(this.outputDir)) {
+        fs.mkdirSync(this.outputDir, { recursive: true });
+      }
+      await fs.promises.writeFile(summaryFilePath, JSON.stringify(summaryToSave, null, 2));
+      console.log(`[LOGGER] Summary saved to ${summaryFilePath}`);
+    } catch (error) {
+      console.error(`[LOGGER] Error saving summary.json at ${summaryFilePath}:`, error);
+    }
+    this.initialized = false; // Reset for potential reuse in same process (though typically one crawl per run)
+  }
+
+  public async getCurrentStats(): Promise<Readonly<SummaryData>> {
+    // No need to ensureInitialized here as it's a read-only operation on current state
+    // and initialize() sets up the stats object.
+    return this.stats;
   }
 }
 
-export const logger = new ContentProcessorLogger(); 
+export const logger = new CrawlLogger();
+
+// You may want to integrate with a more robust logging library or service. 

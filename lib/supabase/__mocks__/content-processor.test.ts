@@ -1,6 +1,6 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
-import { Category, CATEGORY_DISPLAY_NAMES, CrawlConfig, CrawlOutput, CrawlProcessingResult } from "@/lib/bot/content-crawler/config";
+import { Category, CrawlConfig, CrawlOutput } from "@/lib/config/config";
 import { processHtmlContent } from '@/lib/bot/content-crawler/html-crawler';
 import { categorizeWebsiteContent, analyzeCategoryQualityWithGPT } from '@/lib/helpers/openai/functions/content-analysis';
 
@@ -103,7 +103,7 @@ describe('Content Processing', () => {
     // Verify the result
     expect(result).toBeDefined();
     expect(result.businessId).toBe('test-business');
-    expect(result.websiteUrl).toBe('https://test.com');
+    expect(result.source).toBe('https://test.com');
     expect(result.pageCount).toBe(1);
     expect(result.uniqueParagraphs).toBe(1);
   });
@@ -136,7 +136,7 @@ describe('Content Processing', () => {
     // Verify the result
     expect(result).toBeDefined();
     expect(result.businessId).toBe('test-business');
-    expect(result.websiteUrl).toBe('https://test.com');
+    expect(result.source).toBe('https://test.com');
     expect(result.pageCount).toBe(0);
     expect(result.uniqueParagraphs).toBe(0);
   });

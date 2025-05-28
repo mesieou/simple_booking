@@ -1,7 +1,13 @@
 import { executeChatCompletion, OpenAIChatMessage, OpenAIChatCompletionResponse } from "../openai-core";
-import { CategorizedContent, Category, CATEGORY_DISPLAY_NAMES } from "@/lib/bot/content-crawler/config";
+import { CategorizedContent, Category, CATEGORY_DISPLAY_NAMES, PROCESS_CONTENT_CONFIG } from "@/lib/config/config";
 
 const CATEGORY_COUNT = Object.keys(Category).length / 2; // Divide by 2 because enum has both numeric and string keys
+
+// Define the new interface for the return type
+export interface CategorizationApiOutput {
+  prompt: string;
+  result: CategorizedContent[];
+}
 
 export async function detectMissingInformation(
   categorizedContent: { category: Category; content: string }[]
@@ -39,21 +45,42 @@ export async function categorizeWebsiteContent(
   text: string,
   businessId: string,
   websiteUrl: string
-): Promise<CategorizedContent[]> {
+): Promise<CategorizationApiOutput> {
+  // DEV MODE: MOCK GPT RESPONSE
+  if (process.env.MOCK_GPT === 'true') {
+    console.log(`[Categorizer] MOCK MODE: Returning stubbed response for businessId=${businessId}, url=${websiteUrl}, chunk preview: ${text.substring(0,50)}...`);
+    // Simulate a plausible structure, using the actual text for more realistic testing of downstream logic
+    const mockCategory = Category.SERVICES_OFFERED; // Default mock category
+    const mockContent = text.length > PROCESS_CONTENT_CONFIG.TEXT_SPLITTER.DEFAULT_CHUNK_SIZE ? text.substring(0, PROCESS_CONTENT_CONFIG.TEXT_SPLITTER.DEFAULT_CHUNK_SIZE) + "..." : text; // Truncate if very long based on chunk size
+    return {
+      prompt: `MOCK PROMPT for: ${text.substring(0,50)}...`,
+      result: [
+        {
+          category: mockCategory,
+          content: mockContent,
+          confidence: 0.99,
+          confidenceReason: "Mocked: Assumed services from text.",
+          url: websiteUrl
+        }
+      ]
+    };
+  }
+  // END DEV MODE MOCK
+
   console.log(`[Categorizer] Starting categorizeWebsiteContent for businessId=${businessId}, url=${websiteUrl}`);
   
-  const prompt = `The following is visible content extracted from a business website. Your job is to analyze the full text and divide it into logical sections. For each section, return a JSON array of objects with these exact fields:
+  const prompt = `The following is visible content extracted from a business website. Your job is to analyze the full text and divide it into logical, self-contained sections of information. For EACH distinct section you identify, provide a JSON object with these exact fields:
 
 - "category": a number from 0-${CATEGORY_COUNT - 1} representing one of the following categories:
 ${Object.entries(CATEGORY_DISPLAY_NAMES).map(([num, name]) => `  ${num}: ${name}`).join('\n')}
 
 - "content": the full, detailed text of the section (do NOT omit or summarize any details)
 - "confidence": a score from 0.5 to 1.0 based on how well the content fits the chosen category
-- "confidenceReason": a short explanation for the confidence score, describing why the content fits (or doesn't fit) the category
+- "confidenceReason": a short explanation for the confidence score, describing why the content fits (or doesn\'t fit) the category
 
 IMPORTANT:
 - You MUST categorize ALL content. Do NOT skip, omit, or summarize any information, even if it seems repetitive or unimportant.
-- Do NOT repeat or duplicate the same information in multiple sections. Each piece of information should appear only once, in the most appropriate category.
+- Each piece of information should appear only once, in the most appropriate category.
 - If content fits multiple categories, include it in the most relevant one, but do NOT copy it to others.
 - The output will be used for a customer assistant. Missing details will degrade its performance.
 - Be as granular as needed to ensure every piece of information is included in some section.
@@ -88,16 +115,19 @@ Example response format:
     
     if (!rawContent) {
       console.error(`[Categorizer] No content in response for businessId=${businessId}, url=${websiteUrl}`);
-      return [];
+      // Return an empty result along with the prompt in case of no content
+      return { prompt: prompt, result: [] }; 
     }
     
     const parsed = safeParseOpenAIJson<Array<{ category: number; content: string; confidence: number; confidenceReason: string }>>(rawContent);
     
     // Validate and convert category numbers to enum values
-    return parsed.map(item => {
+    const validatedResults = parsed.map(item => { // Renamed to avoid conflict with 'result' in the return object
       const categoryNum = Number(item.category);
       if (isNaN(categoryNum) || categoryNum < 0 || categoryNum >= CATEGORY_COUNT) {
         console.error(`[Categorizer] Invalid category number: ${item.category}`);
+        // In case of error during mapping, consider how to handle. 
+        // For now, let's throw, but you might want to return the prompt with partially processed/empty results.
         throw new Error(`Invalid category number: ${item.category}`);
       }
       // Explicitly convert number to Category enum value (ensure it's a number, not a string)
@@ -108,12 +138,20 @@ Example response format:
       }
       return {
         ...item,
-        category: categoryEnum
+        category: categoryEnum,
+        url: websiteUrl
       };
     });
+
+    return { prompt: prompt, result: validatedResults }; // Return both prompt and the validated results
+
   } catch (error) {
     console.error(`[Categorizer] Error in categorizeWebsiteContent for businessId=${businessId}, url=${websiteUrl}:`, error);
-    throw error; // Propagate error for better error handling upstream
+    // In case of a general error, return the prompt and an empty result array
+    // Or rethrow if the caller should handle the error differently.
+    // For consistency with the no-content case, let's return prompt and empty result.
+    return { prompt: prompt, result: [] }; 
+    // throw error; // Original behavior: Propagate error for better error handling upstream
   }
 }
 

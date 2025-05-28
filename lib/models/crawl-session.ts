@@ -3,6 +3,7 @@ import { handleModelError } from '@/lib/helpers/error';
 import { v4 as uuidv4 } from 'uuid';
 import { Document, DocumentData } from './documents';
 import { Embedding, EmbeddingData } from './embeddings';
+import { CATEGORY_DISPLAY_NAMES, Category as AppCategory } from '@/lib/config/config';
 
 export interface CrawlSessionData {
   id?: string;
@@ -91,29 +92,91 @@ export class CrawlSession {
    */
   static async addSessionWithDocumentsAndEmbeddings(
     sessionData: Omit<CrawlSessionData, 'id'>,
-    documents: Omit<DocumentData, 'id'>[],
-    embeddings: (Omit<EmbeddingData, 'id' | 'documentId'> & { metadata: { contentHash: string } })[]
+    documentsData: Omit<DocumentData, 'id' | 'sessionId'>[],
+    embeddingsData: (Omit<EmbeddingData, 'id' | 'documentId'> & { metadata?: { documentContentHash?: string, [key: string]: any }, content: string})[]
   ): Promise<{
     session: CrawlSession;
-    documents: DocumentData[];
-    embeddings: EmbeddingData[];
+    savedDocuments: DocumentData[];
+    savedEmbeddings: EmbeddingData[];
   }> {
+    const supabase = await createClient();
+
     // 1. Create session
     const session = await CrawlSession.add(sessionData);
-    // 2. Create documents with sessionId
-    const docsWithSession = await Promise.all(
-      documents.map(doc => Document.add({ ...doc, sessionId: session.id! }))
-    );
-    // 3. Create embeddings with documentId
-    const embeddingsWithDocId = await Promise.all(
-      embeddings.map(embed => {
-        // Find the document for this embedding by contentHash or other unique field
-        const doc = docsWithSession.find(d => d.contentHash === embed.metadata?.contentHash);
-        if (!doc) throw new Error('No matching document for embedding');
-        return Embedding.add({ ...embed, documentId: doc.id! });
-      })
-    );
-    return { session, documents: docsWithSession, embeddings: embeddingsWithDocId };
+    if (!session || !session.id) {
+      handleModelError('Failed to create session or session ID missing', new Error('Session creation failed'));
+      throw new Error('Session creation failed');
+    }
+    const sessionId = session.id;
+
+    // 2. Batch insert documents
+    let savedDocuments: DocumentData[] = [];
+    if (documentsData.length > 0) {
+      const documentsToInsert = documentsData.map(doc => ({
+        ...doc,
+        businessId: session.businessId,
+        sessionId: sessionId
+      }));
+
+      const { data: insertedDocs, error: docError } = await supabase
+        .from('documents')
+        .insert(documentsToInsert)
+        .select();
+
+      if (docError) {
+        console.error('Supabase error inserting documents:', docError);
+        handleModelError('Failed to insert documents', docError);
+        throw docError;
+      }
+      savedDocuments = insertedDocs || [];
+    }
+
+    // 3. Batch insert embeddings
+    let savedEmbeddings: EmbeddingData[] = [];
+    if (embeddingsData.length > 0 && savedDocuments.length > 0) {
+      const docHashMap = new Map(savedDocuments.map(doc => [doc.contentHash, doc.id]));
+      
+      const embeddingsToInsert = embeddingsData.map(embed => {
+        const documentId = docHashMap.get(embed.metadata?.documentContentHash);
+        if (!documentId) {
+          console.warn(`Could not find document for embedding with contentHash: ${embed.metadata?.documentContentHash}. Skipping this embedding.`);
+          return null;
+        }
+
+        let categoryNameToStore = 'Unknown';
+        if (embed.category !== undefined) {
+            // Attempt to convert to number if it's a string representation of a number, then cast to AppCategory for lookup
+            const categoryKey = (typeof embed.category === 'string' ? parseInt(embed.category, 10) : embed.category) as AppCategory;
+            if (CATEGORY_DISPLAY_NAMES[categoryKey]) {
+                categoryNameToStore = CATEGORY_DISPLAY_NAMES[categoryKey];
+            }
+        }
+
+        return {
+          documentId: documentId,
+          content: embed.content,         
+          embedding: embed.embedding,     
+          category: categoryNameToStore, // Use the resolved string name
+          chunkIndex: embed.chunkIndex,   
+          metadata: embed.metadata || {}, 
+        };
+      }).filter(e => e !== null) as Omit<EmbeddingData, 'id' | 'createdAt'>[];
+
+      if (embeddingsToInsert.length > 0) {
+        const { data: insertedEmbeddings, error: embedError } = await supabase
+          .from('embeddings')
+          .insert(embeddingsToInsert)
+          .select();
+
+        if (embedError) {
+          console.error('Supabase error inserting embeddings:', embedError);
+          handleModelError('Failed to insert some embeddings', embedError);
+        }
+        savedEmbeddings = insertedEmbeddings || [];
+      }
+    }
+    
+    return { session, savedDocuments, savedEmbeddings };
   }
 
   /**
