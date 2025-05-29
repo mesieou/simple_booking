@@ -1,0 +1,43 @@
+{
+  "sourceUrl": "https://www.taxbne.com.au/post/tax-treatment-of-trader-vs-investor",
+  "pageTitle": "Tax treatment of trader vs investor",
+  "isPdf": false,
+  "totalLlmChunks": 5,
+  "documents": [
+    {
+      "documentId": "605672d6-2670-444b-a3a6-87cf65add2b1",
+      "chunkOrder": 1,
+      "category": "General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories.",
+      "originalTextLength": 3266,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "9f007be9-3538-45e7-9fd0-06f60c491812",
+      "chunkOrder": 2,
+      "category": "contact",
+      "originalTextLength": 50,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "07400e8c-1371-4643-b8c2-635a18810b79",
+      "chunkOrder": 3,
+      "category": "Uncategorized",
+      "originalTextLength": 124,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "0ff92446-ee1f-4b9b-a2ba-9a9fd8cef5af",
+      "chunkOrder": 4,
+      "category": "about / trust-building",
+      "originalTextLength": 152,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "7a1aa121-4421-4e05-91f4-b1d1c1785a56",
+      "chunkOrder": 5,
+      "category": "terms & conditions / legal policies",
+      "originalTextLength": 48,
+      "preChunkSourceIndex": 0
+    }
+  ]
+}

@@ -3,6 +3,7 @@ import { handleModelError } from '@/lib/helpers/error';
 import { v4 as uuidv4 } from 'uuid';
 import { Document, DocumentData } from './documents';
 import { Embedding, EmbeddingData } from './embeddings';
+import { CATEGORY_DISPLAY_NAMES, Category as AppCategory } from '@/lib/config/config';
 
 export interface CrawlSessionData {
   id?: string;
@@ -26,7 +27,7 @@ export class CrawlSession {
     this.sessionData = data;
   }
 
-  static async add(data: Omit<CrawlSessionData, 'id'>): Promise<CrawlSession> {
+  static async add(data: CrawlSessionData): Promise<CrawlSession> {
     const supabase = await createClient();
     const insertData = {
       businessId: data.businessId,
@@ -38,7 +39,7 @@ export class CrawlSession {
       categories: data.categories,
       errors: data.errors,
       missingInformation: data.missingInformation,
-      id: uuidv4()
+      id: data.id || uuidv4()
     };
     console.log('Attempting to insert crawl session:', insertData);
     const { data: result, error } = await supabase
@@ -90,30 +91,69 @@ export class CrawlSession {
    * Orchestrates creation of a session, its documents, and their embeddings.
    */
   static async addSessionWithDocumentsAndEmbeddings(
-    sessionData: Omit<CrawlSessionData, 'id'>,
-    documents: Omit<DocumentData, 'id'>[],
-    embeddings: (Omit<EmbeddingData, 'id' | 'documentId'> & { metadata: { contentHash: string } })[]
+    sessionData: CrawlSessionData,
+    documentsData: Omit<DocumentData, 'id' | 'sessionId'>[]
   ): Promise<{
     session: CrawlSession;
-    documents: DocumentData[];
-    embeddings: EmbeddingData[];
+    savedDocuments: DocumentData[];
   }> {
-    // 1. Create session
-    const session = await CrawlSession.add(sessionData);
-    // 2. Create documents with sessionId
-    const docsWithSession = await Promise.all(
-      documents.map(doc => Document.add({ ...doc, sessionId: session.id! }))
-    );
-    // 3. Create embeddings with documentId
-    const embeddingsWithDocId = await Promise.all(
-      embeddings.map(embed => {
-        // Find the document for this embedding by contentHash or other unique field
-        const doc = docsWithSession.find(d => d.contentHash === embed.metadata?.contentHash);
-        if (!doc) throw new Error('No matching document for embedding');
-        return Embedding.add({ ...embed, documentId: doc.id! });
-      })
-    );
-    return { session, documents: docsWithSession, embeddings: embeddingsWithDocId };
+    const supabase = await createClient();
+
+    // 1. Insert session data directly
+    const sessionToInsert = { ...sessionData, id: sessionData.id || uuidv4() };
+    
+    const { data: insertedSessionResult, error: sessionInsertError } = await supabase
+      .from('crawlSessions')
+      .insert(sessionToInsert)
+      .select()
+      .single();
+
+    if (sessionInsertError) {
+      console.error('Supabase error inserting session in addSessionWithDocumentsAndEmbeddings:', {
+        message: sessionInsertError.message,
+        details: sessionInsertError.details,
+        code: sessionInsertError.code,
+        hint: sessionInsertError.hint
+      });
+      handleModelError('Failed to insert session data in addSessionWithDocumentsAndEmbeddings', sessionInsertError);
+      throw new Error('Session data insertion failed in addSessionWithDocumentsAndEmbeddings');
+    }
+    if (!insertedSessionResult) {
+      handleModelError('No data returned after session insert in addSessionWithDocumentsAndEmbeddings', new Error('No data returned for session'));
+      throw new Error('No data returned for session in addSessionWithDocumentsAndEmbeddings');
+    }
+    
+    const session = new CrawlSession(insertedSessionResult);
+    const sessionId = session.id; 
+
+    if (!sessionId) { 
+        handleModelError('Session ID missing after insert in addSessionWithDocumentsAndEmbeddings', new Error('Session ID is null/undefined post-insert'));
+        throw new Error('Session ID missing after insert in addSessionWithDocumentsAndEmbeddings');
+    }
+
+    // 2. Batch insert documents
+    let savedDocuments: DocumentData[] = [];
+    if (documentsData.length > 0) {
+      const documentsToInsert = documentsData.map(doc => ({
+        ...doc,
+        businessId: session.businessId, // Use businessId from the created session
+        sessionId: sessionId
+      }));
+
+      const { data: insertedDocs, error: docError } = await supabase
+        .from('documents')
+        .insert(documentsToInsert)
+        .select();
+
+      if (docError) {
+        console.error('Supabase error inserting documents:', docError);
+        handleModelError('Failed to insert documents', docError);
+        throw docError; // Re-throw to allow caller to handle
+      }
+      savedDocuments = insertedDocs || [];
+    }
+
+    return { session, savedDocuments };
   }
 
   /**

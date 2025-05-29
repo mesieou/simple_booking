@@ -1,0 +1,18 @@
+[FORM_START]
+## Signup
+First Name Last Name
+Email
+Send me product updates
+I agree to the Terms of Use & Privacy policy.
+We just sent you a 6-digit code.
+Check your inbox and paste the code below.
+OR
+Continue with Google
+Already have an account? Login here
+[FORM_END]
+Thank you! Your submission has been received!
+Oops! Something went wrong while submitting the form.
+[FOOTER_START]
+Copyright © 2024 Y&S Accounting
+✉️ brisbane@ysaccounting.com.au
+[FOOTER_END]

@@ -1,0 +1,92 @@
+{
+  "sourceUrl": "https://www.taxbne.com.au/",
+  "pageTitle": "Tax accountant and business advisor - Y&S Accounting Brisbane",
+  "isPdf": false,
+  "totalLlmChunks": 12,
+  "documents": [
+    {
+      "documentId": "40841b44-04de-4829-9734-1bcc874ba104",
+      "chunkOrder": 1,
+      "category": "Uncategorized",
+      "originalTextLength": 893,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "fcb8a035-8faa-4417-a8e3-ca29502b8243",
+      "chunkOrder": 2,
+      "category": "about / trust-building",
+      "originalTextLength": 865,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "d629f5ae-fdf2-47a6-b7e2-4ce444bfd39d",
+      "chunkOrder": 1,
+      "category": "about / trust-building",
+      "originalTextLength": 223,
+      "preChunkSourceIndex": 1
+    },
+    {
+      "documentId": "10a9c975-260d-417e-930f-689b6e030d6c",
+      "chunkOrder": 2,
+      "category": "General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories.",
+      "originalTextLength": 85,
+      "preChunkSourceIndex": 1
+    },
+    {
+      "documentId": "4ace1bef-de4a-4ddc-94ab-424f1e556f70",
+      "chunkOrder": 3,
+      "category": "General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories.",
+      "originalTextLength": 611,
+      "preChunkSourceIndex": 1
+    },
+    {
+      "documentId": "153f8238-7f8c-437e-bfcc-8726bf71593a",
+      "chunkOrder": 4,
+      "category": "General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories.",
+      "originalTextLength": 373,
+      "preChunkSourceIndex": 1
+    },
+    {
+      "documentId": "af8fceb9-dc8f-42c6-a642-0294ac7be38b",
+      "chunkOrder": 5,
+      "category": "General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories.",
+      "originalTextLength": 458,
+      "preChunkSourceIndex": 1
+    },
+    {
+      "documentId": "dcfa148c-5acb-437c-9618-e33379e8db0f",
+      "chunkOrder": 1,
+      "category": "faq",
+      "originalTextLength": 3718,
+      "preChunkSourceIndex": 2
+    },
+    {
+      "documentId": "090798cc-acb1-4ef3-bb2f-c01fccdc2818",
+      "chunkOrder": 2,
+      "category": "contact",
+      "originalTextLength": 143,
+      "preChunkSourceIndex": 2
+    },
+    {
+      "documentId": "b7ed3baa-fb43-44be-a425-6bb0e27fc794",
+      "chunkOrder": 3,
+      "category": "about / trust-building",
+      "originalTextLength": 152,
+      "preChunkSourceIndex": 2
+    },
+    {
+      "documentId": "f30bd089-ffe7-481c-92e7-642126390220",
+      "chunkOrder": 4,
+      "category": "Uncategorized",
+      "originalTextLength": 124,
+      "preChunkSourceIndex": 2
+    },
+    {
+      "documentId": "fc36ea63-e38b-46d6-92e5-b6bfa26a468b",
+      "chunkOrder": 5,
+      "category": "terms & conditions / legal policies",
+      "originalTextLength": 48,
+      "preChunkSourceIndex": 2
+    }
+  ]
+}

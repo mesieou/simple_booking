@@ -1,6 +1,6 @@
 import { Embedding } from "@/lib/models/embeddings";
 import { Document } from "@/lib/models/documents";
-import { Category, CATEGORY_DISPLAY_NAMES } from "@/lib/bot/content-crawler/config";
+import { Category, CATEGORY_DISPLAY_NAMES } from "@/lib/config/config";
 import { executeChatCompletion, OpenAIChatMessage } from "@/lib/helpers/openai/openai-core";
 import { generateEmbedding } from "@/lib/helpers/openai/functions/embeddings";
 

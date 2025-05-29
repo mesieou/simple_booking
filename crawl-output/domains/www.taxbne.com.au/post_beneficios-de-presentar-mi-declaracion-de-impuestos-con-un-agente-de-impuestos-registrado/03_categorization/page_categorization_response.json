@@ -1,0 +1,87 @@
+{
+  "modelUsed": "gpt-4o",
+  "originalContentCharacterLength": 3146,
+  "llmSegmentedChunks": [
+    {
+      "chunkOrder": 1,
+      "chunkText": "# Benefits of filing my tax return with a registered tax agent\nWritten by\nSebastian Garcia\nPublished on\nJanuary 11, 2024\nIn Australia, when we engage a tax agent, we obtain certain benefits. But before understanding what benefits we can gain, it's essential to know who tax agents are. A tax agent is a qualified professional who must be registered with the Tax Practitioners Board (TPB) and is trained to:\n- Assist you in preparing and filing your tax return.\n- Provide services either online or in person.\n- Be the only professionals authorized to charge for preparing and filing your tax return.\n- Utilize a system for preparing your return shared with the Australian Taxation Office (ATO).\n- Handle audits required by the tax office.",
+      "category": 7,
+      "categoryName": "General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories.",
+      "confidence": 0.9,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 2,
+      "chunkText": "## What should I consider when choosing my tax agent?\n- The tax agent must be registered with the Tax Practitioners Board (TPB). You can verify this information on the TPB website.\n- The tax agent must be qualified and have the required experience.\n- Adhere to the Professional Code of Conduct.",
+      "category": 7,
+      "categoryName": "General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories.",
+      "confidence": 0.9,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 3,
+      "chunkText": "### Benefits\n1. Ensuring correct filing\nHiring a tax agent guarantees that the tax return is filed correctly the first time, following current tax laws. It's important to note that information must be provided by the client, and omitting any details can impact the accuracy of the return.\n2. 100% Deductible Fees\nThe fees paid for the services provided by a tax agent are 100% deductible for the following fiscal year. This means that if you paid $120 for the preparation and filing of your return in 2022, you can deduct the entire amount from your taxes payable in 2023.\n3. Extended deadline\nIndividuals who engage a tax agent have an extended deadline for filing their tax return until May 17 of the following year. It's crucial to be up to date with your declarations to access this benefit.\n4. Timely and Adequate Response to Audits\nThe tax agent ensures providing appropriate and timely responses to audits required by the tax office. When the ATO compares the information provided in the return with other sources (Medicare, banks, payroll, etc.) and finds discrepancies, additional information may be requested, and the tax agent ensures compliance with the stipulated rules.",
+      "category": 7,
+      "categoryName": "General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories.",
+      "confidence": 0.9,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 4,
+      "chunkText": "#### Still have questions?\nContact us now!",
+      "category": 5,
+      "categoryName": "faq",
+      "confidence": 0.8,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 5,
+      "chunkText": "Subscribe to newsletter\nSubscribe to receive the latest blog posts to your inbox every week.",
+      "category": 7,
+      "categoryName": "General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories.",
+      "confidence": 0.7,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 6,
+      "chunkText": "[FORM_START]\nBy subscribing you agree to with our Privacy Policy.\n[FORM_END]",
+      "category": 6,
+      "categoryName": "terms & conditions / legal policies",
+      "confidence": 0.9,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 7,
+      "chunkText": "Y&S Accounting proudly specialises in providing professional consulting and accounting services to the Latin American community in Australia since 2008.",
+      "category": 4,
+      "categoryName": "about / trust-building",
+      "confidence": 0.95,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 8,
+      "chunkText": "Accounting services\nPersonal tax returns Business advise Xero health check Business registration Bookkeeping Start-up advise",
+      "category": 0,
+      "categoryName": "services offered",
+      "confidence": 0.95,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 9,
+      "chunkText": "Address:\nLevel 38, 71 Eagle St, Brisbane QLD 4000\nContact:\n1300 189 682\nbrisbane@ysaccounting.com.au",
+      "category": 2,
+      "categoryName": "contact",
+      "confidence": 0.95,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 10,
+      "chunkText": "Privacy Policy Terms of Service Cookies Settings",
+      "category": 6,
+      "categoryName": "terms & conditions / legal policies",
+      "confidence": 0.9,
+      "preChunkSourceIndex": 0
+    }
+  ],
+  "promptUsedLength": 5965
+}

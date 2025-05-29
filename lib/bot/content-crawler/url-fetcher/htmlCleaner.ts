@@ -1,96 +1,302 @@
 import * as cheerio from 'cheerio';
+import { HTML_CLEANER_CONFIG } from '@/lib/config/config'; // We need this for tableToMarkdown and other parts, but will disable main removal loops
 
-/**
- * Removes unwanted elements from HTML and extracts main content
- */
-export function cleanAndExtractMainContent(html: string): string {
-  const $ = cheerio.load(html);
-  
-  // Remove unwanted elements
-  $('script, style, nav, footer, header, .ads, .advertisement, .cookie-banner, .menu, .sidebar, .social-share, .comments, .related-posts, .newsletter, .popup, .modal, .banner, .notification, .cookie-notice, .privacy-notice, .terms-notice, .disclaimer, .legal-notice, .copyright, .footer-links, .social-links, .share-buttons, .newsletter-signup, .subscribe-form, .contact-form, .search-form, .login-form, .signup-form, .password-form, .reset-form, .forgot-form, .remember-form, .profile-form, .settings-form, .preferences-form, .notification-settings, .privacy-settings, .account-settings, .billing-settings, .payment-settings, .shipping-settings, .delivery-settings, .order-settings, .cart-settings, .wishlist-settings, .favorite-settings, .bookmark-settings, .save-settings, .share-settings, .export-settings, .import-settings, .backup-settings, .restore-settings, .sync-settings, .update-settings, .upgrade-settings, .downgrade-settings, .cancel-settings, .delete-settings, .remove-settings, .hide-settings, .show-settings, .toggle-settings, .switch-settings, .change-settings, .edit-settings, .modify-settings, .adjust-settings, .configure-settings, .customize-settings, .personalize-settings, .optimize-settings, .improve-settings, .enhance-settings').remove();
-
-  // Convert tables to Markdown before extracting text
-  $('table').each((_, el) => {
-    const $el = $(el);
-    const md = tableToMarkdown($el);
-    $el.replaceWith(`<div class="markdown-table">${md}</div>`);
-  });
-
-  // Get main content
-  const mainContent = getLargestContentBlock($);
-  const mainText = mainContent.text().trim();
-  
-  return cleanText(mainText || $('body').text().trim());
+// Define ExtractedPatterns first
+interface ExtractedPatterns {
+  emails: string[];
+  phones: string[];
+  copyrights: string[];
 }
 
-/**
- * Gets the largest content block from the HTML
- */
-function getLargestContentBlock($: cheerio.Root): cheerio.Cheerio {
-  // Try <main>, <article>, <section> first
-  const candidates = ['main', 'article', 'section'];
-  let largest = null;
-  let maxLen = 0;
-  
-  for (const tag of candidates) {
-    $(tag).each((_, el) => {
-      const text = $(el).text().trim();
-      if (text.length > maxLen) {
-        largest = $(el);
-        maxLen = text.length;
-      }
-    });
+// UPDATED export interface for the new return type
+export interface SimplifiedCleanedContentResult {
+  allExtractedText: string;
+  extractedPatterns: ExtractedPatterns;
+}
+
+// Define helper extractCommonPatterns before it is used
+function extractCommonPatterns(text: string): ExtractedPatterns {
+  const patterns: ExtractedPatterns = {
+    emails: [],
+    phones: [],
+    copyrights: [],
+  };
+
+  const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+  const foundEmails = text.match(emailRegex);
+  if (foundEmails) {
+    patterns.emails = Array.from(new Set(foundEmails));
   }
-  
-  // If none found, try <div> with class containing 'content'
-  if (!largest) {
-    $('div[class*="content"]').each((_, el) => {
-      const text = $(el).text().trim();
-      if (text.length > maxLen) {
-        largest = $(el);
-        maxLen = text.length;
-      }
-    });
+
+  const phoneRegex = /(\(\d{3}\)|\d{3})[- .]?\d{3}[- .]?\d{4}/g;
+  const foundPhones = text.match(phoneRegex);
+  if (foundPhones) {
+    patterns.phones = Array.from(new Set(foundPhones));
   }
-  
-  // Fallback to body
-  return largest || $('body');
+
+  const copyrightRegex = /(©|\(c\)|copyright)\s*\d{4}/gi;
+  const foundCopyrights = text.match(copyrightRegex);
+  if (foundCopyrights) {
+    patterns.copyrights = Array.from(new Set(foundCopyrights.map(c => c.trim())));
+  }
+  return patterns;
 }
 
 /**
  * Converts an HTML table to Markdown format
  */
 function tableToMarkdown($table: cheerio.Cheerio): string {
-  const $ = cheerio.load($table.html() || '');
-  const rows = $('tr').toArray().map(row => {
-    return $(row).find('th,td').toArray().map((cell: cheerio.Element) => {
-      return $(cell).text().trim().replace(/\|/g, '\\|');
+    const htmlContent = $table.html();
+    if (!htmlContent) return ''; 
+
+    const $ = cheerio.load(htmlContent); 
+    const rows: string[][] = [];
+
+    $('tr').each((_i: number, rowEl: cheerio.Element) => {
+        const rowData: string[] = [];
+        $(rowEl).find('th,td').each((_j: number, cellEl: cheerio.Element) => {
+            rowData.push($(cellEl).text().trim().replace(/\|/g, '\\\|'));
+        });
+        rows.push(rowData);
     });
-  });
   
-  if (rows.length === 0) return '';
+    if (rows.length === 0) return '';
   
-  const header = rows[0];
-  const body = rows.slice(1);
-  const md = [
-    '| ' + header.join(' | ') + ' |',
-    '| ' + header.map(() => '---').join(' | ') + ' |',
-    ...body.map(r => '| ' + r.join(' | ') + ' |')
-  ];
+    const header = rows[0];
+    if (!header || header.length === 0) return ''; 
+
+    const body = rows.slice(1);
+    const mdTable = [
+        '| ' + header.join(' | ') + ' |',
+        '| ' + header.map(() => '---').join(' | ') + ' |',
+        ...body.map(r => '| ' + r.join(' | ') + ' |' )
+    ];
   
-  return md.join('\n');
+    return mdTable.join('\n');
 }
 
-/**
- * Cleans text content by removing extra whitespace and normalizing
- */
-function cleanText(content: string): string {
-  return content
-    .replace(/<[^>]*>/g, '') // Remove any remaining HTML tags
-    .replace(/\s+/g, ' ')    // Collapse whitespace
-    .replace(/\n+/g, '\n')   // Collapse newlines
-    .replace(/[^\S\n]+/g, ' ') // Collapse spaces except newlines
-    .replace(/^\s+|\s+$/gm, '') // Trim each line
-    .replace(/\n\s*\n/g, '\n\n') // Collapse multiple empty lines
-    .trim();
+export function cleanAndExtractMainContent(html: string): SimplifiedCleanedContentResult {
+    const $ = cheerio.load(html);
+    const textSegments: string[] = [];
+    let hasMarkedNav = false; // Flag to track if the first NAV has been marked
+
+    const cleanerConfig = HTML_CLEANER_CONFIG; // Keep for table conversion, but disable main removal loops
+
+    // 1. Initial aggressive pruning - ESSENTIAL
+    $('script, style, noscript, iframe, link, meta, head, area, map').remove();
+    $('svg').each((_i, el) => {
+        const $el = $(el);
+        if (!$el.find('title').text()?.trim() && !$el.attr('aria-label')?.trim()) {
+            $el.remove();
+        }
+    });
+
+    // 2. Remove configured elements to be entirely stripped - USER REQUEST: MINIMAL PRUNING, SO DISABLED
+    // (cleanerConfig.ELEMENTS_TO_REMOVE_ENTIRELY || []).forEach((selector: string) => {
+    //     $(selector).remove();
+    // });
+
+    // 3. Remove elements matching negative patterns - USER REQUEST: MINIMAL PRUNING, SO DISABLED
+    // (cleanerConfig.NEGATIVE_SELECTOR_PATTERNS || []).forEach((selector: string) => {
+    //     $(selector).remove();
+    // });
+
+    // 4. Process tables to Markdown and replace them - KEEPING THIS
+    $('table').each((i, el) => {
+        const $table = $(el);
+        const markdownTable = tableToMarkdown($table);
+        if (markdownTable.trim().length > 0) {
+            const placeholderId = `__table_placeholder_${i}__`;
+            $table.replaceWith(`<div id="${placeholderId}">${markdownTable}</div>`);
+        }
+    });
+
+    function helperEnsureLeadingNewline(segments: string[]): void {
+        if (segments.length > 0 && !segments[segments.length - 1].endsWith('\n')) {
+            segments.push('\n');
+        }
+    }
+
+    function processNode(node: cheerio.Element): void {
+        if (node.type === 'text') {
+            let text = $(node).text();
+            text = text.replace(/\u00A0/g, ' ').trim(); // Handle non-breaking spaces and trim current text node
+            if (text.length > 0) {
+                if (textSegments.length > 0) {
+                    const lastSegment = textSegments[textSegments.length - 1];
+                    if (!lastSegment.endsWith(' ') && !lastSegment.endsWith('\n') && !text.startsWith(' ') && !text.startsWith('.') && !text.startsWith(',')) {
+                         textSegments.push(' '); // Add space if needed
+                    }
+                }
+                textSegments.push(text);
+            }
+            return; 
+        }
+
+        if (node.type !== 'tag') {
+            return; 
+        }
+
+        const $el = $(node);
+        const tagName = node.tagName.toLowerCase();
+
+        if ($el.attr('data-text-extracted') === 'true') {
+            return; 
+        }
+
+        // Elements fully processed by their handlers (Markdown, special prefixes)
+        if (tagName === 'pre') {
+            helperEnsureLeadingNewline(textSegments);
+            textSegments.push('```\n' + $el.text() + '\n```');
+            helperEnsureLeadingNewline(textSegments); // Ensure newline after block
+            $el.find('*').addBack().attr('data-text-extracted', 'true');
+            return;
+        }
+        if (tagName === 'br') {
+            helperEnsureLeadingNewline(textSegments);
+            $el.attr('data-text-extracted', 'true');
+            return;
+        }
+        if (tagName === 'hr') {
+            helperEnsureLeadingNewline(textSegments);
+            textSegments.push('---');
+            helperEnsureLeadingNewline(textSegments);
+            $el.attr('data-text-extracted', 'true');
+            return;
+        }
+        if (node.attribs && node.attribs['id']?.startsWith('__table_placeholder_')) {
+            helperEnsureLeadingNewline(textSegments);
+            textSegments.push($el.text().trim()); // Markdown table content
+            helperEnsureLeadingNewline(textSegments);
+            $el.attr('data-text-extracted', 'true');
+            return;
+        }
+
+        if (['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tagName)) {
+            const level = parseInt(tagName.charAt(1));
+            helperEnsureLeadingNewline(textSegments);
+            textSegments.push(`${ '#'.repeat(level)} `);
+            $el.contents().each((_, child) => processNode(child));
+            helperEnsureLeadingNewline(textSegments);
+            $el.attr('data-text-extracted', 'true');
+            return;
+        }
+
+        if (tagName === 'li') {
+            helperEnsureLeadingNewline(textSegments);
+            textSegments.push(`* `);
+            $el.contents().each((_, child) => processNode(child));
+            helperEnsureLeadingNewline(textSegments);
+            $el.attr('data-text-extracted', 'true');
+            return;
+        }
+        
+        if (tagName === 'nav') {
+            helperEnsureLeadingNewline(textSegments);
+            if (!hasMarkedNav) {
+                console.log(`[HTMLCleaner] Processing first <nav> element (outer): ${$el.attr('class') || 'no class'}`);
+                hasMarkedNav = true; // Set the flag IMMEDIATELY for the first nav encountered
+
+                textSegments.push(`[NAV_START]`);
+                helperEnsureLeadingNewline(textSegments);
+                $el.contents().each((_, child) => processNode(child)); // Process content for this first nav
+                helperEnsureLeadingNewline(textSegments);
+                textSegments.push(`[NAV_END]`);
+            } else {
+            }
+            helperEnsureLeadingNewline(textSegments); // Ensure newline after nav block handling (applies to both cases for structure)
+            $el.attr('data-text-extracted', 'true'); // Mark this nav element (first or subsequent) as processed by this handler
+            return;
+        }
+        
+        const prefixElements: Record<string, string> = {
+            'form': 'FORM', 'footer': 'FOOTER', 'aside': 'ASIDE'
+        };
+
+        if (prefixElements[tagName]) {
+            const marker = prefixElements[tagName];
+            helperEnsureLeadingNewline(textSegments);
+            textSegments.push(`[${marker}_START]`);
+            helperEnsureLeadingNewline(textSegments);
+            $el.contents().each((_, child) => processNode(child));
+            helperEnsureLeadingNewline(textSegments);
+            textSegments.push(`[${marker}_END]`);
+            helperEnsureLeadingNewline(textSegments);
+            $el.attr('data-text-extracted', 'true');
+            return;
+        }
+
+
+        // Generic block element handling for newlines (div, p, section etc.)
+        const genericBlockTags = [
+            'p', 'div', 'section', 'article', 'main', 'header', 
+            'details', 'dialog', 'figure', 'figcaption', 
+            'ul', 'ol', 'dl', 'dd', 'dt', 'blockquote', 'address',
+            'tr', 'th', 'td' // Table elements if not handled by tableToMarkdown (fallback)
+        ];
+
+        const isGenericBlock = genericBlockTags.includes(tagName);
+
+        if (isGenericBlock) {
+            helperEnsureLeadingNewline(textSegments);
+        }
+        
+        $el.contents().each((_, child) => processNode(child));
+
+        if (isGenericBlock) {
+            helperEnsureLeadingNewline(textSegments);
+        }
+    }
+
+    if ($('body')[0]) {
+         processNode($('body')[0]);
+    }
+
+    let combinedText = textSegments.join('');
+    
+    if (typeof combinedText !== 'string') {
+        combinedText = String(combinedText);
+    }
+
+    combinedText = combinedText.replace(/[ \t]+/g, ' '); 
+    
+    const textForReplace = combinedText; 
+    combinedText = combinedText.replace(/ (?=\n)/g, (match, _p1, offset, stringArgFromReplace) => {
+        const currentFullString = (typeof stringArgFromReplace === 'string') ? stringArgFromReplace : textForReplace;
+        if (typeof currentFullString !== 'string') {
+            return match; 
+        }
+        try {
+            const relevantSubstringBeforeMatch = currentFullString.substring(0, offset);
+            const preBlockMatch = relevantSubstringBeforeMatch.lastIndexOf('```');
+            if (preBlockMatch !== -1) {
+                const subAfterPre = currentFullString.substring(preBlockMatch + 3);
+                const nextPreBlockClose = subAfterPre.indexOf('```');
+                if (nextPreBlockClose === -1) { 
+                    return match; 
+                }
+            }
+            return ''; 
+        } catch (e: any) { 
+            return match; 
+        }
+    });
+    
+    combinedText = combinedText.replace(/\n /g, '\n'); 
+    combinedText = combinedText.replace(/(\n){3,}/g, '\n\n'); 
+    combinedText = combinedText.trim();
+
+    // Line deduplication remains disabled for now
+    // if (combinedText.length > 0) {
+    //     const lines = combinedText.split('\n');
+    //     const uniqueLines = Array.from(new Set(lines));
+    //     combinedText = uniqueLines.join('\n');
+    // }
+
+    const patterns = extractCommonPatterns(combinedText);
+
+    return {
+        allExtractedText: combinedText,
+        extractedPatterns: patterns,
+    };
 } 

@@ -1,0 +1,12 @@
+[FORM_START]
+## Passwordless Login w/ Social Auth
+Email
+OR
+Continue with Google
+New here? Create an account.
+[FORM_END]
+Thank you! Your submission has been received!
+[FOOTER_START]
+Copyright © 2024 Y&S Accounting
+✉️ brisbane@ysaccounting.com.au
+[FOOTER_END]

@@ -1,0 +1,14 @@
+{
+  "sourceUrl": "https://www.taxbne.com.au/",
+  "originalCleanedTextPath": "../../01_cleaned_text/cleaned.txt",
+  "maxCharsPerGptChunk": 6000,
+  "numberOfPreChunks": 3,
+  "preChunkFileNames": [
+    "pre_chunk_0.txt",
+    "pre_chunk_1.txt",
+    "pre_chunk_2.txt"
+  ],
+  "timestamp": "2025-05-29T05:42:00.343Z",
+  "sessionId": "e958226a-eeb1-4dd1-b8c1-62571ec65d06",
+  "domain": "www.taxbne.com.au"
+}

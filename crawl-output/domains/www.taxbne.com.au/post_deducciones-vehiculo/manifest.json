@@ -1,0 +1,64 @@
+{
+  "sourceUrl": "https://www.taxbne.com.au/post/deducciones-vehiculo",
+  "pageTitle": "Guide to Calculating Vehicle Deductions",
+  "isPdf": false,
+  "totalLlmChunks": 8,
+  "documents": [
+    {
+      "documentId": "89a381ba-afa3-4032-8c41-ff7d762690ba",
+      "chunkOrder": 1,
+      "category": "General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories.",
+      "originalTextLength": 2919,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "c5abbcd7-472e-47a1-a8c3-66fd53bfc55e",
+      "chunkOrder": 2,
+      "category": "contact",
+      "originalTextLength": 50,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "32b1aa1b-98aa-4bf4-a863-8f7969923424",
+      "chunkOrder": 3,
+      "category": "about / trust-building",
+      "originalTextLength": 152,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "b6b87a77-1cf3-4627-9c70-62d90d46e64f",
+      "chunkOrder": 4,
+      "category": "Uncategorized",
+      "originalTextLength": 124,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "1d0dd21f-7d09-4528-8033-b05de3e2b4f1",
+      "chunkOrder": 5,
+      "category": "terms & conditions / legal policies",
+      "originalTextLength": 48,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "60ad6fd9-bb38-4c4b-9bcc-2ae017cc2ff3",
+      "chunkOrder": 6,
+      "category": "General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories.",
+      "originalTextLength": 145,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "84886810-59d1-4589-9521-8748832c662a",
+      "chunkOrder": 7,
+      "category": "faq",
+      "originalTextLength": 37,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "07d97407-eda3-456b-bae5-5f232f3b9a07",
+      "chunkOrder": 8,
+      "category": "booking or scheduling",
+      "originalTextLength": 16,
+      "preChunkSourceIndex": 0
+    }
+  ]
+}
