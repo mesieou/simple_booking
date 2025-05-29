@@ -13,6 +13,9 @@ interface PreSplitterConfig {
  * Splits a large text into smaller pre-chunks based on markdown structure and a max character limit.
  * The goal is to send manageable, coherent pieces to a downstream LLM for finer semantic chunking.
  *
+ * This version ensures that a heading and its immediate content are never split into separate chunks.
+ * When splitting, if a split point is a heading, the heading and the lines following it up to the next heading are always kept together in the same chunk.
+ *
  * @param cleanedText The full text content (e.g., from htmlCleaner).
  * @param config Configuration object with maxCharsPerChunk.
  * @returns An array of text strings, where each string is a pre-chunk.
@@ -76,7 +79,10 @@ export function preSplitByMarkdownAndSize(
           MARKDOWN_LIST_ITEM_REGEX.test(line) ||
           PARAGRAPH_BREAK_REGEX.test(line) // Split before a new paragraph (empty line)
         ) {
-          potentialSplitLineIndices.push(i);
+          // Only add as a split point if the previous line is NOT a heading (to keep heading+content together)
+          if (!MARKDOWN_HEADING_REGEX.test(lines[i - 1])) {
+            potentialSplitLineIndices.push(i);
+          }
         }
       }
     }
@@ -131,6 +137,16 @@ export function preSplitByMarkdownAndSize(
           smallestDiff = currentDiff;
           bestSplitLine = potentialSplitLineIndices[j];
         }
+      }
+      // Ensure we do not split between a heading and its content
+      // If the split line is a heading, move the split up to include the heading with its content
+      if (MARKDOWN_HEADING_REGEX.test(lines[bestSplitLine])) {
+        // Move split up to previous non-heading line
+        let newSplit = bestSplitLine;
+        while (newSplit > 0 && MARKDOWN_HEADING_REGEX.test(lines[newSplit])) {
+          newSplit--;
+        }
+        bestSplitLine = newSplit;
       }
       part1 = lines.slice(0, bestSplitLine).join('\n');
       part2 = lines.slice(bestSplitLine).join('\n');

@@ -257,6 +257,16 @@ class CrawlLogger {
       this.stats.processingStats.failedEmbeddings += count;
   }
 
+  public async logSessionError(sessionId: string, errorMessage: string): Promise<void> {
+    await this.ensureInitialized();
+    // For now, just console.error. 
+    // Consider adding a specific field in stats or a separate error log file if needed.
+    console.error(`[LOGGER] Session error for ${sessionId}: ${errorMessage}`);
+    // Optionally, you could add to a new array in stats.processingStats.sessionErrors or similar.
+    // this.stats.processingStats.errors.push({ type: 'session', id: sessionId, message: errorMessage });
+    // Ensure 'errors' array exists in ProcessingStats and is typed appropriately if you use this.
+  }
+
   // --- Finalization ---
   public async finalizeStatsAndSave(): Promise<void> {
     await this.ensureInitialized(); // Ensure it was initialized, even if by default path

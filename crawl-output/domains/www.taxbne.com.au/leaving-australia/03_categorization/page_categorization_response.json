@@ -4,10 +4,10 @@
   "llmSegmentedChunks": [
     {
       "chunkOrder": 1,
-      "chunkText": "# Departing Australia Superannuation Payment and Early tax returns\nHassle-free early tax return and superannuation refund services. Maximise your financial benefits as you bid farewell to Australia. Let our experts handle your tax obligations and ensure a smooth departure. Contact us now!",
+      "chunkText": "Hassle-free early tax return and superannuation refund services. Maximise your financial benefits as you bid farewell to Australia. Let our experts handle your tax obligations and ensure a smooth departure.",
       "category": 0,
       "categoryName": "services offered",
-      "confidence": 0.95,
+      "confidence": 0.9,
       "preChunkSourceIndex": 0
     },
     {
@@ -15,12 +15,12 @@
       "chunkText": "Book appointment\nBook your appointment\nOne of our accountants will solve your questions\n100% guaranteed professional service",
       "category": 3,
       "categoryName": "booking or scheduling",
-      "confidence": 0.9,
+      "confidence": 0.85,
       "preChunkSourceIndex": 0
     },
     {
       "chunkOrder": 3,
-      "chunkText": "## We can help you with your DASP (Departing Australia Superannuation Payment) and your Early Tax return\n1\n### Book your appointment\nStart the process by booking an appointment with ease, choosing your preferred mode of communication: face-to-face, video call, or phone call.",
+      "chunkText": "1\n### Book your appointment\nStart the process by booking an appointment with ease, choosing your preferred mode of communication: face-to-face, video call, or phone call.",
       "category": 3,
       "categoryName": "booking or scheduling",
       "confidence": 0.9,
@@ -39,12 +39,12 @@
       "chunkText": "3\n### Receive a quote for the service\nFollowing the information check, we will provide you with a detailed quote for our services. Regardless of the chosen mode of communication, our quote will encompass the specific requirements of your tax return and superannuation refund, tailored to your unique circumstances. Rest assured that our pricing remains competitive, while upholding the highest standards of professionalism and efficiency.",
       "category": 1,
       "categoryName": "pricing or quotes",
-      "confidence": 0.95,
+      "confidence": 0.9,
       "preChunkSourceIndex": 0
     },
     {
       "chunkOrder": 6,
-      "chunkText": "## What our customers say\nDiana Franco\nI can't recommend Sebastian enough. He is a great accountant! He is very diligent, efficient and always goes above and beyond. Excellent service! Great for small businesses accounting.\nOrlando Guerra\nVery knowledgeable and professional. My return was filed quickly and I got the money back within weeks.\nCristian Campo\nVery knowledgeable and easy to get in contact with. Excellent customer service. Highly recommended!\nCatalina Montoya\nI highly recommend Y&S ac",
+      "chunkText": "## What our customers say\nDiana Franco\nI can't recommend Sebastian enough. He is a great accountant! He is very diligent, efficient and always goes above and beyond. Excellent service! Great for small businesses accounting.\nOrlando Guerra\nVery knowledgeable and professional. My return was filed quickly and I got the money back within weeks.\nCristian Campo\nVery knowledgeable and easy to get in contact with. Excellent customer service. Highly recommended!\nCatalina Montoya\nI highly recommend Y&S accounting, and specially to Sebastian Garcia.They have an excellent customer service, they always work in a legar way trying to be the most diligent and helpful as much as possible. Looking after their economical costumer wellness.\nJuan Pablo Vasquez\nThis is the 4th year making my tax return with no issues and exceptional professionalisms. Strongly recommend them.",
       "category": 4,
       "categoryName": "about / trust-building",
       "confidence": 0.95,
@@ -52,7 +52,7 @@
     },
     {
       "chunkOrder": 7,
-      "chunkText": "## Frequently asked questions\nEarly Tax return\n¿How long does the Tax Return process takes?\nElectronic tax returns are usually processed by the ATO within two weeks. We expect that most refunds will be out within 10 working days after lodgement of your tax return, but some people will wait a bit longer for the ATO to get it done.\nWho is eligible for an early tax return?\nTo be eligible for an early tax return, you must meet the following criteria:\n1. Leaving Australia permanently: You need to be ",
+      "chunkText": "## Frequently asked questions\nEarly Tax return\n¿How long does the Tax Return process takes?\nElectronic tax returns are usually processed by the ATO within two weeks. We expect that most refunds will be out within 10 working days after lodgement of your tax return, but some people will wait a bit longer for the ATO to get it done.\nWho is eligible for an early tax return?\nTo be eligible for an early tax return, you must meet the following criteria:\n1. Leaving Australia permanently: You need to be departing Australia with no intention of returning before the end of the financial year for which you are filing the tax return. It applies to individuals who are leaving the country permanently.\n2. ATO's acceptance deadline: The Australian Taxation Office (ATO) typically accepts early tax returns until the 15th of June. To be eligible, you must file your tax return within this timeframe.\nWhat documents and information do I need to provide for the early tax return?\nTo facilitate the early tax return process, you will need to provide relevant documents such as income statements, expense receipts, and any other supporting documentation related to your financial affairs. Our team will guide you on the specific documents required based on your situation.\nHow do I get started with the early tax return service?\nGetting started is easy! Simply reach out to Y&S Accounting to schedule an appointment or book online. Our professionals will guide you through the process, answer any additional questions you may have, and ensure a smooth experience.If you have any further questions or need personalized assistance, feel free to contact our knowledgeable team. We are here to help you make the most of your early tax return experience.",
       "category": 5,
       "categoryName": "faq",
       "confidence": 0.95,
@@ -60,7 +60,7 @@
     },
     {
       "chunkOrder": 8,
-      "chunkText": "#### Still have questions?\nContact us now!\nY&S Accounting proudly specialises in providing professional consulting and accounting services to the Latin American community in Australia since 2008.\nAccounting services\nPersonal tax returns Business advise Xero health check Business registration Bookkeeping Start-up advise\nAddress:\nLevel 38, 71 Eagle St, Brisbane QLD 4000\nContact:\n1300 189 682\nbrisbane@ysaccounting.com.au",
+      "chunkText": "#### Still have questions?\nContact us now!\nY&S Accounting proudly specialises in providing professional consulting and accounting services to the Latin American community in Australia since 2008.\nAddress:\nLevel 38, 71 Eagle St, Brisbane QLD 4000\nContact:\n1300 189 682\nbrisbane@ysaccounting.com.au",
       "category": 2,
       "categoryName": "contact",
       "confidence": 0.95,
@@ -68,10 +68,18 @@
     },
     {
       "chunkOrder": 9,
-      "chunkText": "© 2023 Y&S Accounting Brisbane. All right reserved.\nPrivacy Policy Terms of Service Cookies Settings",
+      "chunkText": "Accounting services\nPersonal tax returns Business advise Xero health check Business registration Bookkeeping Start-up advise",
+      "category": 0,
+      "categoryName": "services offered",
+      "confidence": 0.9,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 10,
+      "chunkText": "Privacy Policy Terms of Service Cookies Settings",
       "category": 6,
       "categoryName": "terms & conditions / legal policies",
-      "confidence": 0.9,
+      "confidence": 0.85,
       "preChunkSourceIndex": 0
     }
   ],

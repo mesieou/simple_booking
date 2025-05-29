@@ -12,6 +12,17 @@ export async function generateEmbedding(text: string): Promise<number[]> {
     console.warn("[generateEmbedding] Received empty or whitespace-only text. Skipping API call, will throw error.");
     throw new Error("Cannot generate embedding for empty text.");
   }
+
+  // START MOCK LOGIC
+  if (process.env.MOCK_GPT === 'true') {
+    console.log(`[generateEmbedding] MOCK MODE: Returning dummy embedding vector for text (first 80 chars): "${text.substring(0, 80).replace(/\n/g, ' ')}..."`);
+    // Return a dummy vector of the correct dimension (1536 for text-embedding-3-small)
+    // Using a simple array of 0.001 for differentiation from actual zeros if they were to occur.
+    const dummyEmbedding = new Array(1536).fill(0.001);
+    return dummyEmbedding;
+  }
+  // END MOCK LOGIC
+
   try {
     const response = await openai.embeddings.create({
       model: "text-embedding-3-small",

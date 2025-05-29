@@ -1,10 +1,13 @@
 {
   "sourceUrl": "https://www.taxbne.com.au/tax-return",
   "originalCleanedTextPath": "../../01_cleaned_text/cleaned.txt",
-  "maxCharsPerGptChunk": 32000,
-  "numberOfPreChunks": 1,
+  "maxCharsPerGptChunk": 6000,
+  "numberOfPreChunks": 2,
   "preChunkFileNames": [
-    "pre_chunk_0.txt"
+    "pre_chunk_0.txt",
+    "pre_chunk_1.txt"
   ],
-  "timestamp": "2025-05-28T12:09:05.891Z"
+  "timestamp": "2025-05-29T05:44:02.633Z",
+  "sessionId": "e958226a-eeb1-4dd1-b8c1-62571ec65d06",
+  "domain": "www.taxbne.com.au"
 }

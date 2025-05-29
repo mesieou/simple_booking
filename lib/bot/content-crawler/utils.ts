@@ -84,17 +84,36 @@ export function splitIntoSentences(text: string): string[] {
 }
 
 export async function runConcurrentTasks<T>(
-  taskGenerator: () => AsyncGenerator<() => Promise<T>, void, unknown>,
+  taskGeneratorFactory: () => AsyncGenerator<() => Promise<T>, void, unknown>,
   concurrency: number
 ): Promise<T[]> {
   const results: T[] = [];
+  const generator = taskGeneratorFactory(); // Instantiate the generator ONCE
+
   const workers = Array.from({ length: concurrency }, async () => {
-    for await (const task of taskGenerator()) {
-      const result = await task();
-      results.push(result);
+    // Each worker pulls tasks from the SAME shared generator instance
+    for await (const task of generator) {
+      try {
+        const result = await task();
+        // Only push if the result is not null or undefined,
+        // as some tasks might not return a meaningful result to collect.
+        if (result !== null && result !== undefined) {
+          results.push(result);
+        }
+      } catch (error) {
+        console.error('[runConcurrentTasks] Error executing task:', error);
+        // Depending on requirements, you might want to collect errors,
+        // re-throw, or handle them in a specific way.
+        // For now, we log and the worker continues to try to process more tasks.
+      }
     }
   });
+
   await Promise.all(workers);
+  // The original filter is useful if tasks can intentionally return null
+  // and these should be excluded from the final list.
+  // Given the check before push, this specifically handles tasks that might return null
+  // as a valid "non-value" to be filtered.
   return results.filter((result): result is T => result !== null);
 }
 

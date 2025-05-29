@@ -84,14 +84,22 @@
     },
     {
       "chunkOrder": 11,
-      "chunkText": "Y&S Accounting proudly specialises in providing professional consulting and accounting services to the Latin American community in Australia since 2008.\nAccounting services\nPersonal tax returns Business advise Xero health check Business registration Bookkeeping Start-up advise",
+      "chunkText": "Y&S Accounting proudly specialises in providing professional consulting and accounting services to the Latin American community in Australia since 2008.",
+      "category": 4,
+      "categoryName": "about / trust-building",
+      "confidence": 0.95,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 12,
+      "chunkText": "Accounting services\nPersonal tax returns Business advise Xero health check Business registration Bookkeeping Start-up advise",
       "category": 0,
       "categoryName": "services offered",
       "confidence": 0.95,
       "preChunkSourceIndex": 0
     },
     {
-      "chunkOrder": 12,
+      "chunkOrder": 13,
       "chunkText": "Address:\nLevel 38, 71 Eagle St, Brisbane QLD 4000\nContact:\n1300 189 682\nbrisbane@ysaccounting.com.au",
       "category": 2,
       "categoryName": "contact",
@@ -99,11 +107,11 @@
       "preChunkSourceIndex": 0
     },
     {
-      "chunkOrder": 13,
+      "chunkOrder": 14,
       "chunkText": "Privacy Policy Terms of Service Cookies Settings",
       "category": 6,
       "categoryName": "terms & conditions / legal policies",
-      "confidence": 0.9,
+      "confidence": 0.95,
       "preChunkSourceIndex": 0
     }
   ],

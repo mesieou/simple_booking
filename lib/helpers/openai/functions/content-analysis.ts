@@ -2,6 +2,8 @@ import { executeChatCompletion, OpenAIChatMessage, OpenAIChatCompletionResponse 
 import { CategorizedContent, Category, CATEGORY_DISPLAY_NAMES, PROCESS_CONTENT_CONFIG } from "@/lib/config/config";
 import { savePageMainPrompt } from '../../../bot/content-crawler/process-content/logger-artifact-savers';
 import { createHash } from 'crypto';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const CATEGORY_COUNT = Object.keys(Category).length / 2; // Divide by 2 because enum has both numeric and string keys
 
@@ -21,7 +23,8 @@ export async function categorizeWebsiteContent(
     console.log(`[Categorizer] MOCK MODE: Returning stubbed response for businessId=${businessId}, url=${websiteUrl}, chunk preview: ${text.substring(0,50)}...`);
     // Simulate a plausible structure, using the actual text for more realistic testing of downstream logic
     const mockCategory = Category.SERVICES_OFFERED; // Default mock category
-    const mockContent = text.length > PROCESS_CONTENT_CONFIG.TEXT_SPLITTER.DEFAULT_CHUNK_SIZE ? text.substring(0, PROCESS_CONTENT_CONFIG.TEXT_SPLITTER.DEFAULT_CHUNK_SIZE) + "..." : text; // Truncate if very long based on chunk size
+    const fixedTruncationLimit = 200; // Using a fixed character limit for mock preview
+    const mockContent = text.length > fixedTruncationLimit ? text.substring(0, fixedTruncationLimit) + "..." : text;
     return {
       prompt: `MOCK PROMPT for: ${text.substring(0,50)}...`,
       result: [
@@ -70,14 +73,6 @@ export async function categorizeWebsiteContent(
     websiteUrl: websiteUrl
   };
 
-  // Save the structured prompt details
-  try {
-    await savePageMainPrompt(websiteUrl, promptInputDetails);
-  } catch (logError) {
-    console.error(`[Categorizer] Failed to save page main prompt for ${websiteUrl}:`, logError);
-    // Decide if you want to proceed if logging fails. For now, we will.
-  }
-
   const prompt = `${promptInputDetails.taskInstruction}
 
 - "category": ${promptInputDetails.jsonFields[0].description}
@@ -95,6 +90,19 @@ ${text}
 Example response format:
 ${promptInputDetails.exampleResponseFormat}`;
 
+  // Save the structured prompt details
+  try {
+    // Save both the prompt details and the full prompt string for full traceability
+    await savePageMainPrompt(websiteUrl, { 
+      ...promptInputDetails, 
+      fullPrompt: prompt,
+      contentText: text 
+    });
+  } catch (logError) {
+    console.error(`[Categorizer] Failed to save page main prompt for ${websiteUrl}:`, logError);
+    // Decide if you want to proceed if logging fails. For now, we will.
+  }
+
   try {
     const response = await executeChatCompletion([
       { role: "system", content: "You are a helpful assistant that analyzes business websites." },
@@ -103,6 +111,7 @@ ${promptInputDetails.exampleResponseFormat}`;
     
     const rawContent = response.choices[0]?.message?.content;
     console.log(`[Categorizer] Raw response for businessId=${businessId}, url=${websiteUrl}:`, rawContent?.substring(0, 500) + (rawContent && rawContent.length > 500 ? '...' : ''));
+    console.log(`[Categorizer] Raw response length: ${rawContent?.length || 0} characters`);
     
     if (!rawContent) {
       console.error(`[Categorizer] No content in response for businessId=${businessId}, url=${websiteUrl}`);
@@ -111,6 +120,27 @@ ${promptInputDetails.exampleResponseFormat}`;
     }
     
     const parsed = safeParseOpenAIJson<Array<{ category: number; content: string; confidence: number; confidenceReason: string }>>(rawContent);
+    console.log(`[Categorizer] Parsed ${parsed.length} items from LLM response`);
+    
+    // Save the raw LLM response for debugging
+    try {
+      const domain = websiteUrl.replace(/^https?:\/\//, '').replace(/\//g, '_');
+      const outputDir = 'crawl-output/domains';
+      const domainPath = path.join(outputDir, domain);
+      const categorizationPath = path.join(domainPath, 'about-us/03_categorization');
+      await fs.promises.mkdir(categorizationPath, { recursive: true });
+      await fs.promises.writeFile(
+        path.join(categorizationPath, 'raw_llm_response.json'),
+        JSON.stringify({ 
+          rawResponse: rawContent,
+          responseLength: rawContent?.length || 0,
+          parsedItemCount: parsed.length,
+          timestamp: new Date().toISOString()
+        }, null, 2)
+      );
+    } catch (saveError) {
+      console.error(`[Categorizer] Failed to save raw LLM response for ${websiteUrl}:`, saveError);
+    }
     
     // Validate and convert category numbers to enum values
     const validatedResults = parsed.map(item => { // Renamed to avoid conflict with 'result' in the return object

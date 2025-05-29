@@ -4,7 +4,7 @@
   "llmSegmentedChunks": [
     {
       "chunkOrder": 1,
-      "chunkText": "# Tax treatment of trader vs investor\nWritten by\nSebastian Garcia\nPublished on\nApril 11, 2024\nFor a trader, cryptocurrencies are considered trading stock.\nFor an investor, cryptocurrencies are an asset subject to CGT upon sale.\nHow to determine if you are a \"trader\" or an investor for tax purposes\nThere is no fixed list of rules to determine who is and who is not a trader. To accurately determine if you are a trader, you must consider your intention in undertaking the activity and the objective ",
+      "chunkText": "# Tax treatment of trader vs investor\nWritten by\nSebastian Garcia\nPublished on\nApril 11, 2024\nFor a trader, cryptocurrencies are considered trading stock.\nFor an investor, cryptocurrencies are an asset subject to CGT upon sale.\nHow to determine if you are a \"trader\" or an investor for tax purposes\nThere is no fixed list of rules to determine who is and who is not a trader. To accurately determine if you are a trader, you must consider your intention in undertaking the activity and the objective facts of the activity. Even if you have determined that you are a trader, the ATO may not agree with your interpretation.\nIn our experience, the ATO takes into account a set of over 20 indicators to determine whether a person is a trader or an investor for tax purposes.\nThe three main indicators to determine if you are a crypto trader are:\n1. Repetition, volume, and regularity\nThis indicator considers the frequency of transactions, the volume of purchases and sales, the regularity of transactions, and the scale of trading activity. Factors indicating trading activity include:\n- Placing trades regularly and consistently.\n- Managing trading positions regularly.\n- Investing significant capital or obtaining a business loan for cryptocurrency trading activity.\n- Trading with comparatively large amounts.\n- Dedicating the equivalent of a workweek to activities related to crypto trading.\nAt the more extreme end of a trader, someone would be operating an automated trading bot and taking advantage of small price movements in the market by placing thousands of trades per day.\nUnlike a trader, an investor is someone who manages their portfolio a few times a year and conducts a small number of trades.\n2. Sophistication of cryptocurrency operations\nThis indicator determines whether trading activity is conducted as a genuine business operation. Factors indicating more sophisticated trading activity include when the trader has:\n- Relevant qualifications and knowledge of the industry.\n- An ABN (Australian Business Number).\nDo I have to have an ABN to be a crypto trader?\nNo, it is not necessary to have an ABN to be a cryptocurrency trader. However, having an ABN is a factor considered when determining if you are a trader for tax purposes.\n- Registered a business name.\n- A physical business location.\n- Charting software and equipment.\n- A complete trading system used full-time for trading.\n- Training and development of financial and data skills.\n- A business plan that is periodically reviewed.\nUnlike a trader, an investor is usually employed full-time in an unrelated field and conducts trades with little research.\n3. Trader documentation\nTrader documentation typically includes:\n- Business plan.\n- Trading strategy.\n- Trading journal.\n- Financial statements.\n- Detailed records.\n- Tax invoices for expenses.\nThese documents are used to justify the business activities being conducted.\nAlthough a crypto investor may have an investment strategy, they do not have a business plan to generate profits. An investor buys crypto for long-term growth and/or income returns.\nCrypto traders have a documented trading strategy, as well as a documented business plan. They prepare annual financial statements and periodic reports to assess their performance.",
       "category": 7,
       "categoryName": "General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories.",
       "confidence": 0.95,
@@ -20,17 +20,17 @@
     },
     {
       "chunkOrder": 3,
-      "chunkText": "Y&S Accounting proudly specialises in providing professional consulting and accounting services to the Latin American community in Australia since 2008.",
-      "category": 4,
-      "categoryName": "about / trust-building",
-      "confidence": 0.85,
+      "chunkText": "Accounting services\nPersonal tax returns Business advise Xero health check Business registration Bookkeeping Start-up advise",
+      "category": 0,
+      "categoryName": "services offered",
+      "confidence": 0.95,
       "preChunkSourceIndex": 0
     },
     {
       "chunkOrder": 4,
-      "chunkText": "Accounting services\nPersonal tax returns Business advise Xero health check Business registration Bookkeeping Start-up advise",
-      "category": 0,
-      "categoryName": "services offered",
+      "chunkText": "Y&S Accounting proudly specialises in providing professional consulting and accounting services to the Latin American community in Australia since 2008.",
+      "category": 4,
+      "categoryName": "about / trust-building",
       "confidence": 0.9,
       "preChunkSourceIndex": 0
     },
@@ -39,23 +39,7 @@
       "chunkText": "Privacy Policy Terms of Service Cookies Settings",
       "category": 6,
       "categoryName": "terms & conditions / legal policies",
-      "confidence": 0.8,
-      "preChunkSourceIndex": 0
-    },
-    {
-      "chunkOrder": 6,
-      "chunkText": "Book appointment",
-      "category": 3,
-      "categoryName": "booking or scheduling",
-      "confidence": 0.7,
-      "preChunkSourceIndex": 0
-    },
-    {
-      "chunkOrder": 7,
-      "chunkText": "#### Still have questions?\nContact us now!",
-      "category": 5,
-      "categoryName": "faq",
-      "confidence": 0.6,
+      "confidence": 0.85,
       "preChunkSourceIndex": 0
     }
   ],

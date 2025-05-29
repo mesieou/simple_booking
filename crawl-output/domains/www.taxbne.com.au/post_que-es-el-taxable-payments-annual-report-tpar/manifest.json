@@ -1,0 +1,43 @@
+{
+  "sourceUrl": "https://www.taxbne.com.au/post/que-es-el-taxable-payments-annual-report-tpar",
+  "pageTitle": "What is the Taxable Payments Annual Report (TPAR)?",
+  "isPdf": false,
+  "totalLlmChunks": 5,
+  "documents": [
+    {
+      "documentId": "603d5239-b850-4b57-a822-eb0f51042c42",
+      "chunkOrder": 1,
+      "category": "General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories.",
+      "originalTextLength": 1627,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "8a1aa526-b657-4c21-bc40-9016302e7b33",
+      "chunkOrder": 2,
+      "category": "contact",
+      "originalTextLength": 143,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "8daf6fd6-b868-4cfb-b9f1-66f153e8756f",
+      "chunkOrder": 3,
+      "category": "Uncategorized",
+      "originalTextLength": 277,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "6a4ebc64-72bd-4aa7-861d-b62d572615c9",
+      "chunkOrder": 4,
+      "category": "about / trust-building",
+      "originalTextLength": 152,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "202ecba2-f0ae-44f5-9b82-0a269ab2d911",
+      "chunkOrder": 5,
+      "category": "terms & conditions / legal policies",
+      "originalTextLength": 100,
+      "preChunkSourceIndex": 0
+    }
+  ]
+}

@@ -4,7 +4,7 @@
   "llmSegmentedChunks": [
     {
       "chunkOrder": 1,
-      "chunkText": "Contact Us\nBrisbane office\nLevel 38 71 Eagle St Brisbane QLD 4000\n1300 189 682\n+61 439 095 870\nbrisbane@ysaccounting.com.au",
+      "chunkText": "Contact Us\nBrisbane office\nLevel 38 71 Eagle St Brisbane QLD 4000\n1300 189 682\n+61 439 095 870\nbrisbane@ysaccounting.com.au\nBook appointment",
       "category": 2,
       "categoryName": "contact",
       "confidence": 0.95,
@@ -15,7 +15,7 @@
       "chunkText": "Book appointment",
       "category": 3,
       "categoryName": "booking or scheduling",
-      "confidence": 0.9,
+      "confidence": 0.8,
       "preChunkSourceIndex": 0
     },
     {
@@ -23,7 +23,7 @@
       "chunkText": "We believe starting and managing a business, should be simple and stress-free. Let’s work together\nY&S Accounting proudly specialises in providing professional consulting and accounting services to the Latin American community in Australia since 2008.",
       "category": 4,
       "categoryName": "about / trust-building",
-      "confidence": 0.95,
+      "confidence": 0.9,
       "preChunkSourceIndex": 0
     },
     {
