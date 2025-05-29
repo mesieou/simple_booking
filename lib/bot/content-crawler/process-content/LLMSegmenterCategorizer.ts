@@ -1,9 +1,5 @@
-import { CrawlConfig, Category, CATEGORY_DISPLAY_NAMES, PROCESS_CONTENT_CONFIG, defaultConfig, CategorizedContent } from '@/lib/config/config';
-import { 
-    savePageMainPrompt, // savePageMainPrompt is now called within actualCategorizeWebsiteContent
-    savePageMainResponse 
-} from './logger-artifact-savers';
-import crypto from 'crypto';
+import { CrawlConfig, Category, CATEGORY_DISPLAY_NAMES, PROCESS_CONTENT_CONFIG, /* defaultConfig, */ CategorizedContent } from '@/lib/config/config';
+import { savePageMainResponse } from './logger-artifact-savers';
 import { categorizeWebsiteContent as actualCategorizeWebsiteContent, CategorizationApiOutput } from '@/lib/helpers/openai/functions/content-analysis';
 
 // Output structure for each LLM-defined chunk
@@ -16,6 +12,8 @@ export interface LLMSegmentedChunk {
   sourceUrl: string;
   pageTitle?: string;
   preChunkSourceIndex?: number; // To know which pre-chunk this came from
+  domain: string; // Added domain
+  sessionId: string; // Added sessionId
 }
 
 // Result from the main function
@@ -29,13 +27,26 @@ export interface LLMSegmenterResult {
 // Removed the internal mockLLMForSegmentationAndCategorization function entirely.
 // All categorization logic (real or mock) is now handled by actualCategorizeWebsiteContent.
 
+/**
+ * Segments and categorizes a given piece of pre-chunked text content using an LLM.
+ * This function acts as a wrapper around `actualCategorizeWebsiteContent` (which handles the direct LLM call),
+ * adapting its output to the `LLMSegmentedChunk` format and managing local logging of the response.
+ *
+ * @param preChunkContent The raw text content of a pre-defined chunk to be processed.
+ * @param sourceUrl The original URL from which the content was derived.
+ * @param pageTitle The title of the source page, if available.
+ * @param config The crawl configuration, primarily used to pass `businessId` to the categorizer.
+ * @param preChunkIndex Optional index of this pre-chunk if the content for a URL was split into multiple pre-chunks.
+ *                      This helps in tracking the origin of the LLM-segmented chunks.
+ * @returns A Promise that resolves to an `LLMSegmenterResult` object, containing the array of
+ *          `LLMSegmentedChunk`s, the prompt used, the model name, and the original content length.
+ */
 export async function segmentAndCategorizeByLLM(
   preChunkContent: string, 
   sourceUrl: string,
   pageTitle: string | undefined,
   config: CrawlConfig,
-  preChunkIndex?: number, 
-  totalPreChunksForUrl?: number 
+  preChunkIndex?: number // Removed totalPreChunksForUrl as it was unused
 ): Promise<LLMSegmenterResult> {
   
   console.log(`[LLMSegmenterCategorizer] Calling actualCategorizeWebsiteContent from content-analysis.ts for URL: ${sourceUrl}`);
@@ -58,8 +69,9 @@ export async function segmentAndCategorizeByLLM(
       confidence: item.confidence,
       sourceUrl: item.url, // actualCategorizeWebsiteContent should set this to the sourceUrl
       pageTitle: pageTitle, 
-      preChunkSourceIndex: preChunkIndex 
-  }));
+      preChunkSourceIndex: preChunkIndex
+      // domain and sessionId will be added by the caller (generateLlmSegmentedChunksForSinglePage)
+  } as LLMSegmentedChunk)); // Added type assertion to ensure all fields are covered, even if some are undefined initially
   
   const result: LLMSegmenterResult = {
     llmSegmentedChunks,
@@ -69,25 +81,15 @@ export async function segmentAndCategorizeByLLM(
     originalContentCharacterLength: preChunkContent.length,
   };
   
-  // Add categoryName and ensure preChunkSourceIndex for all chunks
-  result.llmSegmentedChunks.forEach(chunk => {
-      if (!chunk.categoryName) { // Double check if not set during mapping
-        chunk.categoryName = CATEGORY_DISPLAY_NAMES[chunk.category] || 'Unknown';
-      }
-      if (chunk.preChunkSourceIndex === undefined && preChunkIndex !== undefined) {
-        chunk.preChunkSourceIndex = preChunkIndex;
-      }
-  });
-
   // The prompt (promptDetails) is now saved within actualCategorizeWebsiteContent.
   // We only need to save the response structure here.
   await savePageMainResponse(sourceUrl, {
       modelUsed: result.modelUsed,
       originalContentCharacterLength: result.originalContentCharacterLength,
-      // Log a prefix of chunk text to keep the response artifact manageable
+      // Save the full chunk text without truncation for proper debugging
       llmSegmentedChunks: result.llmSegmentedChunks.map(chunk => ({
           chunkOrder: chunk.chunkOrder,
-          chunkText: chunk.chunkText.substring(0, 500), 
+          chunkText: chunk.chunkText, // Remove the .substring(0, 500) truncation
           category: chunk.category,
           categoryName: chunk.categoryName,
           confidence: chunk.confidence,

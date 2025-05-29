@@ -24,7 +24,11 @@ export const EMBEDDING_CONFIG = {
   INITIAL_RETRY_DELAY: 2000,
   SUPABASE_BATCH_SIZE: 50,
   SUPABASE_DELAY: 100,
-  FETCH_TIMEOUT: 30000
+  FETCH_TIMEOUT: 30000,
+  // Circuit breaker configuration for embedding processing
+  MAX_ATTEMPTS: 1000, // Maximum embedding attempts per session
+  MAX_FAILURE_RATE: 0.5, // Maximum failure rate (50%)
+  MIN_ATTEMPTS_FOR_FAILURE_CHECK: 10, // Minimum attempts before checking failure rate
 };
 
 export enum Category {
@@ -110,6 +114,17 @@ export const URL_VALIDATION_CONFIG = {
     /\/privacidad\//i,
     /\/aviso-legal\//i,
     /\/politica-de-cookies\//i
+  ],
+  // Added sitemap-specific URL normalization options
+  SITEMAP_NORMALIZATION_OPTIONS: {
+    stripHash: true,
+    stripWWW: false,
+    removeTrailingSlash: true,
+    removeQueryParameters: [/^utm_/i, /^fbclid$/i, /^gclid$/i, /^msclkid$/i],
+    sortQueryParameters: false,
+  },
+  CORE_CONTENT_PAGE_KEYWORDS: [
+    'about', 'contact', 'services', 'pricing', 'faq', 'book', 'appointment',
   ]
 } as const;
 
@@ -186,11 +201,8 @@ export const PROCESS_CONTENT_CONFIG = {
     MAX_RETRIES: 3 // Maximum number of retries for processing chunks
   },
   TEXT_SPLITTER: {
-    DEFAULT_CHUNK_SIZE: 200, // Reduced from 750
-    DEFAULT_CHUNK_OVERLAP: 40, // Reduced from 100 (words)
-    DEFAULT_SENTENCE_OVERLAP: 2, // Added new default
     MIN_CHUNK_LENGTH: 50, // Minimum characters in a chunk to be considered valid
-    MAX_CHARS_PER_LLM_INPUT_CHUNK: 32000 // New configuration for LLM input character limit
+    MAX_CHARS_PER_LLM_INPUT_CHUNK: 6000 // Lowered from 32000 for better LLM segmentation
   },
   TEXT_CATEGORIZER: {
     MIN_CHUNK_LENGTH: 50, // Minimum characters in a chunk to be processed
@@ -220,9 +232,6 @@ export interface CrawlConfig {
     urls?: number;
     seconds?: number;
   };
-  chunkSize?: number;  // Maximum words per chunk
-  chunkOverlap?: number;  // Number of words to overlap between chunks
-  sentenceOverlap?: number; // Added for sentence overlap
   type?: 'website_page' | 'pdf'; // Added for dynamic document type
   pdfNames?: string[]; // Array of PDF filenames for PDF processing
   importantUrlsForDetection?: string[]; // Added for language detection hints
@@ -236,21 +245,15 @@ export interface DefaultConfigValues {
   skipProductPages: boolean;
   skipBlogPages: boolean;
   requestDelay: number;
-  chunkSize: number;
-  chunkOverlap: number;
-  sentenceOverlap: number;
 }
 
 export const defaultConfig: DefaultConfigValues = {
-  maxPages: 100,
+  maxPages: 100, // Reverted to original value
   concurrency: 5,
-  maxDepth: 4,
-  skipProductPages: true,
-  skipBlogPages: true,
-  requestDelay: 0,
-  chunkSize: PROCESS_CONTENT_CONFIG.TEXT_SPLITTER.DEFAULT_CHUNK_SIZE,  // Use the new default
-  chunkOverlap: PROCESS_CONTENT_CONFIG.TEXT_SPLITTER.DEFAULT_CHUNK_OVERLAP, // Use the new default (word overlap)
-  sentenceOverlap: PROCESS_CONTENT_CONFIG.TEXT_SPLITTER.DEFAULT_SENTENCE_OVERLAP // Added sentence overlap
+  maxDepth: 4, // Reverted to original value
+  skipProductPages: true, // Reverted to original value
+  skipBlogPages: true, // Reverted to original value
+  requestDelay: 0, // Reverted to original value
 };
 
 // Create PDF-specific config
@@ -259,9 +262,7 @@ export function createPdfConfig(businessId: string, pdfNames: string[]): CrawlCo
     businessId,
     type: 'pdf',
     pdfNames,
-    chunkSize: defaultConfig.chunkSize,
-    chunkOverlap: defaultConfig.chunkOverlap,
-    sentenceOverlap: defaultConfig.sentenceOverlap, // Added
+    maxPages: pdfNames.length, // Process all provided PDFs
     concurrency: defaultConfig.concurrency
   };
 }
@@ -269,7 +270,6 @@ export function createPdfConfig(businessId: string, pdfNames: string[]): CrawlCo
 // Extended configuration for processing
 export interface ExtendedCrawlConfig extends Omit<CrawlConfig, 'businessId'> {
   categorizedSections?: CategorizedContent[];
-  chunkSize?: number;
   concurrencyLimit?: number;
 }
 

@@ -8,7 +8,6 @@ import {
     FILE_RECATEGORIZATION_OUTPUT, FILE_MANIFEST, FILE_SUMMARY_JSON
 } from './logger-constants';
 
-// Removed DIR_LLM_INTERACTIONS as it's unused
 export const DIR_MARKDOWN_PRE_CHUNKS = '01a_markdown_pre_chunks';
 
 export function getUrlIdentifier(name: string, maxLength: number = 200): string {
@@ -248,13 +247,9 @@ export function savePdfDocument(pdfName: string, docId: string, documentData: an
 }
   
 export function savePdfEmbedding(pdfName: string, embeddingId: string, embeddingData: any): void {
-    const pdfPath = _getPdfPath(pdfName);
-    const docsEmbedsPath = _getArtifactPath(pdfPath, DIR_DOCUMENTS_EMBEDDINGS);
-    try {
-        fs.writeFileSync(path.join(docsEmbedsPath, `embedding_${getUrlIdentifier(embeddingId)}.json`), JSON.stringify(embeddingData, null, 2));
-    } catch (error) {
-        console.error(`Failed to save PDF embedding ${embeddingId} for ${pdfName}: ${error}`);
-    }
+    console.warn(`[LoggerSavers] DEPRECATION WARNING: savePdfEmbedding for PDF ${pdfName} (embeddingId: ${embeddingId}) is deprecated.`);
+    console.warn(`[LoggerSavers] The embedding should be included directly in the documentData object passed to savePdfDocument.`);
+    console.warn(`[LoggerSavers] No separate embedding_{id}.json file will be created by this function anymore.`);
 }
 
 export function savePdfManifest(pdfName: string, manifestData: any): void {
@@ -319,11 +314,31 @@ export async function savePageMainPrompt(url: string, promptDetails: any): Promi
     const categorizationArtifactPath = _getArtifactPath(urlPath, DIR_CATEGORIZATION);
     const filePath = path.join(categorizationArtifactPath, 'page_categorization_prompt.json');
     try {
-        const jsonToSave = JSON.stringify(promptDetails, null, 2);
-        await fs.promises.writeFile(filePath, jsonToSave);
+        // Build a clean, readable artifact
+        const artifact = {
+            websiteUrl: url,
+            businessId: promptDetails.businessId,
+            contentHash: promptDetails.contentHash || promptDetails.targetContentHash,
+            llmPrompt: promptDetails.llmPrompt || promptDetails.fullPrompt,
+            contentText: promptDetails.contentText || (promptDetails.fullPrompt ? extractContentTextFromPrompt(promptDetails.fullPrompt) : undefined)
+        };
+        await fs.promises.writeFile(filePath, JSON.stringify(artifact, null, 2));
     } catch (error) {
         console.error(`Failed to save page main prompt for ${url} to ${filePath}: ${error}`);
     }
+}
+
+// Helper to extract the content text from the prompt if needed (fallback)
+function extractContentTextFromPrompt(prompt: string): string | undefined {
+    const marker = 'Here is the content to analyze:';
+    const idx = prompt.indexOf(marker);
+    if (idx !== -1) {
+        // Extract everything after the marker, up to the next example or end
+        const after = prompt.substring(idx + marker.length).trim();
+        const exampleIdx = after.indexOf('Example response format:');
+        return exampleIdx !== -1 ? after.substring(0, exampleIdx).trim() : after;
+    }
+    return undefined;
 }
 
 export async function savePageMainResponse(url: string, responseContent: any): Promise<void> {

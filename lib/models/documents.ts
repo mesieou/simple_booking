@@ -6,14 +6,23 @@ export interface DocumentData {
   id?: string;
   businessId: string;
   category?: string;
-  type?: string;
+  type?: 'pdf' | 'website_page' | string;
   title?: string;
   content: string;
   source?: string;
   createdAt?: string;
+  updatedAt?: string;
   contentHash?: string;
   sessionId?: string;
   confidence?: number;
+  preChunkSourceIndex?: number;
+  embedding?: number[];
+  embeddingInputText?: string;
+  embeddingAttemptResult?: {
+    vectorSample?: number[];
+    error?: string;
+    stack?: string;
+  };
 }
 
 export class DocumentError extends Error {
@@ -29,6 +38,9 @@ export class Document {
   constructor(data: DocumentData) {
     if (!data.businessId) handleModelError("businessId is required", new Error("Missing businessId"));
     if (!data.content) handleModelError("content is required", new Error("Missing content"));
+    if (data.type && !['pdf', 'website_page'].includes(data.type)) {
+      console.warn(`Document type '${data.type}' is not 'pdf' or 'website_page'. Allowed if DB column is generic text.`);
+    }
     if (data.confidence !== undefined) {
       if (data.confidence < CONFIDENCE_CONFIG.MIN_SCORE || data.confidence > CONFIDENCE_CONFIG.MAX_SCORE) {
         handleModelError("Invalid confidence score", new Error(`Confidence must be between ${CONFIDENCE_CONFIG.MIN_SCORE} and ${CONFIDENCE_CONFIG.MAX_SCORE}`));
@@ -48,7 +60,6 @@ export class Document {
       confidence: data.confidence
     });
 
-    // Validate confidence if provided
     if (data.confidence !== undefined) {
       if (data.confidence < CONFIDENCE_CONFIG.MIN_SCORE || data.confidence > CONFIDENCE_CONFIG.MAX_SCORE) {
         handleModelError("Invalid confidence score", new Error(`Confidence must be between ${CONFIDENCE_CONFIG.MIN_SCORE} and ${CONFIDENCE_CONFIG.MAX_SCORE}`));
@@ -59,6 +70,7 @@ export class Document {
     const insertData = {
       ...data,
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
     const { data: result, error } = await supabase.from("documents").insert(insertData).select().single();
     
@@ -81,6 +93,7 @@ export class Document {
       id: result.id,
       businessId: result.businessId,
       category: result.category,
+      type: result.type,
       confidence: result.confidence
     });
 
@@ -108,7 +121,11 @@ export class Document {
 
   static async update(id: string, data: Partial<DocumentData>): Promise<DocumentData> {
     const supabase = await createClient();
-    const { data: result, error } = await supabase.from("documents").update(data).eq("id", id).select().single();
+    const updateData = {
+      ...data,
+      updatedAt: new Date().toISOString(),
+    };
+    const { data: result, error } = await supabase.from("documents").update(updateData).eq("id", id).select().single();
     if (error) handleModelError("Failed to update document", error);
     if (!result) handleModelError("No data returned after update", new Error("No data returned"));
     return result;
