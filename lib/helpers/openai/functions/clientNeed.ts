@@ -1,5 +1,5 @@
 import { executeChatCompletion, ChatMessage } from "../openai-core";
-import { DocumentCategory, VALID_CATEGORIES } from "@/lib/bot/content-crawler/config";
+import { DocumentCategory, VALID_CATEGORIES } from "@/lib/config/config";
 
 export interface ClientNeedResult {
   need_type: 'general' | 'specific';

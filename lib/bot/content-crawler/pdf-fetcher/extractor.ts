@@ -1,5 +1,5 @@
 import PDFParser from "pdf2json";
-import { PdfExtractionResult } from '../config';
+import { PdfExtractionResult } from '@/lib/config/config';
 
 export async function extractTextFromPdf(buffer: Buffer): Promise<PdfExtractionResult> {
   return new Promise((resolve, reject) => {
@@ -38,7 +38,7 @@ export async function extractTextFromPdf(buffer: Buffer): Promise<PdfExtractionR
               })
               .join(' ');
           })
-          .join('\n');
+          .join('\f');
 
         if (!text.trim()) {
           throw new Error('No text content found in PDF');

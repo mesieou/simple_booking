@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { handleModelError } from '@/lib/helpers/error';
-import { CONFIDENCE_CONFIG } from '@/lib/bot/content-crawler/config';
+import { CONFIDENCE_CONFIG } from '@/lib/config/config';
 
 export interface EmbeddingData {
   id?: string;
