@@ -2,64 +2,11 @@
   "processingStats": {
     "totalUrls": 22,
     "processedUrls": [
-      "https://www.taxbne.com.au/about-us",
-      "https://www.taxbne.com.au/contact-us",
-      "https://www.taxbne.com.au/",
-      "https://www.taxbne.com.au/starting-a-business",
-      "https://www.taxbne.com.au/tax-return",
-      "https://www.taxbne.com.au/resources",
-      "https://www.taxbne.com.au/leaving-australia",
-      "https://www.taxbne.com.au/post/maximising-your-tax-savings-the-most-common-expenses-that-are-tax-deductible-in-australia",
-      "https://www.taxbne.com.au/post/tax-treatment-of-trader-vs-investor",
-      "https://www.taxbne.com.au/post/deducciones-de-impuestos-para-empleados-en-la-industria-de-limpieza",
-      "https://www.taxbne.com.au/online-tax-return",
-      "https://www.taxbne.com.au/post/data-matching-program",
-      "https://www.taxbne.com.au/post/que-es-el-taxable-payments-annual-report-tpar",
-      "https://www.taxbne.com.au/post/deducciones-vehiculo",
-      "https://www.taxbne.com.au/post/que-es-el-medicare-levy-y-como-afecta-mi-declaracion-de-impuestos",
-      "https://www.taxbne.com.au/post/beneficios-de-presentar-mi-declaracion-de-impuestos-con-un-agente-de-impuestos-registrado"
+      "pdf:Customer-Service-Handbook.pdf"
     ],
     "filteredUrls": [],
-    "skippedUrls": [
-      {
-        "url": "https://www.taxbne.com.au/signup",
-        "reason": "Low value content: too many unique words"
-      },
-      {
-        "url": "https://www.taxbne.com.au/privacy",
-        "reason": "Low value content: legal or utility page"
-      },
-      {
-        "url": "https://www.taxbne.com.au/terms-and-conditions",
-        "reason": "Low value content: legal or utility page"
-      },
-      {
-        "url": "https://www.taxbne.com.au/login",
-        "reason": "Low value content: too few words"
-      },
-      {
-        "url": "https://www.taxbne.com.au/online-tax-return",
-        "reason": "duplicate content (signature: 755297d8d109...)"
-      }
-    ],
-    "failedUrls": [
-      {
-        "url": "https://www.taxbne.com.au/signup",
-        "reason": "Low value content: too many unique words"
-      },
-      {
-        "url": "https://www.taxbne.com.au/privacy",
-        "reason": "Low value content: legal or utility page"
-      },
-      {
-        "url": "https://www.taxbne.com.au/terms-and-conditions",
-        "reason": "Low value content: legal or utility page"
-      },
-      {
-        "url": "https://www.taxbne.com.au/login",
-        "reason": "Low value content: too few words"
-      }
-    ],
+    "skippedUrls": [],
+    "failedUrls": [],
     "totalChunks": 0,
     "processedChunks": 0,
     "failedChunks": 0,
@@ -70,201 +17,48 @@
     "totalDocuments": 0,
     "processedDocuments": 0,
     "failedDocuments": 0,
-    "totalEmbeddings": 140,
-    "processedEmbeddings": 140,
+    "totalEmbeddings": 23,
+    "processedEmbeddings": 23,
     "failedEmbeddings": 0,
-    "startTime": 1748497287470,
+    "startTime": 1748507512254,
     "baseOutputPath": "/Users/juanbernal/code/mesieou/2025/simple_booking/crawl-output",
     "domainProcessingSummary": {
-      "www.taxbne.com.au": {
+      "": {
         "prompt": "",
         "result": ""
       }
     },
-    "endTime": 1748497792073
+    "endTime": 1748507626426
   },
-  "durationSeconds": 504.603,
+  "durationSeconds": 114.172,
   "allFoundUrls": [
-    "https://www.taxbne.com.au",
-    "https://www.taxbne.com.au/",
-    "https://www.taxbne.com.au/about-us",
-    "https://www.taxbne.com.au/contact-us",
-    "https://www.taxbne.com.au/leaving-australia",
-    "https://www.taxbne.com.au/login",
-    "https://www.taxbne.com.au/online-tax-return",
-    "https://www.taxbne.com.au/post/beneficios-de-presentar-mi-declaracion-de-impuestos-con-un-agente-de-impuestos-registrado",
-    "https://www.taxbne.com.au/post/data-matching-program",
-    "https://www.taxbne.com.au/post/deducciones-de-impuestos-para-empleados-en-la-industria-de-limpieza",
-    "https://www.taxbne.com.au/post/deducciones-vehiculo",
-    "https://www.taxbne.com.au/post/maximising-your-tax-savings-the-most-common-expenses-that-are-tax-deductible-in-australia",
-    "https://www.taxbne.com.au/post/que-es-el-medicare-levy-y-como-afecta-mi-declaracion-de-impuestos",
-    "https://www.taxbne.com.au/post/que-es-el-taxable-payments-annual-report-tpar",
-    "https://www.taxbne.com.au/post/tax-treatment-of-trader-vs-investor",
-    "https://www.taxbne.com.au/privacy",
-    "https://www.taxbne.com.au/resources",
-    "https://www.taxbne.com.au/signup",
-    "https://www.taxbne.com.au/starting-a-business",
-    "https://www.taxbne.com.au/tax-return",
-    "https://www.taxbne.com.au/tax-return-espanol",
-    "https://www.taxbne.com.au/terms-and-conditions"
+    "pdf:Customer-Service-Handbook.pdf#page=1",
+    "pdf:Customer-Service-Handbook.pdf#page=10",
+    "pdf:Customer-Service-Handbook.pdf#page=11",
+    "pdf:Customer-Service-Handbook.pdf#page=12",
+    "pdf:Customer-Service-Handbook.pdf#page=13",
+    "pdf:Customer-Service-Handbook.pdf#page=14",
+    "pdf:Customer-Service-Handbook.pdf#page=15",
+    "pdf:Customer-Service-Handbook.pdf#page=16",
+    "pdf:Customer-Service-Handbook.pdf#page=17",
+    "pdf:Customer-Service-Handbook.pdf#page=18",
+    "pdf:Customer-Service-Handbook.pdf#page=19",
+    "pdf:Customer-Service-Handbook.pdf#page=2",
+    "pdf:Customer-Service-Handbook.pdf#page=20",
+    "pdf:Customer-Service-Handbook.pdf#page=21",
+    "pdf:Customer-Service-Handbook.pdf#page=22",
+    "pdf:Customer-Service-Handbook.pdf#page=3",
+    "pdf:Customer-Service-Handbook.pdf#page=4",
+    "pdf:Customer-Service-Handbook.pdf#page=5",
+    "pdf:Customer-Service-Handbook.pdf#page=6",
+    "pdf:Customer-Service-Handbook.pdf#page=7",
+    "pdf:Customer-Service-Handbook.pdf#page=8",
+    "pdf:Customer-Service-Handbook.pdf#page=9"
   ],
   "urlLogs": [
     {
-      "url": "https://www.taxbne.com.au/",
+      "url": "pdf:Customer-Service-Handbook.pdf",
       "status": "processed",
-      "prompt": "",
-      "result": ""
-    },
-    {
-      "url": "https://www.taxbne.com.au/about-us",
-      "status": "processed",
-      "prompt": "",
-      "result": ""
-    },
-    {
-      "url": "https://www.taxbne.com.au/contact-us",
-      "status": "processed",
-      "prompt": "",
-      "result": ""
-    },
-    {
-      "url": "https://www.taxbne.com.au/leaving-australia",
-      "status": "processed",
-      "prompt": "",
-      "result": ""
-    },
-    {
-      "url": "https://www.taxbne.com.au/login",
-      "status": "skipped",
-      "reason": "Low value content: too few words",
-      "prompt": "",
-      "result": ""
-    },
-    {
-      "url": "https://www.taxbne.com.au/login",
-      "status": "failed",
-      "reason": "Low value content: too few words",
-      "prompt": "",
-      "result": ""
-    },
-    {
-      "url": "https://www.taxbne.com.au/online-tax-return",
-      "status": "processed",
-      "prompt": "",
-      "result": ""
-    },
-    {
-      "url": "https://www.taxbne.com.au/online-tax-return",
-      "status": "skipped",
-      "reason": "duplicate content (signature: 755297d8d109...)",
-      "prompt": "",
-      "result": ""
-    },
-    {
-      "url": "https://www.taxbne.com.au/post/beneficios-de-presentar-mi-declaracion-de-impuestos-con-un-agente-de-impuestos-registrado",
-      "status": "processed",
-      "prompt": "",
-      "result": ""
-    },
-    {
-      "url": "https://www.taxbne.com.au/post/data-matching-program",
-      "status": "processed",
-      "prompt": "",
-      "result": ""
-    },
-    {
-      "url": "https://www.taxbne.com.au/post/deducciones-de-impuestos-para-empleados-en-la-industria-de-limpieza",
-      "status": "processed",
-      "prompt": "",
-      "result": ""
-    },
-    {
-      "url": "https://www.taxbne.com.au/post/deducciones-vehiculo",
-      "status": "processed",
-      "prompt": "",
-      "result": ""
-    },
-    {
-      "url": "https://www.taxbne.com.au/post/maximising-your-tax-savings-the-most-common-expenses-that-are-tax-deductible-in-australia",
-      "status": "processed",
-      "prompt": "",
-      "result": ""
-    },
-    {
-      "url": "https://www.taxbne.com.au/post/que-es-el-medicare-levy-y-como-afecta-mi-declaracion-de-impuestos",
-      "status": "processed",
-      "prompt": "",
-      "result": ""
-    },
-    {
-      "url": "https://www.taxbne.com.au/post/que-es-el-taxable-payments-annual-report-tpar",
-      "status": "processed",
-      "prompt": "",
-      "result": ""
-    },
-    {
-      "url": "https://www.taxbne.com.au/post/tax-treatment-of-trader-vs-investor",
-      "status": "processed",
-      "prompt": "",
-      "result": ""
-    },
-    {
-      "url": "https://www.taxbne.com.au/privacy",
-      "status": "skipped",
-      "reason": "Low value content: legal or utility page",
-      "prompt": "",
-      "result": ""
-    },
-    {
-      "url": "https://www.taxbne.com.au/privacy",
-      "status": "failed",
-      "reason": "Low value content: legal or utility page",
-      "prompt": "",
-      "result": ""
-    },
-    {
-      "url": "https://www.taxbne.com.au/resources",
-      "status": "processed",
-      "prompt": "",
-      "result": ""
-    },
-    {
-      "url": "https://www.taxbne.com.au/signup",
-      "status": "skipped",
-      "reason": "Low value content: too many unique words",
-      "prompt": "",
-      "result": ""
-    },
-    {
-      "url": "https://www.taxbne.com.au/signup",
-      "status": "failed",
-      "reason": "Low value content: too many unique words",
-      "prompt": "",
-      "result": ""
-    },
-    {
-      "url": "https://www.taxbne.com.au/starting-a-business",
-      "status": "processed",
-      "prompt": "",
-      "result": ""
-    },
-    {
-      "url": "https://www.taxbne.com.au/tax-return",
-      "status": "processed",
-      "prompt": "",
-      "result": ""
-    },
-    {
-      "url": "https://www.taxbne.com.au/terms-and-conditions",
-      "status": "skipped",
-      "reason": "Low value content: legal or utility page",
-      "prompt": "",
-      "result": ""
-    },
-    {
-      "url": "https://www.taxbne.com.au/terms-and-conditions",
-      "status": "failed",
-      "reason": "Low value content: legal or utility page",
       "prompt": "",
       "result": ""
     }
