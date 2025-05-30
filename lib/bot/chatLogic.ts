@@ -13,7 +13,7 @@ import { computeQuoteEstimation, QuoteEstimation } from "@/lib/helpers/quote";
 import { executeChatCompletion, OpenAIChatMessage, MoodAnalysisResult } from "@/lib/helpers/openai/openai-core";
 import { analyzeSentiment } from "@/lib/helpers/openai/functions/sentimentAnalyzer";
 import { analyzeClientNeed } from "@/lib/helpers/openai/functions/clientNeed";
-import { fetchDirectGoogleMapsDistance } from '@/app/api/maps/mapsdistance/route';
+import { fetchDirectGoogleMapsDistance } from '@/lib/googleMapsUtils';
 import { findAvailableDates, getSlotsForDate } from '@/lib/helpers/availability';
 
 // Helper function to fetch the mock service for quote calculation.

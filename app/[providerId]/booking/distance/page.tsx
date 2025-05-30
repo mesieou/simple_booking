@@ -7,7 +7,7 @@ import ViewForm from '@/app/components/viewform';
 import ProviderTitle from '@/app/components/ProviderTitle';
 import { useFormContext } from '@/utils/FormContext';
 import { calcularPrecioDesdeApi, segundosAMinutos, formatearDuracion } from '@/lib/models/price';
-import { fetchDirectGoogleMapsDistance } from '@/app/api/maps/mapsdistance/route';
+import { fetchDirectGoogleMapsDistance } from '@/lib/googleMapsUtils';
 
 export default function BookingDistanceStep({ params }: { params: Promise<{ providerId: string }> }) {
   const router = useRouter();
