@@ -34,6 +34,11 @@ function _getDomainFromUrl(url: string): string {
         console.warn('[_getDomainFromUrl] Received invalid URL input:', url);
         return 'unknown_domain'; 
     }
+    // If it's a PDF URL, extract the base PDF name as the "domain" for grouping
+    if (url.startsWith('pdf:')) {
+        const match = url.match(/^pdf:([^#]+)/);
+        return match ? getUrlIdentifier(match[1].replace(/\.pdf$/i, '')) : 'unknown_pdf_document';
+    }
     try {
         const urlObj = new URL(url);
         return urlObj.hostname;
@@ -51,15 +56,39 @@ export function initializeArtifactSavers(logsRoot: string) {
     logsRootPathInternal = logsRoot;
 }
 
-function _getDomainPath(domain: string): string {
-    const sanitizedDomain = getUrlIdentifier(domain);
-    const domainPath = path.join(logsRootPathInternal, DIR_DOMAINS, sanitizedDomain);
-    _ensureDirExists(domainPath);
-    return domainPath;
+function _getDomainPath(domainOrPdfName: string, isPdf: boolean = false): string {
+    const sanitizedName = getUrlIdentifier(domainOrPdfName);
+    const baseDir = isPdf ? DIR_PDFS : DIR_DOMAINS;
+    const itemPath = path.join(logsRootPathInternal, baseDir, sanitizedName);
+    _ensureDirExists(itemPath);
+    return itemPath;
 }
 
-function _getUrlPath(domain: string, url: string): string {
-    const domainPath = _getDomainPath(domain);
+// New helper for PDF page paths
+function _getPdfPagePath(pdfName: string, pageNumber: number): string {
+    const sanitizedPdfName = getUrlIdentifier(pdfName.replace(/\.pdf$/i, ''));
+    const pdfBasePath = path.join(logsRootPathInternal, DIR_PDFS, sanitizedPdfName);
+    _ensureDirExists(pdfBasePath);
+    const pageSpecificPath = path.join(pdfBasePath, `page_${pageNumber}`);
+    _ensureDirExists(pageSpecificPath);
+    return pageSpecificPath;
+}
+
+function _getUrlPath(domainInput: string, url: string): string {
+    // Check if it's a PDF page URL
+    if (url.startsWith('pdf:') && url.includes('#page=')) {
+        const pdfNameMatch = url.match(/^pdf:([^#]+)#page=(\d+)/);
+        if (pdfNameMatch && pdfNameMatch[1] && pdfNameMatch[2]) {
+            const pdfName = pdfNameMatch[1];
+            const pageNumber = parseInt(pdfNameMatch[2], 10);
+            // The 'domainInput' for PDF urls will be the pdfName itself (without .pdf extension)
+            // from the modified _getDomainFromUrl
+            return _getPdfPagePath(domainInput, pageNumber);
+        }
+    }
+
+    // Existing logic for website URLs
+    const domainPath = _getDomainPath(domainInput, false); // false indicates it's a domain, not a PDF name
     let urlPart = 'root'; 
     try {
         const parsedUrl = new URL(url);
@@ -69,8 +98,8 @@ function _getUrlPath(domain: string, url: string): string {
         }
         if (urlPart === '/' || urlPart === '') urlPart = 'root';
     } catch (e) {
-        if (typeof url === 'string' && domain && url.includes(domain)) {
-            const afterDomain = url.substring(url.indexOf(domain) + domain.length);
+        if (typeof url === 'string' && domainInput && url.includes(domainInput)) {
+            const afterDomain = url.substring(url.indexOf(domainInput) + domainInput.length);
             urlPart = afterDomain.startsWith('/') ? afterDomain : ('/' + afterDomain);
         } else {
             urlPart = 'unknown_url_path';
@@ -83,7 +112,7 @@ function _getUrlPath(domain: string, url: string): string {
     return urlPath;
 }
   
-function _getPdfPath(pdfName: string): string {
+function _getPdfPath(pdfName: string): string { // This function seems to return the base path for a PDF, not a page.
     const sanitizedPdfName = getUrlIdentifier(pdfName.replace(/\.pdf$/i, ''));
     const pdfPath = path.join(logsRootPathInternal, DIR_PDFS, sanitizedPdfName);
     _ensureDirExists(pdfPath);
@@ -195,22 +224,23 @@ export function savePdfRawText(pdfName: string, textContent: string): void {
 }
 
 export function savePdfPageText(pdfName: string, pageNumber: number, textContent: string): void {
-    const pdfPath = _getPdfPath(pdfName);
-    const pagesPath = _getArtifactPath(pdfPath, DIR_PAGES);
+    // pdfName here is the base filename e.g. "mydoc.pdf"
+    const pagePath = _getPdfPagePath(pdfName.replace(/\.pdf$/i, ''), pageNumber); // Use the new helper
+    const cleanedTextPath = _getArtifactPath(pagePath, DIR_CLEANED_TEXT); // Use DIR_CLEANED_TEXT
+    const filePath = path.join(cleanedTextPath, FILE_CLEANED_TEXT); // Use FILE_CLEANED_TEXT
     try {
-        fs.writeFileSync(path.join(pagesPath, `page_${pageNumber}.txt`), textContent);
+        fs.writeFileSync(filePath, textContent);
     } catch (error) {
         console.error(`Failed to save page ${pageNumber} text for PDF ${pdfName}: ${error}`);
     }
 }
   
 export function savePdfPageChunk(pdfName: string, pageNumber: number, chunkIndex: number, chunkContent: string): void {
-    const pdfPath = _getPdfPath(pdfName);
-    const chunksByPagePath = _getArtifactPath(pdfPath, DIR_CHUNKS_BY_PAGE);
-    const pageSpecificChunkPath = path.join(chunksByPagePath, `page_${pageNumber}`);
-    _ensureDirExists(pageSpecificChunkPath);
+    const pagePath = _getPdfPagePath(pdfName.replace(/\.pdf$/i, ''), pageNumber);
+    // Example: DIR_CHUNKS for consistency with website structure, or a new constant if preferred
+    const chunksPath = _getArtifactPath(pagePath, DIR_CHUNKS); 
     try {
-        fs.writeFileSync(path.join(pageSpecificChunkPath, `chunk_${chunkIndex}.txt`), chunkContent);
+        fs.writeFileSync(path.join(chunksPath, `chunk_${chunkIndex}.txt`), chunkContent);
     } catch (error) {
         console.error(`Failed to save chunk ${chunkIndex} for page ${pageNumber}, PDF ${pdfName}: ${error}`);
     }
