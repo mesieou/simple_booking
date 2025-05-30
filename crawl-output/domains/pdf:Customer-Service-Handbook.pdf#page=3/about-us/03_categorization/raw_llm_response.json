@@ -1,0 +1,6 @@
+{
+  "rawResponse": "[\n  {\n    \"category\": 7,\n    \"content\": \"Customer Service Handbook Table of Contents\\n4 Introduction\\n6 For the Owner, Manager and Supervisor\\n7 Creating Good Customer Service Standards\\n9 Elements of a Good Training Program\\n10 Customer Service Standards - Communications\\n13 Customer Service Standards - Housekeeping\\n14 Customer Service Standards - Restaurant/Dining Room\\n16 Customer Service Tips\\n17 The Hallmark of Hospitality\\n19 General Dos and Don’ts of Hospitality\\n20 How well do you know your community?\\n21 What to do when a customer complains?\\n22 Conclusion\",\n    \"confidence\": 0.8,\n    \"confidenceReason\": \"The content is a table of contents for a handbook, which is typically part of a general informational or educational document.\"\n  }\n]",
+  "responseLength": 756,
+  "parsedItemCount": 1,
+  "timestamp": "2025-05-29T08:31:57.559Z"
+}

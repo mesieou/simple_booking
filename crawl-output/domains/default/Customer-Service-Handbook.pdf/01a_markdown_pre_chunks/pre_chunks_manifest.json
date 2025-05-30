@@ -1,0 +1,12 @@
+{
+  "sourceUrl": "pdf:Customer-Service-Handbook.pdf#page=22",
+  "originalCleanedTextPath": "../../01_cleaned_text/cleaned_pdf_page.txt",
+  "maxCharsPerGptChunk": 6000,
+  "numberOfPreChunks": 1,
+  "preChunkFileNames": [
+    "pre_chunk_0.txt"
+  ],
+  "timestamp": "2025-05-29T08:33:44.376Z",
+  "sessionId": "303d527a-26cc-4a1d-adb0-045f4bb21de9",
+  "domain": "Customer-Service-Handbook.pdf"
+}

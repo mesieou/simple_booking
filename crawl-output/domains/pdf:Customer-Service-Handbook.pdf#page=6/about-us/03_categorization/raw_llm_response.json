@@ -1,0 +1,6 @@
+{
+  "rawResponse": "```json\n[\n  {\n    \"category\": 7,\n    \"content\": \"Customer Service Handbook For Owners, Managers and Supervisors Two of the biggest downfalls of customer service training are that the subject is either swept under the “welcome mat” or it is treated as a special training event only. Hospitality operations are particularly aware of the challenges. Due to the nature and diversity of most operations, and other factors such as budget and time constraints, there just never seems to be any time or money allocated for this purpose. The importance of creating successful customer service standards cannot be overemphasized and relies upon the initial implementation of the ideology. Training is crucial, and perhaps the most difficult step is maintaining and monitoring the customer service process and results.\",\n    \"confidence\": 0.85,\n    \"confidenceReason\": \"The content provides insights and discusses challenges related to customer service training, which fits well into a general information or article category.\"\n  }\n]\n```",
+  "responseLength": 1026,
+  "parsedItemCount": 1,
+  "timestamp": "2025-05-29T08:32:07.613Z"
+}

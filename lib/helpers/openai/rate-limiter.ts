@@ -28,7 +28,7 @@ function getCurrentLoad(): { requestsInLastMinute: number, tokensInLastMinute: n
 
 
 interface QueuedRequest<T = any> {
-  task: () => Promise<T>;
+  task: () => Promise<T>  ;
   resolve: (value: T | PromiseLike<T>) => void;
   reject: (reason?: any) => void;
   tokens: number; // Assuming each task knows roughly how many tokens it might consume for rate limiting
