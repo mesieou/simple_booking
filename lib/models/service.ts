@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/server";
 import { v4 as uuidv4 } from 'uuid';
 import { handleModelError } from '@/lib/helpers/error';
 
