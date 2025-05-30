@@ -7,7 +7,7 @@ interface Business {
   mobile: boolean;
 }
 
-interface QuoteEstimation {
+export interface QuoteEstimation {
   totalJobCost: number;
   serviceCost: number;
   travelCost: number;
