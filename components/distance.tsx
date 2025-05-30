@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Direction from '@/components/direction';
 import { validarUbicacion, obtenerMensajeError, ciudadesPermitidas } from '@/utils/locations';
 import { useFormContext } from '@/utils/FormContext';
-import { fetchDirectGoogleMapsDistance } from '@/app/api/maps/mapsdistance/route';
+import { fetchDirectGoogleMapsDistance } from '@/lib/googleMapsUtils';
 
 interface ErrorResult {
   error: string;
