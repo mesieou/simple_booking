@@ -306,3 +306,108 @@ export async function rollAllProvidersAvailability(): Promise<void> {
     }
   }
 }
+
+// NEW FUNCTIONS FOR CHATBOT DATE/TIME SUGGESTION (Added [Current Date])
+
+/**
+ * Rounds a duration in minutes up to the nearest 30-minute interval.
+ * @param duration The duration in minutes.
+ * @returns The duration rounded up to the nearest 30 minutes.
+ */
+const roundDurationUpTo30 = (duration: number): number => {
+  if (duration <= 0) return 0;
+  return Math.ceil(duration / 30) * 30;
+};
+
+/**
+ * Finds a list of suggested available dates for a given job duration.
+ * NOTE: This is a SKELETON IMPLEMENTATION with DUMMY DATA.
+ * TODO: Implement full logic as per requirements.
+ */
+export async function findAvailableDates(
+  providerId: string,
+  businessId: string,
+  jobDurationMinutes: number,
+  startDate: Date,
+  numberOfDatesToSuggest: number = 5,
+  searchRangeInDays: number = 60
+): Promise<string[]> {
+  console.log("findAvailableDates called (dummy implementation)", { providerId, businessId, jobDurationMinutes, startDate: startDate.toISOString(), numberOfDatesToSuggest, searchRangeInDays });
+  const roundedJobDuration = roundDurationUpTo30(jobDurationMinutes);
+  console.log(`Rounded job duration for availability check: ${roundedJobDuration} minutes`);
+
+  const suggestedDates: string[] = [];
+  let currentSearchDate = DateTime.fromJSDate(startDate);
+
+  // Dummy logic: Suggest next 5 days, skipping weekends for slight realism
+  while (suggestedDates.length < numberOfDatesToSuggest && searchRangeInDays > 0) {
+    // Skip weekends (Saturday: 6, Sunday: 7 in Luxon)
+    if (currentSearchDate.weekday !== 6 && currentSearchDate.weekday !== 7) {
+      suggestedDates.push(currentSearchDate.toFormat("yyyy-MM-dd"));
+    }
+    currentSearchDate = currentSearchDate.plus({ days: 1 });
+    searchRangeInDays--; // Decrement to avoid infinite loop if no dates are found
+  }
+  
+  // If not enough dates found by skipping weekends, fill with subsequent days
+  while (suggestedDates.length < numberOfDatesToSuggest && searchRangeInDays > 0) {
+     // Ensure currentSearchDate is not already added if the previous loop exited early
+    if (currentSearchDate.weekday !== 6 && currentSearchDate.weekday !== 7 && !suggestedDates.includes(currentSearchDate.toFormat("yyyy-MM-dd"))) {
+        suggestedDates.push(currentSearchDate.toFormat("yyyy-MM-dd"));
+    } else if (currentSearchDate.weekday === 6 || currentSearchDate.weekday === 7) {
+        // if it is a weekend, and we still need to fill, we search for next non-weekend
+         while(currentSearchDate.weekday === 6 || currentSearchDate.weekday === 7) {
+            currentSearchDate = currentSearchDate.plus({ days: 1 });
+            searchRangeInDays--;
+         }
+         if (searchRangeInDays > 0 && !suggestedDates.includes(currentSearchDate.toFormat("yyyy-MM-dd"))) {
+            suggestedDates.push(currentSearchDate.toFormat("yyyy-MM-dd"));
+         }
+    }
+    if (suggestedDates.length >= numberOfDatesToSuggest) break;
+    currentSearchDate = currentSearchDate.plus({ days: 1 });
+    searchRangeInDays--;
+  }
+
+
+  console.log("findAvailableDates (dummy) returning:", suggestedDates);
+  return suggestedDates;
+}
+
+/**
+ * Gets available time slots for a specific date and job duration.
+ * NOTE: This is a SKELETON IMPLEMENTATION with DUMMY DATA.
+ * TODO: Implement full logic as per requirements.
+ */
+export async function getSlotsForDate(
+  providerId: string,
+  businessId: string,
+  jobDurationMinutes: number,
+  targetDateISO: string // Expecting "yyyy-MM-dd"
+): Promise<string[]> {
+  console.log("getSlotsForDate called (dummy implementation)", { providerId, businessId, jobDurationMinutes, targetDateISO });
+  const roundedJobDuration = roundDurationUpTo30(jobDurationMinutes);
+  console.log(`Rounded job duration for slot check: ${roundedJobDuration} minutes`);
+
+  const targetDate = DateTime.fromISO(targetDateISO);
+  if (!targetDate.isValid) {
+    console.error(`getSlotsForDate: Invalid targetDateISO: ${targetDateISO}`);
+    return [];
+  }
+
+  // Dummy slots, e.g., 9:00, 10:30, 14:00 for any roundedJobDuration
+  const availableSlots: string[] = ["09:00", "10:30", "14:00"]; 
+  
+  // More advanced dummy slots based on a 9-5 day with 30-min intervals
+  // const availableSlots: string[] = [];
+  // let slot = targetDate.set({ hour: 9, minute: 0});
+  // const endOfDay = targetDate.set({ hour: 17, minute: 0});
+  // while(slot.plus({minutes: roundedJobDuration}) <= endOfDay) {
+  //   availableSlots.push(slot.toFormat("HH:mm"));
+  //   slot = slot.plus({ minutes: 30 }); // Check every 30 mins
+  //   if(slot.hour === 12 || slot.hour === 13) slot = slot.set({hour: 14, minute: 0}); // Skip lunch
+  // }
+
+  console.log("getSlotsForDate (dummy) returning for", targetDateISO, ":", availableSlots);
+  return availableSlots;
+}
