@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useLanguage } from '@/lib/translations/language-context';
+import { useLanguage } from '@/lib/rename-categorise-better/utils/translations/language-context';
 
 const features_app = [
   {

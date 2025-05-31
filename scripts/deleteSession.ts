@@ -1,4 +1,4 @@
-import { CrawlSession } from '@/lib/models/crawl-session';
+import { CrawlSession } from '@/lib/database/models/crawl-session';
 
 async function run() {
   // TODO: Replace with the actual session ID you want to delete

@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import Direction from '@/components/direction';
-import { validarUbicacion, obtenerMensajeError, ciudadesPermitidas } from '@/utils/locations';
-import { useFormContext } from '@/utils/FormContext';
-import { fetchDirectGoogleMapsDistance } from '@/lib/googleMapsUtils';
+import { validarUbicacion, obtenerMensajeError, ciudadesPermitidas } from '@/lib/rename-categorise-better/utils/locations';
+import { useFormContext } from '@/lib/rename-categorise-better/utils/FormContext';
+import { fetchDirectGoogleMapsDistance } from '@/lib/general-helpers/google-distance-calculator';
 
 interface ErrorResult {
   error: string;

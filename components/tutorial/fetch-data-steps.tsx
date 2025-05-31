@@ -1,5 +1,6 @@
 import { TutorialStep } from "./tutorial-step";
 import { CodeBlock } from "./code-block";
+import { createClient } from '@/lib/database/supabase/client'
 
 const create = `create table notes (
   id bigserial primary key,
@@ -25,7 +26,7 @@ export default async function Page() {
 
 const client = `'use client'
 
-import { createClient } from '@/utils/supabase/client'
+import { createClient } from '@/lib/database/supabase/client'
 import { useEffect, useState } from 'react'
 
 export default function Page() {
