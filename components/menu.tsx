@@ -1,6 +1,6 @@
 'use client';
 
-import { useLanguage } from "@/lib/translations/language-context";
+import { useLanguage } from "@/lib/rename-categorise-better/utils/translations/language-context";
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
 import LanguageSwitcher from './language-switcher';

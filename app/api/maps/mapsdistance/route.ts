@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchDirectGoogleMapsDistance, DistanceApiResponse, DistanceApiError } from '@/lib/googleMapsUtils';
+import { fetchDirectGoogleMapsDistance, DistanceApiResponse, DistanceApiError } from '@/lib/general-helpers/google-distance-calculator';
 
 export async function GET(request: NextRequest): Promise<NextResponse<DistanceApiResponse | DistanceApiError>> {
   const { searchParams } = new URL(request.url);

@@ -2,8 +2,8 @@
 
 import React, { useState } from "react";
 import { FormMessage, Message } from "./form-message"; // Import FormMessage componen
-import { createClient } from "@/lib/supabase/client"
-import { useLanguage } from "@/lib/translations/language-context";
+import { createClient } from "@/lib/database/supabase/client"
+import { useLanguage } from "@/lib/rename-categorise-better/utils/translations/language-context";
 
 // Main JoinWaitlist component
 function JoinWaitlist() {
