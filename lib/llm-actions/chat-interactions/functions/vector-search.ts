@@ -2,7 +2,7 @@ import { Embedding } from "@/lib/database/models/embeddings";
 import { Document } from "@/lib/database/models/documents";
 import { Category, CATEGORY_DISPLAY_NAMES } from "@/lib/general-config/general-config";
 import { executeChatCompletion, OpenAIChatMessage } from "../openai-config/openai-core";
-import { generateEmbedding } from "./embeddings";
+import { generateEmbedding } from "@/lib/llm-actions/chat-interactions/functions/embeddings";
 
 function cosineSimilarity(vecA: number[], vecB: number[]): number {
   const dotProduct = vecA.reduce((sum, a, i) => sum + a * vecB[i], 0);
