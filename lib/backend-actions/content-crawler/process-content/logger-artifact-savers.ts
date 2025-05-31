@@ -11,16 +11,27 @@ import {
 export const DIR_MARKDOWN_PRE_CHUNKS = '01a_markdown_pre_chunks';
 
 export function getUrlIdentifier(name: string, maxLength: number = 200): string {
-    let sanitized = name.replace(/^https?:\/\//, '');
-    sanitized = sanitized.replace(/\//g, '_');
-    sanitized = sanitized.replace(/[^\w.\-_]/g, '_');
-    sanitized = sanitized.replace(/__+/g, '_');
-    sanitized = sanitized.replace(/^_+|_+$/g, '');
-    if (sanitized.length > maxLength) {
-        const hash = createHash('md5').update(name).digest('hex').substring(0, 8);
-        sanitized = `${sanitized.substring(0, maxLength - hash.length - 1)}_${hash}`;
+    // For PDF pages, combine PDF name and page number
+    if (name.includes('#page=')) {
+        const pdfMatch = name.match(/^pdf:([^#]+)#page=(\d+)/);
+        if (pdfMatch && pdfMatch[1] && pdfMatch[2]) {
+            const baseName = pdfMatch[1].replace(/\.pdf$/i, '');
+            return `pdf-${baseName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-page-${pdfMatch[2]}`;
+        }
     }
-    return sanitized || 'default';
+    
+    // For PDF files, extract just the base name without extension
+    if (name.startsWith('pdf:')) {
+        const pdfMatch = name.match(/^pdf:([^#]+)/);
+        if (pdfMatch && pdfMatch[1]) {
+            const baseName = pdfMatch[1].replace(/\.pdf$/i, '');
+            return `pdf-${baseName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+        }
+    }
+
+    // For regular URLs, create a simple hash-based name
+    const hash = createHash('md5').update(name).digest('hex').substring(0, 12);
+    return `url-${hash}`;
 }
 
 function _ensureDirExists(dirPath: string): void {
