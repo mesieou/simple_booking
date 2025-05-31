@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { crawlAndProcessPdfs } from "@/lib/bot/content-crawler/pdf-crawler";
-import { createPdfConfig } from "@/lib/config/config";
+import { crawlAndProcessPdfs } from "@/lib/backend-actions/content-crawler/pdf-crawler";
+import { createPdfConfig } from "@/lib/general-config/general-config";
 
 // Hardcoded business ID for testing
 const TEST_BUSINESS_ID = "0919f2b7-9af2-4094-b8b7-f7a70a59599a";

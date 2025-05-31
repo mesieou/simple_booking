@@ -2,7 +2,7 @@
 import * as React from "react"; // React core library
 import { Slot } from "@radix-ui/react-slot"; // For flexible component rendering
 import { cva, type VariantProps } from "class-variance-authority"; // For creating variant classes
-import { cn } from "@/lib/utils"; // Utility for combining class names
+import { cn } from "@/lib/rename-categorise-better/utils/utils"; // Utility for combining class names
 
 // Define button variants using class-variance-authority (cva)
 const buttonVariants = cva(

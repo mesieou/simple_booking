@@ -1,6 +1,6 @@
 'use client';
 
-import { useLanguage } from "@/lib/translations/language-context";
+import { useLanguage } from "@/lib/rename-categorise-better/utils/translations/language-context";
 import Link from 'next/link'
 import Image from 'next/image'
 import logo from '../public/SkedyLogo.png'

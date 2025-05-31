@@ -5,9 +5,9 @@ import Precios from '@/components/precios';
 import ViewForm from '@/app/components/viewform';
 import React, { useState, useEffect } from 'react';
 import ProviderTitle from '@/app/components/ProviderTitle';
-import { useFormContext } from '@/utils/FormContext';
-import { Service, ServiceData } from '@/lib/models/service';
-import { computeQuoteEstimation } from '@/lib/helpers/quote';
+import { useFormContext } from '@/lib/rename-categorise-better/utils/FormContext';
+import { Service, ServiceData } from '@/lib/database/models/service';
+import { computeQuoteEstimation } from '@/lib/general-helpers/quote-cost-calculator';
 
 export default function BookingSizeStep({ params }: { params: Promise<{ providerId: string }> }) {
   const router = useRouter();
