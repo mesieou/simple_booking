@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation';
 import Distance from '@/components/distance';
 import ViewForm from '@/app/components/viewform';
 import ProviderTitle from '@/app/components/ProviderTitle';
-import { useFormContext } from '@/utils/FormContext';
-import { calcularPrecioDesdeApi, segundosAMinutos, formatearDuracion } from '@/lib/models/price';
-import { fetchDirectGoogleMapsDistance } from '@/lib/googleMapsUtils';
+import { useFormContext } from '@/lib/rename-categorise-better/utils/FormContext';
+import { calcularPrecioDesdeApi, segundosAMinutos, formatearDuracion } from '@/lib/database/models/price';
+import { fetchDirectGoogleMapsDistance } from '@/lib/general-helpers/google-distance-calculator';
 
 export default function BookingDistanceStep({ params }: { params: Promise<{ providerId: string }> }) {
   const router = useRouter();

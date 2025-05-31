@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { ButtonGrid } from '@/components/ui/button-grid';
-import { createClient } from '@/lib/supabase/client';
 
 interface HorariosProps {
   providerId: string;
