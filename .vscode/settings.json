@@ -19,6 +19,10 @@
         {
             "folderPath": "simple_booking\\lib\\helpers\\openai\\",
             "color": "foldercolorizer.color_33cc00"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\llm-actions\\whatsapp\\",
+            "color": "foldercolorizer.color_00cc00"
         }
     ]
 }

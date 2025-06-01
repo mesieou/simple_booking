@@ -4,6 +4,32 @@ import { Category, CATEGORY_DISPLAY_NAMES } from "@/lib/general-config/general-c
 import { executeChatCompletion, OpenAIChatMessage } from "../openai-config/openai-core";
 import { generateEmbedding } from "@/lib/llm-actions/chat-interactions/functions/embeddings";
 
+/**
+ * Vector Search and Conversational Answer Generation
+ *
+ * This module provides functionalities to perform semantic vector searches against a knowledge base
+ * and generate conversational answers based on the search results using an LLM.
+ *
+ * Key Functions:
+ * - `findBestVectorResultByCategory`:
+ *   Finds the most relevant documents from a specific category in the knowledge base
+ *   based on cosine similarity with a user's query embedding.
+ *   It retrieves document embeddings, calculates similarity, and returns the top matches
+ *   with their content, source, and confidence scores.
+ *
+ * - `getConversationalAnswer`:
+ *   Takes a user's message and a category, preprocesses the message, generates an embedding,
+ *   finds the best matching knowledge base entries using `findBestVectorResultByCategory`,
+ *   then constructs a prompt with these matches for an LLM (e.g., GPT-4o) to generate a
+ *   concise, conversational answer to the user's question, including a relevant follow-up.
+ *
+ * - `preprocessUserMessage`:
+ *   A utility function to clean and normalize user messages before generating embeddings,
+ *   improving the quality of vector search.
+ *
+ * Helper functions for cosine similarity and category key mapping are also included.
+ */
+
 function cosineSimilarity(vecA: number[], vecB: number[]): number {
   const dotProduct = vecA.reduce((sum, a, i) => sum + a * vecB[i], 0);
   const magnitudeA = Math.sqrt(vecA.reduce((sum, a) => sum + a * a, 0));
