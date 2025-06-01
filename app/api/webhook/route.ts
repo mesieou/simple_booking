@@ -12,7 +12,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { logIncomingMessage, WebhookAPIBody } from "@/lib/rename-categorise-better/utils/webhookLogger";
+import { logIncomingMessage, WebhookAPIBody } from "@/lib/llm-actions/whatsapp/whatsapp-message-logger";
 
 // Read environment variables for security and feature toggling
 const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;

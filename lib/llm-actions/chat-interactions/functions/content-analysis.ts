@@ -198,37 +198,76 @@ export function safeParseOpenAIJson<T>(raw: string | undefined): T {
         console.error("[JSON Parser] Failed to parse extracted JSON:", extractError);
       }
     }
-    
-    // If we get here, all parsing attempts failed
-    console.error("[JSON Parser] All parsing attempts failed for input (first 500 chars):", raw.substring(0, 500) + (raw.length > 500 ? "..." : ""));
-    throw new Error("Failed to parse OpenAI JSON output");
+    // If still failing, log and rethrow original error
+    console.error("[JSON Parser] Failed to parse raw content or extract JSON array. Raw content (first 500 chars):", raw.substring(0, 500) + (raw.length > 500 ? "..." : ""));
+    throw error; // Rethrow the original parsing error
   }
-} 
+}
 
+interface QualityAssessmentResponse {
+  issues: string[];
+  recommendations: string[];
+  score: number;
+}
+
+// New function to analyze category quality using GPT
 export async function analyzeCategoryQualityWithGPT(
   category: Category,
   content: string,
   websiteUrl: string
-): Promise<{ issues: string[]; recommendations: string[]; score: number }> {
-  const prompt = `You are reviewing the content for the \"${CATEGORY_DISPLAY_NAMES[category]}\" section of a business website (website: ${websiteUrl}).\n\nThis content will be used by a customer service bot to assist and inform customers.\n\n1. Assess the quality and completeness of the content below for this category, specifically for customer support and user experience.\n2. List any issues, missing details, or improvements needed (as an array of strings) that would help the bot provide excellent customer service.\n3. Provide specific recommendations for improvement (as an array of strings) to ensure the bot can answer customer questions accurately and helpfully.\n4. Give an overall quality score from 0-100 (as a number), focused on customer-facing usefulness.\n\nReturn a JSON object with this structure:\n{\n  "issues": ["issue1", "issue2"],\n  "recommendations": ["recommendation1", "recommendation2"],\n  "score": 75\n}\n\nHere is the content for this category:\n${content}`;
+): Promise<QualityAssessmentResponse> {
+  const categoryName = CATEGORY_DISPLAY_NAMES[category] || 'Unknown Category';
+  const prompt = `
+As an expert data quality analyst, please review the following content categorized under "${categoryName}" from the website ${websiteUrl}.
+
+Content:
+"${content}"
+
+Evaluate its quality for use in a customer support chatbot. Specifically, identify:
+1. Issues: Any problems with the content (e.g., incompleteness, ambiguity, irrelevance to the category, formatting issues that might confuse an LLM).
+2. Recommendations: Suggestions to improve the content for chatbot use (e.g., rephrase for clarity, add missing details, split into smaller chunks if too broad for the category).
+3. Score: A rating from 1 (very poor) to 10 (excellent) for its suitability for the category and chatbot use.
+
+Provide your response as a JSON object with three keys: "issues" (an array of strings), "recommendations" (an array of strings), and "score" (a number).
+Example JSON response: {"issues": ["The pricing is unclear"], "recommendations": ["Specify the currency for all prices"], "score": 6}
+
+IMPORTANT: Respond ONLY with the raw JSON object. Do not include any markdown formatting, code blocks (like \`\`\`json), or any other text outside the JSON structure.
+  `;
 
   try {
-    const response = await executeChatCompletion([
-      {
-        role: "system",
-        content: "You are a content analysis expert that helps ensure customer service bots have all necessary information to support and inform users effectively."
-      },
-      { role: "user", content: prompt }
-    ], "gpt-4o", 0.3, 500); // This call uses a smaller maxTokens, which is fine for this specific task
-    const gptResponse = response.choices[0]?.message?.content || '{}';
-    const result = JSON.parse(gptResponse);
-    return {
-      issues: result.issues || [],
-      recommendations: result.recommendations || [],
-      score: typeof result.score === 'number' ? result.score : 0
-    };
+    const gptResponse = await executeChatCompletion(
+      [
+        { role: "system", content: "You are an expert data quality analyst responding in JSON format." },
+        { role: "user", content: prompt }
+      ],
+      "gpt-4o",
+      0.2,
+      1000
+    );
+
+    const rawJsonResponse = gptResponse.choices[0]?.message?.content?.trim();
+    if (!rawJsonResponse) {
+      throw new Error("No content in GPT response for quality assessment.");
+    }
+
+    // Attempt to parse the JSON, cleaning it if necessary
+    let cleanedJson = rawJsonResponse;
+    if (cleanedJson.startsWith('```json')) {
+      cleanedJson = cleanedJson.substring(7, cleanedJson.length - 3).trim();
+    } else if (cleanedJson.startsWith('```')) {
+      cleanedJson = cleanedJson.substring(3, cleanedJson.length - 3).trim();
+    }
+
+    const result: QualityAssessmentResponse = JSON.parse(cleanedJson);
+    return result;
+
   } catch (error) {
-    console.error(`Error analyzing category ${CATEGORY_DISPLAY_NAMES[category]}:`, error);
-    return { issues: ["Error analyzing content"], recommendations: [], score: 0 };
+    console.error(`[Quality Analyzer] Error analyzing category quality for ${categoryName} at ${websiteUrl}:`, error);
+    // Return a default error response or rethrow, depending on desired error handling
+    return {
+      issues: [`Failed to analyze content quality: ${(error as Error).message}`],
+      recommendations: ["Review content and GPT prompt for issues."],
+      score: 1 // Lowest score indicates a problem
+    };
   }
 } 

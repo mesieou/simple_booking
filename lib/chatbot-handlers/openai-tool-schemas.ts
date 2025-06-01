@@ -18,4 +18,4 @@ export const createUserSchema = {
 } as const;
 
 // Export all schemas
-export const toolSchemas = [createUserSchema];
+export const toolSchemas = [createUserSchema]; 
