@@ -1,7 +1,7 @@
 // app/api/chat/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
-import { handleChat } from "@/lib/rename-categorise-better/chatLogic";   // <— your helper
+import { handleChat } from "@/lib/chatbot-handlers/central-chatbot-processor";   // <— your helper
 
 // POST  →  chat endpoint used by the UI
 export async function POST(req: NextRequest) {

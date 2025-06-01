@@ -1,4 +1,4 @@
-import { executeChatCompletion, ChatMessage } from "@/lib/llm-actions/chat-interactions/llm-actions/openai-config/openai-core";
+import { executeChatCompletion, ChatMessage } from "@/lib/llm-actions/chat-interactions/openai-config/openai-core";
 import { DocumentCategory, VALID_CATEGORIES } from "@/lib/general-config/general-config";
 
 export interface ClientNeedResult {
