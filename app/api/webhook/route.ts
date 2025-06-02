@@ -12,11 +12,15 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { logIncomingMessage, WebhookAPIBody } from "@/lib/chatbot-handlers/whatsapp/whatsapp-message-logger";
-import { parseWhatsappMessage } from "@/lib/chatbot-handlers/whatsapp/whatsapp-payload-parser";
-import { processIncomingMessage } from "@/lib/chatbot-handlers/central-conversation-flow-decider";
-import { WhatsappSender } from "@/lib/chatbot-handlers/whatsapp/whatsapp-message-sender";
+import { logIncomingMessage, WebhookAPIBody } from "@/lib/conversation-engine/whatsapp/whatsapp-message-logger";
+import { parseWhatsappMessage } from "@/lib/conversation-engine/whatsapp/whatsapp-payload-parser";
+import { WhatsappSender } from "@/lib/conversation-engine/whatsapp/whatsapp-message-sender";
 import { BotResponse } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
+
+// New Imports for the new conversation engine
+import { routeInteraction } from "@/lib/conversation-engine/main-conversation-manager";
+import { ConversationContext } from "@/lib/conversation-engine/conversation.context";
+import { ParsedMessage } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
 
 export const dynamic = "force-dynamic";
 
@@ -80,68 +84,62 @@ export async function POST(req: NextRequest) {
 
   try {
     const payload = (await req.json()) as WebhookAPIBody;
-    console.log("Webhook POST request received. Processing payload...");
-    logIncomingMessage(payload);
+    console.log("[Webhook] POST request received. Raw Payload:", JSON.stringify(payload, null, 2));
+    // Optional: Keep logIncomingMessage if it provides value beyond just raw payload logging
+    // logIncomingMessage(payload); 
 
     const parsedMessage = parseWhatsappMessage(payload);
 
-    if (parsedMessage && parsedMessage.text && parsedMessage.senderId) { 
+    if (parsedMessage && parsedMessage.senderId) { // Ensure senderId is present for replies
       console.log("[Webhook] Successfully parsed WhatsApp message:", JSON.stringify(parsedMessage, null, 2));
 
-      const historyForDecider = [
-        {
-          role: "user" as const, 
-          content: parsedMessage.text,
-        },
-      ];
+      // Initialize ConversationContext for this interaction
+      // For now, chatHistory starts fresh. Later, load from DB.
+      const context: ConversationContext = {
+        userId: parsedMessage.senderId,
+        currentMode: 'IdleMode', 
+        chatHistory: [], 
+        // lastUserIntent, bookingState, etc., will be populated by routeInteraction or loaded from DB later
+      };
 
-      console.log("[Webhook] Calling central decider with history:", JSON.stringify(historyForDecider, null, 2));
+      console.log("[Webhook] Calling routeInteraction with parsedMessage and new context.");
       try {
-        const llmResult = await processIncomingMessage(historyForDecider);
-        console.log("[Webhook] Response from central decider:", JSON.stringify(llmResult.messages, null, 2));
-        
-        // Extract assistant's reply and send it back
-        if (llmResult.messages && llmResult.messages.length > 0) {
-          const lastMessage = llmResult.messages[llmResult.messages.length - 1];
-          if (lastMessage.role === 'assistant' && lastMessage.content) {
-            const assistantReplyText = lastMessage.content;
-            
-            const botResponse: BotResponse = {
-              text: assistantReplyText,
-            };
+        const { finalBotResponse, updatedContext } = await routeInteraction(parsedMessage, context);
 
-            const sender = new WhatsappSender();
-            try {
-              console.log(`[Webhook] Attempting to send reply to ${parsedMessage.senderId}: "${assistantReplyText}"`);
-              await sender.sendMessage(parsedMessage.senderId, botResponse);
-              console.log("[Webhook] Reply successfully sent to WhatsApp user.");
-            } catch (sendError) {
-              console.error("[Webhook] Error sending reply via WhatsappSender:", sendError);
-            }
-          } else {
-            console.log("[Webhook] Last message from decider was not from assistant or had no content.");
+        console.log("[Webhook] Response from routeInteraction:", JSON.stringify(finalBotResponse, null, 2));
+        console.log("[Webhook] Updated context after routeInteraction:", JSON.stringify(updatedContext, null, 2));
+
+        if (finalBotResponse && finalBotResponse.text) {
+          const sender = new WhatsappSender();
+          try {
+            console.log(`[Webhook] Attempting to send reply to ${parsedMessage.senderId}: "${finalBotResponse.text}"`);
+            await sender.sendMessage(parsedMessage.senderId, finalBotResponse);
+            console.log("[Webhook] Reply successfully sent to WhatsApp user via WhatsappSender.");
+          } catch (sendError) {
+            console.error("[Webhook] Error sending reply via WhatsappSender:", sendError);
           }
         } else {
-          console.log("[Webhook] No messages received from central decider.");
+          console.log("[Webhook] No text in BotResponse to send.");
         }
+        // TODO: Save updatedContext (especially updatedContext.chatHistory and mode-specific states like updatedContext.bookingState)
+        // to your database/persistence layer here, associated with parsedMessage.senderId.
 
-      } catch (deciderError) {
-        console.error("[Webhook] Error calling central decider:", deciderError);
+      } catch (interactionError) {
+        console.error("[Webhook] Error during routeInteraction:", interactionError);
+        // Consider sending a generic error message back to the user via WhatsApp in this case
       }
 
     } else {
       if (!parsedMessage) {
         console.log("[Webhook] Failed to parse WhatsApp message or message was not actionable.");
-      } else if (!parsedMessage.text) {
-        console.log("[Webhook] Parsed WhatsApp message has no text content. Skipping decider call.");
-      } else if (!parsedMessage.senderId) {
-        console.log("[Webhook] Parsed WhatsApp message has no sender information (senderId). Skipping decider call.");
+      } else {
+        console.log("[Webhook] Parsed message missing critical info (e.g., senderId). Skipping interaction.", JSON.stringify(parsedMessage, null, 2));
       }
     }
-
-    return NextResponse.json({ status: "success" }, { status: 200 });
+    // Always acknowledge WhatsApp's request quickly, even if processing or sending fails.
+    return NextResponse.json({ status: "success - acknowledged" }, { status: 200 });
   } catch (error) {
-    console.error("Error processing webhook POST request:", error);
+    console.error("[Webhook] Critical error processing POST request:", error);
     if (error instanceof SyntaxError) {
       return NextResponse.json({ message: "Invalid JSON payload" }, { status: 400 });
     }
