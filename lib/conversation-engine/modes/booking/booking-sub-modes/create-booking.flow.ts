@@ -1,22 +1,16 @@
-import { OpenAIChatMessage } from "@/lib/llm-actions/chat-interactions/openai-config/openai-core";
+import { OpenAIChatMessage } from "@/lib/conversation-engine/llm-actions/chat-interactions/openai-config/openai-core";
 import { findAvailableDates, getSlotsForDate } from '@/lib/general-helpers/availability';
+import { BookingState } from './booking.state';
 
-// Constants for mock IDs, consider moving to a config file or environment variables if shared more broadly.
+// Constants for mock IDs, specific to the create booking flow using mock availability.
+// Consider moving to a shared config or passing them as parameters if they vary or are used elsewhere.
 const MOCK_PROVIDER_ID_FOR_AVAILABILITY = "d27f606f-70ac-4798-9706-13d308d1c98e";
 const MOCK_BUSINESS_ID_FOR_AVAILABILITY = "5daa4f28-1ade-491b-be8b-b80025ffc2c4";
 
-export interface BookingState {
-  step: 'idle' | 'getting_size' | 'getting_date' | 'getting_time' | 'confirming';
-  size?: 'one' | 'few' | 'house';
-  jobDurationMinutes?: number;
-  date?: string; // ISO string "yyyy-MM-dd"
-  time?: string;
-}
-
 /**
- * Handles the 'getting_size' step of the booking process.
+ * Handles the 'getting_size' step of the booking creation process.
  */
-async function handleBookingGettingSize(
+export async function handleCreateBookingGettingSize(
   userMessageText: string,
   currentBookingState: BookingState,
   history: OpenAIChatMessage[]
@@ -45,7 +39,7 @@ async function handleBookingGettingSize(
       }
       history.push({ role: 'assistant', content: responseContent });
     } catch (e) {
-      console.error("[BookingHandler] Error finding available dates:", e);
+      console.error("[CreateBookingFlow] Error finding available dates:", e);
       history.push({ role: 'assistant', content: "I had trouble finding available dates right now. Please try again in a moment, or specify a date you have in mind." });
     }
   } else {
@@ -55,9 +49,9 @@ async function handleBookingGettingSize(
 }
 
 /**
- * Handles the 'getting_date' step of the booking process.
+ * Handles the 'getting_date' step of the booking creation process.
  */
-async function handleBookingGettingDate(
+export async function handleCreateBookingGettingDate(
   userMessageText: string,
   currentBookingState: BookingState,
   history: OpenAIChatMessage[]
@@ -92,7 +86,7 @@ async function handleBookingGettingDate(
         history.push({ role: 'assistant', content: `Sorry, no slots available on ${parsedDate.toLocaleDateString()}. Would you like to try another date?` });
       }
     } catch (e) {
-      console.error("[BookingHandler] Error getting slots for date:", e);
+      console.error("[CreateBookingFlow] Error getting slots for date:", e);
       history.push({ role: 'assistant', content: `I had trouble checking slots for ${parsedDate.toLocaleDateString()}. Please try another date or try again later.` });
     }
   } else {
@@ -102,9 +96,9 @@ async function handleBookingGettingDate(
 }
 
 /**
- * Handles the 'getting_time' step of the booking process.
+ * Handles the 'getting_time' step of the booking creation process.
  */
-async function handleBookingGettingTime(
+export async function handleCreateBookingGettingTime(
   userMessageText: string,
   currentBookingState: BookingState,
   history: OpenAIChatMessage[]
@@ -130,9 +124,9 @@ async function handleBookingGettingTime(
 }
 
 /**
- * Handles the 'confirming' step of the booking process.
+ * Handles the 'confirming' step of the booking creation process.
  */
-function handleBookingConfirming(
+export function handleCreateBookingConfirming(
   userMessageText: string,
   currentBookingState: BookingState,
   history: OpenAIChatMessage[]
@@ -141,59 +135,13 @@ function handleBookingConfirming(
   if (userMessageText.includes('yes')) {
     const friendlyDate = new Date(updatedBookingState.date!).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
     history.push({ role: 'assistant', content: `Excellent! Your '${updatedBookingState.size}' service is booked for ${friendlyDate} at ${updatedBookingState.time}. You\'ll receive a confirmation shortly. Is there anything else?` });
-    updatedBookingState.step = 'idle'; // Reset for next booking
+    updatedBookingState.step = 'completed'; // Mark as completed
   } else if (userMessageText.includes('no')) {
     history.push({ role: 'assistant', content: "Okay, booking cancelled. We can start over if you like. What size of service do you need?" });
-    updatedBookingState.step = 'getting_size';
+    updatedBookingState.step = 'cancelled'; // Mark as cancelled, could also go to 'getting_size' or 'idle'
   } else {
     history.push({ role: 'assistant', content: "Please confirm with 'yes' or 'no'." });
+    // State remains 'confirming'
   }
   return { updatedHistory: history, updatedBookingState };
-}
-
-/**
- * Manages the booking process based on the current state and user message.
- * @returns A Promise resolving to the updated history and booking state if booking was handled, otherwise null.
- */
-export async function manageBookingProcess(
-  lastUserMessage: OpenAIChatMessage,
-  bookingState: BookingState,
-  history: OpenAIChatMessage[],
-  clientNeedResult: any // Type this more accurately if possible
-): Promise<{ updatedHistory: OpenAIChatMessage[]; updatedBookingState: BookingState } | null> {
-  const userMessageText = lastUserMessage.content?.toLowerCase() || "";
-  let currentBookingState = { ...bookingState }; // Ensure we're working with a mutable copy for updates
-
-  const isBookingIntent = clientNeedResult?.need_type === 'booking_service' || clientNeedResult?.intent === 'request_booking' || currentBookingState.step !== 'idle';
-  
-  if (isBookingIntent && currentBookingState.step === 'idle') {
-    currentBookingState.step = 'getting_size';
-    const responseContent = "Okay, I can help you with a booking. What size of service do you need? (e.g., 'one item', 'few items', or 'house')";
-    history.push({ role: 'assistant', content: responseContent });
-    return { updatedHistory: history, updatedBookingState: currentBookingState };
-  }
-
-  if (currentBookingState.step !== 'idle') {
-    let stepResult;
-    switch (currentBookingState.step) {
-      case 'getting_size':
-        stepResult = await handleBookingGettingSize(userMessageText, currentBookingState, history);
-        break;
-      case 'getting_date':
-        stepResult = await handleBookingGettingDate(userMessageText, currentBookingState, history);
-        break;
-      case 'getting_time':
-        stepResult = await handleBookingGettingTime(userMessageText, currentBookingState, history);
-        break;
-      case 'confirming':
-        stepResult = handleBookingConfirming(userMessageText, currentBookingState, history);
-        break;
-      default:
-        // It's good practice to handle unexpected states, even if just logging.
-        console.error(`[BookingHandler] Encountered an unknown booking step: ${currentBookingState.step}`);
-        return null; 
-    }
-    return { updatedHistory: stepResult.updatedHistory, updatedBookingState: stepResult.updatedBookingState };
-  }
-  return null;
-}
+} 
