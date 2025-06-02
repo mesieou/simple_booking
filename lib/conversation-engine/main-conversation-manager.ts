@@ -3,7 +3,7 @@ import { ConversationContext, ConversationMode } from "./conversation.context";
 import { analyzeClientNeed, ClientNeedResult } from "./llm-actions/chat-interactions/functions/intention-detector";
 import { formatMessagesForOpenAI } from "./task-processors/openai-message-formatter";
 import { executeChatCompletion, OpenAIChatMessage } from "./llm-actions/chat-interactions/openai-config/openai-core";
-import { systemPrompt } from "../chatbot-handlers/customer-interaction-prompts";
+import { systemPrompt } from "./customer-interaction-prompts";
 
 // Mode handlers
 import { handleBookingModeInteraction } from "./modes/booking/booking.mode.handler";
