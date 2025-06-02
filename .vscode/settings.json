@@ -23,6 +23,34 @@
         {
             "folderPath": "simple_booking\\lib\\llm-actions\\whatsapp\\",
             "color": "foldercolorizer.color_00cc00"
+        },
+        {
+            "folderPath": "simple_booking\\app\\api\\webhook\\",
+            "color": "foldercolorizer.color_00cc00"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\chatbot-handlers\\",
+            "color": "foldercolorizer.color_6666cc"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\database\\models\\",
+            "color": "foldercolorizer.color_6600cc"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\general-config\\",
+            "color": "foldercolorizer.color_99cc00"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\general-helpers\\",
+            "color": "foldercolorizer.color_660099"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\llm-actions\\",
+            "color": "foldercolorizer.color_00ccff"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\chatbot-handlers\\whatsapp\\",
+            "color": "foldercolorizer.color_00cc33"
         }
     ]
 }
