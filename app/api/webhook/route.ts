@@ -12,9 +12,9 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { logIncomingMessage, WebhookAPIBody } from "@/lib/chatbot-handlers/whatsapp/whatsapp-message-logger";
-import { parseWhatsappMessage } from "@/lib/chatbot-handlers/whatsapp/whatsapp-payload-parser";
-import { WhatsappSender } from "@/lib/chatbot-handlers/whatsapp/whatsapp-message-sender";
+import { logIncomingMessage, WebhookAPIBody } from "@/lib/conversation-engine/whatsapp/whatsapp-message-logger";
+import { parseWhatsappMessage } from "@/lib/conversation-engine/whatsapp/whatsapp-payload-parser";
+import { WhatsappSender } from "@/lib/conversation-engine/whatsapp/whatsapp-message-sender";
 import { BotResponse } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
 
 // New Imports for the new conversation engine

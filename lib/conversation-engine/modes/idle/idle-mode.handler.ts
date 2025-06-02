@@ -2,7 +2,7 @@ import { ParsedMessage, BotResponse } from "@/lib/cross-channel-interfaces/stand
 import { ConversationContext } from "../../conversation.context";
 import { formatMessagesForOpenAI } from "../../task-processors/openai-message-formatter"; // Adjust path if this utility was moved
 import { executeChatCompletion, OpenAIChatMessage } from "../../llm-actions/chat-interactions/openai-config/openai-core";
-import { systemPrompt } from "../../../chatbot-handlers/customer-interaction-prompts"; // Adjust path if this was moved
+import { systemPrompt } from "../../customer-interaction-prompts"; // Adjust path if this was moved
 
 /**
  * Handles interactions when the conversation is in IdleMode (general Q&A).
