@@ -1,4 +1,4 @@
-import { OpenAIChatMessage } from "@/lib/llm-actions/chat-interactions/openai-config/openai-core";
+import { OpenAIChatMessage } from "@/lib/conversation-engine/llm-actions/chat-interactions/openai-config/openai-core";
 
 /**
  * Formats the chat history for OpenAI API compatibility.

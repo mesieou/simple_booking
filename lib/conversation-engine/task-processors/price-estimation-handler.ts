@@ -1,8 +1,9 @@
-import { OpenAIChatMessage } from "@/lib/llm-actions/chat-interactions/openai-config/openai-core";
+import { OpenAIChatMessage } from "@/lib/conversation-engine/llm-actions/chat-interactions/openai-config/openai-core";
 import { Service } from "@/lib/database/models/service";
 import { Business } from "@/lib/database/models/business";
 import { computeQuoteEstimation, QuoteEstimation } from "@/lib/general-helpers/quote-cost-calculator";
 import { fetchDirectGoogleMapsDistance } from '@/lib/general-helpers/google-distance-calculator';
+import { BotResponse } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
 
 // Constant for mock ID, consider moving to a shared config or passing as parameter.
 const MOCK_SERVICE_ID_FOR_QUOTE = "d27f606f-70ac-4798-9706-13d308d1c98e";
@@ -26,29 +27,36 @@ async function getMockServiceForQuote(): Promise<Service> {
 
 /**
  * Attempts to calculate and respond with a price estimation if recent messages suggest addresses were provided.
+ * @param history The current chat history (used for context, not modified directly).
+ * @param lastUserMessage The last message from the user.
+ * @returns A Promise resolving to a BotResponse if estimation was handled, otherwise null.
  */
 export async function tryHandleAddressBasedPriceEstimation(
-  history: OpenAIChatMessage[],
+  history: Readonly<OpenAIChatMessage[]>,
   lastUserMessage: OpenAIChatMessage
-): Promise<OpenAIChatMessage[] | null> {
+): Promise<BotResponse | null> {
+  if (history.length < 2) return null;
+
   if (history.length < 3) return null;
 
-  const lastBotMessage = history[history.length - 2];
-  const previousUserMessage = history[history.length - 3];
-  const lastAssistantMessageInFullHistory = history.slice().reverse().find(m => m.role === 'assistant');
+  const currentUserMessageIndex = history.length - 1;
+  const botMessagePromptingForDropoff = history[currentUserMessageIndex - 1];
+  const previousUserMessageWithPickup = history[currentUserMessageIndex - 2];
+
+  const lastAssistantMessageInFullHistory = history.slice(0, -1).reverse().find(m => m.role === 'assistant');
   const lastBotResponseWasNotPriceCalc = !lastAssistantMessageInFullHistory?.content?.includes("total estimated price is $");
 
   const shouldAttemptEstimation =
-    lastBotMessage?.role === 'assistant' &&
-    lastBotMessage.content &&
-    (lastBotMessage.content.toLowerCase().includes('drop-off address') || lastBotMessage.content.toLowerCase().includes('delivery address')) &&
-    previousUserMessage?.role === 'user' && previousUserMessage.content &&
+    botMessagePromptingForDropoff?.role === 'assistant' &&
+    botMessagePromptingForDropoff.content &&
+    (botMessagePromptingForDropoff.content.toLowerCase().includes('drop-off address') || botMessagePromptingForDropoff.content.toLowerCase().includes('delivery address')) &&
+    previousUserMessageWithPickup?.role === 'user' && previousUserMessageWithPickup.content &&
     lastUserMessage.role === 'user' && lastUserMessage.content &&
     lastBotResponseWasNotPriceCalc;
 
   if (!shouldAttemptEstimation) return null;
 
-  const pickupAddress = previousUserMessage.content;
+  const pickupAddress = previousUserMessageWithPickup.content;
   const dropoffAddress = lastUserMessage.content;
 
   try {
@@ -73,14 +81,12 @@ export async function tryHandleAddressBasedPriceEstimation(
     const quote = computeQuoteEstimation(mockServiceInstance, actualBusiness, travelTimeEstimateInMinutes);
     const assistantResponseContent = `Okay, for the trip from "${pickupAddress}" to "${dropoffAddress}", the estimated travel time is about ${travelTimeEstimateInMinutes} minutes (distance: ${distanceText}).\nUsing our example service ("${mockServiceInstance.name}"), the total estimated price is $${quote.totalJobCost.toFixed(2)}.\nThis includes a service cost of $${quote.serviceCost.toFixed(2)} and a travel cost of $${quote.travelCost.toFixed(2)}.\n(Please note: this is a test calculation based on a standard service).\n\nNow, could you tell me what type of removal service you specifically need?`;
     
-    history.push({ role: 'assistant', content: assistantResponseContent });
-    console.log("[PriceEstimationHandler] Distance and mock price calculated and sent to user.");
-    return history;
+    console.log("[PriceEstimationHandler] Distance and mock price calculated.");
+    return { text: assistantResponseContent };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('[PriceEstimationHandler] Critical error during distance/price calculation step:', errorMessage);
     const errorResponseContent = `I'm sorry, I encountered an issue while calculating the travel information: ${errorMessage}. Please double-check the addresses. If the problem continues, we can proceed without this estimate for now. Could you please tell me the type of removal service you need?`;
-    history.push({ role: 'assistant', content: errorResponseContent });
-    return history;
+    return { text: errorResponseContent };
   }
 } 

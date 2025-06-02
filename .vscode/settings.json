@@ -51,6 +51,14 @@
         {
             "folderPath": "simple_booking\\lib\\chatbot-handlers\\whatsapp\\",
             "color": "foldercolorizer.color_00cc33"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\conversation-engine\\llm-actions\\chat-interactions\\",
+            "color": "foldercolorizer.color_3366cc"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\conversation-engine\\modes\\",
+            "color": "foldercolorizer.color_66cc33"
         }
     ]
 }
