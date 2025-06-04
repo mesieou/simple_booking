@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { CrawlConfig } from '@/lib/bot/content-crawler/config';
-import { crawlAndProcess } from '@/lib/bot/content-crawler/html-crawler';
+import { createClient } from '@/lib/database/supabase/server';
+import { CrawlConfig } from '@/lib/general-config/general-config';
+import { crawlAndProcess } from '@/lib/backend-actions/content-crawler/html-crawler';
 
 export async function POST(request: Request) {
   try {

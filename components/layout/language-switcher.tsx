@@ -8,8 +8,8 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@components/ui/dropdown-menu";
-import { useLanguage } from "@/lib/translations/language-context";
-import { Language } from "@/lib/translations/index";
+import { useLanguage } from "@/lib/rename-categorise-better/utils/translations/language-context";
+import { Language } from "@/lib/rename-categorise-better/utils/translations/index";
 import { Globe } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";

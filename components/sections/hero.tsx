@@ -4,7 +4,7 @@
 import Video from 'next-video';
 import botDemo from '/videos/bot-demo.mp4';
 import JoinWaitlist from "@components/sections/waitlist-form";
-import { useLanguage } from "@/lib/translations/language-context";
+import { useLanguage } from "@/lib/rename-categorise-better/utils/translations/language-context";
 
 export default function Header() {
   const { t } = useLanguage();
