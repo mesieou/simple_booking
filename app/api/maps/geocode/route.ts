@@ -15,19 +15,19 @@ interface GeocodeResponse {
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const { searchParams } = new URL(request.url);
-  const direccion = searchParams.get('direccion');
+  const address = searchParams.get('address');
   const apiKey = process.env.GOOGLE_MAPS_API_KEY;
 
-  if (!direccion) {
-    return NextResponse.json({ error: "Se debe proporcionar una dirección." }, { status: 400 });
+  if (!address) {
+    return NextResponse.json({ error: "An address must be provided." }, { status: 400 });
   }
 
   if (!apiKey) {
-    return NextResponse.json({ error: "API key no configurada." }, { status: 500 });
+    return NextResponse.json({ error: "API key not configured." }, { status: 500 });
   }
 
   const params = new URLSearchParams({
-    address: direccion,
+    address: address,
     key: apiKey,
   });
 
@@ -37,28 +37,28 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     );
     
     if (!response.ok) {
-      throw new Error(`Error en la respuesta de la API: ${response.status}`);
+      throw new Error(`API response error: ${response.status}`);
     }
 
     const data: GeocodeResponse = await response.json();
 
     if (data.status === 'ZERO_RESULTS') {
-      return NextResponse.json({ error: "No se encontraron resultados para esta dirección." }, { status: 404 });
+      return NextResponse.json({ error: "No results found for this address." }, { status: 404 });
     }
 
     if (data.status !== 'OK') {
-      throw new Error(data.error_message || `Error en la geocodificación: ${data.status}`);
+      throw new Error(data.error_message || `Geocoding error: ${data.status}`);
     }
 
     if (!data.results || data.results.length === 0) {
-      return NextResponse.json({ error: "No se encontraron resultados para esta dirección." }, { status: 404 });
+      return NextResponse.json({ error: "No results found for this address." }, { status: 404 });
     }
 
     return NextResponse.json(data);
   } catch (error: any) {
-    console.error("Error en geocoding:", error.message);
+    console.error("Error in geocoding:", error.message);
     return NextResponse.json(
-      { error: error.message || "Error al geocodificar la dirección" },
+      { error: error.message || "Error geocoding the address" },
       { status: 500 }
     );
   }
