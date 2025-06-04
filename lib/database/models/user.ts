@@ -108,7 +108,9 @@ export class User {
             handleModelError(`User with id ${id} not found`, new Error("User not found"));
         }
         
-        return new User(data.firstName, data.lastName, data.role, data.businessId);
+        const user = new User(data.firstName, data.lastName, data.role, data.businessId);
+        user.id = data.id; // Set the actual database ID
+        return user;
     }
 
     // Get users by business
@@ -124,7 +126,11 @@ export class User {
             handleModelError("Failed to fetch users by business", error);
         }
         
-        return data.map(userData => new User(userData.firstName, userData.lastName, userData.role, userData.businessId));
+        return data.map(userData => {
+            const user = new User(userData.firstName, userData.lastName, userData.role, userData.businessId);
+            user.id = userData.id; // Set the actual database ID
+            return user;
+        });
     }
 
     // Get users by role

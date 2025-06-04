@@ -36,13 +36,11 @@ export default function BookingSizeStep({ params }: { params: Promise<{ provider
   const selectedService = selectedServiceData ? new Service(selectedServiceData) : undefined;
   const travelTimeEstimate = Number(data.traveltimeestimatenumber) || 0;
   console.log("travelTimeEstimate:dddd", travelTimeEstimate);
-  const business = { mobile: !!data.isBusinessMobile };
 
   let quote = null;
   if (selectedService) {
     quote = computeQuoteEstimation(
       selectedService,
-      business,
       travelTimeEstimate
     );
   }

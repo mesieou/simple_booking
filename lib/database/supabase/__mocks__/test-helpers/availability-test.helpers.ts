@@ -85,7 +85,6 @@ export const createTestBusiness = (): Business => {
     email: "business@example.com",
     phone: "123-456-7890",
     timeZone: TEST_CONSTANTS.TIMEZONE,
-    mobile: false,
     interfaceType: 'website',
     websiteUrl: 'https://test-business.com'
   });

@@ -91,12 +91,12 @@ export function parseWhatsappMessage(payload: WebhookAPIBody): ParsedMessage | n
         const interactiveTypeDetail = waMessage.interactive.type; // This is the object containing button_reply or list_reply
         if (interactiveTypeDetail.button_reply) {
           attachments = [{ type: 'interactive_reply', payload: interactiveTypeDetail.button_reply }];
-          textContent = interactiveTypeDetail.button_reply.title; // Use button title as text
-          console.log("[WhatsappParser] Parsed interactive button_reply. Title:", textContent);
+          textContent = interactiveTypeDetail.button_reply.id; // Use button ID (payload) for processing, not title
+          console.log("[WhatsappParser] Parsed interactive button_reply. ID:", textContent, "Title:", interactiveTypeDetail.button_reply.title);
         } else if (interactiveTypeDetail.list_reply) {
           attachments = [{ type: 'interactive_reply', payload: interactiveTypeDetail.list_reply }];
-          textContent = interactiveTypeDetail.list_reply.title; // Use list item title as text
-          console.log("[WhatsappParser] Parsed interactive list_reply. Title:", textContent);
+          textContent = interactiveTypeDetail.list_reply.id; // Use list item ID for processing
+          console.log("[WhatsappParser] Parsed interactive list_reply. ID:", textContent, "Title:", interactiveTypeDetail.list_reply.title);
         } else if (waMessage.interactive.nfm_reply) { // Handle nfm_reply if present
             attachments = [{ type: 'interactive_reply', payload: waMessage.interactive.nfm_reply, caption: waMessage.interactive.nfm_reply.name }];
             textContent = waMessage.interactive.nfm_reply.body;

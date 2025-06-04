@@ -22,8 +22,8 @@ export interface ParsedMessage {
  */
 export interface BotResponse {
   text?: string;                // Primary text response
+  buttons?: Array<{ title: string; payload: string; type?: 'postback' | 'url' }>; // Interactive buttons
   // Future enhancements for rich responses:
-  // buttons?: Array<{ title: string; payload: string; type: 'postback' | 'url' }>;
   // images?: Array<{ url: string; altText?: string }>;
   // customPayload?: any; // For channel-specific rich content not covered above
 }
