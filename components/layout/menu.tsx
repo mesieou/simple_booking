@@ -23,7 +23,7 @@ export default function Menu() {
 
   return (
     <div className="relative">
-      {/* Botón hamburguesa para móviles */}
+      {/* Hamburger button for mobile */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="md:hidden text-gray-100 focus:outline-none"
@@ -38,7 +38,7 @@ export default function Menu() {
         </svg>
       </button>
 
-      {/* Menú móvil */}
+      {/* Mobile menu */}
       <div
         className={`fixed top-0 left-0 h-full w-64 transform transition-transform duration-300 ease-in-out z-50 md:hidden shadow-xl ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
@@ -79,7 +79,7 @@ export default function Menu() {
         </div>
       </div>
 
-      {/* Menú desktop */}
+      {/* Desktop menu */}
       <div className="hidden md:flex md:w-auto md:order-1 items-center">
         <ul className="flex flex-col p-4 md:p-0 mt-4 font-medium border rounded-lg md:space-x-8 rtl:space-x-reverse md:flex-row md:mt-0 md:border-0 shadow-xl">
           {links.map(({ href, label, disabled }) => {

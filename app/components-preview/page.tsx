@@ -94,7 +94,7 @@ export default function ComponentsPreviewPage() {
             <FormError />
             <SubmitButton>Submit</SubmitButton>
             <Precios base={100} labor_min={2} />
-            <Direction texto="Address" value="Fake Street 123" onChange={() => {}} />
+            <Direction label="Address" value="Fake Street 123" onChange={() => {}} />
             <Distance onChange={() => {}} onContinue={() => {}} />
             <Calendar providerId={fakeProviderId} size={fakeSize as any} onSelect={fakeOnSelect} />
             <Hour providerId={fakeProviderId} date={fakeDate} size={fakeSize as any} onTimeSelect={fakeOnTimeSelect} />

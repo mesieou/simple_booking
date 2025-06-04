@@ -7,7 +7,7 @@ import Horarios from '@components/form/datetime-picker/hour';
 const getNextDays = (count: number): Date[] => {
   const days: Date[] = [];
   const today = new Date();
-  today.setHours(0, 0, 0, 0); // Normalizar la fecha actual a medianoche
+  today.setHours(0, 0, 0, 0); // Normalize current date to midnight
 
   for (let i = 0; i < count; i++) {
     const nextDay = new Date(today);
