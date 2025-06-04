@@ -73,12 +73,9 @@ export async function tryHandleAddressBasedPriceEstimation(
     const distanceText = element.distance.text;
 
     const mockServiceInstance = await getMockServiceForQuote();
-    const actualBusiness = await Business.getById(mockServiceInstance.businessId);
-    if (!actualBusiness) {
-      throw new Error(`Business with ID ${mockServiceInstance.businessId} (from mock service) not found.`);
-    }
-
-    const quote = computeQuoteEstimation(mockServiceInstance, actualBusiness, travelTimeEstimateInMinutes);
+    
+    // Business is no longer needed for quote calculation since mobile property is on the service
+    const quote = computeQuoteEstimation(mockServiceInstance, travelTimeEstimateInMinutes);
     const assistantResponseContent = `Okay, for the trip from "${pickupAddress}" to "${dropoffAddress}", the estimated travel time is about ${travelTimeEstimateInMinutes} minutes (distance: ${distanceText}).\nUsing our example service ("${mockServiceInstance.name}"), the total estimated price is $${quote.totalJobCost.toFixed(2)}.\nThis includes a service cost of $${quote.serviceCost.toFixed(2)} and a travel cost of $${quote.travelCost.toFixed(2)}.\n(Please note: this is a test calculation based on a standard service).\n\nNow, could you tell me what type of removal service you specifically need?`;
     
     console.log("[PriceEstimationHandler] Distance and mock price calculated.");
