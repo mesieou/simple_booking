@@ -1,5 +1,4 @@
-import { requireAuth } from "../components/auth-status";
-import FetchDataSteps from "@/components/tutorial/fetch-data-steps";
+import { requireAuth } from "../context/auth-status";
 import { InfoIcon } from "lucide-react";
 
 export default async function ProtectedPage() {
@@ -21,7 +20,6 @@ export default async function ProtectedPage() {
       </div>
       <div>
         <h2 className="font-bold text-2xl mb-4">Next Steps</h2>
-        <FetchDataSteps />
       </div>
     </div>
   );

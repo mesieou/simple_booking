@@ -1,8 +1,8 @@
 'use client'
 
 import React, { useState } from "react";
-import { useToast } from "@/components/ui/use-toast";
-import FileUpload from "@/components/ui/FileUploader";
+import { useToast } from "@/utils/use-toast";
+import FileUpload from "@components/ui/FileUploader";
 
 const PDFParser = () => {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
