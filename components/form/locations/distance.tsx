@@ -4,6 +4,9 @@ import React, { useState, useEffect } from 'react';
 import Direction from '@components/form/locations/direction';
 import { useFormContext } from '@/lib/rename-categorise-better/utils/FormContext';
 import { fetchDirectGoogleMapsDistance } from '@/lib/general-helpers/google-distance-calculator';
+import { ciudadesPermitidas } from '@/lib/rename-categorise-better/utils/locations';
+import { obtenerMensajeError } from '@/lib/rename-categorise-better/utils/locations';
+import { validarUbicacion } from '@/lib/rename-categorise-better/utils/locations';
 
 interface ErrorResult {
   error: string;

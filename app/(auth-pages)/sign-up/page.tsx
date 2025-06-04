@@ -7,7 +7,7 @@ import { useState } from "react";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
-import { useToast } from "@/utils/use-toast";
+import { useToast } from "@/lib/rename-categorise-better/utils/use-toast";
 import Link from "next/link";
 
 export default function SignUp() {

@@ -1,5 +1,5 @@
-import { createClient } from "@/lib/supabase/client";
-import { FormDataType } from "@/utils/FormContext";
+import { createClient } from "@/lib/database/supabase/client";
+import { FormDataType } from "@/lib/rename-categorise-better/utils/FormContext";
 import { v4 as uuidv4 } from "uuid";
 
 export type SaveQuoteResult = {
