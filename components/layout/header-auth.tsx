@@ -1,6 +1,6 @@
 "use client";
 
-import { hasEnvVars } from "@/lib/supabase/check-env-vars";
+import { hasEnvVars } from "@/lib/database/supabase/check-env-vars";
 import Link from "next/link";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";

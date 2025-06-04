@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Direction from '@components/form/locations/direction';
-import { validarUbicacion, obtenerMensajeError, ciudadesPermitidas } from '@/utils/locations';
-import { useFormContext } from '@/utils/FormContext';
+import { useFormContext } from '@/lib/rename-categorise-better/utils/FormContext';
+import { fetchDirectGoogleMapsDistance } from '@/lib/general-helpers/google-distance-calculator';
 
 interface ErrorResult {
   error: string;
@@ -72,22 +72,10 @@ export default function Distance({ onChange, onContinue }: DistanceProps) {
         return;
       }
 
-      const response = await fetch(`/api/maps/mapsdistance?origen=${encodeURIComponent(origen)}&destino=${encodeURIComponent(destino)}`);
-      const responseText = await response.text();
-      console.log('Respuesta del servidor:', responseText);
+      const distanceData = await fetchDirectGoogleMapsDistance(origen, destino);
 
-      if (!response.ok) {
-        try {
-          const errorData = JSON.parse(responseText);
-          throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-        } catch (parseError) {
-          throw new Error(`Error del servidor: ${responseText}`);
-        }
-      }
-
-      const data = JSON.parse(responseText);
-      const element = data.rows?.[0]?.elements?.[0];
-      if (element?.status === 'OK') {
+      if (distanceData && distanceData.status === 'OK' && distanceData.rows && distanceData.rows[0].elements && distanceData.rows[0].elements[0].status === "OK") {
+        const element = distanceData.rows[0].elements[0];
         setDistancia(element.distance.text);
         // Usar duration_in_traffic si está disponible, sino usar duration
         const tiempoEstimado = element.duration_in_traffic?.text || element.duration.text;
@@ -101,10 +89,10 @@ export default function Distance({ onChange, onContinue }: DistanceProps) {
         }));
         // Llamar a onContinue con la duración
         onContinue && onContinue(tiempoEstimado);
-      } else if (data.error) {
-        setError(data.error);
-      } else {
-        setError('No se pudo calcular la distancia.');
+      } else if (distanceData && distanceData.error_message) {
+        setError(distanceData.error_message);
+      } else if (distanceData && (distanceData.status !== 'OK' || distanceData.rows?.[0]?.elements?.[0]?.status !== 'OK')) {
+        setError('No se pudo calcular la distancia. Estado de la API: ' + distanceData.status + (distanceData.error_message ? ' - ' + distanceData.error_message : ''));
       }
     } catch (err: any) {
       console.error('Error:', err.message);

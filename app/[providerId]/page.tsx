@@ -4,8 +4,8 @@ import { useProvider } from '../context/ProviderContext';
 import { useEffect, useState } from 'react';
 import ProviderTitle from '../context/ProviderTitle';
 import { use } from 'react';
-import { createClient } from '../../lib/supabase/client';
-import { useFormContext } from '@/utils/FormContext';
+import { createClient } from '@/lib/database/supabase/client';
+import { useFormContext } from '@/lib/rename-categorise-better/utils/FormContext';
 import { useRouter } from 'next/navigation';
 
 // Componente hijo para manejar el contexto y la redirección

@@ -5,14 +5,16 @@ import { useRouter } from 'next/navigation';
 import Distance from '@components/form/locations/distance';
 import ViewForm from '@/app/context/viewform';
 import ProviderTitle from '@/app/context/ProviderTitle';
-import { useFormContext } from '@/utils/FormContext';
-import { calcularPrecioDesdeApi, segundosAMinutos, formatearDuracion } from '@/lib/models/price';
-
+import { useFormContext } from '@/lib/rename-categorise-better/utils/FormContext';
+import { calcularPrecioDesdeApi, segundosAMinutos, formatearDuracion } from '@/lib/database/models/price';
+import { fetchDirectGoogleMapsDistance } from '@/lib/general-helpers/google-distance-calculator';
 export default function BookingDistanceStep({ params }: { params: Promise<{ providerId: string }> }) {
   const router = useRouter();
   const [origen, setOrigen] = useState<string>('');
   const [destino, setDestino] = useState<string>('');
   const [duracion, setDuracion] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Obtener providerId del contexto
   const { setData, data } = useFormContext();
@@ -21,42 +23,25 @@ export default function BookingDistanceStep({ params }: { params: Promise<{ prov
   const handleContinue = async () => {
     if (!origen || !destino) return;
 
-    // 1. Llamada real a la API
-    const res = await fetch(`/api/maps/mapsdistance?origen=${encodeURIComponent(origen)}&destino=${encodeURIComponent(destino)}`);
-
-    if (!res.ok) {
-      const text = await res.text();
-      console.error('Respuesta no OK:', text);
-      alert('Error al obtener la distancia. Intenta de nuevo.');
-      return;
-    }
-
-    let dataApi;
     try {
-      dataApi = await res.json();
-    } catch (e) {
-      const text = await res.text();
-      console.error('No se pudo parsear JSON:', text);
-      alert('Respuesta inválida de la API de distancia.');
-      return;
-    }
+      setLoading(true);
+      setError(null);
 
-    // 2. Extraer el elemento de duración
-    const element = dataApi.rows[0].elements[0];
+      // 1. Llamada real a la API
+      const distanceData = await fetchDirectGoogleMapsDistance(origen, destino);
 
-    if (element.status && element.status !== 'OK') {
-      alert('No se pudo calcular la distancia.');
-      return;
-    }
+      if (distanceData && distanceData.status === 'OK' && distanceData.rows && distanceData.rows[0].elements && distanceData.rows[0].elements[0].status === "OK") {
+        // 2. Extraer el elemento de duración
+        const element = distanceData.rows[0].elements[0];
 
-    // 3. Calcular el precio
-    const precio = calcularPrecioDesdeApi(element);
-    const minutos = segundosAMinutos(element.duration.value);
-    const duracionLegible = formatearDuracion(element.duration.value);
+        // 3. Calcular el precio
+        const precio = calcularPrecioDesdeApi(element);
+        const minutos = segundosAMinutos(element.duration.value);
+        const duracionLegible = formatearDuracion(element.duration.value);
 
-    console.log("MINUTOS:", minutos);
-    console.log("DURACIÓN LEIBLE:", duracionLegible);
-    console.log("EL PRECIO ES: " + precio);
+        console.log("MINUTOS:", minutos);
+        console.log("DURACIÓN LEIBLE:", duracionLegible);
+        console.log("EL PRECIO ES: " + precio);
 
     // 5. Guardar datos y continuar
     setData(prev => ({
@@ -88,6 +73,8 @@ export default function BookingDistanceStep({ params }: { params: Promise<{ prov
             }}
             onContinue={handleContinue}
           />
+          {loading && <p>Cargando...</p>}
+          {error && <p className="text-red-500">{error}</p>}
         </div>
       </div>
     </div>

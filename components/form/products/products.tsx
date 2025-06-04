@@ -2,7 +2,7 @@
 'use client';
 
 import React from "react";
-import { useLanguage } from "@/lib/translations/language-context";
+import { useLanguage } from "@/lib/rename-categorise-better/utils/translations/language-context";
 
 interface PreciosProps {
     base?: number;

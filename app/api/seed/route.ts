@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { clearExistingData } from '@/lib/seed/clear-database';
-import { createBusinesses } from '@/lib/seed/create-businesses';
-import { createAllUsers } from '@/lib/seed/create-all-users';
-import { createQuotes } from '@/lib/seed/create-quotes';
-import { createBookings } from '@/lib/seed/create-bookings';
-import { SeedResult } from '@/lib/seed/types';
-import { User } from '@/lib/models/user';
-import { createDocuments } from '../../../lib/seed/create-documents';
-import { createEmbeddings } from '../../../lib/seed/create-embeddings';
+import { createClient } from '@/lib/database/supabase/server';
+import { clearExistingData } from '@/lib/database/seed/clear-database';
+import { createBusinesses } from '@/lib/database/seed/create-businesses';
+import { createAllUsers } from '@/lib/database/seed/create-all-users';
+import { createQuotes } from '@/lib/database/seed/create-quotes';
+import { createBookings } from '@/lib/database/seed/create-bookings';
+import { SeedResult } from '@/lib/database/seed/types';
+import { User } from '@/lib/database/models/user';
+import { createDocuments } from '@/lib/database/seed/create-documents';
+import { createEmbeddings } from '@/lib/database/seed/create-embeddings';
  
 
 export async function POST(request: Request) {

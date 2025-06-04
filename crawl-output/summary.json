@@ -1,0 +1,66 @@
+{
+  "processingStats": {
+    "totalUrls": 22,
+    "processedUrls": [
+      "pdf:Customer-Service-Handbook.pdf"
+    ],
+    "filteredUrls": [],
+    "skippedUrls": [],
+    "failedUrls": [],
+    "totalChunks": 0,
+    "processedChunks": 0,
+    "failedChunks": 0,
+    "skippedChunks": 0,
+    "totalCategories": 0,
+    "processedCategories": 0,
+    "failedCategorizations": 0,
+    "totalDocuments": 0,
+    "processedDocuments": 0,
+    "failedDocuments": 0,
+    "totalEmbeddings": 23,
+    "processedEmbeddings": 23,
+    "failedEmbeddings": 0,
+    "startTime": 1748507512254,
+    "baseOutputPath": "/Users/juanbernal/code/mesieou/2025/simple_booking/crawl-output",
+    "domainProcessingSummary": {
+      "": {
+        "prompt": "",
+        "result": ""
+      }
+    },
+    "endTime": 1748507626426
+  },
+  "durationSeconds": 114.172,
+  "allFoundUrls": [
+    "pdf:Customer-Service-Handbook.pdf#page=1",
+    "pdf:Customer-Service-Handbook.pdf#page=10",
+    "pdf:Customer-Service-Handbook.pdf#page=11",
+    "pdf:Customer-Service-Handbook.pdf#page=12",
+    "pdf:Customer-Service-Handbook.pdf#page=13",
+    "pdf:Customer-Service-Handbook.pdf#page=14",
+    "pdf:Customer-Service-Handbook.pdf#page=15",
+    "pdf:Customer-Service-Handbook.pdf#page=16",
+    "pdf:Customer-Service-Handbook.pdf#page=17",
+    "pdf:Customer-Service-Handbook.pdf#page=18",
+    "pdf:Customer-Service-Handbook.pdf#page=19",
+    "pdf:Customer-Service-Handbook.pdf#page=2",
+    "pdf:Customer-Service-Handbook.pdf#page=20",
+    "pdf:Customer-Service-Handbook.pdf#page=21",
+    "pdf:Customer-Service-Handbook.pdf#page=22",
+    "pdf:Customer-Service-Handbook.pdf#page=3",
+    "pdf:Customer-Service-Handbook.pdf#page=4",
+    "pdf:Customer-Service-Handbook.pdf#page=5",
+    "pdf:Customer-Service-Handbook.pdf#page=6",
+    "pdf:Customer-Service-Handbook.pdf#page=7",
+    "pdf:Customer-Service-Handbook.pdf#page=8",
+    "pdf:Customer-Service-Handbook.pdf#page=9"
+  ],
+  "urlLogs": [
+    {
+      "url": "pdf:Customer-Service-Handbook.pdf",
+      "status": "processed",
+      "prompt": "",
+      "result": ""
+    }
+  ]
+}
