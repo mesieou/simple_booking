@@ -18,7 +18,7 @@ export default function BookingSizeStep({ params }: { params: Promise<{ provider
   const duracion = data.traveltimeestimatenumber || null;
   const businessid = data.businessid;
 
-  // Estado para los servicios dinámicos
+  // State for dynamic services
   const [sizeOptions, setSizeOptions] = useState<ServiceData[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
@@ -31,7 +31,7 @@ export default function BookingSizeStep({ params }: { params: Promise<{ provider
       .finally(() => setLoading(false));
   }, [businessid]);
 
-  // Obtener el servicio seleccionado del contexto
+  // Get the selected service from context
   const selectedServiceData = sizeOptions.find(opt => opt.id === selectedSize);
   const selectedService = selectedServiceData ? new Service(selectedServiceData) : undefined;
   const travelTimeEstimate = Number(data.traveltimeestimatenumber) || 0;
@@ -45,7 +45,7 @@ export default function BookingSizeStep({ params }: { params: Promise<{ provider
     );
   }
 
-  // Al continuar, navegar al calendario con los datos y el size
+  // On continue, navigate to the calendar with the data and size
   const handleContinue = () => {
     if (!selectedService || !quote) return;
     setData(prev => ({
@@ -70,9 +70,9 @@ export default function BookingSizeStep({ params }: { params: Promise<{ provider
         {/* Columna derecha: Visual resumen y precios */}
         <div className="w-full md:w-1/2 bg-white rounded-xl shadow-md p-6 flex flex-col items-start">
           <h2 className="text-2xl font-bold mb-2 text-black">MOVES</h2>
-          <p className="text-gray-400 mb-4">Selecciona un <span className="font-semibold">servicio</span></p>
+          <p className="text-gray-400 mb-4">Select a <span className="font-semibold">service</span></p>
           {loading ? (
-            <div className="text-blue-500">Cargando servicios...</div>
+            <div className="text-blue-500">Loading services...</div>
           ) : (
             <div className="flex gap-4 mb-6 flex-wrap">
               {sizeOptions.map(option => (
@@ -113,14 +113,14 @@ export default function BookingSizeStep({ params }: { params: Promise<{ provider
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
-              Volver
+              Back
             </button>
             <button
               className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-lg"
               onClick={handleContinue}
               disabled={!selectedSize}
             >
-              Continuar
+              Continue
             </button>
           </div>
         </div>

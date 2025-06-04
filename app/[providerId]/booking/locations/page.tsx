@@ -10,9 +10,8 @@ import { calcularPrecioDesdeApi, segundosAMinutos, formatearDuracion } from '@/l
 import { fetchDirectGoogleMapsDistance } from '@/lib/general-helpers/google-distance-calculator';
 export default function BookingDistanceStep({ params }: { params: Promise<{ providerId: string }> }) {
   const router = useRouter();
-  const [origen, setOrigen] = useState<string>('');
-  const [destino, setDestino] = useState<string>('');
-  const [duracion, setDuracion] = useState<string | null>(null);
+  const [origin, setOrigin] = useState<string>('');
+  const [destination, setDestination] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,40 +20,40 @@ export default function BookingDistanceStep({ params }: { params: Promise<{ prov
   const providerId = data.userid;
 
   const handleContinue = async () => {
-    if (!origen || !destino) return;
+    if (!origin || !destination) return;
 
     try {
       setLoading(true);
       setError(null);
 
       // 1. Llamada real a la API
-      const distanceData = await fetchDirectGoogleMapsDistance(origen, destino);
+      const distanceData = await fetchDirectGoogleMapsDistance(origin, destination);
 
       if (distanceData && distanceData.status === 'OK' && distanceData.rows && distanceData.rows[0].elements && distanceData.rows[0].elements[0].status === "OK") {
         // 2. Extraer el elemento de duración
         const element = distanceData.rows[0].elements[0];
 
         // 3. Calcular el precio
-        const precio = calcularPrecioDesdeApi(element);
-        const minutos = segundosAMinutos(element.duration.value);
-        const duracionLegible = formatearDuracion(element.duration.value);
+        const price = calcularPrecioDesdeApi(element);
+        const minutes = segundosAMinutos(element.duration.value);
+        const readableDuration = formatearDuracion(element.duration.value);
 
-        console.log("MINUTOS:", minutos);
-        console.log("DURACIÓN LEIBLE:", duracionLegible);
-        console.log("EL PRECIO ES: " + precio);
+        console.log("MINUTES:", minutes);
+        console.log("READABLE DURATION:", readableDuration);
+        console.log("THE PRICE IS: " + price);
 
         // 5. Guardar datos y continuar
         setData(prev => ({
           ...prev,
-          pickup: origen,
-          dropoff: destino,
-          traveltimeestimate: duracionLegible,
-          traveltimeestimatenumber: minutos
+          pickup: origin,
+          dropoff: destination,
+          traveltimeestimate: readableDuration,
+          traveltimeestimatenumber: minutes
         }));
         router.push(`/${providerId}/booking/products`);
       }
     } catch (err) {
-      setError('Ocurrió un error al calcular la distancia.');
+      setError('An error occurred while calculating the distance.');
     } finally {
       setLoading(false);
     }
@@ -73,13 +72,13 @@ export default function BookingDistanceStep({ params }: { params: Promise<{ prov
           <h2 className="text-2xl font-bold mb-2 text-black">MOVES</h2>
           <p className="text-gray-400 mb-4">Enter your <span className="font-semibold">distance</span></p>
           <Distance 
-            onChange={(origen, destino) => {
-              setOrigen(origen);
-              setDestino(destino);
+            onChange={(origin, destination) => {
+              setOrigin(origin);
+              setDestination(destination);
             }}
             onContinue={handleContinue}
           />
-          {loading && <p>Cargando...</p>}
+          {loading && <p>Loading...</p>}
           {error && <p className="text-red-500">{error}</p>}
         </div>
       </div>

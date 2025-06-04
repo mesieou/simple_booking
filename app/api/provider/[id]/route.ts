@@ -19,7 +19,7 @@ export async function GET(
     return NextResponse.json(data);
   } catch (error) {
     return NextResponse.json(
-      { error: 'Error al obtener datos del proveedor' },
+      { error: 'Error fetching provider data' },
       { status: 500 }
     );
   }

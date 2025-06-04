@@ -4,10 +4,10 @@ import React, { InputHTMLAttributes, useState, useEffect, useRef } from 'react';
 
 // Extend standard input props so we can pass type, id, value, onChange, etc.
 interface DirectionProps extends InputHTMLAttributes<HTMLInputElement> {
-  texto: string;
+  label: string;
 }
 
-export default function Direction({ texto, value, onChange, ...inputProps }: DirectionProps) {
+export default function Direction({ label, value, onChange, ...inputProps }: DirectionProps) {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [inputValue, setInputValue] = useState(value as string);
@@ -38,7 +38,7 @@ export default function Direction({ texto, value, onChange, ...inputProps }: Dir
         setSuggestions(data.predictions.map((prediction: any) => prediction.description));
       }
     } catch (error) {
-      console.error('Error al obtener sugerencias:', error);
+      console.error('Error fetching suggestions:', error);
       setSuggestions([]);
     }
   };
@@ -76,7 +76,7 @@ export default function Direction({ texto, value, onChange, ...inputProps }: Dir
           </div>
           <div className="flex-grow min-w-0">
             <label htmlFor={inputProps.id} className="block text-label-5 text-left text-gray-600">
-              {texto}
+              {label}
             </label>
             <input
               {...inputProps}

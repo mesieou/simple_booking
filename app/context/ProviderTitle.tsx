@@ -12,12 +12,12 @@ export default function ProviderTitle({ providerId: propProviderId }: ProviderTi
   const effectiveProviderId = propProviderId || providerId;
   const [providerName, setProviderName] = useState<string>('');
 
-  // Si recibimos un providerId por prop y es diferente al del contexto, lo guardamos en el contexto
+  // If we receive a providerId by prop and it is different from the context, save it in the context
   useEffect(() => {
     if (propProviderId && propProviderId !== providerId) {
       setProviderId(propProviderId);
     }
-    // Solo queremos que esto se ejecute cuando cambie el propProviderId
+    // We only want this to run when propProviderId changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [propProviderId]);
 
@@ -40,12 +40,12 @@ export default function ProviderTitle({ providerId: propProviderId }: ProviderTi
     fetchProviderName();
   }, [effectiveProviderId]);
 
-  if (!effectiveProviderId) return "No hay proveedor seleccionado";
-  if (!providerName) return "No se encontró el nombre del proveedor";
+  if (!effectiveProviderId) return "No provider selected";
+  if (!providerName) return "Provider name not found";
 
   return (
     <h1 className="text-2xl font-bold mb-4">
-      Reserva con: {providerName}
+      Book with: {providerName}
     </h1>
   );
 } 

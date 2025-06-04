@@ -23,7 +23,7 @@ export default function BookingMovingStep({ params }: { params: Promise<{ provid
   const [feedback, setFeedback] = useState<string | null>(null);
 
   useEffect(() => {
-    // Si no hay businessid en el contexto, lo obtenemos de params y lo guardamos en el contexto
+    // If there is no businessid in the context, get it from params and save it in the context
     if (!data.businessid) {
       params.then(p => {
         setProviderId(p.providerId);
@@ -35,13 +35,13 @@ export default function BookingMovingStep({ params }: { params: Promise<{ provid
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.businessid, params, setData]);
 
-  // Buscar la opción de size seleccionada desde el contexto
+  // Find the selected size option from the context
   const selectedSize = SIZE_OPTIONS.find(opt => opt.key === data.size) || SIZE_OPTIONS[0];
   const traveled = 19;
   const labor_min = 213;
   const total = selectedSize.tarifa + traveled + labor_min;
 
-  // Al continuar, guardar el dato en notes
+  // On continue, save the data in notes
   const handleContinue = async () => {
     setData(prev => ({ ...prev, notes: moving }));
     setLoading(true);
@@ -49,10 +49,10 @@ export default function BookingMovingStep({ params }: { params: Promise<{ provid
     const result = await saveQuoteToSupabase({ ...data, notes: moving });
     setLoading(false);
     if (result.success) {
-      setFeedback('¡Cotización guardada exitosamente!');
-      // Aquí puedes redirigir o limpiar el formulario si lo deseas
+      setFeedback('Quote saved successfully!');
+      // Here you can redirect or clear the form if you want
     } else {
-      setFeedback('Error al guardar: ' + result.error);
+      setFeedback('Error saving: ' + result.error);
     }
   };
 
@@ -69,37 +69,37 @@ export default function BookingMovingStep({ params }: { params: Promise<{ provid
           <h2 className="text-2xl font-bold mb-4 text-black">Additional Information</h2>
           <textarea
             className="w-full min-h-[120px] max-h-60 border border-gray-300 rounded-lg p-3 text-lg mb-8 resize-y focus:outline-none focus:ring-2 focus:ring-blue-400 text-black"
-            placeholder="Describe lo que necesitas mover..."
+            placeholder="Describe what you need to move..."
             value={moving}
             onChange={e => setMoving(e.target.value)}
-            aria-label="Descripción de lo que vas a mover"
+            aria-label="Description of what you are going to move"
           />
           <div className="flex gap-4 self-end">
             <button
               className="flex items-center px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-lg"
               onClick={() => router.back()}
               tabIndex={0}
-              aria-label="Volver"
+              aria-label="Back"
               onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') router.back(); }}
             >
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
-              Volver
+              Back
             </button>
             <button
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-lg"
               onClick={handleContinue}
               disabled={!moving || loading}
               tabIndex={0}
-              aria-label="Finalizar"
+              aria-label="Finish"
               onKeyDown={e => { if ((e.key === 'Enter' || e.key === ' ') && moving && !loading) handleContinue(); }}
             >
-              {loading ? 'Guardando...' : 'Finalizar'}
+              {loading ? 'Saving...' : 'Finish'}
             </button>
           </div>
           {feedback && (
-            <div className={`mt-4 text-lg ${feedback.startsWith('¡') ? 'text-green-600' : 'text-red-600'}`}>{feedback}</div>
+            <div className={`mt-4 text-lg ${feedback.startsWith('Quote') ? 'text-green-600' : 'text-red-600'}`}>{feedback}</div>
           )}
         </div>
       </div>
