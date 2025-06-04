@@ -43,15 +43,21 @@ export default function BookingDistanceStep({ params }: { params: Promise<{ prov
         console.log("DURACIÓN LEIBLE:", duracionLegible);
         console.log("EL PRECIO ES: " + precio);
 
-    // 5. Guardar datos y continuar
-    setData(prev => ({
-      ...prev,
-      pickup: origen,
-      dropoff: destino,
-      traveltimeestimate: duracionLegible, // legible
-      traveltimeestimatenumber: minutos    // en minutos (número)
-    }));
-    router.push(`/${providerId}/booking/products`);
+        // 5. Guardar datos y continuar
+        setData(prev => ({
+          ...prev,
+          pickup: origen,
+          dropoff: destino,
+          traveltimeestimate: duracionLegible,
+          traveltimeestimatenumber: minutos
+        }));
+        router.push(`/${providerId}/booking/products`);
+      }
+    } catch (err) {
+      setError('Ocurrió un error al calcular la distancia.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

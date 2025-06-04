@@ -47,7 +47,7 @@ import { TypographyInlineCode } from "@components/typography/inline-code";
 // Weekly Hours
 import { WeeklyHours, DayAvailabilityRow, TimeRangeInput, TimeZoneSelector } from "@components/weekly-hours";
 
-import { FormProvider } from "@/utils/FormContext";
+import { FormProvider } from "@/lib/rename-categorise-better/utils/FormContext";
 
 export default function ComponentsPreviewPage() {
   // Fake data
