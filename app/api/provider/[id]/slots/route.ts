@@ -12,10 +12,10 @@ export async function GET(
     const date = searchParams.get('date');
 
     if (!providerId) {
-      return NextResponse.json({ error: 'providerId es requerido' }, { status: 400 });
+      return NextResponse.json({ error: 'providerId is required' }, { status: 400 });
     }
     if (!date) {
-      return NextResponse.json({ error: 'date es requerido' }, { status: 400 });
+      return NextResponse.json({ error: 'date is required' }, { status: 400 });
     }
 
     const supabase = await createClient();
@@ -31,6 +31,6 @@ export async function GET(
 
     return NextResponse.json(data);
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Error al obtener los slots' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Error fetching slots' }, { status: 500 });
   }
 } 

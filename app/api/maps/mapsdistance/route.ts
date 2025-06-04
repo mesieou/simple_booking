@@ -3,23 +3,23 @@ import { fetchDirectGoogleMapsDistance, DistanceApiResponse, DistanceApiError } 
 
 export async function GET(request: NextRequest): Promise<NextResponse<DistanceApiResponse | DistanceApiError>> {
   const { searchParams } = new URL(request.url);
-  const origen = searchParams.get('origen');
-  const destino = searchParams.get('destino');
+  const origin = searchParams.get('origin');
+  const destination = searchParams.get('destination');
 
-  if (!origen || !destino) {
+  if (!origin || !destination) {
     return NextResponse.json(
-      { error: 'Se requieren los parámetros origen y destino' },
+      { error: 'The parameters origin and destination are required' },
       { status: 400 }
     );
   }
 
   try {
-    const data = await fetchDirectGoogleMapsDistance(origen, destino);
+    const data = await fetchDirectGoogleMapsDistance(origin, destination);
     return NextResponse.json(data);
   } catch (error: any) {
     console.error('Error in GET /api/maps/mapsdistance:', error);
     return NextResponse.json(
-      { error: error.message || 'Error al procesar la solicitud' },
+      { error: error.message || 'Error processing the request' },
       { status: 500 }
     );
   }

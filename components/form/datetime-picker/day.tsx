@@ -8,7 +8,7 @@ import { useProvider } from '@/app/context/ProviderContext';
 const getNextDays = (count: number): Date[] => {
   const days: Date[] = [];
   const today = new Date();
-  today.setHours(0, 0, 0, 0); // Normalizar la fecha actual a medianoche
+  today.setHours(0, 0, 0, 0); // Normalize current date to midnight
 
   for (let i = 0; i < count; i++) {
     const nextDay = new Date(today);
@@ -19,9 +19,9 @@ const getNextDays = (count: number): Date[] => {
 };
 
 const SIZES = [
-  { value: 'one', label: 'Un ítem' },
-  { value: 'few', label: 'Pocos ítems' },
-  { value: 'house', label: 'Mudanza completa' }
+  { value: 'one', label: 'One item' },
+  { value: 'few', label: 'Few items' },
+  { value: 'house', label: 'Full move' }
 ] as const;
 
 type SizeType = typeof SIZES[number]['value'];
@@ -74,15 +74,15 @@ export default function Calendar() {
         </button>
       </div>
 
-      {/* Selector de tamaño de servicio */}
+      {/* Service size selector */}
       <div className="flex justify-center gap-4 mt-4">
-        <label htmlFor="size-select" className="text-white">Tipo de servicio:</label>
+        <label htmlFor="size-select" className="text-white">Service type:</label>
         <select
           id="size-select"
           className="border rounded px-2 py-1"
           value={size}
           onChange={e => setSize(e.target.value as SizeType)}
-          aria-label="Seleccionar tipo de servicio"
+          aria-label="Select service type"
         >
           {SIZES.map(s => (
             <option key={s.value} value={s.value}>{s.label}</option>
@@ -104,7 +104,7 @@ export default function Calendar() {
         </div>
       )}
       {selectedDate && !providerId && (
-        <div className="mt-8 text-red-500">Selecciona un proveedor para ver los horarios disponibles.</div>
+        <div className="mt-8 text-red-500">Select a provider to see available schedules.</div>
       )}
     </div>
   );

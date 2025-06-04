@@ -13,9 +13,9 @@ export default function BookingCalendarStep({ params }: { params: Promise<{ prov
   const { providerId } = React.use(params);
   const { data, setData } = useFormContext();
 
-  // Obtener los datos de la URL
-  const origen = searchParams.get('origen') || '--';
-  const destino = searchParams.get('destino') || '--';
+  // Get the data from the URL
+  const origin = searchParams.get('origin') || '--';
+  const destination = searchParams.get('destination') || '--';
   const sizeKey = searchParams.get('size') || 'one';
 
   const SIZE_OPTIONS = [
@@ -24,30 +24,30 @@ export default function BookingCalendarStep({ params }: { params: Promise<{ prov
     { key: 'house', label: 'House', tarifa: 120, luggers: 3, vehiculo: 'Truck' },
   ];
 
-  // Buscar la opción de size seleccionada
+  // Find the selected size option
   const selectedSize = SIZE_OPTIONS.find(opt => opt.key === sizeKey) || SIZE_OPTIONS[0];
   const traveled = 19;
   const labor_min = 213;
   const total = selectedSize.tarifa + traveled + labor_min;
 
-  // Estado para guardar la fecha/hora seleccionada
+  // State to save the selected date/time
   const [arrival, setArrival] = useState<string>('');
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTime, setSelectedTime] = useState<string>('');
 
-  // Función para manejar la selección de fecha/hora desde el calendario
+  // Function to handle date/time selection from the calendar
   const handleCalendarSelect = (date: Date, time?: string) => {
     setSelectedDate(date);
     setSelectedTime(time || '');
-    const fecha = date.toLocaleDateString();
-    const hora = time ? ` ${time}` : '';
-    setArrival(`${fecha}${hora}`);
+    const dateStr = date.toLocaleDateString();
+    const timeStr = time ? ` ${time}` : '';
+    setArrival(`${dateStr}${timeStr}`);
   };
 
-  // Al continuar, navegar al siguiente paso con los datos
+  // On continue, navigate to the next step with the data
   const handleContinue = () => {
     setData(prev => ({ ...prev, arrivaldate: arrival }));
-    router.push(`/${providerId}/booking/moving?origen=${encodeURIComponent(origen)}&destino=${encodeURIComponent(destino)}&arrival=${encodeURIComponent(arrival)}&size=${encodeURIComponent(sizeKey)}`);
+    router.push(`/${providerId}/booking/moving?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&arrival=${encodeURIComponent(arrival)}&size=${encodeURIComponent(sizeKey)}`);
   };
 
   return (
@@ -77,14 +77,14 @@ export default function BookingCalendarStep({ params }: { params: Promise<{ prov
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
-              Volver
+              Back
             </button>
             <button
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-lg"
               onClick={handleContinue}
               disabled={!arrival}
             >
-              Continuar
+              Continue
             </button>
           </div>
         </div>

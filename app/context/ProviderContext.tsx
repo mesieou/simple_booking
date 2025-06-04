@@ -22,7 +22,7 @@ export function ProviderContextProvider({ children }: { children: ReactNode }) {
 export function useProvider() {
   const context = useContext(ProviderContext);
   if (context === undefined) {
-    throw new Error('useProvider debe ser usado dentro de un ProviderContextProvider');
+    throw new Error('useProvider must be used within a ProviderContextProvider');
   }
   return context;
 } 
