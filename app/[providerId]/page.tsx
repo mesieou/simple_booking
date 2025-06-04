@@ -2,7 +2,7 @@
 
 import { useProvider } from '../context/ProviderContext';
 import { useEffect, useState } from 'react';
-import ProviderTitle from '../components/ProviderTitle';
+import ProviderTitle from '../context/ProviderTitle';
 import { use } from 'react';
 import { createClient } from '@/lib/database/supabase/client';
 import { useFormContext } from '@/lib/rename-categorise-better/utils/FormContext';
@@ -19,7 +19,7 @@ const ContinueButtonWithContext = ({ providerId, businessId }: { providerId: str
         userid: providerId,
         businessid: businessId,
       }));
-      router.push(`/${providerId}/booking/distance`);
+      router.push(`/${providerId}/booking/locations`);
     }
   };
   const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
@@ -29,7 +29,7 @@ const ContinueButtonWithContext = ({ providerId, businessId }: { providerId: str
         userid: providerId,
         businessid: businessId,
       }));
-      router.push(`/${providerId}/booking/distance`);
+      router.push(`/${providerId}/booking/locations`);
     }
   };
   return (
