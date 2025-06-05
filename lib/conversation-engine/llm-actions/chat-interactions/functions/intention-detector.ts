@@ -8,6 +8,7 @@ export interface ClientNeedResult {
   confidence: number;
 }
 
+
 /**
  * Analyzes a client's message to determine their needs and intentions
  */

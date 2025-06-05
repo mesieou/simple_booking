@@ -1,12 +1,12 @@
 import { ParsedMessage, BotResponse } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
-import { ConversationContext, ConversationMode } from "./conversation.context";
+import { ConversationContext, ConversationMode } from "./conversation-context";
 import { analyzeClientNeed, ClientNeedResult } from "./llm-actions/chat-interactions/functions/intention-detector";
 import { formatMessagesForOpenAI } from "./task-processors/openai-message-formatter";
 import { executeChatCompletion, OpenAIChatMessage } from "./llm-actions/chat-interactions/openai-config/openai-core";
 import { systemPrompt } from "./customer-interaction-prompts";
 
 // Mode handlers
-import { handleBookingModeInteraction } from "./modes/booking/booking.mode.handler";
+import { handleBookingModeInteraction } from "./modes/booking/booking.mode-handler";
 import { handleIdleModeInteraction } from "./modes/idle/idle-mode.handler";
 
 // --- Begin Stubs for other modes (to be moved to separate files later) --- 
@@ -51,6 +51,7 @@ export async function routeInteraction(
       .filter(msg => msg.role === 'user' || msg.role === 'assistant') 
       .map(msg => ({ role: msg.role as 'user' | 'assistant', content: msg.content || '' }));
       
+    // Analyze client need
     context.lastUserIntent = await analyzeClientNeed(parsedMessage.text || "", chatHistoryForIntent);
     console.log(`[MainManager] Detected intent for user ${context.userId}: ${JSON.stringify(context.lastUserIntent)}`);
   } catch (intentError) {
@@ -58,6 +59,8 @@ export async function routeInteraction(
     context.lastUserIntent = { need_type: 'general', intent: 'unknown_intent_error', confidence: 0, category: undefined };
   }
 
+
+  // If in idle mode
   let botResponse: BotResponse;
   let nextMode: ConversationMode = context.currentMode;
 

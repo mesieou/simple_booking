@@ -1,5 +1,5 @@
 import { ParsedMessage, BotResponse } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
-import { ConversationContext, ConversationMode } from "../../conversation.context";
+import { ConversationContext, ConversationMode } from "../../conversation-context";
 import { BookingState } from "./booking-sub-modes/booking.state";
 import {
   handleCreateBookingGettingSize,

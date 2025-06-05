@@ -19,7 +19,7 @@ import { BotResponse } from "@/lib/cross-channel-interfaces/standardized-convers
 
 // New Imports for the new conversation engine
 import { routeInteraction } from "@/lib/conversation-engine/main-conversation-manager";
-import { ConversationContext } from "@/lib/conversation-engine/conversation.context";
+import { ConversationContext } from "@/lib/conversation-engine/conversation-context";
 import { ParsedMessage } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
 
 export const dynamic = "force-dynamic";
@@ -74,7 +74,6 @@ export async function GET(req: NextRequest) {
 
 /**
  * POST handler: Receives WhatsApp webhook events (messages, status, etc).
- * Logs the payload using logIncomingMessage for debugging.
  */
 export async function POST(req: NextRequest) {
   if (!USE_WABA_WEBHOOK) {
@@ -85,16 +84,15 @@ export async function POST(req: NextRequest) {
   try {
     const payload = (await req.json()) as WebhookAPIBody;
     console.log("[Webhook] POST request received. Raw Payload:", JSON.stringify(payload, null, 2));
-    // Optional: Keep logIncomingMessage if it provides value beyond just raw payload logging
-    // logIncomingMessage(payload); 
 
+    // Parse incoming message
     const parsedMessage = parseWhatsappMessage(payload);
 
     if (parsedMessage && parsedMessage.senderId) { // Ensure senderId is present for replies
       console.log("[Webhook] Successfully parsed WhatsApp message:", JSON.stringify(parsedMessage, null, 2));
 
       // Initialize ConversationContext for this interaction
-      // For now, chatHistory starts fresh. Later, load from DB.
+      // For now, chatHistory starts fresh without any previous messages.
       const context: ConversationContext = {
         userId: parsedMessage.senderId,
         currentMode: 'IdleMode', 
@@ -102,8 +100,10 @@ export async function POST(req: NextRequest) {
         // lastUserIntent, bookingState, etc., will be populated by routeInteraction or loaded from DB later
       };
 
+      // Conversation manager call to route the interaction
       console.log("[Webhook] Calling routeInteraction with parsedMessage and new context.");
       try {
+        // Conversation manager
         const { finalBotResponse, updatedContext } = await routeInteraction(parsedMessage, context);
 
         console.log("[Webhook] Response from routeInteraction:", JSON.stringify(finalBotResponse, null, 2));
