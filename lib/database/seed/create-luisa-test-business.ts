@@ -30,6 +30,7 @@ export async function createLuisaTestBusiness(supabase?: SupabaseClient): Promis
     timeZone: 'Australia/Sydney',
     interfaceType: 'whatsapp',
     whatsappNumber: '+61404278733',
+    businessAddress: '9 Dryburgh st, West Melbourne, VIC 3003',
   };
 
   const businessInstance = new Business(businessData);
