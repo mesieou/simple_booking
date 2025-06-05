@@ -1,7 +1,7 @@
 // app/api/chat/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { routeInteraction } from "@/lib/conversation-engine/main-conversation-manager";
-import { ConversationContext, ConversationMode } from "@/lib/conversation-engine/conversation.context";
+import { ConversationContext, ConversationMode } from "@/lib/conversation-engine/conversation-context";
 import { ParsedMessage, BotResponse } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
 import { OpenAIChatMessage } from "@/lib/conversation-engine/llm-actions/chat-interactions/openai-config/openai-core";
 
