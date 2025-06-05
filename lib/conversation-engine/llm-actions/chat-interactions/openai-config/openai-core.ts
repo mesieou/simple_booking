@@ -53,7 +53,7 @@ export type OpenAIChatMessage = {
 };
 
 export type ChatMessage = {
-  role: 'user' | 'assistant';
+  role: 'user' | 'bot';
   content: string;
 } | {
   role: 'function';

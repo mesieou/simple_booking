@@ -67,6 +67,10 @@
         {
             "folderPath": "simple_booking\\lib\\conversation-engine\\whatsapp\\",
             "color": "foldercolorizer.color_00cc00"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\database\\",
+            "color": "foldercolorizer.color_99cc00"
         }
     ]
 }
