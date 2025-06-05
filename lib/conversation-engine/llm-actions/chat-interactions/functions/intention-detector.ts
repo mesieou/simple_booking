@@ -1,30 +1,25 @@
 import { executeChatCompletion, ChatMessage } from "@/lib/conversation-engine/llm-actions/chat-interactions/openai-config/openai-core";
-import { DocumentCategory, VALID_CATEGORIES } from "@/lib/general-config/general-config";
+import { VALID_INTENTS, ValidIntent } from "@/lib/general-config/general-config";
 
-export interface ClientNeedResult {
-  need_type: 'general' | 'specific';
-  category?: DocumentCategory;
-  intent: string;
+export interface ClientIntentResult {
+  intent: ValidIntent | 'unknown'; // Added 'unknown' for fallback cases
   confidence: number;
 }
 
 
 /**
- * Analyzes a client's message to determine their needs and intentions
+ * Analyzes a client's message to determine their primary intent.
  */
-export async function analyzeClientNeed(
+export async function detectClientIntent(
   message: string,
   history: ChatMessage[] = []
-): Promise<ClientNeedResult> {
+): Promise<ClientIntentResult> {
   try {
-    const systemPrompt = `You are an expert at understanding client needs and intentions in conversations.
-Your task is to analyze the client's message and determine:
-1. If it's a general conversation starter or has a specific need
-2. What category of need it falls into (if specific)
-3. The underlying intent of the message
+    const systemPrompt = `You are an expert at understanding client intentions in conversations.
+Your task is to analyze the client's message and determine its primary intent.
 
-If the message has a specific need, categorize it into EXACTLY one of these categories:
-${VALID_CATEGORIES.map(cat => `- ${cat}`).join('\n')}
+Categorize the message into EXACTLY one of these intents:
+${VALID_INTENTS.map(val => `- ${val}`).join('\n')}
 
 Consider the following when analyzing:
 - Cultural context and natural conversation flow
@@ -34,10 +29,8 @@ Consider the following when analyzing:
 
 Respond in this JSON format:
 {
-  "need_type": "general" | "specific",
-  "category": "one of the categories above (only if specific)",
-  "intent": "string describing the underlying intention",
-  "confidence": number (0-1)
+  "intent": "one of the intents listed above",
+  "confidence": "number (0-1 representing the confidence of the classification)"
 }`;
 
     // Format the conversation history for context
@@ -51,17 +44,17 @@ ${formattedHistory}
 Client's message:
 "${message}"
 
-Analyze the client's need and intention.`;
+Analyze the client's intent.`;
 
     const response = await executeChatCompletion([
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt }
-    ], "gpt-4o", 0.3, 500);
+    ], "gpt-4o", 0.3, 150); // Reduced max tokens as the response is simpler
 
     const resultText = response.choices[0]?.message?.content?.trim();
     if (!resultText) {
+      console.warn('LLM returned empty or no content for intent detection.');
       return {
-        need_type: 'general',
         intent: 'unknown',
         confidence: 0
       };
@@ -75,32 +68,45 @@ Analyze the client's need and intention.`;
         if (jsonMatch && jsonMatch[1]) {
           jsonText = jsonMatch[1].trim();
         } else {
+          // Fallback for cases where regex might miss, or simple ``` wrapping
           jsonText = resultText.replace(/```json|```/g, '').trim();
         }
       }
 
-      const result = JSON.parse(jsonText) as ClientNeedResult;
+      const parsedResult = JSON.parse(jsonText) as Partial<ClientIntentResult>;
       
       // Validate and normalize the result
+      let finalIntent: ValidIntent | 'unknown' = 'unknown';
+      if (parsedResult.intent && VALID_INTENTS.includes(parsedResult.intent as ValidIntent)) {
+        finalIntent = parsedResult.intent as ValidIntent;
+      } else if (parsedResult.intent) {
+        console.warn(`LLM returned an invalid intent: '${parsedResult.intent}'. Falling back to 'unknown'.`);
+      } else {
+        console.warn(`LLM response did not contain an intent. Full response: ${resultText}`);
+      }
+      
+      const confidence = typeof parsedResult.confidence === 'number' ? 
+        Math.max(0, Math.min(1, parsedResult.confidence)) : 0.5; // Default confidence if not provided or invalid
+
+      if (finalIntent === 'unknown' && confidence === 0.5) {
+         // If intent became 'unknown' due to parsing/validation issues, and confidence is default, it might indicate a problem.
+         console.warn(`Intent classified as 'unknown' with default confidence. Review LLM response: ${resultText}`);
+      }
+
       return {
-        need_type: result.need_type === 'specific' ? 'specific' : 'general',
-        category: result.category as DocumentCategory | undefined,
-        intent: result.intent || 'unknown',
-        confidence: typeof result.confidence === 'number' ? 
-          Math.max(0, Math.min(1, result.confidence)) : 0.5
+        intent: finalIntent,
+        confidence: confidence
       };
     } catch (parseError) {
-      console.error('Error parsing client need result:', parseError);
+      console.error('Error parsing client intent result from LLM:', parseError, `Raw text: "${resultText}"`);
       return {
-        need_type: 'general',
         intent: 'unknown',
         confidence: 0
       };
     }
   } catch (error) {
-    console.error('Error analyzing client need:', error);
+    console.error('Error detecting client intent:', error);
     return {
-      need_type: 'general',
       intent: 'unknown',
       confidence: 0
     };
