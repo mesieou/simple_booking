@@ -6,7 +6,7 @@ type StepProgressStatus = 'waitingForInput' | 'inputReceivedAndProcessed' | 'pro
 
 // Configuration constants
 const BOT_CONFIG = {
-  DEFAULT_BUSINESS_ID: 'd6f5e8b7-cb97-4ad4-abbc-bccece483b4d', // Beauty Asiul business ID
+  DEFAULT_BUSINESS_ID: '26f1f7ce-f595-45bd-aca0-5d8497fb36e0', // Beauty Asiul business ID
   DEFAULT_TIMEZONE: 'Australia/Melbourne',
   DEFAULT_LANGUAGE: 'en',
   SESSION_TIMEOUT_HOURS: 24
@@ -47,6 +47,7 @@ interface UserGoal {
     content: string;
     messageTimestamp: Date;
   }>;
+  flowKey: string;
 }
 
 export interface LLMProcessingResult {
@@ -94,61 +95,56 @@ export interface IndividualStepHandler {
 }
 
 // --- Conversation Flow Configuration ---
-const conversationFlowBlueprints: Record<string, { orderedSteps: string[] }> = {
-  'business-accountManagement-create': {
-    orderedSteps: ['getName', 'getBusinessEmail', 'getBusinessPhone', 'selectTimeZone', 'confirmAccountDetails']
-  },
-  'business-accountManagement-delete': {
-    orderedSteps: ['confirmDeletionRequest', 'verifyUserPassword', 'initiateAccountDeletion']
-  },
-  'customer-serviceBooking-create': {
-    orderedSteps: ['displayServices', 'getServicesChosen', 'askAddressesForChosenService', 'validateAddress', 'displayConfirmedAddresses','displayQuote', "displayQuoteInDetail", "askToBook", "displayNextAvailableTimes", "getDate",  "displayAvailableHoursPerDay", "getTime", "isNewUser", "askEmail", "validateEmail", "createBooking", "displayConfirmedBooking", "sendEmailBookingConfirmation"]
-  },
-  'customer-frequentlyAskedQuestion': {
-    orderedSteps: ['identifyUserQuestion', 'searchKnowledgeBase', 'provideAnswerToUser', 'checkUserSatisfaction']
-  },
+const conversationFlowBlueprints: Record<string, string[]> = {
+  businessAccountCreation: ['getName', 'getBusinessEmail', 'getBusinessPhone', 'selectTimeZone', 'confirmAccountDetails'],
+  businessAccountDeletion: ['confirmDeletionRequest', 'verifyUserPassword', 'initiateAccountDeletion'],
+  bookingCreatingForMobileService: ['askAddress', 'validateAddress', 'selectService', 'confirmLocation', 'displayQuote', 'displayQuoteInDetail', 'askToBook', 'displayNextAvailableTimes', 'getDate', 'displayAvailableHoursPerDay', 'getTime', 'isNewUser', 'askEmail', 'validateEmail', 'createBooking', 'displayConfirmedBooking', 'sendEmailBookingConfirmation'],
+  bookingCreatingForNoneMobileService: ['selectService', 'confirmLocation', 'displayNextAvailableTimes', 'getDate', 'displayAvailableHoursPerDay', 'getTime', 'isNewUser', 'askEmail', 'validateEmail', 'createBooking', 'displayConfirmedBooking', 'sendEmailBookingConfirmation'],
+  customerFaqHandling: ['identifyUserQuestion', 'searchKnowledgeBase', 'provideAnswerToUser', 'checkUserSatisfaction'],
 };
 
 // Import step handlers
 import { getBusinessEmailHandler } from './step-handlers/business-account-steps';
 import { 
-    displayServicesHandler, 
-    getServicesChosenHandler, 
-    askAddressesForChosenServiceHandler 
+    askAddressHandler,
+    validateAddressHandler,
+    selectServiceHandler, 
+    confirmLocationHandler,
+    displayQuoteHandler,
+    displayQuoteInDetailHandler,
+    askToBookHandler,
+    displayNextAvailableTimesHandler,
+    getDateHandler,
+    displayAvailableHoursPerDayHandler,
+    getTimeHandler,
+    isNewUserHandler,
+    askEmailHandler,
+    validateEmailHandler,
+    createBookingHandler,
+    displayConfirmedBookingHandler,
+    sendEmailBookingConfirmationHandler
 } from './step-handlers/customer-booking-steps';
 
-const individualStepHandlers: Record<string, IndividualStepHandler> = {
-  'getBusinessEmail': getBusinessEmailHandler,
-  'displayServices': displayServicesHandler,
-  'getServicesChosen': getServicesChosenHandler,
-  'askAddressesForChosenService': askAddressesForChosenServiceHandler,
+const botTasks: Record<string, IndividualStepHandler> = {
+  getBusinessEmail: getBusinessEmailHandler,
+  askAddress: askAddressHandler,
+  validateAddress: validateAddressHandler,
+  selectService: selectServiceHandler,
+  confirmLocation: confirmLocationHandler,
+  displayQuote: displayQuoteHandler,
+  displayQuoteInDetail: displayQuoteInDetailHandler,
+  askToBook: askToBookHandler,
+  displayNextAvailableTimes: displayNextAvailableTimesHandler,
+  getDate: getDateHandler,
+  displayAvailableHoursPerDay: displayAvailableHoursPerDayHandler,
+  getTime: getTimeHandler,
+  isNewUser: isNewUserHandler,
+  askEmail: askEmailHandler,
+  validateEmail: validateEmailHandler,
+  createBooking: createBookingHandler,
+  displayConfirmedBooking: displayConfirmedBookingHandler,
+  sendEmailBookingConfirmation: sendEmailBookingConfirmationHandler,
 };
-
-// --- Flow Navigation Class ---
-class ConversationFlowNavigator {
-  private currentFlowKey: string;
-  private definedSteps: string[];
-
-  constructor(participantType: ConversationalParticipantType, userGoalType: UserGoalType, goalAction?: GoalActionType) {
-    this.currentFlowKey = `${participantType}-${userGoalType}${goalAction ? '-' + goalAction : ''}`;
-    const flowBlueprint = conversationFlowBlueprints[this.currentFlowKey];
-    if (!flowBlueprint) {
-      throw new Error(`Conversation flow blueprint not found for: ${this.currentFlowKey}`);
-    }
-    this.definedSteps = flowBlueprint.orderedSteps;
-  }
-
-  // Gets the handler for the current step
-  getHandlerForCurrentStep(stepIndex: number): IndividualStepHandler | null {
-    const stepName = this.definedSteps[stepIndex];
-    return individualStepHandlers[stepName] || null;
-  }
-
-  // Checks if all steps are completed
-  isFlowCompleted(currentStepIndex: number): boolean {
-    return currentStepIndex >= this.definedSteps.length;
-  }
-}
 
 // --- LLM Interface (Mock Implementation) ---
 class LLMService {
@@ -245,26 +241,64 @@ class MessageProcessor {
   }
 
   // Creates a new goal when intention is detected
-  private createNewGoal(detectionResult: LLMProcessingResult): UserGoal {
+  private async createNewGoal(detectionResult: LLMProcessingResult, participantType: ConversationalParticipantType, context: ChatContext): Promise<UserGoal> {
+    // Determine the correct flow to use
+    let flowKey: string;
+    let servicesData: any[] = [];
+    
+    if (participantType === 'customer' && detectionResult.detectedUserGoalType === 'serviceBooking' && detectionResult.detectedGoalAction === 'create') {
+      // Check if business has mobile services upfront
+      const businessId = context.currentParticipant.associatedBusinessId;
+      if (businessId) {
+        try {
+          const { Service } = await import('../database/models/service');
+          const services = await Service.getByBusiness(businessId);
+          servicesData = services.map(s => s.getData());
+          const hasMobileServices = servicesData.some((service: any) => service.mobile === true);
+          flowKey = hasMobileServices ? 'bookingCreatingForMobileService' : 'bookingCreatingForNoneMobileService';
+        } catch (error) {
+          console.error('Error loading services for flow determination:', error);
+          flowKey = 'bookingCreatingForMobileService'; // Default fallback
+        }
+      } else {
+        flowKey = 'bookingCreatingForMobileService'; // Default fallback
+      }
+    } else if (participantType === 'customer' && detectionResult.detectedUserGoalType === 'frequentlyAskedQuestion') {
+      flowKey = 'customerFaqHandling';
+    } else if (participantType === 'business' && detectionResult.detectedUserGoalType === 'accountManagement') {
+      flowKey = detectionResult.detectedGoalAction === 'create' ? 'businessAccountCreation' : 'businessAccountDeletion';
+    } else {
+      throw new Error(`No flow found for: ${participantType}-${detectionResult.detectedUserGoalType}-${detectionResult.detectedGoalAction || 'none'}`);
+    }
+    
     return {
       goalType: detectionResult.detectedUserGoalType!,
       goalAction: detectionResult.detectedGoalAction,
-        goalStatus: 'inProgress',
-        currentStepIndex: 0,
-      collectedData: detectionResult.extractedInformation || {},
-      messageHistory: []
+      goalStatus: 'inProgress',
+      currentStepIndex: 0,
+      collectedData: { 
+        ...detectionResult.extractedInformation,
+        availableServices: servicesData // Store services data from the start
+      },
+      messageHistory: [],
+      flowKey
     };
   }
 
   // Executes the first step of a new goal immediately
   private async executeFirstStep(
     userCurrentGoal: UserGoal, 
-    flowNavigator: ConversationFlowNavigator, 
     currentContext: ChatContext, 
     incomingUserMessage: string
   ): Promise<{ responseToUser: string; uiButtonsToDisplay?: ButtonConfig[] }> {
     
-    const firstStepHandler = flowNavigator.getHandlerForCurrentStep(userCurrentGoal.currentStepIndex);
+    const currentSteps = conversationFlowBlueprints[userCurrentGoal.flowKey];
+    if (!currentSteps || !currentSteps[userCurrentGoal.currentStepIndex]) {
+      throw new Error('No handler found for first step');
+    }
+
+    const stepName = currentSteps[userCurrentGoal.currentStepIndex];
+    const firstStepHandler = botTasks[stepName];
     
     if (!firstStepHandler) {
       throw new Error('No handler found for first step');
@@ -297,12 +331,17 @@ class MessageProcessor {
   // Processes user input for an existing goal
   private async processExistingGoal(
     userCurrentGoal: UserGoal,
-    flowNavigator: ConversationFlowNavigator,
     currentContext: ChatContext,
     incomingUserMessage: string
   ): Promise<{ responseToUser: string; uiButtonsToDisplay?: ButtonConfig[] }> {
     
-  const currentStepHandler = flowNavigator.getHandlerForCurrentStep(userCurrentGoal.currentStepIndex);
+    const currentSteps = conversationFlowBlueprints[userCurrentGoal.flowKey];
+    if (!currentSteps || !currentSteps[userCurrentGoal.currentStepIndex]) {
+      throw new Error('No handler found for current step');
+    }
+
+    const stepName = currentSteps[userCurrentGoal.currentStepIndex];
+    const currentStepHandler = botTasks[stepName];
 
     if (!currentStepHandler) {
       throw new Error('No handler found for current step');
@@ -327,21 +366,32 @@ class MessageProcessor {
 
       userCurrentGoal.currentStepIndex++;
       
-      if (flowNavigator.isFlowCompleted(userCurrentGoal.currentStepIndex)) {
+      // Check if flow is completed
+      if (userCurrentGoal.currentStepIndex >= currentSteps.length) {
         userCurrentGoal.goalStatus = 'completed';
         responseToUser = "Great! Your booking request has been processed.";
         uiButtonsToDisplay = undefined;
       } else {
-        // Get the NEXT step handler and show its prompt and buttons
-        const nextStepHandler = flowNavigator.getHandlerForCurrentStep(userCurrentGoal.currentStepIndex);
+        // Get the NEXT step handler and execute it to show dynamic content
+        const nextStepName = currentSteps[userCurrentGoal.currentStepIndex];
+        const nextStepHandler = botTasks[nextStepName];
         if (nextStepHandler) {
-          responseToUser = nextStepHandler.defaultChatbotPrompt || "Let's continue with your booking.";
+          // Execute the next step's processAndExtractData to generate dynamic content
+          const nextStepResult = await nextStepHandler.processAndExtractData("", userCurrentGoal.collectedData, currentContext);
+          userCurrentGoal.collectedData = typeof nextStepResult === 'object' && 'extractedInformation' in nextStepResult ?
+                                          { ...userCurrentGoal.collectedData, ...nextStepResult.extractedInformation } :
+                                          nextStepResult as Record<string, any>;
+          
+          // Use dynamic content if available, otherwise fall back to default prompt
+          responseToUser = userCurrentGoal.collectedData.confirmationMessage || 
+                          nextStepHandler.defaultChatbotPrompt || 
+                          "Let's continue with your booking.";
           
           if (nextStepHandler.fixedUiButtons) {
-          if (typeof nextStepHandler.fixedUiButtons === 'function') {
-            uiButtonsToDisplay = await nextStepHandler.fixedUiButtons(userCurrentGoal.collectedData, currentContext);
-          } else {
-            uiButtonsToDisplay = nextStepHandler.fixedUiButtons;
+            if (typeof nextStepHandler.fixedUiButtons === 'function') {
+              uiButtonsToDisplay = await nextStepHandler.fixedUiButtons(userCurrentGoal.collectedData, currentContext);
+            } else {
+              uiButtonsToDisplay = nextStepHandler.fixedUiButtons;
             }
           }
         } else {
@@ -399,7 +449,6 @@ class MessageProcessor {
 
     // Find or detect user goal
     let userCurrentGoal: UserGoal | undefined = activeSession.activeGoals.find(g => g.goalStatus === 'inProgress');
-    let flowNavigator: ConversationFlowNavigator;
     let responseToUser: string = "I'm not sure how to help with that. Can you please rephrase?";
     let uiButtonsToDisplay: ButtonConfig[] | undefined;
 
@@ -408,12 +457,11 @@ class MessageProcessor {
       const llmGoalDetectionResult = await this.llmService.detectIntention(incomingUserMessage, currentContext);
       
       if (llmGoalDetectionResult.detectedUserGoalType) {
-        userCurrentGoal = this.createNewGoal(llmGoalDetectionResult);
+        userCurrentGoal = await this.createNewGoal(llmGoalDetectionResult, currentUser.type, currentContext);
         activeSession.activeGoals.push(userCurrentGoal);
 
         // Execute first step immediately
-        flowNavigator = new ConversationFlowNavigator(currentUser.type, userCurrentGoal.goalType, userCurrentGoal.goalAction);
-        const result = await this.executeFirstStep(userCurrentGoal, flowNavigator, currentContext, incomingUserMessage);
+        const result = await this.executeFirstStep(userCurrentGoal, currentContext, incomingUserMessage);
         responseToUser = result.responseToUser;
         uiButtonsToDisplay = result.uiButtonsToDisplay;
         
@@ -427,8 +475,7 @@ class MessageProcessor {
     }
 
     // Process existing goal
-    flowNavigator = new ConversationFlowNavigator(currentUser.type, userCurrentGoal.goalType, userCurrentGoal.goalAction);
-    const result = await this.processExistingGoal(userCurrentGoal, flowNavigator, currentContext, incomingUserMessage);
+    const result = await this.processExistingGoal(userCurrentGoal, currentContext, incomingUserMessage);
     responseToUser = result.responseToUser;
     uiButtonsToDisplay = result.uiButtonsToDisplay;
 

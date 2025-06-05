@@ -113,22 +113,22 @@ export interface Message {
     customer: string;
   };
   interactive?: {
-    type: {
-      button_reply?: {
-        id: string;
-        title: string;
-      };
-      list_reply?: {
-        id: string;
-        title: string;
-        description?: string;
-      };
+    type: "button_reply" | "list_reply" | "nfm_reply" | string;
+    button_reply?: {
+      id: string;
+      title: string;
+    };
+    list_reply?: {
+      id: string;
+      title: string;
+      description?: string;
     };
     nfm_reply?: {
       response_json: string;
       body: string;
       name: string;
     };
+    [key: string]: any;
   };
   errors?: {
     code: number;

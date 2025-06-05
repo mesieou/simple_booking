@@ -87,20 +87,41 @@ export function parseWhatsappMessage(payload: WebhookAPIBody): ParsedMessage | n
       console.log("[WhatsappParser] Parsed contacts message.");
       break;
     case 'interactive':
-      if (waMessage.interactive) { // Check if interactive object exists
-        const interactiveTypeDetail = waMessage.interactive.type; // This is the object containing button_reply or list_reply
-        if (interactiveTypeDetail.button_reply) {
-          attachments = [{ type: 'interactive_reply', payload: interactiveTypeDetail.button_reply }];
-          textContent = interactiveTypeDetail.button_reply.id; // Use button ID (payload) for processing, not title
-          console.log("[WhatsappParser] Parsed interactive button_reply. ID:", textContent, "Title:", interactiveTypeDetail.button_reply.title);
-        } else if (interactiveTypeDetail.list_reply) {
-          attachments = [{ type: 'interactive_reply', payload: interactiveTypeDetail.list_reply }];
-          textContent = interactiveTypeDetail.list_reply.id; // Use list item ID for processing
-          console.log("[WhatsappParser] Parsed interactive list_reply. ID:", textContent, "Title:", interactiveTypeDetail.list_reply.title);
-        } else if (waMessage.interactive.nfm_reply) { // Handle nfm_reply if present
-            attachments = [{ type: 'interactive_reply', payload: waMessage.interactive.nfm_reply, caption: waMessage.interactive.nfm_reply.name }];
-            textContent = waMessage.interactive.nfm_reply.body;
-            console.log("[WhatsappParser] Parsed interactive nfm_reply. Body:", textContent);
+      if (waMessage.interactive) {
+        const interactiveType = waMessage.interactive.type;
+        console.log(`[WhatsappParser] Processing interactive type: ${interactiveType}`);
+        
+        // Handle button replies (≤3 options)
+        if (interactiveType === 'button_reply' && waMessage.interactive.button_reply) {
+          attachments = [{ type: 'interactive_reply', payload: waMessage.interactive.button_reply }];
+          textContent = waMessage.interactive.button_reply.id;
+          console.log("[WhatsappParser] Parsed interactive button_reply. ID:", textContent, "Title:", waMessage.interactive.button_reply.title);
+        }
+        // Handle list replies (>3 options)  
+        else if (interactiveType === 'list_reply' && waMessage.interactive.list_reply) {
+          attachments = [{ type: 'interactive_reply', payload: waMessage.interactive.list_reply }];
+          textContent = waMessage.interactive.list_reply.id;
+          console.log("[WhatsappParser] Parsed interactive list_reply. ID:", textContent, "Title:", waMessage.interactive.list_reply.title);
+        }
+        // Handle NFM (Native Flow Message) replies
+        else if (interactiveType === 'nfm_reply' && waMessage.interactive.nfm_reply) {
+          attachments = [{ type: 'interactive_reply', payload: waMessage.interactive.nfm_reply, caption: waMessage.interactive.nfm_reply.name }];
+          textContent = waMessage.interactive.nfm_reply.body;
+          console.log("[WhatsappParser] Parsed interactive nfm_reply. Body:", textContent);
+        }
+        // Generic handler for any other interactive types
+        else {
+          // Try to find any interactive reply data
+          const replyData = waMessage.interactive[`${interactiveType}`];
+          if (replyData && typeof replyData === 'object') {
+            attachments = [{ type: 'interactive_reply', payload: replyData }];
+            // Try to extract ID or value from common properties
+            textContent = replyData.id || replyData.value || replyData.body || replyData.title;
+            console.log(`[WhatsappParser] Parsed generic interactive ${interactiveType}. Extracted content:`, textContent);
+          } else {
+            console.warn("[WhatsappParser] Interactive message type received but couldn't extract data:", interactiveType);
+            attachments = [{ type: 'interactive_reply', payload: waMessage.interactive }];
+          }
         }
       } else {
         console.warn("[WhatsappParser] Interactive message type received, but 'interactive' object is missing.");

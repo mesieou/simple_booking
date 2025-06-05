@@ -12,6 +12,7 @@ export interface BusinessData {
     interfaceType: InterfaceType;
     websiteUrl?: string;
     whatsappNumber?: string;
+    businessAddress?: string;
     createdAt?: string;
     updatedAt?: string;
 }
@@ -41,6 +42,7 @@ export class Business {
             "interfaceType": this.data.interfaceType,
             "websiteUrl": this.data.websiteUrl,
             "whatsappNumber": this.data.whatsappNumber,
+            "businessAddress": this.data.businessAddress,
             "createdAt": new Date().toISOString(),
             "updatedAt": new Date().toISOString()
         }
@@ -106,6 +108,7 @@ export class Business {
             "interfaceType": businessData.interfaceType,
             "websiteUrl": businessData.websiteUrl,
             "whatsappNumber": businessData.whatsappNumber,
+            "businessAddress": businessData.businessAddress,
             "updatedAt": new Date().toISOString()
         }
         
@@ -156,4 +159,5 @@ export class Business {
     get interfaceType(): InterfaceType { return this.data.interfaceType; }
     get websiteUrl(): string | undefined { return this.data.websiteUrl; }
     get whatsappNumber(): string | undefined { return this.data.whatsappNumber; }
+    get businessAddress(): string | undefined { return this.data.businessAddress; }
 }
