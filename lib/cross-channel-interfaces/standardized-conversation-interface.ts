@@ -7,6 +7,7 @@ export interface ParsedMessage {
   senderId: string;           // User's unique ID on that channel
   userName?: string;          // User's display name, if available
   recipientId: string;        // Your bot's ID/number on that channel
+  businessWhatsappNumber?: string; // The business WhatsApp number customers are messaging TO (for WhatsApp)
   timestamp: Date;            // Standardized timestamp
   text?: string;               // Primary text content of the message
   attachments?: Array<{

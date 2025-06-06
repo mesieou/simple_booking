@@ -2,6 +2,7 @@ import { Business, type BusinessData } from '../models/business';
 import { User, type UserRole } from '../models/user';
 import { Service, type ServiceData, type PricingType } from '../models/service';
 import { CalendarSettings, type CalendarSettingsData, type ProviderWorkingHours } from '../models/calendar-settings';
+import { computeInitialAvailability } from '../../general-helpers/availability';
 import { v4 as uuidv4 } from 'uuid';
 import { createClient } from '../supabase/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -29,7 +30,7 @@ export async function createLuisaTestBusiness(supabase?: SupabaseClient): Promis
     phone: '+61452678816',
     timeZone: 'Australia/Sydney',
     interfaceType: 'whatsapp',
-    whatsappNumber: '+61404278733',
+    whatsappNumber: '+61411851098',
     businessAddress: '9 Dryburgh st, West Melbourne, VIC 3003',
   };
 
@@ -138,6 +139,25 @@ export async function createLuisaTestBusiness(supabase?: SupabaseClient): Promis
     throw new Error('[SEED] Failed to create calendar settings - No ID returned');
   }
   console.log(`[SEED] Calendar settings created with ID: ${calendarSettingsInstance.id}`);
+
+  // --- CREATE INITIAL AVAILABILITY ---
+  console.log('[SEED] Creating initial availability slots...');
+  
+  // Create User instance for availability computation  
+  const userInstance = new User(
+    createdUser.firstName,
+    createdUser.lastName,
+    createdUser.role as UserRole,
+    createdBusiness.id
+  );
+  userInstance.id = createdUser.id;
+
+  // Create initial availability for provider (simple pattern)
+  const fromDate = new Date();
+  const initialAvailability = await computeInitialAvailability(userInstance, fromDate, 30, businessInstance);
+  await Promise.all(initialAvailability.map(slots => slots.add()));
+  
+  console.log(`[SEED] Created initial availability for ${initialAvailability.length} days`);
 
   console.log('[SEED] Database seeding completed successfully!');
   
