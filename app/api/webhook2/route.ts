@@ -74,6 +74,7 @@ export async function POST(req: NextRequest) {
       const participant: ConversationalParticipant = {
         id: parsedMessage.senderId,
         type: 'customer', // Assuming WhatsApp users are customers
+        businessWhatsappNumber: parsedMessage.businessWhatsappNumber, // Business WhatsApp number customers message TO
         creationTimestamp: parsedMessage.timestamp ? new Date(parsedMessage.timestamp) : new Date(),
         lastUpdatedTimestamp: new Date(),
         // Add other participant details if available from parsedMessage or context

@@ -41,6 +41,7 @@ export function parseWhatsappMessage(payload: WebhookAPIBody): ParsedMessage | n
     senderId: waMessage.from,
     userName: contactProfile?.name,
     recipientId: waMetadata.phone_number_id,
+    businessWhatsappNumber: waMetadata.display_phone_number, // Business WhatsApp number customers message TO
     timestamp: new Date(parseInt(waMessage.timestamp) * 1000),
     originalPayload: payload,
   };
