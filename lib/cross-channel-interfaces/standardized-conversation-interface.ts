@@ -7,6 +7,7 @@ export interface ParsedMessage {
   senderId: string;           // User's unique ID on that channel
   userName?: string;          // User's display name, if available
   recipientId: string;        // Your bot's ID/number on that channel
+  businessWhatsappNumber?: string; // The business WhatsApp number customers are messaging TO (for WhatsApp)
   timestamp: Date;            // Standardized timestamp
   text?: string;               // Primary text content of the message
   attachments?: Array<{
@@ -22,8 +23,8 @@ export interface ParsedMessage {
  */
 export interface BotResponse {
   text?: string;                // Primary text response
+  buttons?: Array<{ title: string; payload: string; type?: 'postback' | 'url' }>; // Interactive buttons
   // Future enhancements for rich responses:
-  // buttons?: Array<{ title: string; payload: string; type: 'postback' | 'url' }>;
   // images?: Array<{ url: string; altText?: string }>;
   // customPayload?: any; // For channel-specific rich content not covered above
 }

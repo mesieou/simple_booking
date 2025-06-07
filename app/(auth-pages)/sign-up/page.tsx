@@ -4,10 +4,10 @@ import { createClient } from "@/lib/database/supabase/client";
 import { useAuth } from "@/app/context/auth-context";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/use-toast";
+import { Button } from "@components/ui/button";
+import { Input } from "@components/ui/input";
+import { Label } from "@components/ui/label";
+import { useToast } from "@/lib/rename-categorise-better/utils/use-toast";
 import Link from "next/link";
 
 export default function SignUp() {
@@ -25,8 +25,8 @@ export default function SignUp() {
 
     if (password !== confirmPassword) {
       toast({
-        title: "Error de validación",
-        description: "Las contraseñas no coinciden",
+        title: "Validation error",
+        description: "Passwords do not match",
         variant: "destructive",
       });
       setLoading(false);
@@ -52,15 +52,15 @@ export default function SignUp() {
       
       // Show success message
       toast({
-        title: "Registro exitoso",
-        description: "Por favor, verifica tu correo electrónico para completar el registro",
+        title: "Sign up successful",
+        description: "Please check your email to complete the registration",
       });
 
       // The middleware will handle the redirect
     } catch (error: any) {
       toast({
-        title: "Error al registrarse",
-        description: error.message || "Ocurrió un error al crear la cuenta",
+        title: "Sign up error",
+        description: error.message || "An error occurred while creating the account",
         variant: "destructive",
       });
     } finally {
@@ -75,19 +75,19 @@ export default function SignUp() {
         onSubmit={handleSignUp}
       >
         <div className="flex flex-col gap-2 text-center">
-          <h1 className="text-2xl font-bold">Crear cuenta</h1>
+          <h1 className="text-2xl font-bold">Sign Up</h1>
           <p className="text-muted-foreground">
-            Ingresa tus datos para crear tu cuenta
+            Enter your details to create your account
           </p>
         </div>
 
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="email">Correo electrónico</Label>
+            <Label htmlFor="email">Email</Label>
             <Input
               id="email"
               type="email"
-              placeholder="tu@email.com"
+              placeholder="your@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -97,7 +97,7 @@ export default function SignUp() {
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="password">Contraseña</Label>
+            <Label htmlFor="password">Password</Label>
             <Input
               id="password"
               type="password"
@@ -111,7 +111,7 @@ export default function SignUp() {
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="confirmPassword">Confirmar contraseña</Label>
+            <Label htmlFor="confirmPassword">Confirm password</Label>
             <Input
               id="confirmPassword"
               type="password"
@@ -126,13 +126,13 @@ export default function SignUp() {
         </div>
 
         <Button type="submit" disabled={loading}>
-          {loading ? "Creando cuenta..." : "Crear cuenta"}
+          {loading ? "Creating account..." : "Sign Up"}
         </Button>
 
         <p className="text-center text-sm text-muted-foreground">
-          ¿Ya tienes una cuenta?{" "}
+          Already have an account?{" "}
           <Link href="/sign-in" className="text-primary hover:underline">
-            Iniciar sesión
+            Sign In
           </Link>
         </p>
       </form>

@@ -108,12 +108,12 @@ export function parseWhatsappMessage(payload: WebhookAPIBody): ParsedMessage | P
         break;
       case 'interactive':
         const interactive = waMessage.interactive;
-        if (interactive?.type?.button_reply) {
-          attachments.push({ type: 'interactive_reply', payload: interactive.type.button_reply });
-          textContent = interactive.type.button_reply.title;
-        } else if (interactive?.type?.list_reply) {
-          attachments.push({ type: 'interactive_reply', payload: interactive.type.list_reply });
-          textContent = interactive.type.list_reply.title;
+        if (interactive?.button_reply) {
+          attachments.push({ type: 'interactive_reply', payload: interactive.button_reply });
+          textContent = interactive.button_reply.title;
+        } else if (interactive?.list_reply) {
+          attachments.push({ type: 'interactive_reply', payload: interactive.list_reply });
+          textContent = interactive.list_reply.title;
         } else if (interactive?.nfm_reply) {
           attachments.push({ type: 'interactive_reply', payload: interactive.nfm_reply });
           textContent = interactive.nfm_reply.body;

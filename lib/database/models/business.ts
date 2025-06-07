@@ -9,10 +9,10 @@ export interface BusinessData {
     email: string;
     phone: string;
     timeZone: string;
-    mobile: boolean;
     interfaceType: InterfaceType;
     websiteUrl?: string;
     whatsappNumber?: string;
+    businessAddress?: string;
     createdAt?: string;
     updatedAt?: string;
 }
@@ -25,7 +25,6 @@ export class Business {
         if (!data.email) handleModelError("Email is required", new Error("Missing email"));
         if (!data.phone) handleModelError("Phone is required", new Error("Missing phone"));
         if (!data.timeZone) handleModelError("Time zone is required", new Error("Missing timeZone"));
-        if (data.mobile === undefined) handleModelError("Mobile is required", new Error("Missing mobile"));
         if (!['whatsapp', 'website'].includes(data.interfaceType)) handleModelError("Interface type must be 'whatsapp' or 'website'", new Error("Invalid interfaceType"));
         if (data.interfaceType === 'whatsapp' && !data.whatsappNumber) handleModelError("Whatsapp number is required if interface type is 'whatsapp'", new Error("Missing whatsappNumber"));
         this.data = data;
@@ -40,10 +39,10 @@ export class Business {
             "email": this.data.email,
             "phone": this.data.phone,
             "timeZone": this.data.timeZone,
-            "mobile": this.data.mobile,
             "interfaceType": this.data.interfaceType,
             "websiteUrl": this.data.websiteUrl,
             "whatsappNumber": this.data.whatsappNumber,
+            "businessAddress": this.data.businessAddress,
             "createdAt": new Date().toISOString(),
             "updatedAt": new Date().toISOString()
         }
@@ -106,10 +105,10 @@ export class Business {
             "email": businessData.email,
             "phone": businessData.phone,
             "timeZone": businessData.timeZone,
-            "mobile": businessData.mobile,
             "interfaceType": businessData.interfaceType,
             "websiteUrl": businessData.websiteUrl,
             "whatsappNumber": businessData.whatsappNumber,
+            "businessAddress": businessData.businessAddress,
             "updatedAt": new Date().toISOString()
         }
         
@@ -157,8 +156,8 @@ export class Business {
     get timeZone(): string { return this.data.timeZone; }
     get createdAt(): string | undefined { return this.data.createdAt; }
     get updatedAt(): string | undefined { return this.data.updatedAt; }
-    get mobile(): boolean { return this.data.mobile; }
     get interfaceType(): InterfaceType { return this.data.interfaceType; }
     get websiteUrl(): string | undefined { return this.data.websiteUrl; }
     get whatsappNumber(): string | undefined { return this.data.whatsappNumber; }
+    get businessAddress(): string | undefined { return this.data.businessAddress; }
 }
