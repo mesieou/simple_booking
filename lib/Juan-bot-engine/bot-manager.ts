@@ -92,8 +92,8 @@ export interface IndividualStepHandler {
 const conversationFlowBlueprints: Record<string, string[]> = {
   businessAccountCreation: ['getName', 'getBusinessEmail', 'getBusinessPhone', 'selectTimeZone', 'confirmAccountDetails'],
   businessAccountDeletion: ['confirmDeletionRequest', 'verifyUserPassword', 'initiateAccountDeletion'],
-  bookingCreatingForMobileService: ['askAddress', 'validateAddress', 'selectService', 'confirmLocation', 'displayQuote', 'askToBook', 'showAvailableTimes', 'handleTimeChoice', 'showDayBrowser', 'selectSpecificDay', 'showHoursForDay', 'selectSpecificTime', 'isNewUser', 'askEmail', 'createBooking', 'displayConfirmedBooking', 'sendEmailBookingConfirmation'],
-  bookingCreatingForNoneMobileService: ['selectService', 'confirmLocation', 'showAvailableTimes', 'handleTimeChoice', 'showDayBrowser', 'selectSpecificDay', 'showHoursForDay', 'selectSpecificTime', 'isNewUser', 'askEmail', 'createBooking', 'displayConfirmedBooking', 'sendEmailBookingConfirmation'],
+  bookingCreatingForMobileService: ['askAddress', 'validateAddress', 'selectService', 'confirmLocation', 'displayQuote', 'askToBook', 'showAvailableTimes', 'handleTimeChoice', 'showDayBrowser', 'selectSpecificDay', 'showHoursForDay', 'selectSpecificTime', 'showBookingSummary', 'handleSummaryChoice', 'isNewUser', 'askEmail', 'createBooking', 'displayConfirmedBooking', 'sendEmailBookingConfirmation'],
+  bookingCreatingForNoneMobileService: ['selectService', 'confirmLocation', 'showAvailableTimes', 'handleTimeChoice', 'showDayBrowser', 'selectSpecificDay', 'showHoursForDay', 'selectSpecificTime', 'showBookingSummary', 'handleSummaryChoice', 'isNewUser', 'askEmail', 'createBooking', 'displayConfirmedBooking', 'sendEmailBookingConfirmation'],
   customerFaqHandling: ['identifyUserQuestion', 'searchKnowledgeBase', 'provideAnswerToUser', 'checkUserSatisfaction'],
 };
 
@@ -113,6 +113,9 @@ import {
     selectSpecificDayHandler,
     showHoursForDayHandler,
     selectSpecificTimeHandler,
+    // New booking summary handlers
+    showBookingSummaryHandler,
+    handleSummaryChoiceHandler,
     // Keep existing handlers for customer info
     isNewUserHandler,
     askEmailHandler,
@@ -136,6 +139,9 @@ const botTasks: Record<string, IndividualStepHandler> = {
   selectSpecificDay: selectSpecificDayHandler,
   showHoursForDay: showHoursForDayHandler,
   selectSpecificTime: selectSpecificTimeHandler,
+  // New booking summary handlers
+  showBookingSummary: showBookingSummaryHandler,
+  handleSummaryChoice: handleSummaryChoiceHandler,
   // Keep existing customer info handlers
   isNewUser: isNewUserHandler,
   askEmail: askEmailHandler,
@@ -227,6 +233,42 @@ class MessageProcessor {
         nextStepName = ''; 
       }
     } while (nextStepName && shouldSkipStep(nextStepName, userCurrentGoal.collectedData));
+  }
+
+  /**
+   * Navigates back to a specific step in the flow for editing purposes
+   */
+  private navigateBackToStep(userCurrentGoal: UserGoal, targetStepName: string) {
+    const currentSteps = conversationFlowBlueprints[userCurrentGoal.flowKey];
+    const targetStepIndex = currentSteps.indexOf(targetStepName);
+    
+    if (targetStepIndex !== -1) {
+      userCurrentGoal.currentStepIndex = targetStepIndex;
+      console.log(`[MessageProcessor] Navigated back to step: ${targetStepName} (${targetStepIndex})`);
+      
+      // Clear navigation flag and edit-related flags
+      userCurrentGoal.collectedData.navigateBackTo = undefined;
+      userCurrentGoal.collectedData.showEditOptions = false;
+      
+      // Clear step-specific data based on target step
+      if (targetStepName === 'selectService') {
+        userCurrentGoal.collectedData.selectedService = undefined;
+        userCurrentGoal.collectedData.finalServiceAddress = undefined;
+        userCurrentGoal.collectedData.serviceLocation = undefined;
+        userCurrentGoal.collectedData.bookingSummary = undefined;
+      } else if (targetStepName === 'showAvailableTimes') {
+        userCurrentGoal.collectedData.selectedDate = undefined;
+        userCurrentGoal.collectedData.selectedTime = undefined;
+        userCurrentGoal.collectedData.quickBookingSelected = undefined;
+        userCurrentGoal.collectedData.browseModeSelected = undefined;
+        userCurrentGoal.collectedData.next3AvailableSlots = undefined;
+        userCurrentGoal.collectedData.availableHours = undefined;
+        userCurrentGoal.collectedData.formattedAvailableHours = undefined;
+        userCurrentGoal.collectedData.bookingSummary = undefined;
+      }
+    } else {
+      console.error(`[MessageProcessor] Target step not found in flow: ${targetStepName}`);
+    }
   }
 
   // Creates a new chat session for a participant
@@ -467,6 +509,44 @@ class MessageProcessor {
       userCurrentGoal.collectedData = typeof processingResult === 'object' && 'extractedInformation' in processingResult ?
                                       { ...userCurrentGoal.collectedData, ...processingResult.extractedInformation } :
                                       processingResult as Record<string, any>;
+
+      // Check if we need to navigate back to a specific step (for editing)
+      if (userCurrentGoal.collectedData.navigateBackTo) {
+        const targetStep = userCurrentGoal.collectedData.navigateBackTo as string;
+        console.log(`[MessageProcessor] Navigating back to step: ${targetStep}`);
+        
+        this.navigateBackToStep(userCurrentGoal, targetStep);
+        
+        // Execute the target step to show its content
+        const currentSteps = conversationFlowBlueprints[userCurrentGoal.flowKey];
+        const targetStepName = currentSteps[userCurrentGoal.currentStepIndex];
+        const targetStepHandler = botTasks[targetStepName];
+        
+        if (targetStepHandler) {
+          // Execute the target step's processAndExtractData for initial display
+          const targetStepResult = await targetStepHandler.processAndExtractData("", userCurrentGoal.collectedData, currentContext);
+          userCurrentGoal.collectedData = typeof targetStepResult === 'object' && 'extractedInformation' in targetStepResult ?
+                                          { ...userCurrentGoal.collectedData, ...targetStepResult.extractedInformation } :
+                                          targetStepResult as Record<string, any>;
+          
+          responseToUser = userCurrentGoal.collectedData.confirmationMessage || 
+                          targetStepHandler.defaultChatbotPrompt || 
+                          "Let's update your selection.";
+          
+          if (targetStepHandler.fixedUiButtons) {
+            if (typeof targetStepHandler.fixedUiButtons === 'function') {
+              uiButtonsToDisplay = await targetStepHandler.fixedUiButtons(userCurrentGoal.collectedData, currentContext);
+            } else {
+              uiButtonsToDisplay = targetStepHandler.fixedUiButtons;
+            }
+          }
+        } else {
+          responseToUser = "Something went wrong while navigating back. Please try again.";
+        }
+        
+        userCurrentGoal.messageHistory.push({ speakerRole: 'chatbot', content: responseToUser, messageTimestamp: new Date() });
+        return { responseToUser, uiButtonsToDisplay };
+      }
 
       this.advanceAndSkipStep(userCurrentGoal);
       
