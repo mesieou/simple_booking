@@ -1,8 +1,8 @@
 // lib/conversation-engine/conversation.context.ts
 
 import { OpenAIChatMessage } from "@/lib/conversation-engine/llm-actions/chat-interactions/openai-config/openai-core"; // Corrected import path
-// Import the actual ClientNeedResult type
-import { ClientNeedResult } from "./llm-actions/chat-interactions/functions/intention-detector"; 
+// Import the actual ClientIntentResult type after refactoring
+import { ClientIntentResult } from "./llm-actions/chat-interactions/functions/intention-detector"; 
 // Import specific state types as they are defined, e.g.:
 // import { BookingProcessState } from './modes/booking/booking.state'; 
 // import { AccountManagementState } from './modes/account/account.state';
@@ -29,7 +29,7 @@ export interface ConversationContext {
   // Full conversation history. Consider a more abstract ChatTurn interface if OpenAIChatMessage is too OpenAI-specific for general history.
   chatHistory: OpenAIChatMessage[]; 
   
-  lastUserIntent?: ClientNeedResult; // Use the imported ClientNeedResult type
+  lastUserIntent?: ClientIntentResult; // Use the imported ClientIntentResult type
 
   // Mode-specific states - add more as new modes are developed.
   // These would typically be instances of interfaces defined within each mode's .state.ts file.

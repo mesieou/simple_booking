@@ -13,27 +13,25 @@ export interface ChatMessage {
 export interface ChatSessionDBSchema {
   id: string; // uuid, primary key
   userId?: string | null; // uuid, foreign key to users.id
-  businessId?: string | null; // uuid, foreign key to businesses.id
+  businessId: string; // uuid, foreign key to businesses.id (Now non-nullable)
   channel: string; // e.g., 'whatsapp', 'web', 'api' (Made non-nullable as it's key for session identification)
-  channel_user_id: string; // User's identifier on the specific channel (Made non-nullable)
-  starterAt: string; // timestamptz, when the session began
+  channelUserId: string; // User's identifier on the specific channel (Made non-nullable)
   endedAt?: string | null; // timestamptz, when the session was explicitly ended
   sessionIntent?: string | null; // Detected overall intent for the session
   allMessages: ChatMessage[]; // jsonb, array of ChatMessage objects
   summarySession?: string | null; // Text summary of the session
   feedbackDataAveraged?: Record<string, any> | null; // jsonb, aggregated feedback data
   overallChatScore?: number | null; // int2, score for the chat session
-  createdAt: string; // timestamptz, when the record was created
+  createdAt: string; // timestamptz, when the record was created/session started
   updatedAt: string; // timestamptz, when the record was last updated
 }
 
 // Interface for data used when creating a new chat session
 export type ChatSessionCreateInput = {
   channel: string; // Required
-  channel_user_id: string; // Required
+  channelUserId: string; // Required
+  businessId: string; // Required
   userId?: string | null;
-  businessId?: string | null;
-  starterAt?: string | null; // Optional, will default to now
   endedAt?: string | null;
   sessionIntent?: string | null;
   allMessages?: ChatMessage[] | null; // Optional, will default to []
@@ -44,15 +42,14 @@ export type ChatSessionCreateInput = {
 
 // Interface for data used when updating an existing chat session
 // id is used for lookup, most other fields are optional for update
-export type ChatSessionUpdateInput = Partial<Omit<ChatSessionDBSchema, 'id' | 'starterAt' | 'createdAt' | 'channel' | 'channel_user_id'>>;
+export type ChatSessionUpdateInput = Partial<Omit<ChatSessionDBSchema, 'id' | 'createdAt' | 'channel' | 'channelUserId' | 'businessId'>>;
 
 export class ChatSession {
   id: string;
   userId?: string | null;
-  businessId?: string | null;
+  businessId: string;
   channel: string;
-  channel_user_id: string;
-  starterAt: string;
+  channelUserId: string;
   endedAt?: string | null;
   sessionIntent?: string | null;
   allMessages: ChatMessage[];
@@ -67,8 +64,7 @@ export class ChatSession {
     this.userId = data.userId;
     this.businessId = data.businessId;
     this.channel = data.channel;
-    this.channel_user_id = data.channel_user_id;
-    this.starterAt = data.starterAt;
+    this.channelUserId = data.channelUserId;
     this.endedAt = data.endedAt;
     this.sessionIntent = data.sessionIntent;
     this.allMessages = data.allMessages || []; // Ensure it's an array
@@ -89,20 +85,18 @@ export class ChatSession {
     const newId = uuidv4();
     const now = new Date().toISOString();
 
-    // Construct the full object for the database, including defaults and auto-generated values
     const dbData: ChatSessionDBSchema = {
       id: newId,
-      channel: input.channel, // Directly from input as it's required
-      channel_user_id: input.channel_user_id, // Directly from input as it's required
-      userId: input.userId,
+      channel: input.channel,
+      channelUserId: input.channelUserId,
       businessId: input.businessId,
-      starterAt: input.starterAt || now, // Default to now if not provided
-      allMessages: input.allMessages || [], // Default to empty array if not provided
+      userId: input.userId,
+      endedAt: input.endedAt,
       sessionIntent: input.sessionIntent,
+      allMessages: input.allMessages || [],
       summarySession: input.summarySession,
       feedbackDataAveraged: input.feedbackDataAveraged,
       overallChatScore: input.overallChatScore,
-      endedAt: input.endedAt, // Pass through if provided (e.g., for importing old sessions)
       createdAt: now,
       updatedAt: now,
     };
@@ -161,7 +155,7 @@ export class ChatSession {
       .from('chatSessions')
       .select('*')
       .eq('channel', channel)
-      .eq('channel_user_id', channelUserId)
+      .eq('channelUserId', channelUserId)
       .is('endedAt', null)
       .gte('updatedAt', threshold)
       .order('updatedAt', { ascending: false })
@@ -209,6 +203,67 @@ export class ChatSession {
         return null;
     }
     return this.update(id, { endedAt: new Date().toISOString() });
+  }
+
+  static async getMostRecentPreviousSession(
+    channel: string,
+    channelUserId: string,
+    currentSessionCreatedAt: string
+  ): Promise<ChatSession | null> {
+    if (!channel || !channelUserId || !currentSessionCreatedAt) {
+      console.warn("[ChatSessionModel] Channel, channelUserId, and currentSessionCreatedAt are required to get previous session.");
+      return null;
+    }
+    const supa = await createClient();
+    try {
+      const { data, error } = await supa
+        .from('chatSessions')
+        .select('*') // Select all fields to reconstruct a ChatSession object
+        .eq('channel', channel)
+        .eq('channelUserId', channelUserId)
+        .lt('createdAt', currentSessionCreatedAt) // Use createdAt for comparison now
+        .order('createdAt', { ascending: false }) // Get the latest among those that started before
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        // Log minimally, as failing to get a previous session is not critical for the current one
+        console.warn(`[ChatSessionModel] Error fetching most recent previous session for ${channel}:${channelUserId}:`, error.message);
+        return null;
+      }
+      return data ? new ChatSession(data as ChatSessionDBSchema) : null;
+    } catch (e) {
+      console.error("[ChatSessionModel] Unexpected error in getMostRecentPreviousSession:", e);
+      return null;
+    }
+  }
+
+  static async endInactiveSessionsForUser(
+    channel: string,
+    channelUserId: string,
+    sessionTimeoutHours: number
+  ): Promise<void> {
+    if (!channel || !channelUserId) {
+      console.warn("[ChatSessionModel] Channel and channelUserId are required to end inactive sessions.");
+      return;
+    }
+    const supa = await createClient();
+    const threshold = new Date(Date.now() - sessionTimeoutHours * 60 * 60 * 1000).toISOString();
+
+    // Fire-and-forget query to close any lingering sessions for this user that have expired
+    const { error } = await supa
+      .from('chatSessions')
+      .update({ endedAt: new Date().toISOString() })
+      .eq('channel', channel)
+      .eq('channelUserId', channelUserId)
+      .is('endedAt', null)
+      .lt('updatedAt', threshold);
+
+    if (error) {
+      // This is a background cleanup task, so we just log the error and don't throw,
+      // as it shouldn't block the main flow of creating a new session.
+      console.error(`[ChatSessionModel] Error ending inactive sessions for ${channel}:${channelUserId}:`, error.message);
+    }
   }
 
   static async delete(id: string): Promise<void> {
