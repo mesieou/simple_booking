@@ -821,6 +821,214 @@ export const selectSpecificTimeHandler: IndividualStepHandler = {
   }
 };
 
+// =====================================
+// BOOKING SUMMARY HANDLERS
+// =====================================
+
+// Step: Show booking summary with all details
+// Job: Display comprehensive booking summary and ask for confirmation
+export const showBookingSummaryHandler: IndividualStepHandler = {
+  defaultChatbotPrompt: 'Here\'s your booking summary:',
+  
+  // Only accept empty input (first display), reject button clicks so they go to next step
+  validateUserInput: async (userInput) => {
+    console.log('[ShowBookingSummary] Validating input:', userInput);
+    
+    // If this is empty input (first display), accept it
+    if (!userInput || userInput === "") {
+      console.log('[ShowBookingSummary] Empty input - accepting for first display');
+      return { isValidInput: true };
+    }
+    
+    // If this is a button click, reject it so it goes to handleSummaryChoice
+    if (userInput === 'confirm_booking' || userInput === 'edit_booking') {
+      console.log('[ShowBookingSummary] Button click detected - rejecting to pass to next step');
+      return { 
+        isValidInput: false,
+        validationErrorMessage: '' // No error message, just advance to next step
+      };
+    }
+    
+    // Other input types also rejected
+    console.log('[ShowBookingSummary] Other input - rejecting');
+    return { isValidInput: false };
+  },
+  
+  // Generate comprehensive booking summary
+  processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
+    console.log('[ShowBookingSummary] Processing input:', validatedInput);
+    
+    // Only process empty input (first display)
+    if (validatedInput !== "") {
+      console.log('[ShowBookingSummary] Non-empty input - not processing');
+      return currentGoalData;
+    }
+    
+    const selectedService = currentGoalData.selectedService;
+    const selectedDate = currentGoalData.selectedDate;
+    const selectedTime = currentGoalData.selectedTime;
+    const finalServiceAddress = currentGoalData.finalServiceAddress;
+    const serviceLocation = currentGoalData.serviceLocation;
+    
+    if (!selectedService || !selectedDate || !selectedTime || !finalServiceAddress) {
+      return {
+        ...currentGoalData,
+        summaryError: 'Missing booking information'
+      };
+    }
+    
+    // Calculate costs - just use service price as total
+    const serviceCost = selectedService.fixedPrice || 0;
+    const totalCost = serviceCost; // No additional costs for now
+    
+    // Calculate estimated completion time
+    const duration = selectedService.durationEstimate || 60;
+    const [hours, minutes] = selectedTime.split(':').map(Number);
+    const startTime = new Date();
+    startTime.setHours(hours, minutes, 0, 0);
+    const endTime = new Date(startTime.getTime() + duration * 60000);
+    const estimatedEndTime = `${endTime.getHours().toString().padStart(2, '0')}:${endTime.getMinutes().toString().padStart(2, '0')}`;
+    
+    // Format date for display
+    const dateObj = new Date(selectedDate);
+    const formattedDate = dateObj.toLocaleDateString('en-US', { 
+      weekday: 'long', 
+      month: 'long', 
+      day: 'numeric',
+      year: 'numeric'
+    });
+    
+    // Format time for display
+    const [hour24] = selectedTime.split(':');
+    const hour12 = parseInt(hour24) === 0 ? 12 : parseInt(hour24) > 12 ? parseInt(hour24) - 12 : parseInt(hour24);
+    const ampm = parseInt(hour24) >= 12 ? 'PM' : 'AM';
+    const formattedTime = `${hour12}:${selectedTime.split(':')[1]} ${ampm}`;
+    
+    // Create detailed summary message
+    const summaryMessage = `📋 *Booking Summary*\n\n` +
+      `💼 *Service:* ${selectedService.name}\n` +
+      `📅 *Date:* ${formattedDate}\n` +
+      `⏰ *Time:* ${formattedTime}\n` +
+      `⏱️ *Duration:* ${duration} minutes\n` +
+      `🏁 *Estimated completion:* ${estimatedEndTime}\n` +
+      `📍 *Location:* ${finalServiceAddress}\n\n` +
+      `💰 *Pricing:*\n` +
+      `   • Service: $${serviceCost}\n` +
+      `   • *Total: $${totalCost}*\n\n` +
+      `Would you like to confirm this booking?`;
+    
+    return {
+      ...currentGoalData,
+      bookingSummary: {
+        serviceCost,
+        totalCost,
+        duration,
+        estimatedEndTime,
+        formattedDate,
+        formattedTime
+      },
+      confirmationMessage: summaryMessage
+    };
+  },
+  
+  // Show confirmation and edit buttons
+  fixedUiButtons: async (currentGoalData) => {
+    const summaryError = currentGoalData.summaryError;
+    
+    if (summaryError) {
+      return [{ buttonText: '🔄 Try again', buttonValue: 'restart_booking' }];
+    }
+    
+    return [
+      { buttonText: '✅ Confirm Booking', buttonValue: 'confirm_booking' },
+      { buttonText: '✏️ Edit Booking', buttonValue: 'edit_booking' }
+    ];
+  }
+};
+
+// Step: Handle user's choice from booking summary
+// Job: Process confirmation or show edit options
+export const handleSummaryChoiceHandler: IndividualStepHandler = {
+  defaultChatbotPrompt: 'Processing your choice...',
+  autoAdvance: true, // Follow the same pattern as handleTimeChoiceHandler
+  
+  // Accept confirmation or edit choice
+  validateUserInput: async (userInput) => {
+    console.log('[HandleSummaryChoice] Validating input:', userInput);
+    if (userInput === 'confirm_booking' || userInput === 'edit_booking') {
+      return { isValidInput: true };
+    }
+    
+    // Handle edit sub-choices (service, time)
+    if (userInput === 'edit_service' || userInput === 'edit_time') {
+      return { isValidInput: true };
+    }
+    
+    return {
+      isValidInput: false,
+      validationErrorMessage: 'Please select one of the available options.'
+    };
+  },
+  
+  // Process user choice and set flags for subsequent steps
+  processAndExtractData: async (validatedInput, currentGoalData) => {
+    console.log('[HandleSummaryChoice] Processing input:', validatedInput);
+    
+    if (validatedInput === 'confirm_booking') {
+      console.log('[HandleSummaryChoice] Booking confirmed - proceeding to next step');
+      return {
+        ...currentGoalData,
+        bookingConfirmedFromSummary: true,
+        confirmationMessage: 'Perfect! Let\'s finalize your booking details.'
+      };
+    }
+    
+    if (validatedInput === 'edit_booking') {
+      console.log('[HandleSummaryChoice] Edit requested - showing edit options');
+      return {
+        ...currentGoalData,
+        showEditOptions: true,
+        confirmationMessage: 'What would you like to change?'
+      };
+    }
+    
+    // Handle specific edit choices
+    if (validatedInput === 'edit_service') {
+      console.log('[HandleSummaryChoice] Service edit requested - navigating back to selectService');
+      return {
+        ...currentGoalData,
+        navigateBackTo: 'selectService',
+        confirmationMessage: 'Let\'s choose a different service...'
+      };
+    }
+    
+    if (validatedInput === 'edit_time') {
+      console.log('[HandleSummaryChoice] Time edit requested - navigating back to showAvailableTimes');
+      return {
+        ...currentGoalData,
+        navigateBackTo: 'showAvailableTimes',
+        confirmationMessage: 'Let\'s pick a different time...'
+      };
+    }
+    
+    console.log('[HandleSummaryChoice] Unexpected input, returning current data');
+    return currentGoalData;
+  },
+  
+  // Show edit options if user chose to edit
+  fixedUiButtons: async (currentGoalData) => {
+    if (currentGoalData.showEditOptions) {
+      return [
+        { buttonText: '💼 Change Service', buttonValue: 'edit_service' },
+        { buttonText: '🕐 Change Date/Time', buttonValue: 'edit_time' }
+      ];
+    }
+    
+    // No buttons if booking confirmed (will auto-advance)
+    return [];
+  }
+};
+
 // --- Step Handler Implementations ---
 
 // Asks for customer address - single responsibility
@@ -1155,8 +1363,20 @@ export const askToBookHandler: IndividualStepHandler = {
 export const isNewUserHandler: IndividualStepHandler = {
   defaultChatbotPrompt: 'Are you a new customer or do you have an account with us?',
   
-  // Validates user type selection
-  validateUserInput: async (userInput) => {
+  // Validates user type selection or edit options
+  validateUserInput: async (userInput, currentGoalData) => {
+    // If showing edit options, validate edit choices
+    if (currentGoalData.showEditOptions) {
+      if (userInput === 'edit_service' || userInput === 'edit_time') {
+        return { isValidInput: true };
+      }
+      return {
+        isValidInput: false,
+        validationErrorMessage: 'Please select what you would like to change.'
+      };
+    }
+    
+    // Normal new/existing customer validation
     const response = userInput.toLowerCase();
     if (response.includes('new') || response.includes('existing') || response.includes('have')) {
       return { isValidInput: true };
@@ -1168,8 +1388,28 @@ export const isNewUserHandler: IndividualStepHandler = {
     };
   },
   
-  // Determines if user is new
+  // Determines if user is new or handles edit navigation
   processAndExtractData: async (validatedInput, currentGoalData) => {
+    // Handle edit choices by setting navigation flags
+    if (currentGoalData.showEditOptions) {
+      if (validatedInput === 'edit_service') {
+        return {
+          ...currentGoalData,
+          navigateBackTo: 'selectService',
+          showEditOptions: false // Clear the flag
+        };
+      }
+      
+      if (validatedInput === 'edit_time') {
+        return {
+          ...currentGoalData,
+          navigateBackTo: 'showAvailableTimes',
+          showEditOptions: false // Clear the flag
+        };
+      }
+    }
+    
+    // Normal new/existing customer processing
     const response = validatedInput.toLowerCase();
     const isNewUser = response.includes('new');
     
@@ -1179,8 +1419,16 @@ export const isNewUserHandler: IndividualStepHandler = {
     };
   },
   
-  // Show user type buttons
-  fixedUiButtons: async () => {
+  // Show edit options or user type buttons based on context
+  fixedUiButtons: async (currentGoalData) => {
+    if (currentGoalData.showEditOptions) {
+      return [
+        { buttonText: '💼 Change Service', buttonValue: 'edit_service' },
+        { buttonText: '🕐 Change Date/Time', buttonValue: 'edit_time' }
+      ];
+    }
+    
+    // Normal new/existing customer buttons
     return [
       { buttonText: '👤 New customer', buttonValue: 'new_customer' },
       { buttonText: '🔄 Existing customer', buttonValue: 'existing_customer' }
