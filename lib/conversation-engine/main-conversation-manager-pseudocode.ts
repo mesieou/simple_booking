@@ -9,12 +9,12 @@
 // | 'business' 
 // | 'customer' 
 
-// export type customerIntents = 
-// | 'idle'
-// | 'booking'
-// | 'faq'
-// | 'account'
-// | 'escalation'
+export type customerIntents = 
+| 'idle'
+| 'booking'
+| 'faq'
+| 'account'
+| 'escalation'
 
 // export type businessIntents = 
 // | 'account_management'

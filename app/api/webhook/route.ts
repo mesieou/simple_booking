@@ -5,22 +5,18 @@
  * 
  * - Handles GET requests for webhook verification (Meta/WhatsApp setup).
  * - Handles POST requests for incoming WhatsApp messages/events.
- * - Uses the logIncomingMessage helper to print payloads for debugging.
  * - Only enabled if USE_WABA_WEBHOOK="true" in environment variables.
  * 
  * This is the correct place for API routes in a Next.js app using the /app directory structure.
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { logIncomingMessage, WebhookAPIBody } from "@/lib/conversation-engine/whatsapp/whatsapp-message-logger";
-import { parseWhatsappMessage } from "@/lib/conversation-engine/whatsapp/whatsapp-payload-parser";
+import { WebhookAPIBody } from "@/lib/conversation-engine/whatsapp/whatsapp-message-logger";
+import { processWhatsappPayload } from "@/lib/conversation-engine/whatsapp/whatsapp-payload-parser";
 import { WhatsappSender } from "@/lib/conversation-engine/whatsapp/whatsapp-message-sender";
-import { BotResponse } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
-
-// New Imports for the new conversation engine
-import { routeInteraction } from "@/lib/conversation-engine/main-conversation-manager";
-import { ConversationContext } from "@/lib/conversation-engine/conversation-context";
-import { ParsedMessage } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
+import { BotResponse, ParsedMessage } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
+import { extractSessionContext } from "@/lib/conversation-engine/llm-actions/chat-interactions/functions/context-extractor";
+import { ChatSession } from "@/lib/database/models/chat-session";
 
 export const dynamic = "force-dynamic";
 
@@ -29,20 +25,12 @@ const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
 const rawUseWabaWebhook = process.env.USE_WABA_WEBHOOK;
 const USE_WABA_WEBHOOK = rawUseWabaWebhook === "true";
 
-// Handle incoming customer messages
-async function handleCustomerMessage(message: string) {
-    // For now, just logging the message
-    console.log("Received customer message:", message);
-}
 
 /**
  * GET handler: Used by Meta/WhatsApp to verify the webhook endpoint.
  * Responds with the challenge if the verify token matches.
  */
 export async function GET(req: NextRequest) {
-  console.log(`Raw USE_WABA_WEBHOOK from env: '${rawUseWabaWebhook}'`);
-  console.log(`Parsed USE_WABA_WEBHOOK: ${USE_WABA_WEBHOOK}`);
-
   if (!USE_WABA_WEBHOOK) {
     console.log("WABA Webhook is disabled. Skipping GET request.");
     return NextResponse.json({ message: "Webhook disabled" }, { status: 403 });
@@ -53,12 +41,6 @@ export async function GET(req: NextRequest) {
   const hubChallenge = url.searchParams.get("hub.challenge");
   const hubVerifyToken = url.searchParams.get("hub.verify_token");
 
-  console.log("Webhook GET request received:");
-  console.log("Mode:", hubMode);
-  console.log("Challenge:", hubChallenge);
-  console.log("Verify Token:", hubVerifyToken);
-  console.log("Expected Token:", WHATSAPP_VERIFY_TOKEN);
-
   if (
     hubMode === "subscribe" &&
     hubVerifyToken === WHATSAPP_VERIFY_TOKEN &&
@@ -67,7 +49,7 @@ export async function GET(req: NextRequest) {
     console.log("Webhook verified successfully.");
     return new NextResponse(hubChallenge, { status: 200 });
   } else {
-    console.error("Webhook verification failed.");
+    console.error("Webhook verification failed. Ensure verify token is set correctly.");
     return NextResponse.json({ message: "Verification failed" }, { status: 403 });
   }
 }
@@ -83,61 +65,103 @@ export async function POST(req: NextRequest) {
 
   try {
     const payload = (await req.json()) as WebhookAPIBody;
-    console.log("[Webhook] POST request received. Raw Payload:", JSON.stringify(payload, null, 2));
 
-    // Parse incoming message
-    const parsedMessage = parseWhatsappMessage(payload);
+    const response = await processWhatsappPayload(payload, {
+      
+      // --- Handle Status Updates ---
+      onStatusUpdate: async (statusUpdate) => {
+        console.log(`[Webhook] Received status update for message ${statusUpdate.messageId}: ${statusUpdate.status}`);
+        // You could add logic here to update your database with the message status
+        return NextResponse.json({ status: "success - status update received" }, { status: 200 });
+      },
 
-    if (parsedMessage && parsedMessage.senderId) { // Ensure senderId is present for replies
-      console.log("[Webhook] Successfully parsed WhatsApp message:", JSON.stringify(parsedMessage, null, 2));
-
-      // Initialize ConversationContext for this interaction
-      // For now, chatHistory starts fresh without any previous messages.
-      const context: ConversationContext = {
-        userId: parsedMessage.senderId,
-        currentMode: 'IdleMode', 
-        chatHistory: [], 
-        // lastUserIntent, bookingState, etc., will be populated by routeInteraction or loaded from DB later
-      };
-
-      // Conversation manager call to route the interaction
-      console.log("[Webhook] Calling routeInteraction with parsedMessage and new context.");
-      try {
-        // Conversation manager
-        const { finalBotResponse, updatedContext } = await routeInteraction(parsedMessage, context);
-
-        console.log("[Webhook] Response from routeInteraction:", JSON.stringify(finalBotResponse, null, 2));
-        console.log("[Webhook] Updated context after routeInteraction:", JSON.stringify(updatedContext, null, 2));
-
-        if (finalBotResponse && finalBotResponse.text) {
-          const sender = new WhatsappSender();
-          try {
-            console.log(`[Webhook] Attempting to send reply to ${parsedMessage.senderId}: "${finalBotResponse.text}"`);
-            await sender.sendMessage(parsedMessage.senderId, finalBotResponse);
-            console.log("[Webhook] Reply successfully sent to WhatsApp user via WhatsappSender.");
-          } catch (sendError) {
-            console.error("[Webhook] Error sending reply via WhatsappSender:", sendError);
-          }
-        } else {
-          console.log("[Webhook] No text in BotResponse to send.");
+      // --- Handle Incoming Messages ---
+      onMessage: async (parsedMessage) => {
+        if (!parsedMessage.senderId) {
+          console.log("[Webhook] Parsed message missing senderId. Skipping interaction.");
+          // Acknowledge receipt even if we can't process it further.
+          return NextResponse.json({ status: "success - acknowledged but no senderId" }, { status: 200 });
         }
-        // TODO: Save updatedContext (especially updatedContext.chatHistory and mode-specific states like updatedContext.bookingState)
-        // to your database/persistence layer here, associated with parsedMessage.senderId.
+        
+        const messageType = parsedMessage.text ? 'text' : (parsedMessage.attachments && parsedMessage.attachments.length > 0 ? parsedMessage.attachments[0].type : 'unknown');
+        console.log(`[Webhook] Processing message from: ${parsedMessage.senderId} | Type: ${messageType}`);
 
-      } catch (interactionError) {
-        console.error("[Webhook] Error during routeInteraction:", interactionError);
-        // Consider sending a generic error message back to the user via WhatsApp in this case
-      }
+        // Log the parsed message
+        console.log('Received message:', parsedMessage);
 
-    } else {
-      if (!parsedMessage) {
-        console.log("[Webhook] Failed to parse WhatsApp message or message was not actionable.");
-      } else {
-        console.log("[Webhook] Parsed message missing critical info (e.g., senderId). Skipping interaction.", JSON.stringify(parsedMessage, null, 2));
+        // Get or create session and extract context
+        const sessionContext = await extractSessionContext(
+          parsedMessage.channelType,
+          parsedMessage.senderId,
+          '2b4d2e67-a00f-4e36-81a1-64e6ac397394', // TODO: Replace with actual business ID
+          12 // Default session timeout in hours
+        );
+        console.log('Session context:', sessionContext);
+
+        // Send hardcoded test response via WhatsApp
+        try {
+          const whatsappSender = new WhatsappSender();
+          const testResponse: BotResponse = {
+            text: "Hello! I received your message and created a session. Bot is working! 🤖"
+          };
+          
+          await whatsappSender.sendMessage(parsedMessage.senderId, testResponse);
+          console.log(`[Webhook] Sent test response to ${parsedMessage.senderId}`);
+          
+          // Update session with conversation history
+          if (sessionContext) {
+            try {
+              const now = new Date().toISOString();
+              
+              // Add user message
+              const userMessage = {
+                role: 'user' as const,
+                content: parsedMessage.text || '',
+                timestamp: now
+              };
+              
+              // Add bot response
+              const botMessage = {
+                role: 'bot' as const,
+                content: testResponse.text || '',
+                timestamp: now
+              };
+              
+              // Get current messages and add new ones
+              const updatedMessages = [...sessionContext.historyForLLM, userMessage, botMessage];
+              
+              // Update session in database
+              await ChatSession.update(sessionContext.currentSessionId, {
+                allMessages: updatedMessages
+              });
+              
+              console.log(`[Webhook] Updated session ${sessionContext.currentSessionId} with conversation history`);
+            } catch (updateError) {
+              console.error("[Webhook] Error updating session with messages:", updateError);
+            }
+          }
+          
+          return NextResponse.json({ 
+            status: "success", 
+            message: "Message received, session created, response sent, and conversation saved" 
+          });
+        } catch (sendError) {
+          console.error("[Webhook] Error sending WhatsApp response:", sendError);
+          return NextResponse.json({ 
+            status: "success", 
+            message: "Message received and session created, but failed to send response" 
+          });
+        }
       }
+    });
+
+    if (response) {
+      return response;
     }
-    // Always acknowledge WhatsApp's request quickly, even if processing or sending fails.
-    return NextResponse.json({ status: "success - acknowledged" }, { status: 200 });
+
+    // This case is hit if `parseWhatsappMessage` returns null
+    return NextResponse.json({ status: "success - not actionable" }, { status: 200 });
+
   } catch (error) {
     console.error("[Webhook] Critical error processing POST request:", error);
     if (error instanceof SyntaxError) {
