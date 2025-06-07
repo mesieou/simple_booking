@@ -4,10 +4,10 @@ import { createClient } from "@/lib/database/supabase/client";
 import { useAuth } from "@/app/context/auth-context";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/use-toast";
+import { Button } from "@components/ui/button";
+import { Input } from "@components/ui/input";
+import { Label } from "@components/ui/label";
+import { useToast } from "@/lib/rename-categorise-better/utils/use-toast";
 import Link from "next/link";
 
 export default function SignIn() {
@@ -38,15 +38,15 @@ export default function SignIn() {
       
       // Show success message
       toast({
-        title: "Inicio de sesión exitoso",
-        description: "Serás redirigido a la página protegida",
+        title: "Sign in successful",
+        description: "You will be redirected to the protected page",
       });
 
       // The middleware will handle the redirect
     } catch (error: any) {
       toast({
-        title: "Error al iniciar sesión",
-        description: error.message || "Ocurrió un error al iniciar sesión",
+        title: "Sign in error",
+        description: error.message || "An error occurred while signing in",
         variant: "destructive",
       });
     } finally {
@@ -61,19 +61,19 @@ export default function SignIn() {
         onSubmit={handleSignIn}
       >
         <div className="flex flex-col gap-2 text-center">
-          <h1 className="text-2xl font-bold">Iniciar sesión</h1>
+          <h1 className="text-2xl font-bold">Sign In</h1>
           <p className="text-muted-foreground">
-            Ingresa tus credenciales para continuar
+            Enter your credentials to continue
           </p>
         </div>
 
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="email">Correo electrónico</Label>
+            <Label htmlFor="email">Email</Label>
             <Input
               id="email"
               type="email"
-              placeholder="tu@email.com"
+              placeholder="your@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -83,7 +83,7 @@ export default function SignIn() {
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="password">Contraseña</Label>
+            <Label htmlFor="password">Password</Label>
             <Input
               id="password"
               type="password"
@@ -98,13 +98,13 @@ export default function SignIn() {
         </div>
 
         <Button type="submit" disabled={loading}>
-          {loading ? "Iniciando sesión..." : "Iniciar sesión"}
+          {loading ? "Signing in..." : "Sign In"}
         </Button>
 
         <p className="text-center text-sm text-muted-foreground">
-          ¿No tienes una cuenta?{" "}
+          Don't have an account?{" "}
           <Link href="/sign-up" className="text-primary hover:underline">
-            Regístrate
+            Sign up
           </Link>
         </p>
       </form>

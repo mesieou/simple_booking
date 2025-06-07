@@ -15,6 +15,7 @@ export interface ServiceData {
     ratePerMinute?: number;
     description?: string;
     durationEstimate: number;
+    mobile?: boolean;
     createdAt?: string;
     updatedAt?: string;
 }
@@ -26,7 +27,8 @@ export class Service {
         // Normalizar el tipo de pricing a minúsculas
         const normalizedData = {
             ...data,
-            pricingType: data.pricingType.toLowerCase() as PricingType
+            pricingType: data.pricingType.toLowerCase() as PricingType,
+            mobile: data.mobile === undefined ? false : data.mobile,
         };
 
         if (!normalizedData.businessId) handleModelError("Business ID is required", new Error("Missing businessId"));
@@ -74,6 +76,7 @@ export class Service {
             "ratePerMinute": this.data.ratePerMinute,
             "description": this.data.description,
             "durationEstimate": this.data.durationEstimate,
+            "mobile": this.data.mobile,
             "createdAt": new Date().toISOString(),
             "updatedAt": new Date().toISOString()
         };
@@ -121,6 +124,7 @@ export class Service {
             "ratePerMinute": serviceData.ratePerMinute,
             "description": serviceData.description,
             "durationEstimate": serviceData.durationEstimate,
+            "mobile": serviceData.mobile,
             "updatedAt": new Date().toISOString()
         };
         const { data, error } = await supa.from("services").update(service).eq("id", id).select().single();
@@ -151,6 +155,7 @@ export class Service {
     get ratePerMinute(): number | undefined { return this.data.ratePerMinute; }
     get description(): string | undefined { return this.data.description; }
     get durationEstimate(): number { return this.data.durationEstimate; }
+    get mobile(): boolean | undefined { return this.data.mobile; }
     get createdAt(): string | undefined { return this.data.createdAt; }
     get updatedAt(): string | undefined { return this.data.updatedAt; }
 } 

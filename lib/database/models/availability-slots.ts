@@ -96,6 +96,114 @@ export class AvailabilitySlots {
         return data;
     }
 
+    // Get next 3 chronologically available time slots for a provider
+    static async getNext3AvailableSlots(
+        providerId: string,
+        serviceDuration: number,
+        daysToLookAhead: number = 14
+    ): Promise<Array<{ date: string; time: string }>> {
+        try {
+            console.log(`[AvailabilitySlots] Getting next 3 slots for provider ${providerId}, duration ${serviceDuration}`);
+            
+            // Get availability for the specified date range
+            const today = new Date();
+            const endDate = new Date();
+            endDate.setDate(today.getDate() + daysToLookAhead);
+            
+            const availabilityData = await this.getByProviderAndDateRange(
+                providerId,
+                today.toISOString().split('T')[0],
+                endDate.toISOString().split('T')[0]
+            );
+            
+            console.log(`[AvailabilitySlots] Found ${availabilityData.length} days of availability data`);
+            
+            // Find the smallest duration that can accommodate the service
+            const availableDurations = [60, 90, 120, 150, 180, 240, 300, 360]; // Standard intervals
+            const suitableDuration = availableDurations.find(duration => duration >= serviceDuration);
+            
+            if (!suitableDuration) {
+                console.log(`[AvailabilitySlots] No suitable duration found for ${serviceDuration} minutes`);
+                return [];
+            }
+            
+            const durationKey = suitableDuration.toString();
+            console.log(`[AvailabilitySlots] Using duration ${durationKey} for service duration ${serviceDuration}`);
+            
+            // Collect all available slots chronologically
+            const allSlots: Array<{ date: string; time: string }> = [];
+            
+            for (const dayData of availabilityData) {
+                const slotsForDuration = dayData.slots[durationKey] || [];
+                console.log(`[AvailabilitySlots] Date ${dayData.date} has ${slotsForDuration.length} slots for duration ${durationKey}`);
+                
+                for (const timeSlot of slotsForDuration) {
+                    allSlots.push({
+                        date: dayData.date,
+                        time: timeSlot
+                    });
+                }
+            }
+            
+            console.log(`[AvailabilitySlots] Found ${allSlots.length} total slots`);
+            
+            // Sort chronologically and take first 3
+            allSlots.sort((a, b) => {
+                const dateTimeA = new Date(`${a.date}T${a.time}`);
+                const dateTimeB = new Date(`${b.date}T${b.time}`);
+                return dateTimeA.getTime() - dateTimeB.getTime();
+            });
+            
+            const result = allSlots.slice(0, 3);
+            console.log(`[AvailabilitySlots] Returning ${result.length} slots:`, result);
+            
+            return result;
+            
+        } catch (error) {
+            console.error('[AvailabilitySlots] Error getting next 3 available slots:', error);
+            return [];
+        }
+    }
+
+    // Get available hours for a specific provider, date and service duration
+    static async getAvailableHoursForDate(
+        providerId: string,
+        date: string,
+        serviceDuration: number
+    ): Promise<string[]> {
+        try {
+            console.log(`[AvailabilitySlots] Getting hours for provider ${providerId}, date ${date}, duration ${serviceDuration}`);
+            
+            const dayAvailability = await this.getByProviderAndDate(providerId, date);
+            
+            if (!dayAvailability) {
+                console.log(`[AvailabilitySlots] No availability data found for date ${date}`);
+                return [];
+            }
+            
+            // Find the smallest duration that can accommodate the service
+            const availableDurations = [60, 90, 120, 150, 180, 240, 300, 360]; // Standard intervals
+            const suitableDuration = availableDurations.find(duration => duration >= serviceDuration);
+            
+            if (!suitableDuration) {
+                console.log(`[AvailabilitySlots] No suitable duration found for ${serviceDuration} minutes`);
+                return [];
+            }
+            
+            const durationKey = suitableDuration.toString();
+            console.log(`[AvailabilitySlots] Using duration ${durationKey} for service duration ${serviceDuration}`);
+            
+            const slots = dayAvailability.slots[durationKey] || [];
+            console.log(`[AvailabilitySlots] Found ${slots.length} slots for date ${date}`);
+            
+            return slots;
+            
+        } catch (error) {
+            console.error('[AvailabilitySlots] Error getting available hours for date:', error);
+            return [];
+        }
+    }
+
     // Update availability slots
     static async update(providerId: string, date: string, slotsData: AvailabilitySlotsData): Promise<AvailabilitySlots> {
         const supa = await createClient();

@@ -2,13 +2,13 @@
 
 import { useProvider } from '../context/ProviderContext';
 import { useEffect, useState } from 'react';
-import ProviderTitle from '../components/ProviderTitle';
+import ProviderTitle from '../context/ProviderTitle';
 import { use } from 'react';
 import { createClient } from '@/lib/database/supabase/client';
 import { useFormContext } from '@/lib/rename-categorise-better/utils/FormContext';
 import { useRouter } from 'next/navigation';
 
-// Componente hijo para manejar el contexto y la redirección
+// Child component to handle context and redirection
 const ContinueButtonWithContext = ({ providerId, businessId }: { providerId: string, businessId: string | null }) => {
   const { setData } = useFormContext();
   const router = useRouter();
@@ -19,7 +19,7 @@ const ContinueButtonWithContext = ({ providerId, businessId }: { providerId: str
         userid: providerId,
         businessid: businessId,
       }));
-      router.push(`/${providerId}/booking/distance`);
+      router.push(`/${providerId}/booking/locations`);
     }
   };
   const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
@@ -29,19 +29,19 @@ const ContinueButtonWithContext = ({ providerId, businessId }: { providerId: str
         userid: providerId,
         businessid: businessId,
       }));
-      router.push(`/${providerId}/booking/distance`);
+      router.push(`/${providerId}/booking/locations`);
     }
   };
   return (
     <button
       className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-lg focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:opacity-50"
       tabIndex={0}
-      aria-label="Continuar a la reserva"
+      aria-label="Continue to booking"
       onClick={handleContinue}
       disabled={!providerId || !businessId}
       onKeyDown={handleKeyDown}
     >
-      Continuar
+      Continue
     </button>
   );
 };
@@ -72,11 +72,11 @@ export default function ProviderPage({ params }: { params: Promise<{ providerId:
       setError(null);
       try {
         const res = await fetch(`/api/provider/${providerId}/slots?date=${date}`);
-        if (!res.ok) throw new Error('Error al obtener los slots');
+        if (!res.ok) throw new Error('Error fetching slots');
         const data = await res.json();
         setSlots(data);
       } catch (err: any) {
-        setError(err.message || 'Error al obtener los slots');
+        setError(err.message || 'Error fetching slots');
       }
       setLoading(false);
     };
@@ -87,7 +87,7 @@ export default function ProviderPage({ params }: { params: Promise<{ providerId:
     const fetchBusinessData = async () => {
       if (!providerId) return;
       const supabase = createClient();
-      // Buscar el usuario y obtener el businessId
+      // Find the user and get the businessId
       const { data: user, error: userError } = await supabase
         .from('users')
         .select('businessId')
@@ -99,7 +99,7 @@ export default function ProviderPage({ params }: { params: Promise<{ providerId:
         return;
       }
       setBusinessId(user.businessId);
-      // Buscar el nombre del negocio y si es mobile
+      // Find the business name and if it is mobile
       const { data: business, error: businessError } = await supabase
         .from('businesses')
         .select('name, mobile')
@@ -122,23 +122,23 @@ export default function ProviderPage({ params }: { params: Promise<{ providerId:
     <div className="container mx-auto px-4 py-8">
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
         <ProviderTitle providerId={providerId} />
-        {/* Mostrar businessId y businessName debajo del ProviderId */}
+        {/* Show businessId and businessName below ProviderId */}
         <div className="mb-4">
-          <div className="text-sm text-gray-600 dark:text-gray-300" tabIndex={0} aria-label="ID del negocio">
-            <span className="font-semibold">Business ID:</span> {businessId ?? 'No disponible'}
+          <div className="text-sm text-gray-600 dark:text-gray-300" tabIndex={0} aria-label="Business ID">
+            <span className="font-semibold">Business ID:</span> {businessId ?? 'Not available'}
           </div>
-          <div className="text-sm text-gray-600 dark:text-gray-300" tabIndex={0} aria-label="Nombre del negocio">
-            <span className="font-semibold">Nombre del negocio:</span> {businessName ?? 'No disponible'}
+          <div className="text-sm text-gray-600 dark:text-gray-300" tabIndex={0} aria-label="Business name">
+            <span className="font-semibold">Business name:</span> {businessName ?? 'Not available'}
           </div>
-          {/* Botón de continuar con contexto */}
+          {/* Continue button with context */}
           <ContinueButtonWithContext providerId={providerId} businessId={businessId} />
         </div>
         <h1 className="text-2xl font-bold mb-4">
-          Selecciona una opción de reserva
+          Select a booking option
         </h1>
-        {/* Input para seleccionar una fecha */}
+        {/* Input to select a date */}
         <div className="mb-6">
-          <label className="block text-sm font-medium mb-1" htmlFor="date">Fecha:</label>
+          <label className="block text-sm font-medium mb-1" htmlFor="date">Date:</label>
           <input
             id="date"
             type="date"
@@ -147,10 +147,10 @@ export default function ProviderPage({ params }: { params: Promise<{ providerId:
             onChange={e => setDate(e.target.value)}
           />
         </div>
-        {/* Aquí puedes agregar los enlaces a las diferentes secciones de booking */}
+        {/* Here you can add links to the different booking sections */}
         <div className="mt-6 text-stone-950">
-          <h2 className="text-lg font-semibold mb-2">Slots disponibles (JSON):</h2>
-          {loading && <div className="text-blue-500">Cargando...</div>}
+          <h2 className="text-lg font-semibold mb-2">Available slots (JSON):</h2>
+          {loading && <div className="text-blue-500">Loading...</div>}
           {error && <div className="text-red-500">{error}</div>}
           {!loading && !error && (
             <pre className="bg-gray-100 text-xs p-3 rounded overflow-x-auto max-h-96">
