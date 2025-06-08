@@ -1,13 +1,15 @@
 import { ChatSession, ChatMessage, ChatSessionCreateInput } from "@/lib/database/models/chat-session"; 
-import { getOrCreateSession, SessionResolution } from "./sessions-manager";
+import { getOrCreateSession } from "./sessions-manager";
+import { UserContext } from "@/lib/database/models/user-context";
 
 // Default session timeout in hours if not specified by the caller
 const DEFAULT_SESSION_TIMEOUT_HOURS = 12;
 
-export interface SessionContextResult {
+export interface HistoryAndContextResult {
   currentSessionId: string;
   historyForLLM: ChatMessage[];
   isNewSession: boolean;
+  userContext: UserContext; // The user's stateful context
   userId?: string | null; 
   businessId?: string | null; 
 }
@@ -32,36 +34,35 @@ async function buildHistoryForContext(
   );
 
   if (previousSession) {
-    console.log(`[ContextExtractor] Prepending history from previous session ${previousSession.id}`);
+    console.log(`[HistoryExtractor] Prepending history from previous session ${previousSession.id}`);
     const previousMessages = previousSession.allMessages || [];
     return [...previousMessages, ...historyFromCurrentSession];
   }
 
   // If no previous session is found, just return the current session's history
-  // (which will be empty if the session is brand new).
   return historyFromCurrentSession;
 }
 
 /**
- * Extracts conversational context for LLMs by managing the user's chat session.
- * It finds an active session or creates a new one, and returns the relevant message history.
+ * Extracts conversational history and stateful context for a user.
+ * It manages the user's chat session and their persistent UserContext.
  *
  * @param channel The communication channel (e.g., 'whatsapp').
  * @param channelUserId The user's identifier on that channel (e.g., phone number).
  * @param businessId The business identifier for the session.
- * @param sessionTimeoutHours The duration in hours to consider a session active without new messages.
- * @param additionalSessionParams Optional parameters to pass when creating a new session (e.g., userId, businessId).
- * @returns A Promise resolving to a SessionContextResult object, or null if critical parameters are missing.
+ * @param sessionTimeoutHours The duration in hours to consider a session active.
+ * @param additionalSessionParams Optional parameters for creating a new session.
+ * @returns A Promise resolving to a HistoryAndContextResult object, or null if critical parameters are missing.
  */
-export async function extractSessionContext(
+export async function extractSessionHistoryAndContext(
   channel: string,
   channelUserId: string,
   businessId: string,
   sessionTimeoutHours: number = DEFAULT_SESSION_TIMEOUT_HOURS,
   additionalSessionParams?: Partial<Omit<ChatSessionCreateInput, 'channel' | 'channelUserId' | 'businessId'>>
-): Promise<SessionContextResult | null> { 
+): Promise<HistoryAndContextResult | null> { 
   if (!channel || !channelUserId || !businessId) {
-    console.error("[ContextExtractor] Critical error: Channel, Channel User ID, and Business ID are required.");
+    console.error("[HistoryExtractor] Critical error: Channel, Channel User ID, and Business ID are required.");
     return null;
   }
 
@@ -75,20 +76,31 @@ export async function extractSessionContext(
   );
 
   if (!sessionResolution) {
-    console.error(`[ContextExtractor] Failed to resolve a session for ${channel}:${channelUserId}.`);
+    console.error(`[HistoryExtractor] Failed to resolve a session for ${channel}:${channelUserId}.`);
     return null;
   }
   
   const { session: sessionToUse, isNew } = sessionResolution;
 
-  // Step 2: Build the historical context based on the resolved session.
+  // Step 2: Get or create the user's stateful context.
+  let userContext = await UserContext.getByChannelUserId(channelUserId);
+  if (!userContext) {
+    console.log(`[HistoryExtractor] No UserContext found for ${channelUserId}, creating one.`);
+    userContext = await UserContext.create({
+      channelUserId: channelUserId,
+      businessId: businessId,
+    });
+  }
+
+  // Step 3: Build the historical context based on the resolved session.
   const history = await buildHistoryForContext(sessionToUse);
 
-  // Step 3: Combine results and return.
+  // Step 4: Combine results and return.
   return {
     currentSessionId: sessionToUse.id,
     historyForLLM: history,
     isNewSession: isNew,
+    userContext: userContext,
     userId: sessionToUse.userId,
     businessId: sessionToUse.businessId,
   };
