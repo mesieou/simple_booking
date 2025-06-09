@@ -112,8 +112,8 @@ export class WhatsappSender implements IMessageSender {
           buttons: limitedButtons.map((btn) => ({
             type: "reply",
             reply: {
-              id: btn.payload,
-              title: this.truncateText(btn.title, WHATSAPP_CONFIG.LIMITS.BUTTON_TITLE_MAX_LENGTH)
+              id: btn.buttonValue,
+              title: this.truncateText(btn.buttonText, WHATSAPP_CONFIG.LIMITS.BUTTON_TITLE_MAX_LENGTH)
             }
           }))
         }
@@ -145,12 +145,12 @@ export class WhatsappSender implements IMessageSender {
 
   // Creates a list row with optimized title and description
   private createListRow(button: NonNullable<BotResponse['buttons']>[0]) {
-    const parts = button.title.split(' - ');
+    const parts = button.buttonText.split(' - ');
     const serviceName = parts[0];
     const priceAndDuration = parts.slice(1).join(' - ');
     
     return {
-      id: button.payload,
+      id: button.buttonValue,
       title: this.truncateText(serviceName, WHATSAPP_CONFIG.LIMITS.LIST_TITLE_MAX_LENGTH),
       description: priceAndDuration || `Select ${serviceName}`
     };
