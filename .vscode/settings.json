@@ -71,6 +71,10 @@
         {
             "folderPath": "simple_booking\\lib\\database\\",
             "color": "foldercolorizer.color_99cc00"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\Juan-bot-engine\\",
+            "color": "foldercolorizer.color_cc66cc"
         }
     ]
 }

@@ -17,7 +17,9 @@ import { WhatsappSender } from "@/lib/conversation-engine/whatsapp/whatsapp-mess
 import { BotResponse } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
 import { extractSessionHistoryAndContext } from "@/lib/conversation-engine/llm-actions/chat-interactions/functions/history-extractor";
 import { analyzeConversationIntent } from "@/lib/conversation-engine/llm-actions/chat-interactions/functions/intention-detector";
+import { routeInteraction } from "@/lib/conversation-engine/conversation-orchestrator";
 import { ChatSession } from "@/lib/database/models/chat-session";
+import { UserContext } from "@/lib/database/models/user-context";
 
 export const dynamic = "force-dynamic";
 
@@ -100,56 +102,52 @@ export async function POST(req: NextRequest) {
         console.log(`[Webhook] Context Loaded for ${parsedMessage.senderId}:`);
         console.log(JSON.stringify(userContext, null, 2));
 
-
-        // STEP 2: Analyze Intent 
-        console.log(`[Webhook] Analyzing intent for message: "${parsedMessage.text}"`);
-
-        // Join user past history, and new history
-        const historyForIntentAnalysis = historyForLLM.map(msg => ({
-          role: (msg.role === 'bot' ? 'assistant' : msg.role) as 'user' | 'assistant',
-          content: msg.content
-        }));
-
-        // Analyze Intent
-        const analyzedIntent = await analyzeConversationIntent(
-          parsedMessage.text || "",
-          historyForIntentAnalysis,
+        // --- NEW STEP 3: Delegate to the Conversation Orchestrator ---
+        // The orchestrator will handle intent analysis, state management, and response generation.
+        const { finalBotResponse, updatedContext } = await routeInteraction(
+          parsedMessage,
           userContext
         );
 
-        console.log(`[Webhook] Intent Analysis Result for ${parsedMessage.senderId}:`);
-        console.log(JSON.stringify(analyzedIntent, null, 2));
-        
+        console.log(`[Webhook] Orchestrator finished. Final updated context:`);
+        console.log(JSON.stringify(updatedContext, null, 2));
 
-        // STEP 3: Send Test Response 
-        // This section is for testing and will be replaced by the call to Juan's State Manager.
+        // --- NEW STEP 4: Send the generated response ---
         try {
           const whatsappSender = new WhatsappSender();
-          const testResponse: BotResponse = {
-            text: `🤖 Intent Test Complete! 
-            Goal: ${analyzedIntent.goalType}
-            Action: ${analyzedIntent.goalAction}
-            Switch: ${analyzedIntent.contextSwitch}`
-          };
+          await whatsappSender.sendMessage(parsedMessage.senderId, finalBotResponse);
+          console.log(`[Webhook] Sent orchestrator response to ${parsedMessage.senderId}: "${finalBotResponse.text}"`);
           
-          await whatsappSender.sendMessage(parsedMessage.senderId, testResponse);
-          console.log(`[Webhook] Sent test analysis response to ${parsedMessage.senderId}`);
+          // --- Persist UserContext State ---
+          await UserContext.updateByChannelUserId(updatedContext.channelUserId, {
+            currentGoal: updatedContext.currentGoal,
+            previousGoal: updatedContext.previousGoal,
+            frequentlyDiscussedTopics: updatedContext.frequentlyDiscussedTopics,
+            participantPreferences: updatedContext.participantPreferences,
+          });
+          console.log(`[Webhook] Successfully persisted updated UserContext for ${updatedContext.channelUserId}.`);
           
-          // STEP 4: Add new conversation message to the session
-          // Update the session with the new conversation messages
+          // --- Persist ChatSession History ---
           if (historyAndContext) {
             try {
               const now = new Date().toISOString();
               const userMessage = { role: 'user' as const, content: parsedMessage.text || '', timestamp: now };
-              const botMessage = { role: 'bot' as const, content: testResponse.text || '', timestamp: now };
+              const botMessage = { role: 'bot' as const, content: finalBotResponse.text || '', timestamp: now };
               
-              const updatedMessages = [...historyForLLM, userMessage, botMessage];
+              // Map the history from the orchestrator context to the ChatSession format.
+              const historyForDb = (updatedContext.chatHistory || []).map(msg => ({
+                ...msg,
+                role: (msg.role === 'assistant' ? 'bot' : msg.role) as 'user' | 'bot'
+              }));
+              
+              // Add the latest bot message to the history.
+              historyForDb.push(botMessage);
               
               await ChatSession.update(currentSessionId, {
-                allMessages: updatedMessages
+                allMessages: historyForDb
               });
               
-              console.log(`[Webhook] Updated session ${currentSessionId} with conversation history.`);
+              console.log(`[Webhook] Updated session ${currentSessionId} with latest conversation history.`);
             } catch (updateError) {
               console.error("[Webhook] Error updating session with messages:", updateError);
             }
@@ -157,13 +155,15 @@ export async function POST(req: NextRequest) {
           
           return NextResponse.json({ 
             status: "success", 
-            message: "Test analysis complete and response sent." 
+            message: "Orchestrator processed message and sent response." 
           });
-        } catch (sendError) {
-          console.error("[Webhook] Error sending WhatsApp test response:", sendError);
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : "Unknown error";
+          console.error(`[Webhook] Error sending response or persisting state for ${parsedMessage.senderId}:`, errorMessage);
+          // Return a generic error to the client, but log the specific error server-side.
           return NextResponse.json({ 
             status: "error", 
-            message: "Failed to send test response." 
+            message: "Failed to process message." 
           }, { status: 500 });
         }
       }
