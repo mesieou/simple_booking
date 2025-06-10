@@ -16,6 +16,7 @@ export interface ConversationalParticipant {
   type: ConversationalParticipantType;
   associatedBusinessId?: string;
   businessWhatsappNumber?: string; // The business WhatsApp number customers message TO (for WhatsApp)
+  customerWhatsappNumber?: string; // The customer's WhatsApp number who is messaging FROM (for WhatsApp)
   creationTimestamp: Date;
   lastUpdatedTimestamp: Date;
 }
@@ -292,16 +293,19 @@ class MessageProcessor {
   // Gets or creates chat context for a participant
   private async getOrCreateChatContext(participant: ConversationalParticipant): Promise<ChatContext> {
     console.log(`[MessageProcessor] Building context for participant: ${participant.id}`);
-    console.log(`[MessageProcessor] Original participant businessWhatsappNumber: ${participant.businessWhatsappNumber}`);
+    console.log(`[MessageProcessor] Business WhatsApp number customers messaged TO: ${participant.businessWhatsappNumber}`);
+    console.log(`[MessageProcessor] Customer WhatsApp number messaging FROM: ${participant.customerWhatsappNumber}`);
     const existingSession = activeSessionsDB[participant.id];
 
     const participantWithBusinessId: ConversationalParticipant = {
       ...participant,
       associatedBusinessId: BOT_CONFIG.DEFAULT_BUSINESS_ID,
-      businessWhatsappNumber: participant.businessWhatsappNumber // Preserve the business WhatsApp number
+      businessWhatsappNumber: participant.businessWhatsappNumber, // Preserve the business WhatsApp number customers message TO
+      customerWhatsappNumber: participant.customerWhatsappNumber // Preserve the customer WhatsApp number messaging FROM
     };
 
-    console.log(`[MessageProcessor] Final participant businessWhatsappNumber: ${participantWithBusinessId.businessWhatsappNumber}`);
+    console.log(`[MessageProcessor] Final participant business WhatsApp number (customers message TO): ${participantWithBusinessId.businessWhatsappNumber}`);
+    console.log(`[MessageProcessor] Final participant customer WhatsApp number (messaging FROM): ${participantWithBusinessId.customerWhatsappNumber}`);
 
     return {
       currentParticipant: participantWithBusinessId,

@@ -206,32 +206,32 @@ class BookingValidator {
 // Simplified availability service
 class AvailabilityService {
   
-  // Gets the actual user UUID from business WhatsApp number
-  static async getUserIdFromBusinessWhatsapp(businessWhatsappNumber: string): Promise<string | null> {
+  // Gets the actual user UUID by looking up which business owns this WhatsApp number
+  static async findUserIdByBusinessWhatsappNumber(businessWhatsappNumber: string): Promise<string | null> {
     try {
-      const user = await User.getByBusinessWhatsappNumber(businessWhatsappNumber);
-      return user ? user.id : null;
+      const userOwningThisBusinessWhatsapp = await User.findUserByBusinessWhatsappNumber(businessWhatsappNumber);
+      return userOwningThisBusinessWhatsapp ? userOwningThisBusinessWhatsapp.id : null;
     } catch (error) {
-      console.error('[AvailabilityService] Error looking up user by business WhatsApp:', error);
+      console.error('[AvailabilityService] Error finding user by business WhatsApp number:', error);
       return null;
     }
   }
   
-  // Gets next 3 chronologically available time slots
-  static async getNext3AvailableSlots(
+  // Gets next 3 chronologically available time slots for the business that owns this WhatsApp number
+  static async getNext3AvailableSlotsForBusinessWhatsapp(
     businessWhatsappNumber: string, 
     serviceDuration: number
   ): Promise<Array<{ date: string; time: string; displayText: string }>> {
     try {
-      console.log(`[AvailabilityService] Getting next 3 slots for business WhatsApp ${businessWhatsappNumber}, duration ${serviceDuration}`);
+      console.log(`[AvailabilityService] Getting next 3 slots for business with WhatsApp ${businessWhatsappNumber}, service duration ${serviceDuration} minutes`);
       
-      const userId = await this.getUserIdFromBusinessWhatsapp(businessWhatsappNumber);
-      if (!userId) {
-        console.error('[AvailabilityService] No user found for business WhatsApp number');
+      const userIdOfBusinessOwner = await this.findUserIdByBusinessWhatsappNumber(businessWhatsappNumber);
+      if (!userIdOfBusinessOwner) {
+        console.error('[AvailabilityService] No business owner found for this WhatsApp number');
         return [];
       }
       
-      const rawSlots = await AvailabilitySlots.getNext3AvailableSlots(userId, serviceDuration);
+      const rawSlots = await AvailabilitySlots.getNext3AvailableSlots(userIdOfBusinessOwner, serviceDuration);
       
       // Simple display formatting
       return rawSlots.map(slot => {
@@ -263,42 +263,42 @@ class AvailabilityService {
       });
       
     } catch (error) {
-      console.error('[AvailabilityService] Error getting next 3 available slots:', error);
+      console.error('[AvailabilityService] Error getting next 3 available slots for business WhatsApp:', error);
       return [];
     }
   }
   
-  // Gets available hours for a specific date
-  static async getAvailableHoursForDate(
+  // Gets available hours for a specific date for the business that owns this WhatsApp number
+  static async getAvailableHoursForDateByBusinessWhatsapp(
     businessWhatsappNumber: string,
     date: string,
     serviceDuration: number
   ): Promise<string[]> {
     try {
-      const userId = await this.getUserIdFromBusinessWhatsapp(businessWhatsappNumber);
-      if (!userId) {
-        console.error('[AvailabilityService] No user found for business WhatsApp number');
+      const userIdOfBusinessOwner = await this.findUserIdByBusinessWhatsappNumber(businessWhatsappNumber);
+      if (!userIdOfBusinessOwner) {
+        console.error('[AvailabilityService] No business owner found for this WhatsApp number');
         return [];
       }
       
-      return await AvailabilitySlots.getAvailableHoursForDate(userId, date, serviceDuration);
+      return await AvailabilitySlots.getAvailableHoursForDate(userIdOfBusinessOwner, date, serviceDuration);
     } catch (error) {
-      console.error('[AvailabilityService] Error getting available hours:', error);
+      console.error('[AvailabilityService] Error getting available hours for business WhatsApp:', error);
       return [];
     }
   }
   
-  // Validates if a custom date has availability
-  static async validateCustomDate(
+  // Validates if a custom date has availability for the business that owns this WhatsApp number
+  static async validateCustomDateForBusinessWhatsapp(
     businessWhatsappNumber: string,
     date: string,
     serviceDuration: number
   ): Promise<boolean> {
     try {
-      const availableHours = await AvailabilityService.getAvailableHoursForDate(businessWhatsappNumber, date, serviceDuration);
-      return availableHours.length > 0;
+      const availableHoursForThisBusinessAndDate = await AvailabilityService.getAvailableHoursForDateByBusinessWhatsapp(businessWhatsappNumber, date, serviceDuration);
+      return availableHoursForThisBusinessAndDate.length > 0;
     } catch (error) {
-      console.error('[AvailabilityService] Error validating custom date:', error);
+      console.error('[AvailabilityService] Error validating custom date for business WhatsApp:', error);
       return false;
     }
   }
@@ -347,23 +347,23 @@ export const showAvailableTimesHandler: IndividualStepHandler = {
       return currentGoalData;
     }
     
-    const businessWhatsappNumber = chatContext.currentParticipant.businessWhatsappNumber;
-    const selectedService = currentGoalData.selectedService;
+    const businessWhatsappNumberCustomersMessagedTo = chatContext.currentParticipant.businessWhatsappNumber;
+    const selectedServiceByCustomer = currentGoalData.selectedService;
     
-    if (!businessWhatsappNumber || !selectedService?.durationEstimate) {
+    if (!businessWhatsappNumberCustomersMessagedTo || !selectedServiceByCustomer?.durationEstimate) {
       return {
         ...currentGoalData,
         availabilityError: 'Configuration error'
       };
     }
     
-    // Get next 3 available slots
-    const next3Slots = await AvailabilityService.getNext3AvailableSlots(
-      businessWhatsappNumber,
-      selectedService.durationEstimate
+    // Get next 3 available slots for the business that owns this WhatsApp number
+    const next3AvailableSlotsFromBusiness = await AvailabilityService.getNext3AvailableSlotsForBusinessWhatsapp(
+      businessWhatsappNumberCustomersMessagedTo,
+      selectedServiceByCustomer.durationEstimate
     );
     
-    if (next3Slots.length === 0) {
+    if (next3AvailableSlotsFromBusiness.length === 0) {
       return {
         ...currentGoalData,
         availabilityError: 'No appointments currently available'
@@ -372,7 +372,7 @@ export const showAvailableTimesHandler: IndividualStepHandler = {
     
     return {
       ...currentGoalData,
-      next3AvailableSlots: next3Slots
+      next3AvailableSlots: next3AvailableSlotsFromBusiness
     };
   },
   
@@ -511,16 +511,16 @@ export const showDayBrowserHandler: IndividualStepHandler = {
     }
     
     // Generate available days
-    const businessWhatsappNumber = chatContext.currentParticipant.businessWhatsappNumber;
-    const selectedService = currentGoalData.selectedService;
+    const businessWhatsappNumberCustomersMessagedTo = chatContext.currentParticipant.businessWhatsappNumber;
+    const selectedServiceByCustomer = currentGoalData.selectedService;
     
-    console.log('[ShowDayBrowser] Business WhatsApp number:', businessWhatsappNumber);
-    console.log('[ShowDayBrowser] Selected service:', selectedService);
+    console.log('[ShowDayBrowser] Business WhatsApp number customers messaged TO:', businessWhatsappNumberCustomersMessagedTo);
+    console.log('[ShowDayBrowser] Service selected by customer:', selectedServiceByCustomer);
     
-    if (!businessWhatsappNumber || !selectedService?.durationEstimate) {
+    if (!businessWhatsappNumberCustomersMessagedTo || !selectedServiceByCustomer?.durationEstimate) {
       console.error('[ShowDayBrowser] Missing required data', {
-        businessWhatsappNumber,
-        selectedService: selectedService ? { name: selectedService.name, duration: selectedService.durationEstimate } : 'null'
+        businessWhatsappNumberCustomersMessagedTo,
+        selectedServiceByCustomer: selectedServiceByCustomer ? { name: selectedServiceByCustomer.name, duration: selectedServiceByCustomer.durationEstimate } : 'null'
       });
       return {
         ...currentGoalData,
@@ -529,29 +529,29 @@ export const showDayBrowserHandler: IndividualStepHandler = {
       };
     }
     
-    // Get next 10 days with availability
-    const availableDays = [];
+    // Get next 10 days with availability for this business
+    const availableDaysForThisBusiness = [];
     const today = new Date();
     
-    console.log('[ShowDayBrowser] Checking availability for next 10 days...');
+    console.log('[ShowDayBrowser] Checking availability for next 10 days for this business...');
     
     for (let i = 0; i < 10; i++) {
       const date = new Date(today);
       date.setDate(today.getDate() + i);
       const dateString = date.toISOString().split('T')[0];
       
-      console.log(`[ShowDayBrowser] Checking availability for ${dateString}`);
+      console.log(`[ShowDayBrowser] Checking if business has availability on ${dateString}`);
       
       try {
-        const hasAvailability = await AvailabilityService.validateCustomDate(
-          businessWhatsappNumber,
+        const businessHasAvailabilityOnThisDate = await AvailabilityService.validateCustomDateForBusinessWhatsapp(
+          businessWhatsappNumberCustomersMessagedTo,
           dateString,
-          selectedService.durationEstimate
+          selectedServiceByCustomer.durationEstimate
         );
         
-        console.log(`[ShowDayBrowser] Date ${dateString} has availability: ${hasAvailability}`);
+        console.log(`[ShowDayBrowser] Business has availability on ${dateString}: ${businessHasAvailabilityOnThisDate}`);
         
-        if (hasAvailability) {
+        if (businessHasAvailabilityOnThisDate) {
           let displayText = '';
           if (i === 0) {
             displayText = `Today ${date.getDate()} ${date.toLocaleDateString('en-GB', { month: 'short' })}`;
@@ -563,19 +563,19 @@ export const showDayBrowserHandler: IndividualStepHandler = {
             });
           }
           
-          availableDays.push({
+          availableDaysForThisBusiness.push({
             date: dateString,
             displayText: displayText
           });
         }
       } catch (error) {
-        console.error(`[ShowDayBrowser] Error checking availability for ${dateString}:`, error);
+        console.error(`[ShowDayBrowser] Error checking business availability for ${dateString}:`, error);
       }
     }
     
-    console.log('[ShowDayBrowser] Available days found:', availableDays.length);
+    console.log('[ShowDayBrowser] Available days found for this business:', availableDaysForThisBusiness.length);
     
-    if (availableDays.length === 0) {
+    if (availableDaysForThisBusiness.length === 0) {
       return {
         ...currentGoalData,
         availableDays: [],
@@ -586,7 +586,7 @@ export const showDayBrowserHandler: IndividualStepHandler = {
     // Just show buttons, no text list
     return {
       ...currentGoalData,
-      availableDays,
+      availableDays: availableDaysForThisBusiness,
       confirmationMessage: 'Please select a day:'
     };
   },
@@ -697,11 +697,11 @@ export const showHoursForDayHandler: IndividualStepHandler = {
       };
     }
     
-    const businessWhatsappNumber = chatContext.currentParticipant.businessWhatsappNumber;
-    const selectedService = currentGoalData.selectedService;
-    const selectedDate = currentGoalData.selectedDate;
+    const businessWhatsappNumberCustomersMessagedTo = chatContext.currentParticipant.businessWhatsappNumber;
+    const selectedServiceByCustomer = currentGoalData.selectedService;
+    const dateSelectedByCustomer = currentGoalData.selectedDate;
     
-    if (!businessWhatsappNumber || !selectedService?.durationEstimate || !selectedDate) {
+    if (!businessWhatsappNumberCustomersMessagedTo || !selectedServiceByCustomer?.durationEstimate || !dateSelectedByCustomer) {
       return {
         ...currentGoalData,
         availabilityError: 'Missing information for time lookup',
@@ -709,14 +709,14 @@ export const showHoursForDayHandler: IndividualStepHandler = {
       };
     }
     
-    // Get available hours
-    const availableHours = await AvailabilityService.getAvailableHoursForDate(
-      businessWhatsappNumber,
-      selectedDate,
-      selectedService.durationEstimate
+    // Get available hours for this business on the selected date
+    const availableHoursForBusinessOnSelectedDate = await AvailabilityService.getAvailableHoursForDateByBusinessWhatsapp(
+      businessWhatsappNumberCustomersMessagedTo,
+      dateSelectedByCustomer,
+      selectedServiceByCustomer.durationEstimate
     );
     
-    if (availableHours.length === 0) {
+    if (availableHoursForBusinessOnSelectedDate.length === 0) {
       return {
         ...currentGoalData,
         availabilityError: 'No appointments available on this date',
@@ -725,7 +725,7 @@ export const showHoursForDayHandler: IndividualStepHandler = {
     }
     
     // Format hours for display
-    const formattedHours = availableHours.map(time => {
+    const formattedHoursForDisplay = availableHoursForBusinessOnSelectedDate.map(time => {
       const [hours, minutes] = time.split(':');
       const hour24 = parseInt(hours);
       const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
@@ -738,8 +738,8 @@ export const showHoursForDayHandler: IndividualStepHandler = {
     
     return {
       ...currentGoalData,
-      availableHours,
-      formattedAvailableHours: formattedHours,
+      availableHours: availableHoursForBusinessOnSelectedDate,
+      formattedAvailableHours: formattedHoursForDisplay,
       confirmationMessage: 'Please select a time:' // Simple prompt, buttons only
     };
   },
