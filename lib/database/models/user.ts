@@ -228,16 +228,16 @@ export class User {
         }
     }
 
-    // Get user by business WhatsApp number (the number customers message TO)
-    static async getByBusinessWhatsappNumber(whatsappNumber: string): Promise<User | null> {
+    // Get user by business WhatsApp number (finds the user who owns the business with this WhatsApp number)
+    static async findUserByBusinessWhatsappNumber(businessWhatsappNumber: string): Promise<User | null> {
         try {
-            console.log(`[User] Looking up user by business WhatsApp number: ${whatsappNumber}`);
+            console.log(`[User] Finding user by looking up which business owns WhatsApp number: ${businessWhatsappNumber}`);
             
             const supa = await createClient();
             
             // Normalize the input WhatsApp number for comparison
-            const normalizedInput = PhoneNumberUtils.normalize(whatsappNumber);
-            console.log(`[User] Normalized input WhatsApp number: ${normalizedInput}`);
+            const normalizedInputWhatsappNumber = PhoneNumberUtils.normalize(businessWhatsappNumber);
+            console.log(`[User] Normalized input business WhatsApp number: ${normalizedInputWhatsappNumber}`);
             
             // Get all businesses and filter by normalized WhatsApp number
             const { data: businessesData, error: businessError } = await supa
@@ -246,53 +246,53 @@ export class User {
                 .not('whatsappNumber', 'is', null);
                 
             if (businessError) {
-                console.error('[User] Error fetching businesses:', businessError);
+                console.error('[User] Error fetching businesses to find owner of WhatsApp number:', businessError);
                 return null;
             }
             
             if (!businessesData || businessesData.length === 0) {
-                console.log('[User] No businesses found with WhatsApp numbers');
+                console.log('[User] No businesses found with WhatsApp numbers in database');
                 return null;
             }
             
             // Find matching business by normalized phone numbers
-            const matchingBusiness = businessesData.find(business => {
-                const normalizedBusiness = PhoneNumberUtils.normalize(business.whatsappNumber || '');
-                console.log(`[User] Comparing ${normalizedInput} with business ${business.id}: ${normalizedBusiness}`);
-                return normalizedBusiness === normalizedInput;
+            const businessOwningThisWhatsappNumber = businessesData.find(business => {
+                const normalizedBusinessWhatsappNumber = PhoneNumberUtils.normalize(business.whatsappNumber || '');
+                console.log(`[User] Comparing customer's WhatsApp ${normalizedInputWhatsappNumber} with business ${business.id} WhatsApp: ${normalizedBusinessWhatsappNumber}`);
+                return normalizedBusinessWhatsappNumber === normalizedInputWhatsappNumber;
             });
                 
-            if (!matchingBusiness) {
-                console.log('[User] No business found for normalized WhatsApp number:', normalizedInput);
-                console.log('[User] Available business WhatsApp numbers:', businessesData.map(b => ({ 
-                    id: b.id, 
-                    whatsappNumber: b.whatsappNumber,
-                    normalized: PhoneNumberUtils.normalize(b.whatsappNumber || '')
+            if (!businessOwningThisWhatsappNumber) {
+                console.log('[User] No business found that owns this WhatsApp number:', normalizedInputWhatsappNumber);
+                console.log('[User] Available business WhatsApp numbers in database:', businessesData.map(b => ({ 
+                    businessId: b.id, 
+                    businessWhatsappNumber: b.whatsappNumber,
+                    normalizedBusinessWhatsappNumber: PhoneNumberUtils.normalize(b.whatsappNumber || '')
                 })));
                 return null;
             }
             
-            console.log(`[User] Found matching business ID: ${matchingBusiness.id}`);
+            console.log(`[User] Found business that owns this WhatsApp number, business ID: ${businessOwningThisWhatsappNumber.id}`);
             
-            // Now find the user associated with this business
-            const { data: userData, error: userError } = await supa
+            // Now find the user who owns this business
+            const { data: userOwningThisBusiness, error: userError } = await supa
                 .from('users')
                 .select('*')
-                .eq('businessId', matchingBusiness.id)
+                .eq('businessId', businessOwningThisWhatsappNumber.id)
                 .single();
                 
-            if (!userData) {
-                console.log('[User] No user found for business:', matchingBusiness.id);
+            if (!userOwningThisBusiness) {
+                console.log('[User] No user found who owns this business:', businessOwningThisWhatsappNumber.id);
                 return null;
             }
             
-            console.log(`[User] Found user ID: ${userData.id}`);
+            console.log(`[User] Found user who owns the business with this WhatsApp number, user ID: ${userOwningThisBusiness.id}`);
             
-            const user = new User(userData.firstName, userData.lastName, userData.role, userData.businessId);
-            user.id = userData.id; // Set the actual database ID
+            const user = new User(userOwningThisBusiness.firstName, userOwningThisBusiness.lastName, userOwningThisBusiness.role, userOwningThisBusiness.businessId);
+            user.id = userOwningThisBusiness.id; // Set the actual database ID
             return user;
         } catch (error) {
-            console.error('[User] Error looking up user by business WhatsApp number:', error);
+            console.error('[User] Error finding user by business WhatsApp number:', error);
             return null;
         }
     }
