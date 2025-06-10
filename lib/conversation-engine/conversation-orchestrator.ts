@@ -1,78 +1,90 @@
 /**
- * @fileoverview The main entry point for the conversation engine.
- * This orchestrator manages the high-level flow of an interaction:
- * 1. Receives a message from a user.
- * 2. Determines the user's intent using the intention-detector.
- * 3. Delegates state management and business logic to the state-manager.
- * 4. Formulates a response based on the updated state.
+ * lib/conversation-engine/conversation-orchestrator.ts
+ *
+ * The Conversation Orchestrator.
+ * This is the central "General Manager" of the conversational flow.
+ *
+ * Its responsibilities are:
+ * 1.  Receive the parsed message and the user's current state (UserContext).
+ * 2.  Call the "AI Brain" (intention-detector) to understand the user's intent.
+ * 3.  Call the "Factory Foreman" (state-manager) to execute the next step of the user's goal.
+ * 4.  Return the final bot response and the updated user state to the caller (e.g., the webhook).
  */
 
-import { ParsedMessage, BotResponse } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
-import { UserContext } from "@/lib/database/models/user-context";
-import { AnalyzedIntent, analyzeConversationIntent } from "./llm-actions/chat-interactions/functions/intention-detector";
-import { OpenAIChatMessage } from "./llm-actions/chat-interactions/openai-config/openai-core";
-import { manageState } from "./state-manager";
+import { ParsedMessage } from '../cross-channel-interfaces/standardized-conversation-interface';
+import { UserContext } from '../database/models/user-context';
+import { BotResponse } from '../cross-channel-interfaces/standardized-conversation-interface';
+import { analyzeConversationIntent } from './llm-actions/chat-interactions/functions/intention-detector';
+import { processTurn } from './state-manager';
+import { ChatMessage } from '../database/models/chat-session';
+import { OpenAIChatMessage } from './llm-actions/chat-interactions/openai-config/openai-core';
+import { ButtonConfig } from './state-manager';
 
-// For compatibility, we'll define a type that merges UserContext with legacy fields.
-// This allows the orchestrator to manage chat history and intent temporarily.
-type OrchestratorContext = UserContext & { 
-  chatHistory?: OpenAIChatMessage[];
-  lastUserIntent?: AnalyzedIntent;
-};
+export interface OrchestratorResult {
+    finalBotResponse: BotResponse;
+    updatedContext: UserContext;
+}
 
 /**
- * Main orchestrator for routing incoming messages to the new state management engine.
- * @param parsedMessage The standardized incoming message.
- * @param context The user's current context, which will be updated and returned.
- * @returns A Promise resolving to the final BotResponse and the updated Context.
+ * Maps the chat history from the ChatMessage format (our DB) to the OpenAIChatMessage format
+ * that the AI model expects. ('bot' -> 'assistant')
+ * @param history The chat history from the database.
+ * @returns The chat history formatted for the AI.
+ */
+function mapHistoryForAI(history: ChatMessage[]): OpenAIChatMessage[] {
+    return history.map(msg => ({
+        role: msg.role === 'bot' ? 'assistant' : 'user',
+        content: msg.content
+    }));
+}
+
+/**
+ * The main orchestration function. It directs the flow of a single conversational turn.
+ * @param parsedMessage The standardized message received from the channel.
+ * @param userContext The user's current state, fetched from the database.
+ * @param history The user's full conversation history from the chat session.
+ * @returns A promise resolving to the bot's response and the new user state.
  */
 export async function routeInteraction(
-  parsedMessage: ParsedMessage,
-  context: OrchestratorContext
-): Promise<{ finalBotResponse: BotResponse; updatedContext: OrchestratorContext }> {
-  
-  console.log(`[Orchestrator] Routing interaction for user ${context.channelUserId}. Message: "${parsedMessage.text}"`);
+    parsedMessage: ParsedMessage,
+    userContext: UserContext,
+    history: ChatMessage[]
+): Promise<OrchestratorResult> {
 
-  // 1. Update chat history for context
-  const historyMessage: OpenAIChatMessage = { role: 'user', content: parsedMessage.text || '' };
-  if (!context.chatHistory) {
-    context.chatHistory = [];
-  }
-  context.chatHistory.push(historyMessage);
+    // Step 1: Call the "AI Brain" to analyze the user's intent.
+    const historyForAI = mapHistoryForAI(history);
+    const analyzedIntent = await analyzeConversationIntent(parsedMessage.text || '', historyForAI, userContext);
+    console.log(`[Orchestrator] Intent Analysis Complete:`, JSON.stringify(analyzedIntent, null, 2));
 
-  // 2. Analyze user's intent using the full context
-  try {
-    const chatHistoryForIntent = context.chatHistory
-      .filter((msg: OpenAIChatMessage) => msg.role === 'user' || msg.role === 'assistant') 
-      .map((msg: OpenAIChatMessage) => ({ role: msg.role as 'user' | 'assistant', content: msg.content || '' }));
-      
-    // Pass the message, history, and the core UserContext to the intent analyzer
-    context.lastUserIntent = await analyzeConversationIntent(parsedMessage.text || "", chatHistoryForIntent, context);
-    console.log(`[Orchestrator] Detected intent for user ${context.channelUserId}: ${JSON.stringify(context.lastUserIntent, null, 2)}`);
-  } catch (intentError) {
-    console.error("[Orchestrator] Error analyzing conversation intent:", intentError);
-    // Create a default error intent to prevent crashes
-    context.lastUserIntent = { goalType: 'unknown', goalAction: 'none', contextSwitch: false, confidence: 0, extractedInformation: {} };
-  }
+    // Step 2: Call the "State Manager" to process the turn based on the intent.
+    const updatedContext = await processTurn(
+        userContext, 
+        analyzedIntent, 
+        parsedMessage.text || '', 
+        parsedMessage.businessWhatsappNumber
+    );
+    console.log(`[Orchestrator] State Manager processing complete.`);
 
-  // 3. Delegate to the State Manager
-  // The state manager will modify the context object directly.
-  const updatedContext = await manageState(
-    context, // The full context is passed as the UserContext
-    context.lastUserIntent,
-    parsedMessage.text || ''
-  );
+    // Step 3: Extract the response and buttons from the updated context's goal data.
+    // The state manager places the response here for the orchestrator to find.
+    const responseText = updatedContext.currentGoal?.collectedData?.confirmationMessage || "Sorry, I'm not sure how to help with that. Can you please try rephrasing?";
+    const responseButtons = (updatedContext.currentGoal?.collectedData?.uiButtons || []) as ButtonConfig[];
+    
+    const finalBotResponse: BotResponse = {
+        text: responseText,
+        buttons: responseButtons
+    };
+    
+    // Step 4: Clean up temporary response data from the context before it's saved.
+    // This prevents the response from one turn from being accidentally used in the next.
+    if (updatedContext.currentGoal?.collectedData) {
+        delete updatedContext.currentGoal.collectedData.confirmationMessage;
+        delete updatedContext.currentGoal.collectedData.uiButtons;
+    }
 
-  // 4. Construct the final response from the state manager's output
-  const lastStepOutput = updatedContext.currentGoal?.collectedData;
-  
-  const botResponse: BotResponse = {
-    text: lastStepOutput?.confirmationMessage || lastStepOutput?.stepError || "I'm not sure how to respond. Can you try rephrasing?",
-    buttons: lastStepOutput?.uiButtons || [],
-  };
-  
-  console.log(`[Orchestrator] Responding to user ${context.channelUserId}. Response: "${botResponse.text}"`);
-
-  // 5. Return the response and the updated context
-  return { finalBotResponse: botResponse, updatedContext: updatedContext }; 
+    // Step 5: Return the final response and the updated context to the webhook.
+    return {
+        finalBotResponse,
+        updatedContext
+    };
 } 

@@ -78,7 +78,6 @@ export async function POST(req: NextRequest) {
       onMessage: async (parsedMessage) => {
         if (!parsedMessage.senderId) {
           console.log("[Webhook] Parsed message missing senderId. Skipping interaction.");
-          // Acknowledge receipt even if we can't process it further.
           return NextResponse.json({ status: "success - acknowledged but no senderId" }, { status: 200 });
         }
         
@@ -102,11 +101,12 @@ export async function POST(req: NextRequest) {
         console.log(`[Webhook] Context Loaded for ${parsedMessage.senderId}:`);
         console.log(JSON.stringify(userContext, null, 2));
 
-        // --- NEW STEP 3: Delegate to the Conversation Orchestrator ---
+        // --- STEP 3: Delegate to the Conversation Orchestrator ---
         // The orchestrator will handle intent analysis, state management, and response generation.
         const { finalBotResponse, updatedContext } = await routeInteraction(
           parsedMessage,
-          userContext
+          userContext,
+          historyForLLM
         );
 
         console.log(`[Webhook] Orchestrator finished. Final updated context:`);
@@ -130,18 +130,14 @@ export async function POST(req: NextRequest) {
           // --- Persist ChatSession History ---
           if (historyAndContext) {
             try {
-              const now = new Date().toISOString();
-              const userMessage = { role: 'user' as const, content: parsedMessage.text || '', timestamp: now };
-              const botMessage = { role: 'bot' as const, content: finalBotResponse.text || '', timestamp: now };
+              // The most up-to-date history is now in the returned context's goal.
+              // We will use that as the new source of truth for the session's message log.
+              const updatedHistory = updatedContext.currentGoal?.messageHistory || [];
               
-              // Map the history from the orchestrator context to the ChatSession format.
-              const historyForDb = (updatedContext.chatHistory || []).map(msg => ({
+              const historyForDb = updatedHistory.map(msg => ({
                 ...msg,
-                role: (msg.role === 'assistant' ? 'bot' : msg.role) as 'user' | 'bot'
+                role: (msg.speakerRole === 'chatbot' ? 'bot' : 'user') as 'user' | 'bot'
               }));
-              
-              // Add the latest bot message to the history.
-              historyForDb.push(botMessage);
               
               await ChatSession.update(currentSessionId, {
                 allMessages: historyForDb
