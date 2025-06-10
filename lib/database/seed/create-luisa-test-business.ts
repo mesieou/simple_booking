@@ -250,7 +250,14 @@ async function clearExistingLuisaBusiness(supa: SupabaseClient): Promise<void> {
     .eq('businessId', businessId);
   if (servicesError) console.log('[SEED] Note: Error deleting services:', servicesError.message);
 
-  // 8. Delete auth users first, then database users
+  // 8. chatSessions (for this business)
+  const { error: chatSessionsError } = await supa
+    .from('chatSessions')
+    .delete()
+    .eq('businessId', businessId);
+  if (chatSessionsError) console.log('[SEED] Note: Error deleting chat sessions:', chatSessionsError.message);
+
+  // 9. Delete auth users first, then database users
   for (const userId of userIds) {
     try {
       // Delete from Supabase Auth
@@ -283,7 +290,7 @@ async function clearExistingLuisaBusiness(supa: SupabaseClient): Promise<void> {
     if (usersError) console.log('[SEED] Note: Error deleting users:', usersError.message);
   }
 
-  // 9. Finally delete the business
+  // 10. Finally delete the business
   const { error: businessDeleteError } = await supa
     .from('businesses')
     .delete()
