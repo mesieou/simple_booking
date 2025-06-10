@@ -85,12 +85,17 @@ export function parseWhatsappMessage(payload: WebhookAPIBody): ParsedMessage | P
       return null;
     }
 
-    const baseParsedMessage: Omit<ParsedMessage, 'text' | 'attachments'> = {
-      channelType: 'whatsapp',
+    const waMetadata = value.metadata;
+    const contactProfile = value.contacts?.[0]?.profile;
+
+    const baseParsedMessage = {
+      channelType: 'whatsapp' as const,
       messageId: waMessage.id,
       senderId: waMessage.from,
-      userName: value.contacts?.[0]?.profile?.name,
-      recipientId: value.metadata.phone_number_id,
+      userName: contactProfile?.name,
+      recipientId: waMetadata.phone_number_id,
+      businessWhatsappNumber: waMetadata.display_phone_number, // Business WhatsApp number customers message TO
+      customerWhatsappNumber: waMessage.from, // Customer's WhatsApp number who is messaging FROM
       timestamp: new Date(parseInt(waMessage.timestamp) * 1000),
       originalPayload: payload,
     };
@@ -101,48 +106,87 @@ export function parseWhatsappMessage(payload: WebhookAPIBody): ParsedMessage | P
     switch (waMessage.type) {
       case 'text':
         textContent = waMessage.text?.body;
-        break;
-      case 'button':
-        // Button template clicks are received as text messages
-        textContent = waMessage.text?.body;
-        break;
-      case 'interactive':
-        const interactive = waMessage.interactive;
-        if (interactive?.button_reply) {
-          attachments.push({ type: 'interactive_reply', payload: interactive.button_reply });
-          textContent = interactive.button_reply.title;
-        } else if (interactive?.list_reply) {
-          attachments.push({ type: 'interactive_reply', payload: interactive.list_reply });
-          textContent = interactive.list_reply.title;
-        } else if (interactive?.nfm_reply) {
-          attachments.push({ type: 'interactive_reply', payload: interactive.nfm_reply });
-          textContent = interactive.nfm_reply.body;
-        }
+        console.log("[WhatsappParser] Parsed text message:", textContent);
         break;
       case 'image':
-        attachments.push({ type: 'image', payload: waMessage.image });
-        textContent = waMessage.image?.caption;
-        break;
-      case 'video':
-        attachments.push({ type: 'video', payload: waMessage.video });
-        textContent = waMessage.video?.caption;
-        break;
-      case 'document':
-        attachments.push({ type: 'document', payload: waMessage.document });
-        textContent = waMessage.document?.caption;
+        attachments.push({ type: 'image', payload: waMessage.image, caption: waMessage.image?.caption });
+        textContent = waMessage.image?.caption; // Also treat caption as text if present
+        console.log("[WhatsappParser] Parsed image message. Caption:", textContent);
         break;
       case 'audio':
         attachments.push({ type: 'audio', payload: waMessage.audio });
+        console.log("[WhatsappParser] Parsed audio message.");
+        break;
+      case 'video':
+        attachments.push({ type: 'video', payload: waMessage.video, caption: waMessage.video?.caption });
+        textContent = waMessage.video?.caption;
+        console.log("[WhatsappParser] Parsed video message. Caption:", textContent);
+        break;
+      case 'document':
+        attachments.push({ type: 'document', payload: waMessage.document, caption: waMessage.document?.caption });
+        textContent = waMessage.document?.caption;
+        console.log("[WhatsappParser] Parsed document message. Caption:", textContent);
         break;
       case 'sticker':
         attachments.push({ type: 'sticker', payload: waMessage.sticker });
+        console.log("[WhatsappParser] Parsed sticker message.");
         break;
       case 'location':
         attachments.push({ type: 'location', payload: waMessage.location });
+        console.log("[WhatsappParser] Parsed location message.");
+        // Potentially construct a text representation from location if needed by core logic
+        // textContent = `Location: ${waMessage.location?.latitude}, ${waMessage.location?.longitude}`;
         break;
       case 'contacts':
         attachments.push({ type: 'contact', payload: waMessage.contacts });
+        console.log("[WhatsappParser] Parsed contacts message.");
         break;
+      case 'interactive':
+        if (waMessage.interactive) {
+          const interactiveType = waMessage.interactive.type;
+          console.log(`[WhatsappParser] Processing interactive type: ${interactiveType}`);
+          
+          // Handle button replies (≤3 options)
+          if (interactiveType === 'button_reply' && waMessage.interactive.button_reply) {
+            attachments.push({ type: 'interactive_reply', payload: waMessage.interactive.button_reply });
+            textContent = waMessage.interactive.button_reply.id;
+            console.log("[WhatsappParser] Parsed interactive button_reply. ID:", textContent, "Title:", waMessage.interactive.button_reply.title);
+          }
+          // Handle list replies (>3 options)  
+          else if (interactiveType === 'list_reply' && waMessage.interactive.list_reply) {
+            attachments.push({ type: 'interactive_reply', payload: waMessage.interactive.list_reply });
+            textContent = waMessage.interactive.list_reply.id;
+            console.log("[WhatsappParser] Parsed interactive list_reply. ID:", textContent, "Title:", waMessage.interactive.list_reply.title);
+          }
+          // Handle NFM (Native Flow Message) replies
+          else if (interactiveType === 'nfm_reply' && waMessage.interactive.nfm_reply) {
+            attachments.push({ type: 'interactive_reply', payload: waMessage.interactive.nfm_reply, caption: waMessage.interactive.nfm_reply.name });
+            textContent = waMessage.interactive.nfm_reply.body;
+            console.log("[WhatsappParser] Parsed interactive nfm_reply. Body:", textContent);
+          }
+          // Generic handler for any other interactive types
+          else {
+            // Try to find any interactive reply data
+            const replyData = waMessage.interactive[`${interactiveType}`];
+            if (replyData && typeof replyData === 'object') {
+              attachments.push({ type: 'interactive_reply', payload: replyData });
+              // Try to extract ID or value from common properties
+              textContent = replyData.id || replyData.value || replyData.body || replyData.title;
+              console.log(`[WhatsappParser] Parsed generic interactive ${interactiveType}. Extracted content:`, textContent);
+            } else {
+              console.warn("[WhatsappParser] Interactive message type received but couldn't extract data:", interactiveType);
+              attachments.push({ type: 'interactive_reply', payload: waMessage.interactive });
+            }
+          }
+        } else {
+          console.warn("[WhatsappParser] Interactive message type received, but 'interactive' object is missing.");
+        }
+        break;
+      case 'button': // This is for when a user clicks a button from a Buttons Message Template
+          textContent = waMessage.text?.body; // The button click often sends back the button's text as a message
+          console.log("[WhatsappParser] Parsed button click message. Text:", textContent);
+          // Or, if there's specific button payload: attachments.push({ type: 'button_reply', payload: waMessage.button }) 
+          break;
       default:
         attachments.push({ type: 'unsupported', payload: waMessage });
         break;
