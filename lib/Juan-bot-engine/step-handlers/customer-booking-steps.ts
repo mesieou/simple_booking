@@ -3,6 +3,7 @@ import { Service, type ServiceData } from '../../database/models/service';
 import { Business } from '../../database/models/business';
 import { AvailabilitySlots } from '../../database/models/availability-slots';
 import { User } from '../../database/models/user';
+import { v4 as uuidv4 } from 'uuid';
 
 // Configuration constants for booking steps
 const BOOKING_CONFIG = {
@@ -1359,80 +1360,184 @@ export const askToBookHandler: IndividualStepHandler = {
   }
 };
 
-// Checks if customer is new or existing - single responsibility
+// Checks if customer is new or existing and creates user automatically - single responsibility
 export const isNewUserHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: 'Are you a new customer or do you have an account with us?',
+  defaultChatbotPrompt: 'Let me check if you\'re in our system...',
   
-  // Validates user type selection or edit options
-  validateUserInput: async (userInput, currentGoalData) => {
-    // If showing edit options, validate edit choices
-    if (currentGoalData.showEditOptions) {
-      if (userInput === 'edit_service' || userInput === 'edit_time') {
-        return { isValidInput: true };
-      }
-      return {
-        isValidInput: false,
-        validationErrorMessage: 'Please select what you would like to change.'
-      };
-    }
+  // Validates name input when creating new user
+  validateUserInput: async (userInput, currentGoalData, chatContext) => {
+    console.log('[IsNewUser] Validating input:', userInput);
+    console.log('[IsNewUser] Current goal data:', Object.keys(currentGoalData));
     
-    // Normal new/existing customer validation
-    const response = userInput.toLowerCase();
-    if (response.includes('new') || response.includes('existing') || response.includes('have')) {
+    // If we haven't checked for existing user yet, accept empty input to trigger the check
+    if (!currentGoalData.userExistenceChecked && (!userInput || userInput === "")) {
+      console.log('[IsNewUser] First time - accepting empty input to check user existence');
       return { isValidInput: true };
     }
     
-    return {
-      isValidInput: false,
-      validationErrorMessage: 'Please let me know if you\'re a new customer or existing customer.'
-    };
-  },
-  
-  // Determines if user is new or handles edit navigation
-  processAndExtractData: async (validatedInput, currentGoalData) => {
-    // Handle edit choices by setting navigation flags
-    if (currentGoalData.showEditOptions) {
-      if (validatedInput === 'edit_service') {
+    // If user exists, no need for further input
+    if (currentGoalData.existingUserFound) {
+      console.log('[IsNewUser] Existing user found - accepting any input');
+      return { isValidInput: true };
+    }
+    
+    // If we need to ask for name, validate name input
+    if (currentGoalData.needsUserCreation && !currentGoalData.userName) {
+      if (!userInput || userInput.trim().length < 2) {
         return {
-          ...currentGoalData,
-          navigateBackTo: 'selectService',
-          showEditOptions: false // Clear the flag
+          isValidInput: false,
+          validationErrorMessage: 'Please provide your first name (at least 2 characters).'
         };
       }
+      console.log('[IsNewUser] Valid name provided:', userInput);
+      return { isValidInput: true };
+    }
+    
+    // If user creation is in progress, accept input
+    if (currentGoalData.userCreationInProgress) {
+      console.log('[IsNewUser] User creation in progress - accepting input');
+      return { isValidInput: true };
+    }
+    
+    console.log('[IsNewUser] Default case - accepting input');
+    return { isValidInput: true };
+  },
+  
+  // Checks for existing user or creates new user automatically
+  processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
+    console.log('[IsNewUser] Processing input:', validatedInput);
+    console.log('[IsNewUser] Current goal data keys:', Object.keys(currentGoalData));
+    
+    const customerWhatsappNumber = chatContext.currentParticipant.customerWhatsappNumber;
+    
+    if (!customerWhatsappNumber) {
+      console.error('[IsNewUser] No customer WhatsApp number found in chat context');
+      return {
+        ...currentGoalData,
+        error: 'Unable to identify customer WhatsApp number'
+      };
+    }
+    
+    // Step 1: Check if user exists (first time execution)
+    if (!currentGoalData.userExistenceChecked && (!validatedInput || validatedInput === "")) {
+      console.log('[IsNewUser] Checking if user exists for WhatsApp:', customerWhatsappNumber);
       
-      if (validatedInput === 'edit_time') {
+      try {
+        const existingUser = await User.findUserByCustomerWhatsappNumber(customerWhatsappNumber);
+        
+        if (existingUser) {
+          console.log('[IsNewUser] Found existing user:', existingUser.id);
+          return {
+            ...currentGoalData,
+            userExistenceChecked: true,
+            existingUserFound: true,
+            userId: existingUser.id,
+            userName: existingUser.firstName,
+            confirmationMessage: `Welcome back, ${existingUser.firstName}! I found your account.`
+          };
+        } else {
+          console.log('[IsNewUser] No existing user found, need to create new user');
+          return {
+            ...currentGoalData,
+            userExistenceChecked: true,
+            needsUserCreation: true,
+            confirmationMessage: 'I don\'t see you in our system yet. What\'s your first name so I can create your account?'
+          };
+        }
+      } catch (error) {
+        console.error('[IsNewUser] Error checking for existing user:', error);
         return {
           ...currentGoalData,
-          navigateBackTo: 'showAvailableTimes',
-          showEditOptions: false // Clear the flag
+          userExistenceChecked: true,
+          needsUserCreation: true,
+          confirmationMessage: 'Let me create your account. What\'s your first name?'
         };
       }
     }
     
-    // Normal new/existing customer processing
-    const response = validatedInput.toLowerCase();
-    const isNewUser = response.includes('new');
-    
-    return {
-      ...currentGoalData,
-      isNewUser
-    };
-  },
-  
-  // Show edit options or user type buttons based on context
-  fixedUiButtons: async (currentGoalData) => {
-    if (currentGoalData.showEditOptions) {
-      return [
-        { buttonText: '💼 Change Service', buttonValue: 'edit_service' },
-        { buttonText: '🕐 Change Date/Time', buttonValue: 'edit_time' }
-      ];
+    // Step 2: Create new user if needed
+    if (currentGoalData.needsUserCreation && !currentGoalData.userName && validatedInput) {
+      const firstName = validatedInput.trim();
+      console.log('[IsNewUser] Creating new user with name:', firstName);
+      
+      try {
+        // Generate email and password
+        const email = `wa_${customerWhatsappNumber}@skedy.ai`;
+        const password = uuidv4();
+        
+        console.log('[IsNewUser] Generated email:', email);
+        console.log('[IsNewUser] Generated password length:', password.length);
+        
+        // Get business ID from chat context
+        const businessId = chatContext.currentParticipant.associatedBusinessId;
+        if (!businessId) {
+          console.error('[IsNewUser] No business ID found in chat context');
+          return {
+            ...currentGoalData,
+            error: 'Unable to identify business for user creation'
+          };
+        }
+        
+        // Create new user
+        const newUser = new User(firstName, '', 'customer', businessId);
+        const { data, error } = await newUser.add({
+          email: email,
+          password: password,
+          whatsappNumber: customerWhatsappNumber
+        });
+        
+        if (error) {
+          console.error('[IsNewUser] Error creating user:', error);
+          return {
+            ...currentGoalData,
+            error: 'Failed to create user account. Please try again.'
+          };
+        }
+        
+        console.log('[IsNewUser] Successfully created user:', newUser.id);
+        
+        return {
+          ...currentGoalData,
+          userName: firstName,
+          userId: newUser.id,
+          userCreated: true,
+          userEmail: email,
+          success: true, // Signal to move to next step
+          confirmationMessage: `Perfect! I've created your account, ${firstName}. Let's continue with your booking.`
+        };
+        
+      } catch (error) {
+        console.error('[IsNewUser] Error in user creation process:', error);
+        return {
+          ...currentGoalData,
+          error: 'Failed to create user account. Please try again.'
+        };
+      }
     }
     
-    // Normal new/existing customer buttons
-    return [
-      { buttonText: '👤 New customer', buttonValue: 'new_customer' },
-      { buttonText: '🔄 Existing customer', buttonValue: 'existing_customer' }
-    ];
+    // Step 3: If existing user found, mark as success
+    if (currentGoalData.existingUserFound) {
+      console.log('[IsNewUser] Existing user confirmed, marking as success');
+      return {
+        ...currentGoalData,
+        success: true, // Signal to move to next step
+        confirmationMessage: 'Great! Let\'s continue with your booking.'
+      };
+    }
+    
+    // Default return
+    console.log('[IsNewUser] Default return - no changes');
+    return currentGoalData;
+  },
+  
+  // Show buttons only if there's an error
+  fixedUiButtons: async (currentGoalData) => {
+    if (currentGoalData.error) {
+      return [{ buttonText: '🔄 Try again', buttonValue: 'retry_user_creation' }];
+    }
+    
+    // No buttons needed for normal flow
+    return [];
   }
 };
 
