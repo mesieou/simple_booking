@@ -5,7 +5,7 @@ type GoalActionType = 'create' | 'delete' | 'update';
 
 // Configuration constants
 const BOT_CONFIG = {
-  DEFAULT_BUSINESS_ID: '2b4d2e67-a00f-4e36-81a1-64e6ac397394', // Beauty Asiul business ID
+  DEFAULT_BUSINESS_ID: '6c77fa8b-952e-480d-819d-3e9499e272e6', // Beauty Asiul business ID
   DEFAULT_TIMEZONE: 'Australia/Melbourne',
   DEFAULT_LANGUAGE: 'en',
   SESSION_TIMEOUT_HOURS: 24
@@ -93,8 +93,8 @@ export interface IndividualStepHandler {
 const conversationFlowBlueprints: Record<string, string[]> = {
   businessAccountCreation: ['getName', 'getBusinessEmail', 'getBusinessPhone', 'selectTimeZone', 'confirmAccountDetails'],
   businessAccountDeletion: ['confirmDeletionRequest', 'verifyUserPassword', 'initiateAccountDeletion'],
-  bookingCreatingForMobileService: ['askAddress', 'validateAddress', 'selectService', 'confirmLocation', 'displayQuote', 'askToBook', 'showAvailableTimes', 'handleTimeChoice', 'showDayBrowser', 'selectSpecificDay', 'showHoursForDay', 'selectSpecificTime', 'showBookingSummary', 'handleSummaryChoice', 'isNewUser', 'askEmail', 'createBooking', 'displayConfirmedBooking', 'sendEmailBookingConfirmation'],
-  bookingCreatingForNoneMobileService: ['selectService', 'confirmLocation', 'showAvailableTimes', 'handleTimeChoice', 'showDayBrowser', 'selectSpecificDay', 'showHoursForDay', 'selectSpecificTime', 'showBookingSummary', 'handleSummaryChoice', 'isNewUser', 'askEmail', 'createBooking', 'displayConfirmedBooking', 'sendEmailBookingConfirmation'],
+  bookingCreatingForMobileService: ['askAddress', 'validateAddress', 'selectService', 'confirmLocation', 'showAvailableTimes', 'handleTimeChoice', 'showDayBrowser', 'selectSpecificDay', 'showHoursForDay', 'selectSpecificTime', 'checkExistingUser', 'handleUserStatus', 'askUserName', 'createNewUser', 'quoteSummary', 'handleQuoteChoice', 'createBooking', 'displayConfirmedBooking'],
+  bookingCreatingForNoneMobileService: ['selectService', 'confirmLocation', 'showAvailableTimes', 'handleTimeChoice', 'showDayBrowser', 'selectSpecificDay', 'showHoursForDay', 'selectSpecificTime', 'checkExistingUser', 'handleUserStatus', 'askUserName', 'createNewUser', 'quoteSummary', 'handleQuoteChoice', 'createBooking', 'displayConfirmedBooking'],
   customerFaqHandling: ['identifyUserQuestion', 'searchKnowledgeBase', 'provideAnswerToUser', 'checkUserSatisfaction'],
 };
 
@@ -105,8 +105,6 @@ import {
     validateAddressHandler,
     selectServiceHandler, 
     confirmLocationHandler,
-    displayQuoteHandler,
-    askToBookHandler,
     // New simplified handlers
     showAvailableTimesHandler,
     handleTimeChoiceHandler,
@@ -114,15 +112,18 @@ import {
     selectSpecificDayHandler,
     showHoursForDayHandler,
     selectSpecificTimeHandler,
-    // New booking summary handlers
-    showBookingSummaryHandler,
-    handleSummaryChoiceHandler,
-    // Keep existing handlers for customer info
-    isNewUserHandler,
+    // Quote and booking handlers
+    quoteSummaryHandler,
+    handleQuoteChoiceHandler,
+    // User management handlers
+    checkExistingUserHandler,
+    handleUserStatusHandler,
+    askUserNameHandler,
+    createNewUserHandler,
+    // Other handlers
     askEmailHandler,
     createBookingHandler,
-    displayConfirmedBookingHandler,
-    sendEmailBookingConfirmationHandler
+    displayConfirmedBookingHandler
 } from './step-handlers/customer-booking-steps';
 
 const botTasks: Record<string, IndividualStepHandler> = {
@@ -131,8 +132,6 @@ const botTasks: Record<string, IndividualStepHandler> = {
   validateAddress: validateAddressHandler,
   selectService: selectServiceHandler,
   confirmLocation: confirmLocationHandler,
-  displayQuote: displayQuoteHandler,
-  askToBook: askToBookHandler,
   // New simplified time/date handlers
   showAvailableTimes: showAvailableTimesHandler,
   handleTimeChoice: handleTimeChoiceHandler,
@@ -140,15 +139,18 @@ const botTasks: Record<string, IndividualStepHandler> = {
   selectSpecificDay: selectSpecificDayHandler,
   showHoursForDay: showHoursForDayHandler,
   selectSpecificTime: selectSpecificTimeHandler,
-  // New booking summary handlers
-  showBookingSummary: showBookingSummaryHandler,
-  handleSummaryChoice: handleSummaryChoiceHandler,
-  // Keep existing customer info handlers
-  isNewUser: isNewUserHandler,
+  // Quote and booking handlers
+  quoteSummary: quoteSummaryHandler,
+  handleQuoteChoice: handleQuoteChoiceHandler,
+  // User management handlers
+  checkExistingUser: checkExistingUserHandler,
+  handleUserStatus: handleUserStatusHandler,
+  askUserName: askUserNameHandler,
+  createNewUser: createNewUserHandler,
+  // Other handlers
   askEmail: askEmailHandler,
   createBooking: createBookingHandler,
   displayConfirmedBooking: displayConfirmedBookingHandler,
-  sendEmailBookingConfirmation: sendEmailBookingConfirmationHandler,
 };
 
 // --- Helper function for step skipping ---
@@ -159,8 +161,21 @@ const skippableStepsForQuickBooking = [
   'selectSpecificTime',
 ];
 
+const skippableStepsForExistingUser = [
+  'handleUserStatus',
+  'askUserName',
+  'createNewUser',
+];
+
 function shouldSkipStep(stepName: string, goalData: Record<string, any>): boolean {
-  return !!goalData.quickBookingSelected && skippableStepsForQuickBooking.includes(stepName);
+  if (!!goalData.quickBookingSelected && skippableStepsForQuickBooking.includes(stepName)) {
+    return true;
+  }
+  if (!!goalData.existingUserFound && skippableStepsForExistingUser.includes(stepName)) {
+    console.log(`[MessageProcessor] Skipping step for existing user: ${stepName}`);
+    return true;
+  }
+  return false;
 }
 
 // --- LLM Interface (Mock Implementation) ---
@@ -450,9 +465,17 @@ class MessageProcessor {
                                     { ...userCurrentGoal.collectedData, ...processingResult.extractedInformation } :
                                     processingResult as Record<string, any>;
 
+    const shouldConditionallyAdvance = userCurrentGoal.collectedData.shouldAutoAdvance;
+
     // Check if this step should also auto-advance
-    if (stepHandler.autoAdvance && userCurrentGoal.currentStepIndex + 1 < currentSteps.length) {
+    if ((stepHandler.autoAdvance || shouldConditionallyAdvance) && userCurrentGoal.currentStepIndex + 1 < currentSteps.length) {
       console.log(`[MessageProcessor] Auto-advancing from step: ${stepName}`);
+      
+      // Reset the flag after using it to prevent infinite loops
+      if (shouldConditionallyAdvance) {
+        userCurrentGoal.collectedData.shouldAutoAdvance = false;
+      }
+      
       this.advanceAndSkipStep(userCurrentGoal);
       return await this.executeAutoAdvanceStep(userCurrentGoal, currentContext);
     }
@@ -574,8 +597,14 @@ class MessageProcessor {
                                           nextStepResult as Record<string, any>;
           
           // Check if this step should auto-advance
-          if (nextStepHandler.autoAdvance) {
+          if (nextStepHandler.autoAdvance || userCurrentGoal.collectedData.shouldAutoAdvance) {
             console.log(`[MessageProcessor] Auto-advancing from step: ${nextStepName}`);
+
+            // Reset the flag
+            if (userCurrentGoal.collectedData.shouldAutoAdvance) {
+                userCurrentGoal.collectedData.shouldAutoAdvance = false;
+            }
+
             this.advanceAndSkipStep(userCurrentGoal);
             
             // Execute auto-advance chain
@@ -639,8 +668,14 @@ class MessageProcessor {
                                               nextStepResult as Record<string, any>;
               
               // Check if this step should auto-advance
-              if (nextStepHandler.autoAdvance) {
+              if (nextStepHandler.autoAdvance || userCurrentGoal.collectedData.shouldAutoAdvance) {
                 console.log(`[MessageProcessor] Auto-advancing from step: ${nextStepName}`);
+
+                // Reset the flag
+                if (userCurrentGoal.collectedData.shouldAutoAdvance) {
+                    userCurrentGoal.collectedData.shouldAutoAdvance = false;
+                }
+
                 this.advanceAndSkipStep(userCurrentGoal);
                 
                 // Execute auto-advance chain
