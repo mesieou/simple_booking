@@ -59,19 +59,35 @@ export class User {
     }
 
     //creates a user in supa
-    async add() {
+    async add(options?: { 
+        email?: string; 
+        password?: string; 
+        whatsappNumber?: string; 
+    }) {
         const supa = await createClient();
+
+        // Use provided email or generate default
+        const email = options?.email || `${this.firstName.toLowerCase()}.${this.lastName.toLowerCase()}@example.com`;
+        const password = options?.password || 'password123';
+
+        // Prepare user_metadata
+        const user_metadata: any = {
+            firstName: this.firstName,
+            lastName: this.lastName,
+            role: this.role
+        };
+
+        // Add WhatsApp number to metadata if provided
+        if (options?.whatsappNumber) {
+            user_metadata.whatsappNumber = options.whatsappNumber;
+        }
 
         // First create the auth user
         const { data: authData, error: authError } = await supa.auth.admin.createUser({
-            email: `${this.firstName.toLowerCase()}.${this.lastName.toLowerCase()}@example.com`,
-            password: 'password123', // You might want to generate a random password
+            email: email,
+            password: password,
             email_confirm: true,
-            user_metadata: {
-                firstName: this.firstName,
-                lastName: this.lastName,
-                role: this.role
-            }
+            user_metadata: user_metadata
         });
 
         if (authError) {
@@ -184,115 +200,160 @@ export class User {
         return data.map(userData => new User(userData.firstName, userData.lastName, userData.role, userData.businessId));
     }
 
-    // Get user by phone number (looks up business first, then associated user)
-    static async getByPhoneNumber(phoneNumber: string): Promise<User | null> {
+    // Unified method for finding user by business phone or WhatsApp number - FIXED
+    private static async findUserByBusinessContact(phoneNumber: string, contactType: 'phone' | 'whatsapp' | 'both' = 'both'): Promise<User | null> {
         try {
-            console.log(`[User] Looking up user by phone: ${phoneNumber}`);
+            console.log(`[User] Finding user by business ${contactType} contact: ${phoneNumber}`);
             
             const supa = await createClient();
             
-            // First, find the business by phone number or whatsapp number
-            const { data: businessData, error: businessError } = await supa
-                .from('businesses')
-                .select('id')
-                .or(`phone.eq.${phoneNumber},whatsappNumber.eq.${phoneNumber}`)
-                .single();
+            // Normalize the input phone number for comparison
+            const normalizedInputNumber = PhoneNumberUtils.normalize(phoneNumber);
+            console.log(`[User] Normalized input number: ${normalizedInputNumber}`);
+            
+            let businessData = null;
+            
+            if (contactType === 'phone' || contactType === 'both') {
+                // Try to find business by phone number first
+                const { data, error } = await supa
+                    .from('businesses')
+                    .select('id, phone')
+                    .not('phone', 'is', null);
+                    
+                if (!error && data) {
+                    businessData = data.find(business => {
+                        const normalizedBusinessPhone = PhoneNumberUtils.normalize(business.phone || '');
+                        return normalizedBusinessPhone === normalizedInputNumber;
+                    });
+                }
+            }
+            
+            if (!businessData && (contactType === 'whatsapp' || contactType === 'both')) {
+                // Try to find business by WhatsApp number - USE DETAILED LOGGING
+                const { data, error } = await supa
+                    .from('businesses')
+                    .select('id, whatsappNumber')
+                    .not('whatsappNumber', 'is', null);
+                    
+                if (!error && data) {
+                    console.log(`[User] Checking ${data.length} businesses with WhatsApp numbers`);
+                    businessData = data.find(business => {
+                        const normalizedBusinessWhatsapp = PhoneNumberUtils.normalize(business.whatsappNumber || '');
+                        console.log(`[User] Comparing input ${normalizedInputNumber} with business ${business.id} WhatsApp: ${normalizedBusinessWhatsapp}`);
+                        return normalizedBusinessWhatsapp === normalizedInputNumber;
+                    });
+                }
+            }
                 
             if (!businessData) {
-                console.log('[User] No business found for phone:', phoneNumber);
+                console.log(`[User] No business found for ${contactType} contact:`, normalizedInputNumber);
                 return null;
             }
             
             console.log(`[User] Found business ID: ${businessData.id}`);
             
-            // Now find the user associated with this business
+            // Now find the user who owns this business - IMPROVED ERROR HANDLING
             const { data: userData, error: userError } = await supa
                 .from('users')
                 .select('*')
-                .eq('businessId', businessData.id)
-                .single();
+                .eq('businessId', businessData.id);
                 
-            if (!userData) {
-                console.log('[User] No user found for business:', businessData.id);
+            if (userError) {
+                console.error('[User] Error querying users table:', userError);
+                return null;
+            }
+                
+            if (!userData || userData.length === 0) {
+                console.log('[User] No user found who owns this business:', businessData.id);
+                // Let's also check what users exist in the database
+                const { data: allUsers } = await supa.from('users').select('id, firstName, role, businessId');
+                console.log('[User] All users in database:', allUsers);
                 return null;
             }
             
-            console.log(`[User] Found user ID: ${userData.id}`);
+            // Take the first user if multiple (shouldn't happen but just in case)
+            const userRecord = userData[0];
+            console.log(`[User] Found user who owns the business, user ID: ${userRecord.id}`);
+            
+            const user = new User(userRecord.firstName, userRecord.lastName, userRecord.role, userRecord.businessId);
+            user.id = userRecord.id; // Set the actual database ID
+            return user;
+        } catch (error) {
+            console.error(`[User] Error finding user by business ${contactType} contact:`, error);
+            return null;
+        }
+    }
+
+    // Get user by phone number (looks up business first, then associated user) - UPDATED to use unified method
+    static async getByPhoneNumber(phoneNumber: string): Promise<User | null> {
+        return this.findUserByBusinessContact(phoneNumber, 'both');
+    }
+
+    // Get user by business WhatsApp number (finds the user who owns the business with this WhatsApp number) - UPDATED to use unified method
+    static async findUserByBusinessWhatsappNumber(businessWhatsappNumber: string): Promise<User | null> {
+        return this.findUserByBusinessContact(businessWhatsappNumber, 'whatsapp');
+    }
+
+    // Get user by customer WhatsApp number (finds customers by their WhatsApp number in user_metadata)
+    static async findUserByCustomerWhatsappNumber(customerWhatsappNumber: string): Promise<User | null> {
+        try {
+            console.log(`[User] Finding customer user by WhatsApp number: ${customerWhatsappNumber}`);
+            
+            const supa = await createClient();
+            
+            // Normalize the input WhatsApp number for comparison
+            const normalizedInputWhatsappNumber = PhoneNumberUtils.normalize(customerWhatsappNumber);
+            console.log(`[User] Normalized input customer WhatsApp number: ${normalizedInputWhatsappNumber}`);
+            
+            // Query users through auth.users to access user_metadata
+            const { data: authUsers, error: authError } = await supa.auth.admin.listUsers();
+            
+            if (authError) {
+                console.error('[User] Error fetching auth users to find customer by WhatsApp number:', authError);
+                return null;
+            }
+            
+            if (!authUsers || authUsers.users.length === 0) {
+                console.log('[User] No auth users found in database');
+                return null;
+            }
+            
+            // Find matching user by normalized WhatsApp number in user_metadata
+            const matchedAuthUser = authUsers.users.find(authUser => {
+                const userWhatsappNumber = authUser.user_metadata?.whatsappNumber;
+                if (!userWhatsappNumber) return false;
+                
+                const normalizedUserWhatsappNumber = PhoneNumberUtils.normalize(userWhatsappNumber);
+                console.log(`[User] Comparing customer's WhatsApp ${normalizedInputWhatsappNumber} with user ${authUser.id} WhatsApp: ${normalizedUserWhatsappNumber}`);
+                return normalizedUserWhatsappNumber === normalizedInputWhatsappNumber;
+            });
+            
+            if (!matchedAuthUser) {
+                console.log('[User] No customer user found with this WhatsApp number:', normalizedInputWhatsappNumber);
+                return null;
+            }
+            
+            console.log(`[User] Found customer user with this WhatsApp number, auth user ID: ${matchedAuthUser.id}`);
+            
+            // Now get the corresponding user record from the users table
+            const { data: userData, error: userError } = await supa
+                .from('users')
+                .select('*')
+                .eq('id', matchedAuthUser.id)
+                .single();
+                
+            if (!userData) {
+                console.log('[User] No user record found for auth user:', matchedAuthUser.id);
+                return null;
+            }
+            
+            console.log(`[User] Found user record for customer with WhatsApp number, user ID: ${userData.id}`);
             
             const user = new User(userData.firstName, userData.lastName, userData.role, userData.businessId);
             user.id = userData.id; // Set the actual database ID
             return user;
         } catch (error) {
-            console.error('[User] Error looking up user by phone:', error);
-            return null;
-        }
-    }
-
-    // Get user by business WhatsApp number (finds the user who owns the business with this WhatsApp number)
-    static async findUserByBusinessWhatsappNumber(businessWhatsappNumber: string): Promise<User | null> {
-        try {
-            console.log(`[User] Finding user by looking up which business owns WhatsApp number: ${businessWhatsappNumber}`);
-            
-            const supa = await createClient();
-            
-            // Normalize the input WhatsApp number for comparison
-            const normalizedInputWhatsappNumber = PhoneNumberUtils.normalize(businessWhatsappNumber);
-            console.log(`[User] Normalized input business WhatsApp number: ${normalizedInputWhatsappNumber}`);
-            
-            // Get all businesses and filter by normalized WhatsApp number
-            const { data: businessesData, error: businessError } = await supa
-                .from('businesses')
-                .select('id, whatsappNumber')
-                .not('whatsappNumber', 'is', null);
-                
-            if (businessError) {
-                console.error('[User] Error fetching businesses to find owner of WhatsApp number:', businessError);
-                return null;
-            }
-            
-            if (!businessesData || businessesData.length === 0) {
-                console.log('[User] No businesses found with WhatsApp numbers in database');
-                return null;
-            }
-            
-            // Find matching business by normalized phone numbers
-            const businessOwningThisWhatsappNumber = businessesData.find(business => {
-                const normalizedBusinessWhatsappNumber = PhoneNumberUtils.normalize(business.whatsappNumber || '');
-                console.log(`[User] Comparing customer's WhatsApp ${normalizedInputWhatsappNumber} with business ${business.id} WhatsApp: ${normalizedBusinessWhatsappNumber}`);
-                return normalizedBusinessWhatsappNumber === normalizedInputWhatsappNumber;
-            });
-                
-            if (!businessOwningThisWhatsappNumber) {
-                console.log('[User] No business found that owns this WhatsApp number:', normalizedInputWhatsappNumber);
-                console.log('[User] Available business WhatsApp numbers in database:', businessesData.map(b => ({ 
-                    businessId: b.id, 
-                    businessWhatsappNumber: b.whatsappNumber,
-                    normalizedBusinessWhatsappNumber: PhoneNumberUtils.normalize(b.whatsappNumber || '')
-                })));
-                return null;
-            }
-            
-            console.log(`[User] Found business that owns this WhatsApp number, business ID: ${businessOwningThisWhatsappNumber.id}`);
-            
-            // Now find the user who owns this business
-            const { data: userOwningThisBusiness, error: userError } = await supa
-                .from('users')
-                .select('*')
-                .eq('businessId', businessOwningThisWhatsappNumber.id)
-                .single();
-                
-            if (!userOwningThisBusiness) {
-                console.log('[User] No user found who owns this business:', businessOwningThisWhatsappNumber.id);
-                return null;
-            }
-            
-            console.log(`[User] Found user who owns the business with this WhatsApp number, user ID: ${userOwningThisBusiness.id}`);
-            
-            const user = new User(userOwningThisBusiness.firstName, userOwningThisBusiness.lastName, userOwningThisBusiness.role, userOwningThisBusiness.businessId);
-            user.id = userOwningThisBusiness.id; // Set the actual database ID
-            return user;
-        } catch (error) {
-            console.error('[User] Error finding user by business WhatsApp number:', error);
+            console.error('[User] Error finding customer user by WhatsApp number:', error);
             return null;
         }
     }
