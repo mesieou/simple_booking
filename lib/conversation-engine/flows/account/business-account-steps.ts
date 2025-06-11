@@ -1,3 +1,10 @@
+/**
+ * lib/conversation-engine/flows/account/business-account-steps.ts
+ *
+ * Placeholder step handlers for the business account management flows.
+ * These are intentionally left blank and will be implemented in the future.
+ * They exist to prevent the system from crashing if the flow is triggered.
+ */
 import type { IndividualStepHandler, LLMProcessingResult, ChatContext, ButtonConfig } from '../../state-manager';
 
 // Configuration constants for business account management
@@ -70,22 +77,20 @@ class BusinessUIGenerator {
   }
 }
 
-// --- Step Handler Implementations ---
+const placeholderHandler: IndividualStepHandler = {
+  validateUserInput: async () => ({ isValidInput: true }),
+  processAndExtractData: async (validatedInput, currentGoalData) => currentGoalData,
+  autoAdvance: true, // Auto-advance through these incomplete flows
+};
 
-// Collects business email address for account setup
-export const getBusinessEmailHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: BUSINESS_ACCOUNT_CONFIG.PROMPTS.EMAIL_REQUEST,
-  
-  // Validates email format and requirements
-  validateUserInput: async (input: string): Promise<boolean | LLMProcessingResult> => {
-    return BusinessValidator.createEmailValidationResult(input);
-  },
-  
-  // Processes and stores the business email
-  processAndExtractData: async (input: string, data: Record<string, any>): Promise<Record<string, any>> => {
-    return BusinessDataProcessor.processBusinessEmail(input, data);
-  },
-  
-  // Provides alternative email options
-  fixedUiButtons: (): ButtonConfig[] => BusinessUIGenerator.createEmailInputButtons()
-}; 
+// --- businessAccountCreation ---
+export const getNameHandler: IndividualStepHandler = { ...placeholderHandler };
+export const getBusinessEmailHandler: IndividualStepHandler = { ...placeholderHandler };
+export const getBusinessPhoneHandler: IndividualStepHandler = { ...placeholderHandler };
+export const selectTimeZoneHandler: IndividualStepHandler = { ...placeholderHandler };
+export const confirmAccountDetailsHandler: IndividualStepHandler = { ...placeholderHandler };
+
+// --- businessAccountDeletion ---
+export const confirmDeletionRequestHandler: IndividualStepHandler = { ...placeholderHandler };
+export const verifyUserPasswordHandler: IndividualStepHandler = { ...placeholderHandler };
+export const initiateAccountDeletionHandler: IndividualStepHandler = { ...placeholderHandler }; 

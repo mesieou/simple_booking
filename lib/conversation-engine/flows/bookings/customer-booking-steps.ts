@@ -3,6 +3,10 @@ import { Service, type ServiceData } from '../../../database/models/service';
 import { Business } from '../../../database/models/business';
 import { AvailabilitySlots } from '../../../database/models/availability-slots';
 import { User } from '../../../database/models/user';
+import { v4 as uuidv4 } from 'uuid';
+import { Quote } from '../../../database/models/quote';
+import { computeQuoteEstimation, type QuoteEstimation } from '../../../general-helpers/quote-cost-calculator';
+import { Booking } from '../../../database/models/booking';
 
 // Configuration constants for booking steps
 const BOOKING_CONFIG = {
@@ -206,32 +210,32 @@ class BookingValidator {
 // Simplified availability service
 class AvailabilityService {
   
-  // Gets the actual user UUID from business WhatsApp number
-  static async getUserIdFromBusinessWhatsapp(businessWhatsappNumber: string): Promise<string | null> {
+  // Gets the actual user UUID by looking up which business owns this WhatsApp number
+  static async findUserIdByBusinessWhatsappNumber(businessWhatsappNumber: string): Promise<string | null> {
     try {
-      const user = await User.getByBusinessWhatsappNumber(businessWhatsappNumber);
-      return user ? user.id : null;
+      const userOwningThisBusinessWhatsapp = await User.findUserByBusinessWhatsappNumber(businessWhatsappNumber);
+      return userOwningThisBusinessWhatsapp ? userOwningThisBusinessWhatsapp.id : null;
     } catch (error) {
-      console.error('[AvailabilityService] Error looking up user by business WhatsApp:', error);
+      console.error('[AvailabilityService] Error finding user by business WhatsApp number:', error);
       return null;
     }
   }
   
-  // Gets next 3 chronologically available time slots
-  static async getNext3AvailableSlots(
+  // Gets next 3 chronologically available time slots for the business that owns this WhatsApp number
+  static async getNext3AvailableSlotsForBusinessWhatsapp(
     businessWhatsappNumber: string, 
     serviceDuration: number
   ): Promise<Array<{ date: string; time: string; displayText: string }>> {
     try {
-      console.log(`[AvailabilityService] Getting next 3 slots for business WhatsApp ${businessWhatsappNumber}, duration ${serviceDuration}`);
+      console.log(`[AvailabilityService] Getting next 3 slots for business with WhatsApp ${businessWhatsappNumber}, service duration ${serviceDuration} minutes`);
       
-      const userId = await this.getUserIdFromBusinessWhatsapp(businessWhatsappNumber);
-      if (!userId) {
-        console.error('[AvailabilityService] No user found for business WhatsApp number');
+      const userIdOfBusinessOwner = await this.findUserIdByBusinessWhatsappNumber(businessWhatsappNumber);
+      if (!userIdOfBusinessOwner) {
+        console.error('[AvailabilityService] No business owner found for this WhatsApp number');
         return [];
       }
       
-      const rawSlots = await AvailabilitySlots.getNext3AvailableSlots(userId, serviceDuration);
+      const rawSlots = await AvailabilitySlots.getNext3AvailableSlots(userIdOfBusinessOwner, serviceDuration);
       
       // Simple display formatting
       return rawSlots.map(slot => {
@@ -263,42 +267,42 @@ class AvailabilityService {
       });
       
     } catch (error) {
-      console.error('[AvailabilityService] Error getting next 3 available slots:', error);
+      console.error('[AvailabilityService] Error getting next 3 available slots for business WhatsApp:', error);
       return [];
     }
   }
   
-  // Gets available hours for a specific date
-  static async getAvailableHoursForDate(
+  // Gets available hours for a specific date for the business that owns this WhatsApp number
+  static async getAvailableHoursForDateByBusinessWhatsapp(
     businessWhatsappNumber: string,
     date: string,
     serviceDuration: number
   ): Promise<string[]> {
     try {
-      const userId = await this.getUserIdFromBusinessWhatsapp(businessWhatsappNumber);
-      if (!userId) {
-        console.error('[AvailabilityService] No user found for business WhatsApp number');
+      const userIdOfBusinessOwner = await this.findUserIdByBusinessWhatsappNumber(businessWhatsappNumber);
+      if (!userIdOfBusinessOwner) {
+        console.error('[AvailabilityService] No business owner found for this WhatsApp number');
         return [];
       }
       
-      return await AvailabilitySlots.getAvailableHoursForDate(userId, date, serviceDuration);
+      return await AvailabilitySlots.getAvailableHoursForDate(userIdOfBusinessOwner, date, serviceDuration);
     } catch (error) {
-      console.error('[AvailabilityService] Error getting available hours:', error);
+      console.error('[AvailabilityService] Error getting available hours for business WhatsApp:', error);
       return [];
     }
   }
   
-  // Validates if a custom date has availability
-  static async validateCustomDate(
+  // Validates if a custom date has availability for the business that owns this WhatsApp number
+  static async validateCustomDateForBusinessWhatsapp(
     businessWhatsappNumber: string,
     date: string,
     serviceDuration: number
   ): Promise<boolean> {
     try {
-      const availableHours = await AvailabilityService.getAvailableHoursForDate(businessWhatsappNumber, date, serviceDuration);
-      return availableHours.length > 0;
+      const availableHoursForThisBusinessAndDate = await AvailabilityService.getAvailableHoursForDateByBusinessWhatsapp(businessWhatsappNumber, date, serviceDuration);
+      return availableHoursForThisBusinessAndDate.length > 0;
     } catch (error) {
-      console.error('[AvailabilityService] Error validating custom date:', error);
+      console.error('[AvailabilityService] Error validating custom date for business WhatsApp:', error);
       return false;
     }
   }
@@ -347,23 +351,23 @@ export const showAvailableTimesHandler: IndividualStepHandler = {
       return currentGoalData;
     }
     
-    const businessWhatsappNumber = chatContext.currentParticipant.businessWhatsappNumber;
-    const selectedService = currentGoalData.selectedService;
+    const businessWhatsappNumberCustomersMessagedTo = chatContext.currentParticipant.businessWhatsappNumber;
+    const selectedServiceByCustomer = currentGoalData.selectedService;
     
-    if (!businessWhatsappNumber || !selectedService?.durationEstimate) {
+    if (!businessWhatsappNumberCustomersMessagedTo || !selectedServiceByCustomer?.durationEstimate) {
       return {
         ...currentGoalData,
         availabilityError: 'Configuration error'
       };
     }
     
-    // Get next 3 available slots
-    const next3Slots = await AvailabilityService.getNext3AvailableSlots(
-      businessWhatsappNumber,
-      selectedService.durationEstimate
+    // Get next 3 available slots for the business that owns this WhatsApp number
+    const next3AvailableSlotsFromBusiness = await AvailabilityService.getNext3AvailableSlotsForBusinessWhatsapp(
+      businessWhatsappNumberCustomersMessagedTo,
+      selectedServiceByCustomer.durationEstimate
     );
     
-    if (next3Slots.length === 0) {
+    if (next3AvailableSlotsFromBusiness.length === 0) {
       return {
         ...currentGoalData,
         availabilityError: 'No appointments currently available'
@@ -372,7 +376,7 @@ export const showAvailableTimesHandler: IndividualStepHandler = {
     
     return {
       ...currentGoalData,
-      next3AvailableSlots: next3Slots
+      next3AvailableSlots: next3AvailableSlotsFromBusiness
     };
   },
   
@@ -511,16 +515,16 @@ export const showDayBrowserHandler: IndividualStepHandler = {
     }
     
     // Generate available days
-    const businessWhatsappNumber = chatContext.currentParticipant.businessWhatsappNumber;
-    const selectedService = currentGoalData.selectedService;
+    const businessWhatsappNumberCustomersMessagedTo = chatContext.currentParticipant.businessWhatsappNumber;
+    const selectedServiceByCustomer = currentGoalData.selectedService;
     
-    console.log('[ShowDayBrowser] Business WhatsApp number:', businessWhatsappNumber);
-    console.log('[ShowDayBrowser] Selected service:', selectedService);
+    console.log('[ShowDayBrowser] Business WhatsApp number customers messaged TO:', businessWhatsappNumberCustomersMessagedTo);
+    console.log('[ShowDayBrowser] Service selected by customer:', selectedServiceByCustomer);
     
-    if (!businessWhatsappNumber || !selectedService?.durationEstimate) {
+    if (!businessWhatsappNumberCustomersMessagedTo || !selectedServiceByCustomer?.durationEstimate) {
       console.error('[ShowDayBrowser] Missing required data', {
-        businessWhatsappNumber,
-        selectedService: selectedService ? { name: selectedService.name, duration: selectedService.durationEstimate } : 'null'
+        businessWhatsappNumberCustomersMessagedTo,
+        selectedServiceByCustomer: selectedServiceByCustomer ? { name: selectedServiceByCustomer.name, duration: selectedServiceByCustomer.durationEstimate } : 'null'
       });
       return {
         ...currentGoalData,
@@ -529,29 +533,29 @@ export const showDayBrowserHandler: IndividualStepHandler = {
       };
     }
     
-    // Get next 10 days with availability
-    const availableDays = [];
+    // Get next 10 days with availability for this business
+    const availableDaysForThisBusiness = [];
     const today = new Date();
     
-    console.log('[ShowDayBrowser] Checking availability for next 10 days...');
+    console.log('[ShowDayBrowser] Checking availability for next 10 days for this business...');
     
     for (let i = 0; i < 10; i++) {
       const date = new Date(today);
       date.setDate(today.getDate() + i);
       const dateString = date.toISOString().split('T')[0];
       
-      console.log(`[ShowDayBrowser] Checking availability for ${dateString}`);
+      console.log(`[ShowDayBrowser] Checking if business has availability on ${dateString}`);
       
       try {
-        const hasAvailability = await AvailabilityService.validateCustomDate(
-          businessWhatsappNumber,
+        const businessHasAvailabilityOnThisDate = await AvailabilityService.validateCustomDateForBusinessWhatsapp(
+          businessWhatsappNumberCustomersMessagedTo,
           dateString,
-          selectedService.durationEstimate
+          selectedServiceByCustomer.durationEstimate
         );
         
-        console.log(`[ShowDayBrowser] Date ${dateString} has availability: ${hasAvailability}`);
+        console.log(`[ShowDayBrowser] Business has availability on ${dateString}: ${businessHasAvailabilityOnThisDate}`);
         
-        if (hasAvailability) {
+        if (businessHasAvailabilityOnThisDate) {
           let displayText = '';
           if (i === 0) {
             displayText = `Today ${date.getDate()} ${date.toLocaleDateString('en-GB', { month: 'short' })}`;
@@ -563,19 +567,19 @@ export const showDayBrowserHandler: IndividualStepHandler = {
             });
           }
           
-          availableDays.push({
+          availableDaysForThisBusiness.push({
             date: dateString,
             displayText: displayText
           });
         }
       } catch (error) {
-        console.error(`[ShowDayBrowser] Error checking availability for ${dateString}:`, error);
+        console.error(`[ShowDayBrowser] Error checking business availability for ${dateString}:`, error);
       }
     }
     
-    console.log('[ShowDayBrowser] Available days found:', availableDays.length);
+    console.log('[ShowDayBrowser] Available days found for this business:', availableDaysForThisBusiness.length);
     
-    if (availableDays.length === 0) {
+    if (availableDaysForThisBusiness.length === 0) {
       return {
         ...currentGoalData,
         availableDays: [],
@@ -586,7 +590,7 @@ export const showDayBrowserHandler: IndividualStepHandler = {
     // Just show buttons, no text list
     return {
       ...currentGoalData,
-      availableDays,
+      availableDays: availableDaysForThisBusiness,
       confirmationMessage: 'Please select a day:'
     };
   },
@@ -697,11 +701,11 @@ export const showHoursForDayHandler: IndividualStepHandler = {
       };
     }
     
-    const businessWhatsappNumber = chatContext.currentParticipant.businessWhatsappNumber;
-    const selectedService = currentGoalData.selectedService;
-    const selectedDate = currentGoalData.selectedDate;
+    const businessWhatsappNumberCustomersMessagedTo = chatContext.currentParticipant.businessWhatsappNumber;
+    const selectedServiceByCustomer = currentGoalData.selectedService;
+    const dateSelectedByCustomer = currentGoalData.selectedDate;
     
-    if (!businessWhatsappNumber || !selectedService?.durationEstimate || !selectedDate) {
+    if (!businessWhatsappNumberCustomersMessagedTo || !selectedServiceByCustomer?.durationEstimate || !dateSelectedByCustomer) {
       return {
         ...currentGoalData,
         availabilityError: 'Missing information for time lookup',
@@ -709,14 +713,14 @@ export const showHoursForDayHandler: IndividualStepHandler = {
       };
     }
     
-    // Get available hours
-    const availableHours = await AvailabilityService.getAvailableHoursForDate(
-      businessWhatsappNumber,
-      selectedDate,
-      selectedService.durationEstimate
+    // Get available hours for this business on the selected date
+    const availableHoursForBusinessOnSelectedDate = await AvailabilityService.getAvailableHoursForDateByBusinessWhatsapp(
+      businessWhatsappNumberCustomersMessagedTo,
+      dateSelectedByCustomer,
+      selectedServiceByCustomer.durationEstimate
     );
     
-    if (availableHours.length === 0) {
+    if (availableHoursForBusinessOnSelectedDate.length === 0) {
       return {
         ...currentGoalData,
         availabilityError: 'No appointments available on this date',
@@ -725,7 +729,7 @@ export const showHoursForDayHandler: IndividualStepHandler = {
     }
     
     // Format hours for display
-    const formattedHours = availableHours.map(time => {
+    const formattedHoursForDisplay = availableHoursForBusinessOnSelectedDate.map(time => {
       const [hours, minutes] = time.split(':');
       const hour24 = parseInt(hours);
       const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
@@ -738,8 +742,8 @@ export const showHoursForDayHandler: IndividualStepHandler = {
     
     return {
       ...currentGoalData,
-      availableHours,
-      formattedAvailableHours: formattedHours,
+      availableHours: availableHoursForBusinessOnSelectedDate,
+      formattedAvailableHours: formattedHoursForDisplay,
       confirmationMessage: 'Please select a time:' // Simple prompt, buttons only
     };
   },
@@ -821,7 +825,516 @@ export const selectSpecificTimeHandler: IndividualStepHandler = {
   }
 };
 
-// --- Step Handler Implementations ---
+// =====================================
+// USER MANAGEMENT STEPS
+// =====================================
+
+// Step 1: Check if user exists in system
+// Job: ONLY check user existence, no input processing
+export const checkExistingUserHandler: IndividualStepHandler = {
+  defaultChatbotPrompt: 'Let me check if you\'re in our system...',
+  autoAdvance: true, // Auto-advance to next step after checking user existence
+  
+  // Only accept empty input (first check), reject any other input
+  validateUserInput: async (userInput) => {
+    console.log('[CheckExistingUser] Validating input:', userInput);
+    
+    // If this is empty input (first check), accept it
+    if (!userInput || userInput === "") {
+      console.log('[CheckExistingUser] Empty input - accepting for first check');
+      return { isValidInput: true };
+    }
+    
+    // Reject any other input so it goes to next step
+    console.log('[CheckExistingUser] Non-empty input - rejecting to pass to next step');
+    return { 
+      isValidInput: false,
+      validationErrorMessage: '' // No error message, just advance
+    };
+  },
+  
+  // Check user existence only on first execution
+  processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
+    console.log('[CheckExistingUser] Processing input:', validatedInput);
+    
+    // Only process empty input (first check)
+    if (validatedInput !== "") {
+      console.log('[CheckExistingUser] Non-empty input - not processing');
+      return currentGoalData;
+    }
+    
+    const customerWhatsappNumber = chatContext.currentParticipant.id;
+    
+    if (!customerWhatsappNumber) {
+      console.error('[CheckExistingUser] No customer WhatsApp number found');
+      return {
+        ...currentGoalData,
+        userCheckError: 'Unable to identify customer WhatsApp number'
+      };
+    }
+    
+    try {
+      console.log('[CheckExistingUser] Checking if user exists for WhatsApp:', customerWhatsappNumber);
+      const existingUser = await User.findUserByCustomerWhatsappNumber(customerWhatsappNumber);
+      
+      if (existingUser) {
+        console.log('[CheckExistingUser] Found existing user:', existingUser.id);
+        return {
+          ...currentGoalData,
+          userExistenceChecked: true,
+          existingUserFound: true,
+          userId: existingUser.id,
+          userName: existingUser.firstName,
+          confirmationMessage: `Welcome back, ${existingUser.firstName}! I found your account.`
+        };
+      } else {
+        console.log('[CheckExistingUser] No existing user found');
+        return {
+          ...currentGoalData,
+          userExistenceChecked: true,
+          needsUserCreation: true,
+          confirmationMessage: 'I don\'t see you in our system yet.'
+        };
+      }
+    } catch (error) {
+      console.error('[CheckExistingUser] Error checking for existing user:', error);
+      return {
+        ...currentGoalData,
+        userExistenceChecked: true,
+        needsUserCreation: true,
+        confirmationMessage: 'Let me create your account.'
+      };
+    }
+  }
+};
+
+// Step 2: Route flow based on user status
+// Job: Silently route to name collection for new users, or skip creation steps for existing users.
+export const handleUserStatusHandler: IndividualStepHandler = {
+  defaultChatbotPrompt: 'Checking your account status...',
+  autoAdvance: true,
+
+  validateUserInput: async () => ({ isValidInput: true }),
+
+  processAndExtractData: async (validatedInput, currentGoalData) => {
+    // This handler is skipped by the message processor for existing users.
+    // Its only job is to set the flag for new users to proceed to name collection.
+    if (currentGoalData.needsUserCreation) {
+      return {
+        ...currentGoalData,
+        proceedToNameCollection: true,
+      };
+    }
+
+    // Fallback, should not be reached in a normal flow
+    return currentGoalData;
+  }
+};
+
+// Step 3: Ask for user name
+// Job: ONLY ask for name if the user is new.
+export const askUserNameHandler: IndividualStepHandler = {
+  defaultChatbotPrompt: 'What\'s your first name so I can create your account?',
+  
+  validateUserInput: async (userInput, currentGoalData) => {
+    // This step is skipped entirely for existing users by the message processor.
+    // Validation only runs for new users.
+    if (currentGoalData.proceedToNameCollection) {
+      // Accept empty input for the first time the prompt is shown
+      if (!userInput || userInput.trim() === "") {
+        return { isValidInput: true };
+      }
+      // Validate the name once provided
+      if (userInput.trim().length < 2) {
+        return {
+          isValidInput: false,
+          validationErrorMessage: 'Please provide your first name (at least 2 characters).'
+        };
+      }
+      return { isValidInput: true };
+    }
+
+    // Default pass-through, though it shouldn't be reached in a normal flow
+    return { isValidInput: true };
+  },
+  
+  processAndExtractData: async (validatedInput, currentGoalData) => {
+    // This step is skipped for existing users. It assumes it's running for a new user.
+    if (!validatedInput || !validatedInput.trim()) {
+      return {
+        ...currentGoalData,
+        confirmationMessage: 'What\'s your first name so I can create your account?'
+      };
+    }
+    
+    // We have a name, so store it and prepare for the next step.
+    const firstName = validatedInput.trim();
+    return {
+      ...currentGoalData,
+      providedUserName: firstName,
+      readyForUserCreation: true,
+      shouldAutoAdvance: true, // Auto-advance to the creation step
+      confirmationMessage: `Thanks ${firstName}! Creating your account...`
+    };
+  }
+};
+
+// Step 4: Create new user
+// Job: ONLY create user if a name has been provided
+export const createNewUserHandler: IndividualStepHandler = {
+  defaultChatbotPrompt: 'Creating your account...',
+  autoAdvance: true,
+  
+  validateUserInput: async () => ({ isValidInput: true }),
+  
+  processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
+    // This step is skipped for existing users.
+    // It will only run if readyForUserCreation is true, which is set by the previous step.
+    if (!currentGoalData.readyForUserCreation) {
+      return currentGoalData;
+    }
+    
+    const firstName = currentGoalData.providedUserName as string;
+    const customerWhatsappNumber = chatContext.currentParticipant.id;
+    const businessId = chatContext.currentParticipant.associatedBusinessId;
+    
+    if (!customerWhatsappNumber || !businessId) {
+      console.error('[CreateNewUser] Missing required data for user creation');
+      return {
+        ...currentGoalData,
+        userCreationError: 'Missing required information for user creation'
+      };
+    }
+    
+    try {
+      console.log('[CreateNewUser] Creating new user with name:', firstName);
+      
+      // Generate email and password
+      const email = `wa_${customerWhatsappNumber}@skedy.ai`;
+      const password = uuidv4();
+      
+      // Create new user
+      const newUser = new User(firstName, '', 'customer', businessId);
+      const { error } = await newUser.add({
+        email: email,
+        password: password,
+        whatsappNumber: customerWhatsappNumber
+      });
+      
+      if (error) {
+        console.error('[CreateNewUser] Error creating user:', error);
+        return {
+          ...currentGoalData,
+          userCreationError: 'This WhatsApp number may already have an account. Please contact support.'
+        };
+      }
+      
+      console.log('[CreateNewUser] Successfully created user:', newUser.id);
+      
+      return {
+        ...currentGoalData,
+        userId: newUser.id,
+        userName: firstName,
+        userEmail: email,
+        userProcessingComplete: true, // Mark processing as complete
+        confirmationMessage: `Perfect! I've created your account, ${firstName}. Let's continue with your booking.`
+      };
+      
+    } catch (error) {
+      console.error('[CreateNewUser] Error in user creation process:', error);
+      return {
+        ...currentGoalData,
+        userCreationError: 'Failed to create user account. Please try again.'
+      };
+    }
+  },
+  
+  // Show error button if creation failed
+  fixedUiButtons: async (currentGoalData) => {
+    if (currentGoalData.userCreationError) {
+      return [{ buttonText: '🔄 Try again', buttonValue: 'retry_user_creation' }];
+    }
+    
+    return [];
+  }
+};
+
+// =====================================
+// END USER MANAGEMENT STEPS  
+// =====================================
+
+// =====================================
+// BOOKING SUMMARY HANDLERS
+// =====================================
+
+// Step: Create quote and show comprehensive summary with all details
+// Job: Calculate quote using proper helpers, persist to database, and display summary asking for confirmation
+export const quoteSummaryHandler: IndividualStepHandler = {
+  defaultChatbotPrompt: 'Here\'s your booking summary:',
+  
+  // Only accept empty input (first display), reject button clicks so they go to next step
+  validateUserInput: async (userInput) => {
+    console.log('[QuoteSummary] Validating input:', userInput);
+    
+    // If this is empty input (first display), accept it
+    if (!userInput || userInput === "") {
+      console.log('[QuoteSummary] Empty input - accepting for first display');
+      return { isValidInput: true };
+    }
+    
+    // If this is a button click, reject it so it goes to handleQuoteChoice
+    if (userInput === 'confirm_quote' || userInput === 'edit_quote') {
+      console.log('[QuoteSummary] Button click detected - rejecting to pass to next step');
+      return { 
+        isValidInput: false,
+        validationErrorMessage: '' // No error message, just advance
+      };
+    }
+    
+    // Other input types also rejected
+    console.log('[QuoteSummary] Other input - rejecting');
+    return { isValidInput: false };
+  },
+  
+  // Calculate quote using proper helpers, persist to database, and generate comprehensive summary
+  processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
+    console.log('[QuoteSummary] Processing input:', validatedInput);
+    
+    // Only process empty input (first display)
+    if (validatedInput !== "") {
+      console.log('[QuoteSummary] Non-empty input - not processing');
+      return currentGoalData;
+    }
+
+    try {
+      const { selectedService, selectedDate, selectedTime, finalServiceAddress, serviceLocation, userId, businessId } = currentGoalData;
+      
+      if (!selectedService || !selectedDate || !selectedTime || !finalServiceAddress || !userId || !businessId) {
+        return {
+          ...currentGoalData,
+          summaryError: 'Missing booking information'
+        };
+      }
+      
+      // Step 1: Calculate quote using proper helpers
+      // This part needs a travel time estimation. For now, we'll mock it.
+      // TODO: Replace with a real travel time estimation (e.g., Google Maps API)
+      const travelTimeEstimate = serviceLocation === 'customer_address' ? 15 : 0; 
+
+      // Use the proper quote calculation
+      const quoteEstimation: QuoteEstimation = computeQuoteEstimation(selectedService, travelTimeEstimate);
+
+      // Step 2: Get business address for quote persistence
+      let businessAddress = 'Business Location'; // Fallback
+      try {
+        const business = await Business.getById(businessId);
+        businessAddress = business.businessAddress || business.name || 'Business Location';
+      } catch (error) {
+        console.warn('[QuoteSummary] Could not fetch business address, using fallback');
+      }
+
+      // Determine pickup and dropoff based on service type
+      let pickUp = '';
+      let dropOff = '';
+      
+      if (serviceLocation === 'customer_address') {
+        // For mobile services: business location -> customer location
+        pickUp = businessAddress;
+        dropOff = finalServiceAddress;
+      } else {
+        // For non-mobile services: customer location -> business location  
+        pickUp = finalServiceAddress;
+        dropOff = businessAddress;
+      }
+
+      // Step 3: Create and persist the quote
+      const quote = new Quote({
+        pickUp,
+        dropOff,
+        userId,
+        businessId,
+        serviceId: selectedService.id,
+        travelTimeEstimate,
+        totalJobDurationEstimation: quoteEstimation.totalJobDuration,
+        travelCostEstimate: quoteEstimation.travelCost,
+        totalJobCostEstimation: quoteEstimation.totalJobCost,
+        status: 'pending'
+      }, selectedService.mobile); // Pass mobile flag for validation
+
+      // Persist to database
+      const savedQuoteData = await quote.add();
+      console.log('[QuoteSummary] Quote successfully created with ID:', savedQuoteData.id);
+
+      // Step 4: Generate display formatting
+      // Calculate estimated completion time
+      const duration = quoteEstimation.totalJobDuration;
+      const [hours, minutes] = selectedTime.split(':').map(Number);
+      const startTime = new Date();
+      startTime.setHours(hours, minutes, 0, 0);
+      const endTime = new Date(startTime.getTime() + duration * 60000);
+      const estimatedEndTime = `${endTime.getHours().toString().padStart(2, '0')}:${endTime.getMinutes().toString().padStart(2, '0')}`;
+      
+      // Format date for display
+      const dateObj = new Date(selectedDate);
+      const formattedDate = dateObj.toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        month: 'long', 
+        day: 'numeric',
+        year: 'numeric'
+      });
+      
+      // Format time for display
+      const [hour24] = selectedTime.split(':');
+      const hour12 = parseInt(hour24) === 0 ? 12 : parseInt(hour24) > 12 ? parseInt(hour24) - 12 : parseInt(hour24);
+      const ampm = parseInt(hour24) >= 12 ? 'PM' : 'AM';
+      const formattedTime = `${hour12}:${selectedTime.split(':')[1]} ${ampm}`;
+      
+      // Create detailed summary message
+      const summaryMessage = `📋 *Booking Quote Summary*\n\n` +
+        `💼 *Service:* ${selectedService.name}\n` +
+        `📅 *Date:* ${formattedDate}\n` +
+        `⏰ *Time:* ${formattedTime}\n` +
+        `⏱️ *Duration:* ${duration} minutes\n` +
+        `🏁 *Estimated completion:* ${estimatedEndTime}\n` +
+        `📍 *Location:* ${finalServiceAddress}\n\n` +
+        `💰 *Pricing:*\n` +
+        `   • Service: $${quoteEstimation.serviceCost.toFixed(2)}\n` +
+        `${quoteEstimation.travelCost > 0 ? `   • Travel: $${quoteEstimation.travelCost.toFixed(2)}\n` : ''}` +
+        `   • *Total: $${quoteEstimation.totalJobCost.toFixed(2)}*\n\n` +
+        `Quote ID: ${savedQuoteData.id}\n\n` +
+        `Would you like to confirm this quote?`;
+      
+      return {
+        ...currentGoalData,
+        persistedQuote: savedQuoteData,
+        quoteId: savedQuoteData.id,
+        quoteEstimation,
+        travelTimeEstimate,
+        bookingSummary: {
+          serviceCost: quoteEstimation.serviceCost,
+          travelCost: quoteEstimation.travelCost,
+          totalCost: quoteEstimation.totalJobCost,
+          duration,
+          estimatedEndTime,
+          formattedDate,
+          formattedTime
+        },
+        shouldAutoAdvance: false, // Don't auto-advance, show buttons for user choice
+        confirmationMessage: summaryMessage
+      };
+
+    } catch (error) {
+      console.error('[QuoteSummary] Error creating quote:', error);
+      
+      return {
+        ...currentGoalData,
+        summaryError: 'Failed to create quote and summary. Please try again.',
+        confirmationMessage: 'Sorry, there was an issue preparing your quote. Let me try again.'
+      };
+    }
+  },
+  
+  // Show confirmation and edit buttons
+  fixedUiButtons: async (currentGoalData) => {
+    const summaryError = currentGoalData.summaryError;
+    
+    if (summaryError) {
+      return [{ buttonText: '🔄 Try again', buttonValue: 'restart_booking' }];
+    }
+    
+    return [
+      { buttonText: '✅ Confirm Quote', buttonValue: 'confirm_quote' },
+      { buttonText: '✏️ Edit Quote', buttonValue: 'edit_quote' }
+    ];
+  }
+};
+
+// Step: Handle user's choice from quote summary
+// Job: Process confirmation or show edit options
+export const handleQuoteChoiceHandler: IndividualStepHandler = {
+  defaultChatbotPrompt: 'Processing your choice...',
+  // Conditionally auto-advance: only when quote is confirmed, not when showing edit options
+  
+  // Accept confirmation or edit choice
+  validateUserInput: async (userInput) => {
+    console.log('[HandleQuoteChoice] Validating input:', userInput);
+    if (userInput === 'confirm_quote' || userInput === 'edit_quote') {
+      return { isValidInput: true };
+    }
+    
+    // Handle edit sub-choices (service, time)
+    if (userInput === 'edit_service' || userInput === 'edit_time') {
+      return { isValidInput: true };
+    }
+    
+    return {
+      isValidInput: false,
+      validationErrorMessage: 'Please select one of the available options.'
+    };
+  },
+  
+  // Process user choice and set flags for subsequent steps
+  processAndExtractData: async (validatedInput, currentGoalData) => {
+    console.log('[HandleQuoteChoice] Processing input:', validatedInput);
+    
+    if (validatedInput === 'confirm_quote') {
+      console.log('[HandleQuoteChoice] Quote confirmed - proceeding to booking creation');
+      return {
+        ...currentGoalData,
+        quoteConfirmedFromSummary: true,
+        shouldAutoAdvance: true, // Flag to trigger auto-advance only for confirmation
+        confirmationMessage: 'Perfect! Your quote is confirmed. Let\'s create your booking.'
+      };
+    }
+    
+    if (validatedInput === 'edit_quote') {
+      console.log('[HandleQuoteChoice] Edit requested - showing edit options');
+      return {
+        ...currentGoalData,
+        showEditOptions: true,
+        shouldAutoAdvance: false, // Don't auto-advance, stay to show edit options
+        confirmationMessage: 'What would you like to change?'
+      };
+    }
+    
+    // Handle specific edit choices
+    if (validatedInput === 'edit_service') {
+      console.log('[HandleQuoteChoice] Service edit requested - navigating back to selectService');
+      return {
+        ...currentGoalData,
+        navigateBackTo: 'selectService',
+        shouldAutoAdvance: true, // Auto-advance to navigate back
+        confirmationMessage: 'Let\'s choose a different service...'
+      };
+    }
+    
+    if (validatedInput === 'edit_time') {
+      console.log('[HandleQuoteChoice] Time edit requested - navigating back to showAvailableTimes');
+      return {
+        ...currentGoalData,
+        navigateBackTo: 'showAvailableTimes',
+        shouldAutoAdvance: true, // Auto-advance to navigate back
+        confirmationMessage: 'Let\'s pick a different time...'
+      };
+    }
+    
+    console.log('[HandleQuoteChoice] Unexpected input, returning current data');
+    return currentGoalData;
+  },
+  
+  // Show edit options if user chose to edit
+  fixedUiButtons: async (currentGoalData) => {
+    if (currentGoalData.showEditOptions) {
+      return [
+        { buttonText: '💼 Change Service', buttonValue: 'edit_service' },
+        { buttonText: '🕐 Change Date/Time', buttonValue: 'edit_time' }
+      ];
+    }
+    
+    // No buttons if quote confirmed or navigating back
+    return [];
+  }
+};
 
 // Asks for customer address - single responsibility
 export const askAddressHandler: IndividualStepHandler = {
@@ -1066,181 +1579,119 @@ export const confirmLocationHandler: IndividualStepHandler = {
   }
 };
 
-// Consolidated quote display with detailed breakdown
-export const displayQuoteHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: 'Here\'s your booking summary:',
-  
-  // Always accept input for quote display
-  validateUserInput: async (): Promise<boolean> => true,
-  
-  // Calculate and display complete quote with breakdown
-  processAndExtractData: async (validatedInput: string, currentGoalData: Record<string, any>): Promise<Record<string, any>> => {
-    const selectedService = currentGoalData.selectedService;
-    const serviceLocation = currentGoalData.serviceLocation;
-    
-    // Calculate total cost
-    let totalCost = selectedService?.fixedPrice || 0;
-    let travelCost = 0;
-    
-    // For mobile services, add travel cost (if any)
-    if (serviceLocation === 'customer_address') {
-      travelCost = 25; // Mock travel cost
-      totalCost += travelCost;
-    }
-    
-    const quote = {
-      serviceCost: selectedService?.fixedPrice || 0,
-      travelCost,
-      totalCost,
-      duration: selectedService?.durationEstimate || 60
-    };
-    
-    // Create detailed confirmation message
-    const confirmationMessage = `📋 Booking Summary:\n\n` +
-      `💼 Service: ${selectedService?.name}\n` +
-      `⏱️ Duration: ${quote.duration} minutes\n` +
-      `💰 Service Cost: $${quote.serviceCost}\n` +
-      `${travelCost > 0 ? `🚗 Travel Cost: $${travelCost}\n` : ''}` +
-      `💵 Total Cost: $${quote.totalCost}\n` +
-      `📍 Location: ${currentGoalData.finalServiceAddress}`;
-    
-    return {
-      ...currentGoalData,
-      quote,
-      confirmationMessage
-    };
-  }
-};
-
-// Asks customer to confirm booking - single responsibility
-export const askToBookHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: 'Would you like to proceed with this booking?',
-  
-  // Validates booking confirmation
-  validateUserInput: async (userInput: string): Promise<LLMProcessingResult> => {
-    const confirmation = userInput.toLowerCase();
-    if (confirmation.includes('yes') || confirmation.includes('book') || confirmation.includes('confirm')) {
-      return { isValidInput: true };
-    }
-    if (confirmation.includes('no') || confirmation.includes('cancel')) {
-      return { isValidInput: true };
-    }
-    return {
-      isValidInput: false,
-      validationErrorMessage: 'Please confirm if you\'d like to proceed with the booking (yes/no).'
-    };
-  },
-  
-  // Process booking confirmation
-  processAndExtractData: async (validatedInput: string, currentGoalData: Record<string, any>): Promise<Record<string, any>> => {
-    const confirmation = validatedInput.toLowerCase();
-    const wantsToBook = confirmation.includes('yes') || confirmation.includes('book') || confirmation.includes('confirm');
-    
-    return {
-      ...currentGoalData,
-      bookingConfirmed: wantsToBook
-    };
-  },
-  
-  // Show confirmation buttons
-  fixedUiButtons: async (): Promise<ButtonConfig[]> => {
-    return [
-      { buttonText: '✅ Yes, book it!', buttonValue: 'yes_book' },
-      { buttonText: '❌ No, cancel', buttonValue: 'no_cancel' }
-    ];
-  }
-};
-
-// Checks if customer is new or existing - single responsibility
-export const isNewUserHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: 'Are you a new customer or do you have an account with us?',
-  
-  // Validates user type selection
-  validateUserInput: async (userInput: string): Promise<LLMProcessingResult> => {
-    const response = userInput.toLowerCase();
-    if (response.includes('new') || response.includes('existing') || response.includes('have')) {
-      return { isValidInput: true };
-    }
-    
-    return {
-      isValidInput: false,
-      validationErrorMessage: 'Please let me know if you\'re a new customer or existing customer.'
-    };
-  },
-  
-  // Determines if user is new
-  processAndExtractData: async (validatedInput: string, currentGoalData: Record<string, any>): Promise<Record<string, any>> => {
-    const response = validatedInput.toLowerCase();
-    const isNewUser = response.includes('new');
-    
-    return {
-      ...currentGoalData,
-      isNewUser
-    };
-  },
-  
-  // Show user type buttons
-  fixedUiButtons: async (): Promise<ButtonConfig[]> => {
-    return [
-      { buttonText: '👤 New customer', buttonValue: 'new_customer' },
-      { buttonText: '🔄 Existing customer', buttonValue: 'existing_customer' }
-    ];
-  }
-};
-
-// Asks for customer email - single responsibility
-export const askEmailHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: 'Please provide your email address for booking confirmation:',
-  
-  // Validates email format
-  validateUserInput: async (userInput: string): Promise<LLMProcessingResult> => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    
-    if (emailRegex.test(userInput)) {
-      return { isValidInput: true };
-    }
-    
-    return {
-      isValidInput: false,
-      validationErrorMessage: 'Please provide a valid email address.'
-    };
-  },
-  
-  // Stores email
-  processAndExtractData: async (validatedInput: string, currentGoalData: Record<string, any>): Promise<Record<string, any>> => {
-    return {
-      ...currentGoalData,
-      customerEmail: validatedInput.trim().toLowerCase()
-    };
-  }
-};
-
 // Creates the actual booking - single responsibility
 export const createBookingHandler: IndividualStepHandler = {
   defaultChatbotPrompt: 'Creating your booking...',
+  autoAdvance: true, // Auto-advance after creating the booking
   
   // Always accept input for booking creation
-  validateUserInput: async (): Promise<boolean> => true,
+  validateUserInput: async () => true,
   
-  // Create booking in database
-  processAndExtractData: async (validatedInput: string, currentGoalData: Record<string, any>): Promise<Record<string, any>> => {
-    // Mock booking creation
-    const bookingId = `BK-${Date.now()}`;
+  // Create booking in database with reference to the persisted quote
+  processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
+    console.log('[CreateBooking] Starting actual booking creation in database');
     
-    return {
-      ...currentGoalData,
-      bookingId,
-      bookingCreated: true,
-      bookingDetails: {
-        id: bookingId,
-        service: currentGoalData.selectedService?.name,
-        date: currentGoalData.selectedDate,
-        time: currentGoalData.selectedTime,
-        location: currentGoalData.finalServiceAddress,
-        email: currentGoalData.customerEmail,
-        status: 'confirmed'
+    // Get required data
+    const quoteId = currentGoalData.quoteId;
+    const userId = currentGoalData.userId;
+    const businessId = chatContext.currentParticipant.associatedBusinessId;
+    const businessWhatsappNumber = chatContext.currentParticipant.businessWhatsappNumber;
+    const selectedDate = currentGoalData.selectedDate;
+    const selectedTime = currentGoalData.selectedTime;
+    
+    if (!quoteId || !userId || !businessId || !businessWhatsappNumber || !selectedDate || !selectedTime) {
+      console.error('[CreateBooking] Missing required data for booking creation:', {
+        quoteId: !!quoteId,
+        userId: !!userId,
+        businessId: !!businessId,
+        businessWhatsappNumber: !!businessWhatsappNumber,
+        selectedDate: !!selectedDate,
+        selectedTime: !!selectedTime
+      });
+      return {
+        ...currentGoalData,
+        bookingError: 'Missing required information for booking creation'
+      };
+    }
+
+    try {
+      // Get the provider ID (business owner) from the business WhatsApp number
+      const providerId = await AvailabilityService.findUserIdByBusinessWhatsappNumber(businessWhatsappNumber);
+      
+      if (!providerId) {
+        console.error('[CreateBooking] Cannot create booking without a provider ID');
+        return {
+          ...currentGoalData,
+          bookingError: 'Unable to find business provider for booking creation'
+        };
       }
-    };
+
+      console.log('[CreateBooking] Found provider ID:', providerId);
+
+      // Create dateTime in ISO format from selected date and time
+      const bookingDateTime = new Date(selectedDate);
+      const [hours, minutes] = selectedTime.split(':');
+      bookingDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      
+      console.log('[CreateBooking] Creating booking for datetime:', bookingDateTime.toISOString());
+
+      // Create the booking object
+      const booking = new Booking({
+        status: 'Not Completed',
+        userId: userId,
+        providerId: providerId,
+        quoteId: quoteId,
+        businessId: businessId,
+        dateTime: bookingDateTime.toISOString()
+      });
+
+      // Persist to database
+      const savedBookingData = await booking.add();
+      const bookingWithId = savedBookingData as any; // Cast to access id property from database
+      
+      console.log('[CreateBooking] Booking successfully created in database with ID:', bookingWithId.id);
+
+      // Create booking details for display
+      const bookingDetails = {
+        id: bookingWithId.id,
+        service: currentGoalData.selectedService?.name,
+        date: selectedDate,
+        time: selectedTime,
+        location: currentGoalData.finalServiceAddress,
+        email: currentGoalData.customerEmail || currentGoalData.userEmail,
+        userId: userId,
+        quoteId: quoteId,
+        status: 'confirmed'
+      };
+
+      return {
+        ...currentGoalData,
+        bookingId: bookingWithId.id,
+        bookingCreated: true,
+        bookingDetails,
+        persistedBooking: savedBookingData,
+        confirmationMessage: 'Perfect! Your booking has been created and saved to our system.'
+      };
+
+    } catch (error) {
+      console.error('[CreateBooking] Error creating booking in database:', error);
+      
+      return {
+        ...currentGoalData,
+        bookingError: 'Failed to create booking. Please try again.',
+        confirmationMessage: 'Sorry, there was an issue creating your booking. Please try again.'
+      };
+    }
+  },
+
+  // Show error button if booking creation failed
+  fixedUiButtons: async (currentGoalData) => {
+    if (currentGoalData.bookingError) {
+      return [{ buttonText: '🔄 Try again', buttonValue: 'retry_booking_creation' }];
+    }
+    
+    // No buttons needed for successful booking creation (auto-advance)
+    return [];
   }
 };
 
@@ -1257,7 +1708,7 @@ export const displayConfirmedBookingHandler: IndividualStepHandler = {
     
     return {
       ...currentGoalData,
-      confirmationMessage: `Your booking is confirmed!\n\n📅 Service: ${booking?.service}\n🗓️ Date: ${booking?.date}\n⏰ Time: ${booking?.time}\n📍 Location: ${booking?.location}\n📧 Confirmation sent to: ${booking?.email}\n\nBooking ID: ${booking?.id}`
+      confirmationMessage: `🎉 Your booking is confirmed!\n\n📅 Service: ${booking?.service}\n🗓️ Date: ${booking?.date}\n⏰ Time: ${booking?.time}\n📍 Location: ${booking?.location}\n\nBooking ID: ${booking?.id}\n\nWe look forward to seeing you!`
     };
   }
 };
