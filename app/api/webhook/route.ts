@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
         const historyAndContext = await extractSessionHistoryAndContext(
           parsedMessage.channelType,
           parsedMessage.senderId,
-          '2b4d2e67-a00f-4e36-81a1-64e6ac397394', // TODO: Replace with actual business ID
+          '6c77fa8b-952e-480d-819d-3e9499e272e6', // TODO: Replace with actual business ID
           12
         );
 

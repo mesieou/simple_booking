@@ -5,7 +5,7 @@ type GoalActionType = 'create' | 'delete' | 'update';
 
 // Configuration constants
 const BOT_CONFIG = {
-  DEFAULT_BUSINESS_ID: '2b4d2e67-a00f-4e36-81a1-64e6ac397394', // Beauty Asiul business ID
+  DEFAULT_BUSINESS_ID: '6c77fa8b-952e-480d-819d-3e9499e272e6', // Beauty Asiul business ID
   DEFAULT_TIMEZONE: 'Australia/Melbourne',
   DEFAULT_LANGUAGE: 'en',
   SESSION_TIMEOUT_HOURS: 24
@@ -98,7 +98,7 @@ const conversationFlowBlueprints: Record<string, string[]> = {
 };
 
 // Import step handlers
-import { getBusinessEmailHandler } from './step-handlers/business-account-steps';
+import { getBusinessEmailHandler } from './flows/account/business-account-steps';
 import { 
     askAddressHandler,
     validateAddressHandler,
@@ -119,7 +119,7 @@ import {
     createBookingHandler,
     displayConfirmedBookingHandler,
     sendEmailBookingConfirmationHandler
-} from './step-handlers/customer-booking-steps';
+} from './flows/bookings/customer-booking-steps';
 
 const botTasks: Record<string, IndividualStepHandler> = {
   getBusinessEmail: getBusinessEmailHandler,
