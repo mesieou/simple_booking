@@ -199,7 +199,7 @@ export class WhatsappSender implements IMessageSender {
     }
 
     const responseData = await response.json();
-    console.log("[WhatsappSender] Message sent successfully. Response:", responseData);
+    //console.log("[WhatsappSender] Message sent successfully. Response:", responseData);
   }
 
   // Main method: sends message response via WhatsApp Cloud API

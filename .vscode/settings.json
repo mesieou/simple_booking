@@ -75,6 +75,14 @@
         {
             "folderPath": "simple_booking\\lib\\Juan-bot-engine\\",
             "color": "foldercolorizer.color_cc66cc"
+        },
+        {
+            "folderPath": "simple_booking\\.env.local\\",
+            "color": "foldercolorizer.color_ccff33"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\conversation-engine\\flows\\",
+            "color": "foldercolorizer.color_66cc00"
         }
     ]
 }

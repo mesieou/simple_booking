@@ -98,8 +98,8 @@ export async function POST(req: NextRequest) {
         
         const { historyForLLM, userContext, currentSessionId } = historyAndContext;
         
-        console.log(`[Webhook] Context Loaded for ${parsedMessage.senderId}:`);
-        console.log(JSON.stringify(userContext, null, 2));
+        console.log(`[Webhook] Context Loaded for ${parsedMessage.senderId} (Commented out context log)`);
+        //console.log(JSON.stringify(userContext, null, 2));
 
         // --- STEP 3: Delegate to the Conversation Orchestrator ---
         // The orchestrator will handle intent analysis, state management, and response generation.
@@ -109,8 +109,8 @@ export async function POST(req: NextRequest) {
           historyForLLM
         );
 
-        console.log(`[Webhook] Orchestrator finished. Final updated context:`);
-        console.log(JSON.stringify(updatedContext, null, 2));
+        console.log(`[Webhook] Orchestrator finished`);
+        //console.log(JSON.stringify(updatedContext, null, 2));
 
         // --- NEW STEP 4: Send the generated response ---
         try {

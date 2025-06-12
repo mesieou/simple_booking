@@ -106,44 +106,53 @@ export function parseWhatsappMessage(payload: WebhookAPIBody): ParsedMessage | P
     switch (waMessage.type) {
       case 'text':
         textContent = waMessage.text?.body;
+        console.log(`==============================================`);
         console.log("[WhatsappParser] Parsed text message:", textContent);
         break;
       case 'image':
         attachments.push({ type: 'image', payload: waMessage.image, caption: waMessage.image?.caption });
         textContent = waMessage.image?.caption; // Also treat caption as text if present
+        console.log(`==============================================`);
         console.log("[WhatsappParser] Parsed image message. Caption:", textContent);
         break;
       case 'audio':
         attachments.push({ type: 'audio', payload: waMessage.audio });
+        console.log(`==============================================`);
         console.log("[WhatsappParser] Parsed audio message.");
         break;
       case 'video':
         attachments.push({ type: 'video', payload: waMessage.video, caption: waMessage.video?.caption });
         textContent = waMessage.video?.caption;
+        console.log(`==============================================`);
         console.log("[WhatsappParser] Parsed video message. Caption:", textContent);
         break;
       case 'document':
         attachments.push({ type: 'document', payload: waMessage.document, caption: waMessage.document?.caption });
         textContent = waMessage.document?.caption;
+        console.log(`==============================================`);
         console.log("[WhatsappParser] Parsed document message. Caption:", textContent);
         break;
       case 'sticker':
         attachments.push({ type: 'sticker', payload: waMessage.sticker });
+        console.log(`==============================================`);
         console.log("[WhatsappParser] Parsed sticker message.");
         break;
       case 'location':
         attachments.push({ type: 'location', payload: waMessage.location });
+        console.log(`==============================================`);
         console.log("[WhatsappParser] Parsed location message.");
         // Potentially construct a text representation from location if needed by core logic
         // textContent = `Location: ${waMessage.location?.latitude}, ${waMessage.location?.longitude}`;
         break;
       case 'contacts':
         attachments.push({ type: 'contact', payload: waMessage.contacts });
+        console.log(`==============================================`);
         console.log("[WhatsappParser] Parsed contacts message.");
         break;
       case 'interactive':
         if (waMessage.interactive) {
           const interactiveType = waMessage.interactive.type;
+          console.log(`==============================================`);
           console.log(`[WhatsappParser] Processing interactive type: ${interactiveType}`);
           
           // Handle button replies (≤3 options)

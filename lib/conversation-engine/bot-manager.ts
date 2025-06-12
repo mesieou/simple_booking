@@ -92,8 +92,8 @@ export interface IndividualStepHandler {
 const conversationFlowBlueprints: Record<string, string[]> = {
   businessAccountCreation: ['getName', 'getBusinessEmail', 'getBusinessPhone', 'selectTimeZone', 'confirmAccountDetails'],
   businessAccountDeletion: ['confirmDeletionRequest', 'verifyUserPassword', 'initiateAccountDeletion'],
-  bookingCreatingForMobileService: ['askAddress', 'validateAddress', 'selectService', 'confirmLocation', 'displayQuote', 'askToBook', 'showAvailableTimes', 'handleTimeChoice', 'showDayBrowser', 'selectSpecificDay', 'showHoursForDay', 'selectSpecificTime', 'isNewUser', 'askEmail', 'createBooking', 'displayConfirmedBooking', 'sendEmailBookingConfirmation'],
-  bookingCreatingForNoneMobileService: ['selectService', 'confirmLocation', 'showAvailableTimes', 'handleTimeChoice', 'showDayBrowser', 'selectSpecificDay', 'showHoursForDay', 'selectSpecificTime', 'isNewUser', 'askEmail', 'createBooking', 'displayConfirmedBooking', 'sendEmailBookingConfirmation'],
+  bookingCreatingForMobileService: ['askAddress', 'validateAddress', 'selectService', 'confirmLocation', 'showAvailableTimes', 'handleTimeChoice', 'showDayBrowser', 'selectSpecificDay', 'showHoursForDay', 'selectSpecificTime', 'checkExistingUser', 'handleUserStatus', 'askUserName', 'createNewUser', 'quoteSummary', 'handleQuoteChoice', 'createBooking', 'displayConfirmedBooking'],
+  bookingCreatingForNoneMobileService: ['selectService', 'confirmLocation', 'showAvailableTimes', 'handleTimeChoice', 'showDayBrowser', 'selectSpecificDay', 'showHoursForDay', 'selectSpecificTime', 'checkExistingUser', 'handleUserStatus', 'askUserName', 'createNewUser', 'quoteSummary', 'handleQuoteChoice', 'createBooking', 'displayConfirmedBooking'],
   customerFaqHandling: ['identifyUserQuestion', 'searchKnowledgeBase', 'provideAnswerToUser', 'checkUserSatisfaction'],
 };
 
@@ -104,21 +104,20 @@ import {
     validateAddressHandler,
     selectServiceHandler, 
     confirmLocationHandler,
-    displayQuoteHandler,
-    askToBookHandler,
-    // New simplified handlers
     showAvailableTimesHandler,
     handleTimeChoiceHandler,
     showDayBrowserHandler,
     selectSpecificDayHandler,
     showHoursForDayHandler,
     selectSpecificTimeHandler,
-    // Keep existing handlers for customer info
-    isNewUserHandler,
-    askEmailHandler,
+    checkExistingUserHandler,
+    handleUserStatusHandler,
+    askUserNameHandler,
+    createNewUserHandler,
+    quoteSummaryHandler,
+    handleQuoteChoiceHandler,
     createBookingHandler,
-    displayConfirmedBookingHandler,
-    sendEmailBookingConfirmationHandler
+    displayConfirmedBookingHandler
 } from './flows/bookings/customer-booking-steps';
 
 const botTasks: Record<string, IndividualStepHandler> = {
@@ -127,21 +126,20 @@ const botTasks: Record<string, IndividualStepHandler> = {
   validateAddress: validateAddressHandler,
   selectService: selectServiceHandler,
   confirmLocation: confirmLocationHandler,
-  displayQuote: displayQuoteHandler,
-  askToBook: askToBookHandler,
-  // New simplified time/date handlers
   showAvailableTimes: showAvailableTimesHandler,
   handleTimeChoice: handleTimeChoiceHandler,
   showDayBrowser: showDayBrowserHandler,
   selectSpecificDay: selectSpecificDayHandler,
   showHoursForDay: showHoursForDayHandler,
   selectSpecificTime: selectSpecificTimeHandler,
-  // Keep existing customer info handlers
-  isNewUser: isNewUserHandler,
-  askEmail: askEmailHandler,
+  checkExistingUser: checkExistingUserHandler,
+  handleUserStatus: handleUserStatusHandler,
+  askUserName: askUserNameHandler,
+  createNewUser: createNewUserHandler,
+  quoteSummary: quoteSummaryHandler,
+  handleQuoteChoice: handleQuoteChoiceHandler,
   createBooking: createBookingHandler,
   displayConfirmedBooking: displayConfirmedBookingHandler,
-  sendEmailBookingConfirmation: sendEmailBookingConfirmationHandler,
 };
 
 // --- Helper function for step skipping ---
@@ -152,8 +150,21 @@ const skippableStepsForQuickBooking = [
   'selectSpecificTime',
 ];
 
+const skippableStepsForExistingUser = [
+  'handleUserStatus',
+  'askUserName',
+  'createNewUser',
+];
+
 function shouldSkipStep(stepName: string, goalData: Record<string, any>): boolean {
-  return !!goalData.quickBookingSelected && skippableStepsForQuickBooking.includes(stepName);
+  if (!!goalData.quickBookingSelected && skippableStepsForQuickBooking.includes(stepName)) {
+    return true;
+  }
+  if (!!goalData.existingUserFound && skippableStepsForExistingUser.includes(stepName)) {
+    console.log(`[MessageProcessor] Skipping step for existing user: ${stepName}`);
+    return true;
+  }
+  return false;
 }
 
 // --- LLM Interface (Mock Implementation) ---

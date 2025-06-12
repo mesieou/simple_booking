@@ -22,7 +22,7 @@ const PDFParser = () => {
     // Prepare form data
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("businessId", "test-business-id"); // Replace as needed
+    formData.append("6c77fa8b-952e-480d-819d-3e9499e272e6", "test-business-id"); // Replace as needed
     
     try {
       // Call API
