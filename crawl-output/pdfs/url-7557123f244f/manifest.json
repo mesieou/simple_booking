@@ -1,0 +1,85 @@
+{
+  "sourceUrl": "pdf:skedy-knowledge-base.pdf#page=1",
+  "pageTitle": "skedy-knowledge-base.pdf - Page 1",
+  "isPdf": true,
+  "totalLlmChunks": 11,
+  "documents": [
+    {
+      "documentId": "cce921f1-499c-4e87-9a61-5daf0f9599ca",
+      "chunkOrder": 1,
+      "category": "Uncategorized",
+      "originalTextLength": 1347,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "124ba28c-7582-4ac2-8271-7e5d430f6be7",
+      "chunkOrder": 2,
+      "category": "pricing or quotes",
+      "originalTextLength": 494,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "6bf9e9dd-ffbd-4d13-987b-c8ab30f13b64",
+      "chunkOrder": 3,
+      "category": "contact",
+      "originalTextLength": 313,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "dec89101-e505-427a-8325-147bb5321f3b",
+      "chunkOrder": 1,
+      "category": "booking or scheduling",
+      "originalTextLength": 751,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "64c480c9-ef95-42ee-a6b9-2b29b64811bd",
+      "chunkOrder": 2,
+      "category": "about / trust-building",
+      "originalTextLength": 955,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "3e7c24b3-02a9-46b3-9d39-20dd1f5702cc",
+      "chunkOrder": 3,
+      "category": "faq",
+      "originalTextLength": 942,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "c2349376-3c29-4578-b87c-9b2ccbed8906",
+      "chunkOrder": 4,
+      "category": "Uncategorized",
+      "originalTextLength": 91,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "d6de2e43-71f2-4eba-b9f9-70772a7b0ec3",
+      "chunkOrder": 1,
+      "category": "terms & conditions / legal policies",
+      "originalTextLength": 312,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "dc14f799-b02b-4f81-aa3c-56ce20dbb42f",
+      "chunkOrder": 2,
+      "category": "terms & conditions / legal policies",
+      "originalTextLength": 207,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "08626836-3fc0-4a92-937e-3d3fc34c8d30",
+      "chunkOrder": 3,
+      "category": "terms & conditions / legal policies",
+      "originalTextLength": 169,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "cc0d5223-dd33-4654-987c-927d878f58df",
+      "chunkOrder": 4,
+      "category": "General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories.",
+      "originalTextLength": 568,
+      "preChunkSourceIndex": 0
+    }
+  ]
+}

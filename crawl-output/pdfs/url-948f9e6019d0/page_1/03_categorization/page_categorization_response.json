@@ -1,0 +1,31 @@
+{
+  "modelUsed": "gpt-4o",
+  "originalContentCharacterLength": 4377,
+  "llmSegmentedChunks": [
+    {
+      "chunkOrder": 1,
+      "chunkText": "S E R V I C E S _ O F F E R E D At Skedy Beauty Lounge, we specialize in providing exceptional nail care and relaxing treatments. Our team of skilled technicians is dedicated to making you look and feel your best. Our Core Services: Basic Manicure: A classic treatment that includes nail shaping, cuticle care, a relaxing hand massage, and application of a regular polish of your choice. Duration: 45 minutes Basic Pedicure: Treat your feet with this classic service. Includes a warm foot soak, nail shaping, cuticle care, callus smoothing, a soothing foot massage, and application of regular polish. Duration: 60 minutes Gel Manicure / Pedicure: A long-lasting and durable option. This service includes all the benefits of our basic treatments but uses a high-quality gel polish that is cured under an LED lamp for a flawless, chip-free finish that lasts for weeks. Duration (Pedicure): 75 minutes Duration (Manicure): 60 minutes Nail Art (Add-on): Express your personality with custom nail art. This is an add-on service for any manicure or pedicure. Price and time are for simple designs on 2-4 nails. Please consult with our technicians for more complex designs. Duration: 20 minutes Gel Polish Removal: Safe and gentle removal of your old gel polish, followed by nail buffing and application of a strengthening treatment. Duration: 15 minutes",
+      "category": 0,
+      "categoryName": "services offered",
+      "confidence": 1,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 2,
+      "chunkText": "P R I C I N G _ Q U O T E S Our pricing is transparent and competitive, ensuring you receive the highest quality service for great value. Pricelist: Basic Manicure: $35 Basic Pedicure: $45 Gel Pedicure: $50 Gel Manicure: $45 Nail Art (Add-on): Starting from $10 Gel Polish Removal: $15 (or free with any new gel application) Please Note: Prices are listed in AUD and are subject to change. For complex nail art or custom requests, please ask for a personalized quote before your service begins.",
+      "category": 1,
+      "categoryName": "pricing or quotes",
+      "confidence": 1,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 3,
+      "chunkText": "C O N T A C T We would love to hear from you! You can reach us through any of the following channels. Address: 9 Dryburgh st, West Melbourne, VIC 3003, Australia Phone Number: (03) 9123 4567 Email: bookings@skedybeautylounge.com Website: www.skedybeautylounge.com Opening Hours: Monday - Friday: 9:00 AM - 6:00 PM",
+      "category": 2,
+      "categoryName": "contact",
+      "confidence": 1,
+      "preChunkSourceIndex": 0
+    }
+  ],
+  "promptUsedLength": 7196
+}

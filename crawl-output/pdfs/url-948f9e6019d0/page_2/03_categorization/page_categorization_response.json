@@ -1,0 +1,39 @@
+{
+  "modelUsed": "gpt-4o",
+  "originalContentCharacterLength": 5565,
+  "llmSegmentedChunks": [
+    {
+      "chunkOrder": 1,
+      "chunkText": "BOOKING_SCHEDULING Booking an appointment with us is easy! You can schedule your next visit via our automated WhatsApp chatbot, by calling us during business hours, or by sending us an email. Cancellation Policy: Your appointment time is reserved just for you. As a courtesy to our staff and other clients, we require at least 24 hours' notice for any cancellations or rescheduling. Cancellations made within 24 hours of the appointment time will be subject to a cancellation fee equivalent to 50% of the scheduled service cost. No-shows will be charged the full amount of the service. Late Arrivals: To ensure a relaxing experience for all our clients, we may need to shorten your service if you arrive more than 15 minutes late for your appointment.",
+      "category": 3,
+      "categoryName": "booking or scheduling",
+      "confidence": 0.95,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 2,
+      "chunkText": "ABOUT_TRUST_BUILDING About Skedy Beauty Lounge: Founded on the principles of quality, service, and relaxation, Skedy Beauty Lounge is your local sanctuary for professional nail care. Our mission is to provide a clean, beautiful, and welcoming environment where you can unwind and leave feeling refreshed and confident. Our technicians are passionate about their craft and dedicated to providing personalized service to each and every client. Our Commitment to Hygiene and Safety: Your health and safety are our highest priority. We adhere to the strictest hygiene standards, including: Medical-Grade Sterilization: All metal implements are thoroughly cleaned and sterilized in an autoclave before every use. Single-Use Items: We use disposable, single-use items such as nail files, buffers, and pedicure liners to prevent cross-contamination. Clean Environment: Our salon stations and equipment are meticulously cleaned and disinfected throughout the day.",
+      "category": 4,
+      "categoryName": "about / trust-building",
+      "confidence": 0.95,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 3,
+      "chunkText": "FAQ Do you accept walk-in appointments? We primarily operate by appointment to ensure each client receives dedicated time and attention. However, we will always do our best to accommodate walk-ins if we have availability. We highly recommend booking in advance to secure your preferred time. What brands of polish do you use? We use only high-quality, professional-grade polishes known for their durability and vibrant colours, including leading brands like OPI, CND Shellac, and Essie. Is there parking available near the salon? Yes, there is typically paid street parking available on Dryburgh Street and surrounding side streets. Please allow a few extra minutes to find a spot, especially during peak times. How long will my gel manicure last? With proper care, a gel manicure can last for two to three weeks without chipping or peeling. We recommend applying cuticle oil daily and being gentle with your nails to maximize their lifespan.",
+      "category": 5,
+      "categoryName": "faq",
+      "confidence": 0.95,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 4,
+      "chunkText": "Saturday: 10:00 AM - 5:00 PM Sunday & Public Holidays: Closed Timezone: Australia/Melbourne",
+      "category": 8,
+      "categoryName": "Uncategorized",
+      "confidence": 0.7,
+      "preChunkSourceIndex": 0
+    }
+  ],
+  "promptUsedLength": 8384
+}

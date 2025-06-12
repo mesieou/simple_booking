@@ -80,7 +80,6 @@ const conversationFlowBlueprints: Record<string, string[]> = {
   businessAccountDeletion: ['confirmDeletionRequest', 'verifyUserPassword', 'initiateAccountDeletion'],
   bookingCreatingForMobileService: ['askAddress', 'validateAddress', 'selectService', 'confirmLocation', 'showAvailableTimes', 'handleTimeChoice', 'showDayBrowser', 'selectSpecificDay', 'showHoursForDay', 'selectSpecificTime', 'checkExistingUser', 'handleUserStatus', 'askUserName', 'createNewUser', 'quoteSummary', 'handleQuoteChoice', 'createBooking', 'displayConfirmedBooking'],
   bookingCreatingForNoneMobileService: ['selectService', 'confirmLocation', 'showAvailableTimes', 'handleTimeChoice', 'showDayBrowser', 'selectSpecificDay', 'showHoursForDay', 'selectSpecificTime', 'checkExistingUser', 'handleUserStatus', 'askUserName', 'createNewUser', 'quoteSummary', 'handleQuoteChoice', 'createBooking', 'displayConfirmedBooking'],
-  customerFaqHandling: ['identifyUserQuestion', 'searchKnowledgeBase', 'provideAnswerToUser', 'checkUserSatisfaction'],
 };
 
 // --- Step Handler Imports ---
@@ -114,12 +113,6 @@ import {
     createBookingHandler,
     displayConfirmedBookingHandler,
 } from './flows/bookings/customer-booking-steps';
-import {
-    identifyUserQuestionHandler,
-    searchKnowledgeBaseHandler,
-    provideAnswerToUserHandler,
-    checkUserSatisfactionHandler
-} from './flows/faq/faq-steps';
 
 const botTasks: Record<string, IndividualStepHandler> = {
   // Account Creation
@@ -153,12 +146,6 @@ const botTasks: Record<string, IndividualStepHandler> = {
   handleQuoteChoice: handleQuoteChoiceHandler,
   createBooking: createBookingHandler,
   displayConfirmedBooking: displayConfirmedBookingHandler,
-
-  // FAQ
-  identifyUserQuestion: identifyUserQuestionHandler,
-  searchKnowledgeBase: searchKnowledgeBaseHandler,
-  provideAnswerToUser: provideAnswerToUserHandler,
-  checkUserSatisfaction: checkUserSatisfactionHandler,
 };
 
 // --- Helper Functions ---
@@ -412,13 +399,30 @@ class MessageProcessor {
         await this.executeStep(userCurrentGoal, currentContext);
       }
     } else {
-        // Validation failed, stay on current step and show error.
+      // If validation failed with an empty error message, it's a signal to advance
+      // to the next step and re-process the input there.
+      if (!specificValidationError) {
+        console.log(`[State Manager] Validation failed with empty error - advancing to next step with user input`);
+        
+        this.advanceAndSkipStep(userCurrentGoal);
+        
+        // Check if flow is completed
+        if (userCurrentGoal.currentStepIndex >= currentSteps.length) {
+          userCurrentGoal.goalStatus = 'completed';
+          userCurrentGoal.collectedData.confirmationMessage = "Great! Your booking request has been processed.";
+        } else {
+          // Re-process the same user input with the new, advanced step
+          await this.processExistingGoal(userCurrentGoal, currentContext, incomingUserMessage);
+        }
+      } else {
+        // Normal validation failure - stay on current step and show error.
         userCurrentGoal.collectedData.confirmationMessage = specificValidationError || currentStepHandler.defaultChatbotPrompt || "I didn't understand that.";
         if (currentStepHandler.fixedUiButtons) {
             userCurrentGoal.collectedData.uiButtons = typeof currentStepHandler.fixedUiButtons === 'function'
             ? await currentStepHandler.fixedUiButtons(userCurrentGoal.collectedData, currentContext)
             : currentStepHandler.fixedUiButtons;
         }
+      }
     }
   }
 

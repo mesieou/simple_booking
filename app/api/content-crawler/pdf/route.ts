@@ -3,7 +3,7 @@ import { crawlAndProcessPdfs } from "@/lib/backend-actions/content-crawler/pdf-c
 import { createPdfConfig } from "@/lib/general-config/general-config";
 
 // Hardcoded business ID for testing
-const TEST_BUSINESS_ID = "0919f2b7-9af2-4094-b8b7-f7a70a59599a";
+const TEST_BUSINESS_ID = "6c77fa8b-952e-480d-819d-3e9499e272e6";
 
 export const POST = async (req: NextRequest) => {
   const formData = await req.formData();

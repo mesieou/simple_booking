@@ -1,0 +1,39 @@
+{
+  "modelUsed": "gpt-4o",
+  "originalContentCharacterLength": 2533,
+  "llmSegmentedChunks": [
+    {
+      "chunkOrder": 1,
+      "chunkText": "Privacy Policy: We collect personal information such as your name and contact details for the sole purpose of booking appointments and communicating with you about your services. We are committed to protecting your privacy and will never share your personal data with third parties without your explicit consent.",
+      "category": 6,
+      "categoryName": "terms & conditions / legal policies",
+      "confidence": 0.95,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 2,
+      "chunkText": "Right to Refuse Service: Our salon staff have the right to refuse service to anyone behaving improperly, intoxicated, or if their actions pose a threat to the health and safety of our staff or other clients.",
+      "category": 6,
+      "categoryName": "terms & conditions / legal policies",
+      "confidence": 0.9,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 3,
+      "chunkText": "Gift Vouchers: Gift vouchers are available for purchase and are valid for 12 months from the date of issue. Vouchers are non-refundable and cannot be exchanged for cash.",
+      "category": 6,
+      "categoryName": "terms & conditions / legal policies",
+      "confidence": 0.9,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 4,
+      "chunkText": "GENERAL_INFORMATION The Benefits of Regular Nail Care: Regular manicures and pedicures are more than just a cosmetic treat; they are an important part of overall hand and foot health. Consistent care can help prevent common issues such as ingrown nails and fungal infections. The exfoliation and massage involved in our treatments improve blood circulation, reduce stress, and promote healthy skin. Furthermore, taking the time for a professional treatment is a wonderful way to practice self-care, boosting your mood and leaving you feeling polished and put-together.",
+      "category": 7,
+      "categoryName": "General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories.",
+      "confidence": 0.95,
+      "preChunkSourceIndex": 0
+    }
+  ],
+  "promptUsedLength": 5352
+}

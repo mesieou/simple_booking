@@ -1,0 +1,12 @@
+{
+  "sourceUrl": "pdf:skedy-knowledge-base.pdf#page=1",
+  "originalCleanedTextPath": "../../01_cleaned_text/cleaned_pdf_page.txt",
+  "maxCharsPerGptChunk": 6000,
+  "numberOfPreChunks": 1,
+  "preChunkFileNames": [
+    "pre_chunk_0.txt"
+  ],
+  "timestamp": "2025-06-11T12:36:15.572Z",
+  "sessionId": "0ec096af-1bdd-4c15-b7d2-e0764f2ac33c",
+  "domain": "skedy-knowledge-base.pdf"
+}
