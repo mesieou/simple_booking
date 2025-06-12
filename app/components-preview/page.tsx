@@ -48,6 +48,15 @@ import { TypographyInlineCode } from "@components/typography/inline-code";
 import { WeeklyHours, DayAvailabilityRow, TimeRangeInput, TimeZoneSelector } from "@components/weekly-hours";
 
 import { FormProvider } from "@/lib/rename-categorise-better/utils/FormContext";
+import ImageBot from "@/components/chatbot/chat-header/image-bot";
+import IconsHeader from "@/components/chatbot/chat-header/icons";
+import Status from "@/components/chatbot/chat-header/status";
+import Header from "@/components/chatbot/chat-header/header";
+
+import IconsTranscript from "@/components/chatbot/chat-transcript/icons";
+import Time from "@/components/chatbot/chat-transcript/time";
+import Message from "@/components/chatbot/chat-transcript/message";
+import Transcript from "@/components/chatbot/chat-transcript/transcript";
 
 export default function ComponentsPreviewPage() {
   // Fake data
@@ -170,6 +179,25 @@ export default function ComponentsPreviewPage() {
         />
         <TimeRangeInput range={fakeRanges[0]} onChange={() => {}} index={0} />
         <TimeZoneSelector value="America/New_York" onChange={() => {}} />
+      </section>
+
+      <section>
+        <h2 className="text-2xl font-bold mb-4">Chatbot</h2>
+        <ImageBot />
+        <Status currentStatus={2} />
+        <IconsHeader />
+        
+      </section>
+      <section>
+        <Header />
+      </section>
+      <section>
+        <IconsTranscript />
+      
+        <Time time="7:20" />
+        <Message message="Hello, how are you?" isSystem={true} />
+        <Message message="I'm good, thank you!" isSystem={false} />
+        <Transcript />
       </section>
     </div>
   );
