@@ -1,5 +1,9 @@
 import { createClient } from "../supabase/server";
 import { handleModelError } from '@/lib/general-helpers/error';
+import { updateDayAvailability } from "@/lib/general-helpers/availability";
+import { User } from "./user";
+import { Business } from "./business";
+import { Quote } from "./quote";
 
 export type BookingStatus = "Not Completed" | "In Progress" | "Completed";
 
@@ -47,7 +51,30 @@ export class Booking {
         if (!data) {
             handleModelError("Failed to create booking: No data returned", new Error("No data returned from insert"));
         }
+        
+        // Non-blocking call to update availability
+        this.updateProviderAvailability(data).catch(error => {
+            console.error(`[Booking.add] Availability update failed for booking ${data.id}:`, error);
+        });
+
         return data;
+    }
+
+    private async updateProviderAvailability(bookingData: BookingData & { id: string }): Promise<void> {
+        const { providerId, businessId, quoteId, dateTime } = bookingData;
+        const bookingDate = new Date(dateTime);
+
+        // Fetch all necessary data
+        const [provider, business, quote, existingBookings] = await Promise.all([
+            User.getById(providerId),
+            Business.getById(businessId),
+            Quote.getById(quoteId),
+            Booking.getByProviderAndDateRange(providerId, bookingDate, bookingDate)
+        ]);
+
+        // Call the availability update function
+        await updateDayAvailability(provider, existingBookings, bookingDate, business, quote);
+        console.log(`[Booking.add] Successfully updated availability for provider ${providerId} on ${bookingDate.toISOString().split('T')[0]}`);
     }
 
     // Get booking by ID

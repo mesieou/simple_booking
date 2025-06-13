@@ -81,6 +81,32 @@ export class Business {
         return new Business(data);
     }
 
+    // Get business by WhatsApp number
+    static async getByWhatsappNumber(whatsappNumber: string): Promise<Business | null> {
+        const supa = await createClient();
+
+        // Normalize the input to handle cases with or without a '+' prefix
+        const numberWithoutPlus = whatsappNumber.startsWith('+') ? whatsappNumber.substring(1) : whatsappNumber;
+        const numberWithPlus = `+${numberWithoutPlus}`;
+
+        const { data, error } = await supa
+            .from("businesses")
+            .select("*")
+            .or(`whatsappNumber.eq.${numberWithPlus},whatsappNumber.eq.${numberWithoutPlus}`)
+            .limit(1)
+            .single();
+
+        if (error) {
+            // It's better to return null if not found, rather than throwing an error
+            if (error.code === 'PGRST116') { // PostgREST error for "exact one row not found"
+                return null;
+            }
+            handleModelError(`Failed to fetch business by WhatsApp number ${whatsappNumber}`, error);
+        }
+
+        return data ? new Business(data) : null;
+    }
+
     // Get all businesses
     static async getAll(): Promise<Business[]> {
         const supa = await createClient();
