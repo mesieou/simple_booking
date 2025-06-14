@@ -390,13 +390,16 @@ class MessageProcessor {
         return;
       }
       
-      this.advanceAndSkipStep(userCurrentGoal);
-      
-      if (userCurrentGoal.currentStepIndex >= currentSteps.length) {
-        userCurrentGoal.goalStatus = 'completed';
-        userCurrentGoal.collectedData.confirmationMessage = "Great! Your booking request has been processed.";
-      } else {
-        await this.executeStep(userCurrentGoal, currentContext);
+      // Only advance if shouldAutoAdvance is not explicitly set to false
+      if (userCurrentGoal.collectedData.shouldAutoAdvance !== false) {
+        this.advanceAndSkipStep(userCurrentGoal);
+        
+        if (userCurrentGoal.currentStepIndex >= currentSteps.length) {
+          userCurrentGoal.goalStatus = 'completed';
+          userCurrentGoal.collectedData.confirmationMessage = "Great! Your booking request has been processed.";
+        } else {
+          await this.executeStep(userCurrentGoal, currentContext);
+        }
       }
     } else {
       // If validation failed with an empty error message, it's a signal to advance

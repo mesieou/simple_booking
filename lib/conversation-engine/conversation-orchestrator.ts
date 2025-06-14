@@ -86,21 +86,23 @@ export async function routeInteraction(
         const rawText = knowledgeBaseText || "I'm sorry, I couldn't find an answer to your question in our knowledge base. Could I help with anything else?";
         const rawBotResponse: BotResponse = { text: rawText };
 
+        const resumableGoalTypes = ['serviceBooking']; // Define which goals can be resumed
+        const currentGoalType = userContext.currentGoal?.goalType;
+        const isResumableGoalInProgress = !!(currentGoalType && resumableGoalTypes.includes(currentGoalType));
+
         let finalBotResponse = await enhanceBotResponse(
             rawBotResponse,
             userContext,
             history,
             'faq_answer',
-            userQuestion
+            userQuestion,
+            isResumableGoalInProgress
         );
 
-        // 3. After answering, add a prompt to guide the user back to their original task, if applicable.
-        const isGoalInProgress = userContext.currentGoal && userContext.currentGoal.goalType !== 'idle';
-        if (isGoalInProgress) {
-            const previousStepPrompt = userContext.currentGoal?.collectedData?.reengagementMessage || "Now, where were we? Shall we continue?";
+        // 3. After answering, add UI elements to guide the user back to their original task, if applicable.
+        // The LLM is responsible for the text, the orchestrator is responsible for the buttons.
+        if (isResumableGoalInProgress) {
             const resumeButtons = (userContext.currentGoal?.collectedData?.uiButtons || []) as ButtonConfig[];
-            
-            finalBotResponse.text = `${finalBotResponse.text}\n\n${previousStepPrompt}`;
             finalBotResponse.buttons = resumeButtons;
         }
 
