@@ -1,5 +1,6 @@
 import { createClient } from "../supabase/server";
 import { handleModelError } from '@/lib/general-helpers/error';
+import { DateTime } from 'luxon';
 
 export interface AvailabilitySlotsData {
     providerId: string;
@@ -100,10 +101,11 @@ export class AvailabilitySlots {
     static async getNext3AvailableSlots(
         providerId: string,
         serviceDuration: number,
-        daysToLookAhead: number = 14
+        daysToLookAhead: number = 14,
+        providerTimezone: string = 'UTC'
     ): Promise<Array<{ date: string; time: string }>> {
         try {
-            console.log(`[AvailabilitySlots] Getting next 3 slots for provider ${providerId}, duration ${serviceDuration}`);
+            console.log(`[AvailabilitySlots] Getting next 3 slots for provider ${providerId}, duration ${serviceDuration}, timezone ${providerTimezone}`);
             
             // Get availability for the specified date range
             const today = new Date();
@@ -130,30 +132,36 @@ export class AvailabilitySlots {
             const durationKey = suitableDuration.toString();
             console.log(`[AvailabilitySlots] Using duration ${durationKey} for service duration ${serviceDuration}`);
             
-            // Collect all available slots chronologically
+            // Collect all available slots chronologically, starting from the current time
             const allSlots: Array<{ date: string; time: string }> = [];
+            const nowInProviderTz = DateTime.now().setZone(providerTimezone);
             
+            // Sort the availability data by date first
+            availabilityData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
             for (const dayData of availabilityData) {
                 const slotsForDuration = dayData.slots[durationKey] || [];
-                console.log(`[AvailabilitySlots] Date ${dayData.date} has ${slotsForDuration.length} slots for duration ${durationKey}`);
                 
-                for (const timeSlot of slotsForDuration) {
-                    allSlots.push({
-                        date: dayData.date,
-                        time: timeSlot
-                    });
+                // Sort time slots to be sure
+                const sortedTimeSlots = slotsForDuration.sort();
+                
+                for (const timeSlot of sortedTimeSlots) {
+                    const datePart = dayData.date.substring(0, 10); // Extract YYYY-MM-DD
+                    const slotDateTime = DateTime.fromISO(`${datePart}T${timeSlot}`, { zone: providerTimezone });
+                    
+                    // Only consider slots that are in the future
+                    if (slotDateTime.isValid && slotDateTime > nowInProviderTz) {
+                        allSlots.push({
+                            date: dayData.date,
+                            time: timeSlot
+                        });
+                    }
                 }
             }
             
-            console.log(`[AvailabilitySlots] Found ${allSlots.length} total slots`);
+            console.log(`[AvailabilitySlots] Found ${allSlots.length} total future slots`);
             
-            // Sort chronologically and take first 3
-            allSlots.sort((a, b) => {
-                const dateTimeA = new Date(`${a.date}T${a.time}`);
-                const dateTimeB = new Date(`${b.date}T${b.time}`);
-                return dateTimeA.getTime() - dateTimeB.getTime();
-            });
-            
+            // Now the list is already chronologically sorted, so just take the first 3
             const result = allSlots.slice(0, 3);
             console.log(`[AvailabilitySlots] Returning ${result.length} slots:`, result);
             
