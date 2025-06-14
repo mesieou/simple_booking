@@ -7,6 +7,8 @@ import { Quote } from '../../database/models/quote';
 import { Booking } from '../../database/models/booking';
 import { computeQuoteEstimation, type QuoteEstimation } from '../../general-helpers/quote-cost-calculator';
 import { v4 as uuidv4 } from 'uuid';
+import { CalendarSettings } from '../../database/models/calendar-settings';
+import { DateTime } from 'luxon';
 
 // Configuration constants for booking steps
 const BOOKING_CONFIG = {
@@ -229,13 +231,16 @@ class AvailabilityService {
     try {
       console.log(`[AvailabilityService] Getting next 3 slots for business with WhatsApp ${businessWhatsappNumber}, service duration ${serviceDuration} minutes`);
       
-      const userIdOfBusinessOwner = await this.findUserIdByBusinessWhatsappNumber(businessWhatsappNumber);
-      if (!userIdOfBusinessOwner) {
+      const userOwningThisBusiness = await User.findUserByBusinessWhatsappNumber(businessWhatsappNumber);
+      if (!userOwningThisBusiness) {
         console.error('[AvailabilityService] No business owner found for this WhatsApp number');
         return [];
       }
       
-      const rawSlots = await AvailabilitySlots.getNext3AvailableSlots(userIdOfBusinessOwner, serviceDuration);
+      const calendarSettings = await CalendarSettings.getByUserAndBusiness(userOwningThisBusiness.id, userOwningThisBusiness.businessId);
+      const providerTimezone = calendarSettings.settings?.timezone || 'UTC';
+
+      const rawSlots = await AvailabilitySlots.getNext3AvailableSlots(userOwningThisBusiness.id, serviceDuration, 14, providerTimezone);
       
       // Simple display formatting
       return rawSlots.map(slot => {
@@ -1676,12 +1681,24 @@ export const createBookingHandler: IndividualStepHandler = {
 
       console.log('[CreateBooking] Found provider ID:', providerId);
 
-      // Create dateTime in ISO format from selected date and time
-      const bookingDateTime = new Date(selectedDate);
-      const [hours, minutes] = selectedTime.split(':');
-      bookingDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      // Get provider's timezone for accurate booking creation
+      const calendarSettings = await CalendarSettings.getByUserAndBusiness(providerId, businessId);
+      const providerTimezone = calendarSettings.settings?.timezone || 'UTC';
+
+      // Create dateTime in ISO format from selected date and time IN THE PROVIDER'S TIMEZONE
+      const [hour, minute] = selectedTime.split(':').map(Number);
+      const bookingDateTime = DateTime.fromObject(
+          {
+              year: new Date(selectedDate).getFullYear(),
+              month: new Date(selectedDate).getMonth() + 1,
+              day: new Date(selectedDate).getDate(),
+              hour: hour,
+              minute: minute,
+          },
+          { zone: providerTimezone }
+      );
       
-      console.log('[CreateBooking] Creating booking for datetime:', bookingDateTime.toISOString());
+      console.log('[CreateBooking] Creating booking for datetime:', bookingDateTime.toISO());
 
       // Create the booking object
       const booking = new Booking({
@@ -1690,7 +1707,7 @@ export const createBookingHandler: IndividualStepHandler = {
         providerId: providerId,
         quoteId: quoteId,
         businessId: businessId,
-        dateTime: bookingDateTime.toISOString()
+        dateTime: bookingDateTime.toISO() as string
       });
 
       // Persist to database
