@@ -166,11 +166,16 @@ export async function updateDayAvailability(
     millisecond: 0
   });
 
-  // Fetch all quotes for the existing bookings
+  // Consolidate the new booking with its quote, and fetch quotes for all other existing bookings
   const bookingQuotes = await Promise.all(
     existingBookings.map(async (booking: Booking) => {
-      const quote = await Quote.getById(booking.quoteId);
-      return { booking, quote };
+      // If the booking in the list is the one that was just created, we already have the quote.
+      if (booking.quoteId === quote.id) {
+        return { booking, quote };
+      }
+      // Otherwise, fetch the quote for the other bookings.
+      const bookingQuote = await Quote.getById(booking.quoteId);
+      return { booking, quote: bookingQuote };
     })
   );
 
@@ -184,6 +189,15 @@ export async function updateDayAvailability(
     return null;
   }
 
+  // --- LOGGING: Before update ---
+  const jobDuration = quote.totalJobDurationEstimation;
+  const suitableDurationKey = DURATION_INTERVALS.find(d => d >= jobDuration)?.toString() || DURATION_INTERVALS[0].toString();
+  console.log(`[UpdateAvailability] --- BEFORE ---`);
+  console.log(`[UpdateAvailability] Job Duration: ${jobDuration}mins, using Slot Key: ${suitableDurationKey}mins`);
+  console.log(`[UpdateAvailability] Existing bookings for the day:`, existingBookings.map(b => ({id: b.id, time: b.dateTime, quoteId: b.quoteId })));
+  console.log(`[UpdateAvailability] Full Booking/Quote Data:`, bookingQuotes.map(bq => ({ bookingId: bq.booking.id, quoteId: bq.quote?.id, duration: bq.quote?.totalJobDurationEstimation })));
+  console.log(`[UpdateAvailability] Slots for ${suitableDurationKey}mins before update:`, existingAvailabilityData.slots[suitableDurationKey] || 'None');
+  
   // Calculate available slots for all durations
   const updatedSlots: { [key: string]: string[] } = {};
   
@@ -198,16 +212,28 @@ export async function updateDayAvailability(
 
       // Check if this slot overlaps with any existing bookings
       const overlaps = bookingQuotes.some(
-        ({ booking, quote: bookingQuote }: { booking: Booking; quote: Quote }) => {
-          const bookingDateTime = DateTime.fromISO(booking.dateTime);
+        ({ booking, quote: bookingQuote }: { booking: Booking; quote: Quote | null }) => {
+          if (!bookingQuote) return false; // Skip if a quote is missing for some reason
+          
+          const bookingDateTime = DateTime.fromISO(booking.dateTime, { zone: providerTZ });
           const bookingEnd = bookingDateTime.plus({ minutes: bookingQuote.totalJobDurationEstimation });
           const bookingEndWithBuffer = bookingEnd.plus({ minutes: bufferTime });
+
+          const doesOverlap = slotStartUTC.toMillis() < bookingEndWithBuffer.toMillis() && 
+                              slotEndUTC.toMillis() > bookingDateTime.toMillis();
+
+          // --- DEEPER LOGGING ---
+          if (slotStart.toFormat("HH:mm") === '07:00' || slotStart.toFormat("HH:mm") === '08:00') { // Log only for specific slots to avoid clutter
+              console.log(`[OverlapCheck] Slot: ${slotStart.toFormat("HH:mm")} - ${slotEnd.toFormat("HH:mm")}`);
+              console.log(`[OverlapCheck] Booking ID: ${booking.id}`);
+              console.log(`[OverlapCheck] Booking Time: ${bookingDateTime.toISO()}`);
+              console.log(`[OverlapCheck] Booking End w/ Buffer: ${bookingEndWithBuffer.toISO()}`);
+              console.log(`[OverlapCheck] Slot Start (UTC): ${slotStartUTC.toISO()}`);
+              console.log(`[OverlapCheck] Slot End (UTC): ${slotEndUTC.toISO()}`);
+              console.log(`[OverlapCheck] RESULT: ${doesOverlap}`);
+          }
           
-          // A slot overlaps if:
-          // 1. It starts before the booking ends (including buffer)
-          // 2. It ends after the booking starts
-          return slotStartUTC.toMillis() < bookingEndWithBuffer.toMillis() && 
-                 slotEndUTC.toMillis() > bookingDateTime.toMillis();
+          return doesOverlap;
         }
       );
 
@@ -223,6 +249,10 @@ export async function updateDayAvailability(
       updatedSlots[duration.toString()] = times;
     }
   }
+
+  // --- LOGGING: After update ---
+  console.log(`[UpdateAvailability] --- AFTER ---`);
+  console.log(`[UpdateAvailability] Slots for ${suitableDurationKey}mins after update:`, updatedSlots[suitableDurationKey] || 'None');
 
   // Update the existing availability record
   if (Object.keys(updatedSlots).length > 0) {
