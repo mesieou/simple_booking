@@ -23,6 +23,7 @@ type EnhancementType = 'rephrase' | 'faq_answer';
  * @param chatHistory The recent conversation history for context.
  * @param enhancementType The mode to operate in: 'rephrase' or 'faq_answer'.
  * @param userQuestion The original user question, required for 'faq_answer' mode.
+ * @param isResumableGoalInProgress Indicates whether a task was previously in progress.
  * @returns A promise resolving to the enhanced BotResponse.
  */
 export async function enhanceBotResponse(
@@ -30,7 +31,8 @@ export async function enhanceBotResponse(
   userContext: UserContext,
   chatHistory: ChatMessage[],
   enhancementType: EnhancementType = 'rephrase',
-  userQuestion?: string
+  userQuestion?: string,
+  isResumableGoalInProgress?: boolean
 ): Promise<BotResponse> {
 
   // If there's no text to work with, return immediately.
@@ -43,6 +45,10 @@ export async function enhanceBotResponse(
 
   const recentHistory = chatHistory.slice(-4).map(msg => `${msg.role}: ${msg.content}`).join('\n');
 
+  const goalInProgressInfo = isResumableGoalInProgress
+      ? 'A booking task was in progress before this question.'
+      : 'No specific task is currently in progress.';
+
   if (enhancementType === 'faq_answer') {
     if (!userQuestion) {
       console.error('[ResponseEnhancer] Fallback: userQuestion is required for faq_answer enhancement type.');
@@ -52,14 +58,17 @@ export async function enhanceBotResponse(
 
 Instructions:
 - Answer the user's question based on the "Knowledge Base Info" provided below.
-- Your primary goal is to be helpful. Even if the information is not a perfect match, try to provide the most relevant answer you can.
-- After your answer, always add a friendly, relevant follow-up question.
+- Your primary goal is to be helpful.
+- **After your answer, you MUST add a conversational follow-up question.**
+-   - If a task was in progress (see 'Task Status' in CONTEXT), your follow-up should smoothly ask to continue it (e.g., "Now, back to your booking, shall we continue?").
+-   - If no task was in progress, ask a relevant follow-up question based on the user's query or offer general help (e.g., "Does that sound like what you're looking for?" or "Is there anything else I can help you with today?").
 - Do NOT mention the source, or say 'based on' or similar phrases. Respond as if you are a human expert from the company.
-- If the provided "Knowledge Base Info" is completely irrelevant and you cannot answer the question at all, then respond with a friendly message saying you couldn't find the specific information.
+- If the provided "Knowledge Base Info" is completely irrelevant, say you couldn't find the specific information and ask a clarifying question.
 - Be concise and conversational.
 
 CONTEXT:
-- User's Name: ${userContext.currentGoal?.collectedData?.userName || 'there'}`;
+- User's Name: ${userContext.currentGoal?.collectedData?.userName || 'there'}
+- Task Status: ${goalInProgressInfo}`;
     
     userPrompt = `Recent Conversation History:
 ${recentHistory}
