@@ -1,3 +1,4 @@
+import { Business } from "../database/models/business";
 // --- Core Type Definitions ---
 export type ConversationalParticipantType = 'business' | 'customer';
 type UserGoalType = 'accountManagement' | 'serviceBooking' | 'frequentlyAskedQuestion' | 'humanAgentEscalation';
@@ -5,7 +6,6 @@ type GoalActionType = 'create' | 'delete' | 'update';
 
 // Configuration constants
 const BOT_CONFIG = {
-  DEFAULT_BUSINESS_ID: '6c77fa8b-952e-480d-819d-3e9499e272e6', // Beauty Asiul business ID
   DEFAULT_TIMEZONE: 'Australia/Melbourne',
   DEFAULT_LANGUAGE: 'en',
   SESSION_TIMEOUT_HOURS: 24
@@ -312,9 +312,22 @@ class MessageProcessor {
     console.log(`[MessageProcessor] Customer WhatsApp number messaging FROM: ${participant.customerWhatsappNumber}`);
     const existingSession = activeSessionsDB[participant.id];
 
+    // Dynamically find the business ID
+    let associatedBusinessId: string | undefined;
+    if (participant.businessWhatsappNumber) {
+        const business = await Business.getByWhatsappNumber(participant.businessWhatsappNumber);
+        if (business && business.id) {
+            associatedBusinessId = business.id;
+            console.log(`[MessageProcessor] Dynamically found business ID: ${associatedBusinessId}`);
+        } else {
+            console.error(`[MessageProcessor] CRITICAL: Could not find business for WhatsApp number: ${participant.businessWhatsappNumber}`);
+            // Handle cases where business is not found. For now, we'll leave it undefined.
+        }
+    }
+
     const participantWithBusinessId: ConversationalParticipant = {
       ...participant,
-      associatedBusinessId: BOT_CONFIG.DEFAULT_BUSINESS_ID,
+      associatedBusinessId: associatedBusinessId,
       businessWhatsappNumber: participant.businessWhatsappNumber, // Preserve the business WhatsApp number customers message TO
       customerWhatsappNumber: participant.customerWhatsappNumber // Preserve the customer WhatsApp number messaging FROM
     };
