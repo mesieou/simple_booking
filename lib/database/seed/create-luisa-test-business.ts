@@ -6,6 +6,7 @@ import { computeInitialAvailability } from '../../general-helpers/availability';
 import { v4 as uuidv4 } from 'uuid';
 import { createClient } from '../supabase/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { clearBusinessDataById } from './clear-database';
 
 export interface LuisaTestBusinessSeedResult {
   businessId: string;
@@ -20,13 +21,28 @@ export async function createLuisaTestBusiness(supabase?: SupabaseClient): Promis
   const supa = supabase || await createClient();
 
   // --- METHODICAL CLEANUP OF EXISTING BUSINESS ---
-  await clearExistingLuisaBusiness(supa);
+  // Find and clean up the specific test business if it exists
+  console.log('[SEED] Checking for existing Luisa business to clean up...');
+  const { data: businesses, error: businessError } = await supa
+    .from('businesses')
+    .select('id')
+    .or('name.eq.Beauty Asiul,email.eq.luisa.bernal@example.com');
+
+  if (businessError) {
+    console.error('[SEED] Error checking for existing business, skipping cleanup:', businessError);
+  } else if (businesses && businesses.length > 0) {
+    const businessId = businesses[0].id;
+    console.log(`[SEED] Found existing business with ID: ${businessId}. Cleaning up...`);
+    await clearBusinessDataById(supa, businessId);
+  } else {
+    console.log('[SEED] No existing Luisa business found to clean up.');
+  }
 
   // --- CREATE NEW BUSINESS ---
   console.log('[SEED] Creating new business...');
   const businessData: BusinessData = {
     name: 'Beauty Asiul',
-    email: 'luisa.bernal7826@gmail.com',
+    email: 'luisa.bernal@example.com',
     phone: '+61452678816',
     timeZone: 'Australia/Sydney',
     interfaceType: 'whatsapp',
@@ -51,7 +67,10 @@ export async function createLuisaTestBusiness(supabase?: SupabaseClient): Promis
     createdBusiness.id
   );
 
-  const { data: createdUser, error: userError } = await ownerProvider.add();
+  const { data: createdUser, error: userError } = await ownerProvider.add({
+    email: businessData.email,
+    password: 'password123'
+  });
   if (userError || !createdUser?.id) {
     throw new Error(`[SEED] Failed to create user: ${userError ? String(userError) : 'No user data returned'}`);
   }
@@ -167,138 +186,4 @@ export async function createLuisaTestBusiness(supabase?: SupabaseClient): Promis
     serviceIds,
     calendarSettingsId: calendarSettingsInstance.id
   };
-}
-
-/**
- * Methodically clear all existing Luisa business data following proper deletion order
- */
-async function clearExistingLuisaBusiness(supa: SupabaseClient): Promise<void> {
-  console.log('[SEED] Checking for existing Luisa business...');
-  
-  // Find existing business
-  const { data: businesses, error: businessError } = await supa
-    .from('businesses')
-    .select('id')
-    .or('name.eq.Beauty Asiul,email.eq.luisa.bernal7826@gmail.com');
-
-  if (businessError) {
-    console.error('[SEED] Error checking for existing business:', businessError);
-    return;
-  }
-
-  if (!businesses || businesses.length === 0) {
-    console.log('[SEED] No existing Luisa business found.');
-    return;
-  }
-
-  const businessId = businesses[0].id;
-  console.log(`[SEED] Found existing business with ID: ${businessId}. Starting cleanup...`);
-
-  // Get all users for this business (we'll need their auth IDs)
-  const { data: users } = await supa
-    .from('users')
-    .select('id')
-    .eq('businessId', businessId);
-
-  const userIds = users?.map(u => u.id) || [];
-
-  // Following the deletion order from clear-database.ts:
-  // 1. embeddings, documents (usually not business-specific in this case)
-  // 2. events (for users in this business)
-  if (userIds.length > 0) {
-    const { error: eventsError } = await supa
-      .from('events')
-      .delete()
-      .in('userId', userIds);
-    if (eventsError) console.log('[SEED] Note: Error deleting events:', eventsError.message);
-  }
-
-  // 3. bookings (for this business)
-  const { error: bookingsError } = await supa
-    .from('bookings')
-    .delete()
-    .eq('businessId', businessId);
-  if (bookingsError) console.log('[SEED] Note: Error deleting bookings:', bookingsError.message);
-
-  // 4. quotes (for this business)
-  const { error: quotesError } = await supa
-    .from('quotes')
-    .delete()
-    .eq('businessId', businessId);
-  if (quotesError) console.log('[SEED] Note: Error deleting quotes:', quotesError.message);
-
-  // 5. calendarSettings (for this business)
-  const { error: calendarError } = await supa
-    .from('calendarSettings')
-    .delete()
-    .eq('businessId', businessId);
-  if (calendarError) console.log('[SEED] Note: Error deleting calendar settings:', calendarError.message);
-
-  // 6. availabilitySlots (for users in this business)
-  if (userIds.length > 0) {
-    const { error: availabilityError } = await supa
-      .from('availabilitySlots')
-      .delete()
-      .in('providerId', userIds);
-    if (availabilityError) console.log('[SEED] Note: Error deleting availability slots:', availabilityError.message);
-  }
-
-  // 7. services (for this business)
-  const { error: servicesError } = await supa
-    .from('services')
-    .delete()
-    .eq('businessId', businessId);
-  if (servicesError) console.log('[SEED] Note: Error deleting services:', servicesError.message);
-
-  // 8. chatSessions (for this business)
-  const { error: chatSessionsError } = await supa
-    .from('chatSessions')
-    .delete()
-    .eq('businessId', businessId);
-  if (chatSessionsError) console.log('[SEED] Note: Error deleting chat sessions:', chatSessionsError.message);
-
-  // 9. Delete auth users first, then database users
-  for (const userId of userIds) {
-    try {
-      // Delete from Supabase Auth
-      const { error: authError } = await supa.auth.admin.deleteUser(userId);
-      if (authError) console.log(`[SEED] Note: Error deleting auth user ${userId}:`, authError.message);
-    } catch (error) {
-      console.log(`[SEED] Note: Could not delete auth user ${userId}`);
-    }
-  }
-
-  // Also delete the specific Luisa auth user by email (in case it's orphaned)
-  try {
-    const { data: authUsers } = await supa.auth.admin.listUsers();
-    const luisaAuthUser = authUsers.users.find(u => u.email === 'luisa.bernal@example.com');
-    if (luisaAuthUser) {
-      const { error: luisaAuthError } = await supa.auth.admin.deleteUser(luisaAuthUser.id);
-      if (luisaAuthError) console.log(`[SEED] Note: Error deleting Luisa auth user:`, luisaAuthError.message);
-      else console.log(`[SEED] Deleted orphaned Luisa auth user`);
-    }
-  } catch (error) {
-    console.log(`[SEED] Note: Could not check/delete Luisa auth user`);
-  }
-
-  // Delete users from database
-  if (userIds.length > 0) {
-    const { error: usersError } = await supa
-      .from('users')
-      .delete()
-      .eq('businessId', businessId);
-    if (usersError) console.log('[SEED] Note: Error deleting users:', usersError.message);
-  }
-
-  // 10. Finally delete the business
-  const { error: businessDeleteError } = await supa
-    .from('businesses')
-    .delete()
-    .eq('id', businessId);
-  
-  if (businessDeleteError) {
-    throw new Error(`[SEED] Failed to delete business: ${businessDeleteError.message}`);
-  }
-
-  console.log(`[SEED] Successfully cleaned up existing business and all related data.`);
 } 
