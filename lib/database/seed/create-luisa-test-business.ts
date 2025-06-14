@@ -148,7 +148,7 @@ export async function createLuisaTestBusiness(supabase?: SupabaseClient): Promis
     workingHours: luisaWorkingHours,
     calendarType: 'google', 
     settings: {
-      bufferTime: 15, 
+      bufferTime: 0, 
       timezone: createdBusiness.timeZone,
     }
   };
