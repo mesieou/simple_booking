@@ -238,7 +238,7 @@ class AvailabilityService {
       }
       
       const calendarSettings = await CalendarSettings.getByUserAndBusiness(userOwningThisBusiness.id, userOwningThisBusiness.businessId);
-      const providerTimezone = calendarSettings.settings?.timezone || 'UTC';
+      const providerTimezone = calendarSettings?.settings?.timezone || 'UTC';
 
       const rawSlots = await AvailabilitySlots.getNext3AvailableSlots(userOwningThisBusiness.id, serviceDuration, 14, providerTimezone);
       
@@ -1683,7 +1683,7 @@ export const createBookingHandler: IndividualStepHandler = {
 
       // Get provider's timezone for accurate booking creation
       const calendarSettings = await CalendarSettings.getByUserAndBusiness(providerId, businessId);
-      const providerTimezone = calendarSettings.settings?.timezone || 'UTC';
+      const providerTimezone = calendarSettings?.settings?.timezone || 'UTC';
 
       // Create dateTime in ISO format from selected date and time IN THE PROVIDER'S TIMEZONE
       const [hour, minute] = selectedTime.split(':').map(Number);
