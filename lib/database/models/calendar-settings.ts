@@ -103,7 +103,7 @@ export class CalendarSettings {
   }
 
   // Get calendar settings for a specific user in a business
-  static async getByUserAndBusiness(userId: string, businessId: string): Promise<CalendarSettings> {
+  static async getByUserAndBusiness(userId: string, businessId: string): Promise<CalendarSettings | null> {
     if (!CalendarSettings.isValidUUID(userId)) {
       handleModelError("Invalid user ID format", new Error("Invalid UUID format"));
     }
@@ -121,11 +121,14 @@ export class CalendarSettings {
       .single()
 
     if (error) {
+      if (error.code === 'PGRST116') {
+        return null; // No settings found is a valid case, not an error.
+      }
       handleModelError("Failed to fetch calendar settings by user and business", error);
     }
 
     if (!data) {
-      handleModelError(`No settings found for user ${userId} in business ${businessId}`, new Error("No data found"));
+      return null; // Explicitly return null if no data is found
     }
 
     const calendarSettings = new CalendarSettings(data);
@@ -184,4 +187,4 @@ export class CalendarSettings {
   get calendarType(): 'google' | 'outlook' | undefined { return this.data.calendarType; }
   get settings(): { bufferTime?: number; timezone?: string } | undefined { return this.data.settings; }
   get lastSync(): string | undefined { return this.data.lastSync; }
-} 
+}
