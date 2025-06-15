@@ -42,7 +42,7 @@ export async function createLuisaTestBusiness(supabase?: SupabaseClient): Promis
   console.log('[SEED] Creating new business...');
   const businessData: BusinessData = {
     name: 'Beauty Asiul',
-    email: 'luisa.bernal@example.com',
+    email: 'luisa.bernal7826@gmail.com',
     phone: '+61452678816',
     timeZone: 'Australia/Sydney',
     interfaceType: 'whatsapp',
@@ -81,11 +81,35 @@ export async function createLuisaTestBusiness(supabase?: SupabaseClient): Promis
   const serviceIds: string[] = [];
   const servicesData: Omit<ServiceData, 'businessId' | 'id'>[] = [
     {
+      name: 'Basic Manicure',
+      pricingType: 'fixed' as PricingType,
+      fixedPrice: 30.00,
+      description: 'Classic manicure treatment.',
+      durationEstimate: 35, 
+      mobile: false,
+    },
+    {
+      name: 'Express Manicure',
+      pricingType: 'fixed' as PricingType,
+      fixedPrice: 35.00,
+      description: 'Quick manicure treatment.',
+      durationEstimate: 35, 
+      mobile: false,
+    },
+    {
+      name: 'Gel Manicure',
+      pricingType: 'fixed' as PricingType,
+      fixedPrice: 40.00,
+      description: 'Manicure with long-lasting gel polish.',
+      durationEstimate: 60, 
+      mobile: false,
+    },
+    {
       name: 'Basic Pedicure',
       pricingType: 'fixed' as PricingType,
       fixedPrice: 45.00,
       description: 'Classic pedicure treatment.',
-      durationEstimate: 60, 
+      durationEstimate: 35, 
       mobile: false, 
     },
     {
@@ -93,23 +117,15 @@ export async function createLuisaTestBusiness(supabase?: SupabaseClient): Promis
       pricingType: 'fixed' as PricingType,
       fixedPrice: 50.00,
       description: 'Pedicure with long-lasting gel polish.',
-      durationEstimate: 75,
+      durationEstimate: 60,
       mobile: false,
     },
     {
-      name: 'Nail Art (Add-on)',
+      name: 'Press on Manicure',
       pricingType: 'fixed' as PricingType,
-      fixedPrice: 10.00, 
-      description: 'Custom nail art design, per 2-4 nails.',
-      durationEstimate: 20, 
-      mobile: false,
-    },
-    {
-      name: 'Manicure Basic',
-      pricingType: 'fixed' as PricingType,
-      fixedPrice: 35.00,
-      description: 'Classic manicure treatment.',
-      durationEstimate: 45, 
+      fixedPrice: 80.00,
+      description: 'Professional press-on nail application.',
+      durationEstimate: 60, 
       mobile: false,
     }
   ];
