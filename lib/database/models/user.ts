@@ -76,59 +76,63 @@ export class User {
             lastName: this.lastName,
             role: this.role
         };
-
-        // Add WhatsApp number to metadata if provided
         if (options?.whatsappNumber) {
             user_metadata.whatsappNumber = options.whatsappNumber;
         }
 
-        // First create the auth user
-        const { data: authData, error: authError } = await supa.auth.admin.createUser({
-            email: email,
-            password: password,
-            email_confirm: true,
-            user_metadata: user_metadata
-        });
+        // --- Find or Create Auth User ---
+        let authUser;
+        const { data: { users }, error: listError } = await supa.auth.admin.listUsers();
+        if(listError) handleModelError("Failed to list auth users", listError);
+        
+        const existingAuthUser = users.find(u => u.email === email);
 
-        if (authError) {
-            handleModelError("Failed to create auth user", authError);
+        if (existingAuthUser) {
+            console.log(`[User.add] Found existing auth user with email: ${email}`);
+            authUser = existingAuthUser;
+        } else {
+            console.log(`[User.add] No existing auth user found. Creating new one.`);
+            const { data: newAuthData, error: createError } = await supa.auth.admin.createUser({
+                email: email,
+                password: password,
+                email_confirm: true,
+                user_metadata: user_metadata
+            });
+
+            if (createError) handleModelError("Failed to create auth user", createError);
+            if (!newAuthData.user) handleModelError("No user data returned from auth creation", new Error("No auth user data"));
+            
+            authUser = newAuthData.user;
         }
 
-        if (!authData.user) {
-            handleModelError("No user data returned from auth creation", new Error("No auth user data"));
-        }
+        // --- Upsert User Profile ---
+        const userProfile = {
+            id: authUser.id,
+            firstName: this.firstName,
+            lastName: this.lastName,
+            role: this.role,
+            businessId: this.businessId,
+        };
 
-        // Wait a bit to ensure the auth user is fully created
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        const { data, error } = await supa
+            .from("users")
+            .upsert(userProfile)
+            .select()
+            .single();
 
-        // Then create the user record
-        const user = {
-            "id": authData.user.id,
-            "firstName": this.firstName,
-            "lastName": this.lastName,
-            "role": this.role,
-            "businessId": this.businessId,
-            "createdAt": new Date().toISOString()
-        }
-
-        const { data, error } = await supa.from("users").insert(user).select().single();
-
-        if(error) {
-            // If user record creation fails, we should clean up the auth user
-            await supa.auth.admin.deleteUser(authData.user.id);
-            handleModelError("Failed to create user", error);
+        if (error) {
+            // If profile upsert fails, we don't necessarily need to delete the auth user anymore,
+            // but we should still report the error.
+            handleModelError("Failed to upsert user profile", error);
         }
 
         if (!data) {
-            // If no data returned, clean up the auth user
-            await supa.auth.admin.deleteUser(authData.user.id);
-            handleModelError("Failed to create user: No data returned", new Error("No data returned from insert"));
+            handleModelError("Failed to upsert user profile: No data returned", new Error("No data returned from upsert"));
         }
 
-        // Update the user's ID to match the auth user's ID
-        this.id = authData.user.id;
+        this.id = authUser.id;
 
-        return {data, error};
+        return { data, error: null }; // Return null for error as we handle it
     }
 
     // Get user by ID
@@ -182,7 +186,11 @@ export class User {
             handleModelError("Failed to fetch users by role", error);
         }
         
-        return data.map(userData => new User(userData.firstName, userData.lastName, userData.role, userData.businessId));
+        return data.map(userData => {
+            const user = new User(userData.firstName, userData.lastName, userData.role, userData.businessId);
+            user.id = userData.id; // Set the actual database ID
+            return user;
+        });
     }
 
     // Get all providers (including admin/providers)
@@ -197,7 +205,11 @@ export class User {
             handleModelError("Failed to fetch providers", error);
         }
         
-        return data.map(userData => new User(userData.firstName, userData.lastName, userData.role, userData.businessId));
+        return data.map(userData => {
+            const user = new User(userData.firstName, userData.lastName, userData.role, userData.businessId);
+            user.id = userData.id; // Set the actual database ID
+            return user;
+        });
     }
 
     // Unified method for finding user by business phone or WhatsApp number - FIXED
@@ -365,7 +377,7 @@ export class User {
         }
 
         const supa = await createClient()
-        const user = {
+        const updateData = {
             "firstName": userData.firstName,
             "lastName": userData.lastName,
             "role": userData.role,
@@ -374,7 +386,7 @@ export class User {
         
         const { data, error } = await supa
             .from("users")
-            .update(user)
+            .update(updateData)
             .eq("id", id)
             .select()
             .single();
@@ -387,7 +399,9 @@ export class User {
             handleModelError("Failed to update user: No data returned", new Error("No data returned from update"));
         }
 
-        return new User(data.firstName, data.lastName, data.role, data.businessId);
+        const updatedUser = new User(data.firstName, data.lastName, data.role, data.businessId);
+        updatedUser.id = data.id; // Set the actual database ID
+        return updatedUser;
     }
 
     // Delete user

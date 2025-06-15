@@ -256,6 +256,21 @@ export class AvailabilitySlots {
         }
     }
 
+    // Delete all availability slots before a specific date
+    static async deleteBefore(providerId: string, beforeDate: string): Promise<void> {
+        const supa = await createClient();
+        
+        const { error } = await supa
+            .from("availabilitySlots")
+            .delete()
+            .eq("providerId", providerId)
+            .lt("date", beforeDate);
+
+        if (error) {
+            handleModelError("Failed to delete availability slots before date", error);
+        }
+    }
+
     // Helper method to get slots for a specific duration
     getSlotsForDuration(duration: string): string[] {
         return this.data.slots[duration] || [];

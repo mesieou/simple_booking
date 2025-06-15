@@ -43,6 +43,9 @@ export async function clearBusinessDataById(supabase: SupabaseClient, businessId
   if (userIds.length > 0) {
     const { error: eventsError } = await supabase.from('events').delete().in('userId', userIds);
     if (eventsError) console.log(`[SEED] Note: Error deleting events for business ${businessId}:`, eventsError.message);
+    
+    const { error: availabilityError } = await supabase.from('availabilitySlots').delete().in('providerId', userIds);
+    if (availabilityError) console.log(`[SEED] Note: Error deleting availability slots for business ${businessId}:`, availabilityError.message);
   }
 
   const { error: bookingsError } = await supabase.from('bookings').delete().eq('businessId', businessId);
@@ -53,11 +56,6 @@ export async function clearBusinessDataById(supabase: SupabaseClient, businessId
 
   const { error: calendarError } = await supabase.from('calendarSettings').delete().eq('businessId', businessId);
   if (calendarError) console.log(`[SEED] Note: Error deleting calendar settings for business ${businessId}:`, calendarError.message);
-
-  if (userIds.length > 0) {
-    const { error: availabilityError } = await supabase.from('availabilitySlots').delete().in('providerId', userIds);
-    if (availabilityError) console.log(`[SEED] Note: Error deleting availability slots for business ${businessId}:`, availabilityError.message);
-  }
 
   const { error: servicesError } = await supabase.from('services').delete().eq('businessId', businessId);
   if (servicesError) console.log(`[SEED] Note: Error deleting services for business ${businessId}:`, servicesError.message);
@@ -70,6 +68,10 @@ export async function clearBusinessDataById(supabase: SupabaseClient, businessId
 
   for (const userId of userIds) {
     try {
+      // Must delete the user from public.users table before deleting from auth.users
+      const { error: publicUserError } = await supabase.from('users').delete().eq('id', userId);
+      if(publicUserError) console.log(`[SEED] Note: Error deleting public user ${userId}:`, publicUserError.message);
+
       const { error: authError } = await supabase.auth.admin.deleteUser(userId);
       if (authError) console.log(`[SEED] Note: Error deleting auth user ${userId}:`, authError.message);
     } catch (error) {
