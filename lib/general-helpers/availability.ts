@@ -295,77 +295,62 @@ export async function rollAvailabilityOptimized(
   const todayStr = today.toFormat("yyyy-MM-dd");
 
   console.log(`[CRON-ROLLOVER] Provider: ${user.id} (${user.firstName} ${user.lastName}), Timezone: ${providerTZ}`);
-  console.log(`[CRON-ROLLOVER] Today is ${today.toISODate()}. Cleaning up past availability and ensuring 30-day window.`);
+  console.log(`[CRON-ROLLOVER] Today is ${today.toISODate()}. Rolling availability forward one day.`);
 
   // 1. Delete ALL past availability (< today) - this is safe since past slots are useless
   await AvailabilitySlots.deleteBefore(user.id, todayStr);
 
-  // 2. Get existing availability for the entire 30-day window in one query
-  const endDate = today.plus({ days: 30 }).toFormat("yyyy-MM-dd");
-  const existingAvailability = await AvailabilitySlots.getByProviderAndDateRange(
-    user.id,
-    todayStr,
-    endDate
-  );
+  // 2. Check if we need to add the NEW day (today + 30)
+  const newDay = today.plus({ days: 30 });
+  const newDayStr = newDay.toFormat("yyyy-MM-dd");
+  const dayKey = newDay.toFormat("ccc").toLowerCase() as keyof CalendarSettings["workingHours"];
+  const workingHours = calendarSettings.workingHours[dayKey];
 
-  // Create a map of existing availability dates for quick lookup
-  const existingDatesSet = new Set(existingAvailability.map(slot => slot.date));
+  console.log(`[CRON-ROLLOVER] Checking if need to add availability for ${newDayStr} (${dayKey})`);
 
-  // 3. Prepare all new availability slots to be created
-  const slotsToCreate: AvailabilitySlots[] = [];
-  let currentDay = today;
-  
-  for (let i = 0; i < 30; i++) {
-    const dayStr = currentDay.toFormat("yyyy-MM-dd");
-    const dayKey = currentDay.toFormat("ccc").toLowerCase() as keyof CalendarSettings["workingHours"];
-    const workingHours = calendarSettings.workingHours[dayKey];
+  // 3. Only add the new day if provider works on that day and it doesn't already exist
+  if (workingHours) {
+    const existingAvailability = await AvailabilitySlots.getByProviderAndDate(user.id, newDayStr);
     
-    // Skip if provider doesn't work on this day or availability already exists
-    if (!workingHours || existingDatesSet.has(dayStr)) {
-      currentDay = currentDay.plus({ days: 1 });
-      continue;
+    if (!existingAvailability) {
+      const [startHour, startMin] = workingHours.start.split(":").map(Number);
+      const [endHour, endMin] = workingHours.end.split(":").map(Number);
+
+      const workStart = newDay.set({
+        hour: startHour,
+        minute: startMin,
+        second: 0,
+        millisecond: 0
+      });
+      
+      const workEnd = newDay.set({
+        hour: endHour,
+        minute: endMin,
+        second: 0,
+        millisecond: 0
+      });
+
+      const availableSlots = generateDaySlots(workStart, workEnd);
+
+      // Create the new availability slot for just this one day
+      if (Object.keys(availableSlots).length > 0) {
+        const newAvailabilitySlot = new AvailabilitySlots({
+          providerId: user.id,
+          date: newDayStr,
+          slots: availableSlots
+        });
+        
+        await newAvailabilitySlot.add();
+        console.log(`[CRON-ROLLOVER] Added availability for ${newDayStr} (${dayKey})`);
+      }
+    } else {
+      console.log(`[CRON-ROLLOVER] Availability for ${newDayStr} already exists, skipping`);
     }
-
-    const [startHour, startMin] = workingHours.start.split(":").map(Number);
-    const [endHour, endMin] = workingHours.end.split(":").map(Number);
-
-    const workStart = currentDay.set({
-      hour: startHour,
-      minute: startMin,
-      second: 0,
-      millisecond: 0
-    });
-    
-    const workEnd = currentDay.set({
-      hour: endHour,
-      minute: endMin,
-      second: 0,
-      millisecond: 0
-    });
-
-    const availableSlots = generateDaySlots(workStart, workEnd);
-
-    // Prepare the slot for batch creation
-    if (Object.keys(availableSlots).length > 0) {
-      slotsToCreate.push(new AvailabilitySlots({
-        providerId: user.id,
-        date: dayStr,
-        slots: availableSlots
-      }));
-    }
-
-    currentDay = currentDay.plus({ days: 1 });
+  } else {
+    console.log(`[CRON-ROLLOVER] Provider doesn't work on ${dayKey}, skipping ${newDayStr}`);
   }
 
-  // 4. Batch create all new availability slots using bulk insert
-  if (slotsToCreate.length > 0) {
-    console.log(`[CRON-ROLLOVER] Creating ${slotsToCreate.length} new availability slots for provider ${user.id}`);
-    
-    // Use bulk insert for better performance
-    await AvailabilitySlots.bulkInsert(slotsToCreate);
-  }
-
-  console.log(`[CRON-ROLLOVER] Completed availability roll for provider ${user.id}. Added ${slotsToCreate.length} new days.`);
+  console.log(`[CRON-ROLLOVER] Completed availability roll for provider ${user.id}.`);
 }
 
 // Roll availability forward by maintaining a window of today + 30 days
