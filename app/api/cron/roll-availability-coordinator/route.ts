@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { User } from '@/lib/database/models/user';
 import { Business } from '@/lib/database/models/business';
 import { CalendarSettings } from '@/lib/database/models/calendar-settings';
-import { rollAvailability } from '@/lib/general-helpers/availability';
+import { rollAvailabilityOptimized } from '@/lib/general-helpers/availability';
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
@@ -19,22 +19,108 @@ export async function GET(request: Request) {
   const executionId = Math.random().toString(36).substring(7);
   
   try {
-    console.log(`[CRON-COORDINATOR-${executionId}] Starting dynamic availability rollover...`);
+    console.log(`[CRON-COORDINATOR-${executionId}] Starting optimized availability rollover...`);
     console.log(`[CRON-COORDINATOR-${executionId}] Trigger type: ${triggerType}`);
     
-    // Get all providers and process them directly (no internal API calls)
+    // 1. Get all providers
     const allProviders = await User.getAllProviders();
     const totalProviders = allProviders.length;
-    const batchSize = 5; // Process 5 providers per batch - direct processing is much faster
+    console.log(`[CRON-COORDINATOR-${executionId}] Found ${totalProviders} providers`);
+
+    if (totalProviders === 0) {
+      return NextResponse.json({
+        success: true,
+        message: 'No providers found to process',
+        executionId,
+        summary: {
+          totalProviders: 0,
+          totalProcessed: 0,
+          totalSkipped: 0,
+          totalErrors: 0,
+          processedCount: 0,
+          overallSuccess: true
+        },
+        executionTime: Date.now() - startTime.getTime(),
+        triggerType
+      });
+    }
+
+    // 2. Bulk fetch all businesses (eliminate N+1 queries)
+    const uniqueBusinessIds = Array.from(new Set(allProviders.map(p => p.businessId)));
+    console.log(`[CRON-COORDINATOR-${executionId}] Fetching ${uniqueBusinessIds.length} unique businesses...`);
     
-    console.log(`[CRON-COORDINATOR-${executionId}] Found ${totalProviders} providers, processing in batches of ${batchSize}`);
-    
+    const businessPromises = uniqueBusinessIds.map(id => 
+      Business.getById(id).catch(error => {
+        console.error(`[CRON-COORDINATOR-${executionId}] Failed to fetch business ${id}:`, error);
+        return null;
+      })
+    );
+    const businessResults = await Promise.all(businessPromises);
+    const businessMap = new Map<string, Business>();
+    businessResults.forEach((business, index) => {
+      if (business) {
+        businessMap.set(uniqueBusinessIds[index], business);
+      }
+    });
+
+    // 3. Bulk fetch all calendar settings
+    console.log(`[CRON-COORDINATOR-${executionId}] Fetching calendar settings for all providers...`);
+    const calendarPromises = allProviders.map(provider =>
+      CalendarSettings.getByUserAndBusiness(provider.id, provider.businessId).catch(error => {
+        console.error(`[CRON-COORDINATOR-${executionId}] Failed to fetch calendar settings for provider ${provider.id}:`, error);
+        return null;
+      })
+    );
+    const calendarResults = await Promise.all(calendarPromises);
+    const calendarMap = new Map<string, CalendarSettings>();
+    allProviders.forEach((provider, index) => {
+      if (calendarResults[index]) {
+        calendarMap.set(provider.id, calendarResults[index]);
+      }
+    });
+
+    // 4. Process providers in optimized batches with parallel processing
     let totalProcessed = 0;
     let totalSkipped = 0;
     let totalErrors = 0;
-    const maxExecutionTime = 50000; // 50 seconds - safety margin for Vercel
-    
-    // Process providers in batches directly (much faster than API calls)
+    const batchSize = 10; // Increased batch size since we now have all data
+    const maxExecutionTime = 55000; // Increased to 55 seconds
+
+    const processBatch = async (batchProviders: User[]): Promise<{ processed: number; skipped: number; errors: number }> => {
+      const batchPromises = batchProviders.map(async (provider) => {
+        try {
+          const business = businessMap.get(provider.businessId);
+          if (!business) {
+            console.error(`[CRON-COORDINATOR-${executionId}] Business not found for provider ${provider.id}`);
+            return { result: 'error' };
+          }
+
+          const calendarSettings = calendarMap.get(provider.id);
+          if (!calendarSettings) {
+            console.error(`[CRON-COORDINATOR-${executionId}] Provider ${provider.id} has no calendar settings`);
+            return { result: 'skipped' };
+          }
+
+                     await rollAvailabilityOptimized(provider, business, calendarSettings);
+           console.log(`[CRON-COORDINATOR-${executionId}] ✅ Processed ${provider.firstName} ${provider.lastName} (${provider.id})`);
+           return { result: 'processed' };
+
+        } catch (error) {
+          console.error(`[CRON-COORDINATOR-${executionId}] Failed to roll availability for provider ${provider.id}:`, error);
+          return { result: 'error' };
+        }
+      });
+
+      const batchResults = await Promise.all(batchPromises);
+      return batchResults.reduce((acc, result) => {
+        if (result.result === 'processed') acc.processed++;
+        else if (result.result === 'skipped') acc.skipped++;
+        else acc.errors++;
+        return acc;
+      }, { processed: 0, skipped: 0, errors: 0 });
+    };
+
+    // Process all batches
     for (let i = 0; i < totalProviders; i += batchSize) {
       const elapsedTime = Date.now() - startTime.getTime();
       
@@ -43,48 +129,22 @@ export async function GET(request: Request) {
         console.warn(`[CRON-COORDINATOR-${executionId}] Stopping early to avoid timeout. Processed ${totalProcessed}/${totalProviders} providers`);
         break;
       }
-      
+
       const batchProviders = allProviders.slice(i, i + batchSize);
       const batchNumber = Math.floor(i / batchSize) + 1;
       const totalBatches = Math.ceil(totalProviders / batchSize);
       
-      console.log(`[CRON-COORDINATOR-${executionId}] Processing batch ${batchNumber}/${totalBatches} (providers ${i + 1}-${Math.min(i + batchSize, totalProviders)})`);
+      console.log(`[CRON-COORDINATOR-${executionId}] Processing batch ${batchNumber}/${totalBatches} (providers ${i + 1}-${Math.min(i + batchSize, totalProviders)}) in parallel...`);
       
-      // Process this batch of providers directly
-      for (const provider of batchProviders) {
-        try {
-          const business = await Business.getById(provider.businessId);
-          if (!business) {
-            console.error(`[CRON-COORDINATOR-ERROR] Business not found for provider ${provider.id}`);
-            totalErrors++;
-            continue;
-          }
-          
-          const calendarSettings = await CalendarSettings.getByUserAndBusiness(
-            provider.id,
-            provider.businessId
-          );
-          
-          if (!calendarSettings) {
-            console.error(`[CRON-COORDINATOR-ERROR] Provider ${provider.id} has no calendar settings`);
-            totalSkipped++;
-            continue;
-          }
-          
-          await rollAvailability(provider, business);
-          totalProcessed++;
-          console.log(`[CRON-COORDINATOR-${executionId}] ✅ Processed ${provider.firstName} ${provider.lastName} (${provider.id})`);
-          
-        } catch (error) {
-          console.error(`[CRON-COORDINATOR-ERROR] Failed to roll availability for provider ${provider.id}:`, error);
-          totalErrors++;
-        }
-      }
-      
+      const batchResult = await processBatch(batchProviders);
+      totalProcessed += batchResult.processed;
+      totalSkipped += batchResult.skipped;
+      totalErrors += batchResult.errors;
+
       const batchElapsed = Date.now() - startTime.getTime();
-      console.log(`[CRON-COORDINATOR-${executionId}] ✅ Batch ${batchNumber} completed (${batchElapsed}ms total elapsed)`);
+      console.log(`[CRON-COORDINATOR-${executionId}] ✅ Batch ${batchNumber} completed - Processed: ${batchResult.processed}, Skipped: ${batchResult.skipped}, Errors: ${batchResult.errors} (${batchElapsed}ms total elapsed)`);
     }
-    
+
     const endTime = new Date();
     const totalDuration = endTime.getTime() - startTime.getTime();
     

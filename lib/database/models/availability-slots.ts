@@ -51,6 +51,36 @@ export class AvailabilitySlots {
         return data;
     }
 
+    // Bulk insert multiple availability slots - PERFORMANCE OPTIMIZATION
+    static async bulkInsert(slots: AvailabilitySlots[]): Promise<AvailabilitySlotsData[]> {
+        if (slots.length === 0) return [];
+
+        const supa = await createClient();
+        const currentTime = new Date().toISOString();
+
+        const availabilitySlotsArray = slots.map(slot => ({
+            providerId: slot.data.providerId,
+            date: slot.data.date,
+            slots: slot.data.slots,
+            createdAt: currentTime
+        }));
+
+        const { data, error } = await supa
+            .from("availabilitySlots")
+            .insert(availabilitySlotsArray)
+            .select();
+
+        if (error) {
+            handleModelError("Failed to bulk create availability slots", error);
+        }
+
+        if (!data) {
+            handleModelError("Failed to bulk create availability slots: No data returned", new Error("No data returned from bulk insert"));
+        }
+
+        return data;
+    }
+
     // Get availability slots for a provider and date range
     static async getByProviderAndDateRange(
         providerId: string,

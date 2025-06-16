@@ -284,6 +284,90 @@ export async function updateDayAvailability(
   }
 }
 
+// Optimized version of rollAvailability that reduces DB queries
+export async function rollAvailabilityOptimized(
+  user: User,
+  business: Business,
+  calendarSettings: CalendarSettings
+): Promise<void> {
+  const providerTZ = calendarSettings.settings?.timezone ?? 'UTC';
+  const today = DateTime.now().setZone(providerTZ);
+  const todayStr = today.toFormat("yyyy-MM-dd");
+
+  console.log(`[CRON-ROLLOVER] Provider: ${user.id} (${user.firstName} ${user.lastName}), Timezone: ${providerTZ}`);
+  console.log(`[CRON-ROLLOVER] Today is ${today.toISODate()}. Cleaning up past availability and ensuring 30-day window.`);
+
+  // 1. Delete ALL past availability (< today) - this is safe since past slots are useless
+  await AvailabilitySlots.deleteBefore(user.id, todayStr);
+
+  // 2. Get existing availability for the entire 30-day window in one query
+  const endDate = today.plus({ days: 30 }).toFormat("yyyy-MM-dd");
+  const existingAvailability = await AvailabilitySlots.getByProviderAndDateRange(
+    user.id,
+    todayStr,
+    endDate
+  );
+
+  // Create a map of existing availability dates for quick lookup
+  const existingDatesSet = new Set(existingAvailability.map(slot => slot.date));
+
+  // 3. Prepare all new availability slots to be created
+  const slotsToCreate: AvailabilitySlots[] = [];
+  let currentDay = today;
+  
+  for (let i = 0; i < 30; i++) {
+    const dayStr = currentDay.toFormat("yyyy-MM-dd");
+    const dayKey = currentDay.toFormat("ccc").toLowerCase() as keyof CalendarSettings["workingHours"];
+    const workingHours = calendarSettings.workingHours[dayKey];
+    
+    // Skip if provider doesn't work on this day or availability already exists
+    if (!workingHours || existingDatesSet.has(dayStr)) {
+      currentDay = currentDay.plus({ days: 1 });
+      continue;
+    }
+
+    const [startHour, startMin] = workingHours.start.split(":").map(Number);
+    const [endHour, endMin] = workingHours.end.split(":").map(Number);
+
+    const workStart = currentDay.set({
+      hour: startHour,
+      minute: startMin,
+      second: 0,
+      millisecond: 0
+    });
+    
+    const workEnd = currentDay.set({
+      hour: endHour,
+      minute: endMin,
+      second: 0,
+      millisecond: 0
+    });
+
+    const availableSlots = generateDaySlots(workStart, workEnd);
+
+    // Prepare the slot for batch creation
+    if (Object.keys(availableSlots).length > 0) {
+      slotsToCreate.push(new AvailabilitySlots({
+        providerId: user.id,
+        date: dayStr,
+        slots: availableSlots
+      }));
+    }
+
+    currentDay = currentDay.plus({ days: 1 });
+  }
+
+  // 4. Batch create all new availability slots using bulk insert
+  if (slotsToCreate.length > 0) {
+    console.log(`[CRON-ROLLOVER] Creating ${slotsToCreate.length} new availability slots for provider ${user.id}`);
+    
+    // Use bulk insert for better performance
+    await AvailabilitySlots.bulkInsert(slotsToCreate);
+  }
+
+  console.log(`[CRON-ROLLOVER] Completed availability roll for provider ${user.id}. Added ${slotsToCreate.length} new days.`);
+}
+
 // Roll availability forward by maintaining a window of today + 30 days
 export async function rollAvailability(
   user: User,
