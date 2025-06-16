@@ -304,8 +304,9 @@ export async function rollAvailability(
   const today = DateTime.now().setZone(providerTZ);
   const todayStr = today.toFormat("yyyy-MM-dd");
 
-  console.log(`[CRON-ROLLOVER] Provider: ${user.id}, Timezone: ${providerTZ}`);
+  console.log(`[CRON-ROLLOVER] Provider: ${user.id} (${user.firstName} ${user.lastName}), Timezone: ${providerTZ}`);
   console.log(`[CRON-ROLLOVER] Today is ${today.toISODate()}. Cleaning up past availability and ensuring 30-day window.`);
+  console.log(`[CRON-ROLLOVER] Business ID: ${user.businessId}`);
 
   // 1. Delete ALL past availability (< today) - this is safe since past slots are useless
   await AvailabilitySlots.deleteBefore(user.id, todayStr);
