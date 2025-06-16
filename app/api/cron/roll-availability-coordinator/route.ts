@@ -22,7 +22,7 @@ export async function GET(request: Request) {
     // Get total number of providers to determine batches needed
     const allProviders = await User.getAllProviders();
     const totalProviders = allProviders.length;
-    const batchSize = 5; // Process 5 providers per batch
+    const batchSize = 3; // Process 3 providers per batch (for Vercel timeout limits)
     const totalBatches = Math.ceil(totalProviders / batchSize);
     
     console.log(`[CRON-COORDINATOR-${executionId}] Found ${totalProviders} providers, need ${totalBatches} batches`);
