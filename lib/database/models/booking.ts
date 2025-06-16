@@ -4,6 +4,7 @@ import { updateDayAvailability } from "@/lib/general-helpers/availability";
 import { User } from "./user";
 import { Business } from "./business";
 import { Quote } from "./quote";
+import { DateTime } from "luxon";
 
 export type BookingStatus = "Not Completed" | "In Progress" | "Completed";
 
@@ -19,7 +20,7 @@ export interface BookingData {
 export class Booking {
     private data: BookingData & { id: string };
 
-    constructor(data: BookingData) {
+    constructor(data: BookingData & { id?: string }) {
         if (!data.status) handleModelError("Status is required", new Error("Missing status"));
         if (!data.userId) handleModelError("User ID is required", new Error("Missing userId"));
         if (!data.providerId) handleModelError("Provider ID is required", new Error("Missing providerId"));
@@ -27,7 +28,7 @@ export class Booking {
         if (!data.businessId) handleModelError("Business ID is required", new Error("Missing businessId"));
         if (!data.dateTime) handleModelError("DateTime is required", new Error("Missing dateTime"));
         
-        this.data = { ...data, id: '' };
+        this.data = { ...data, id: data.id || '' };
     }
 
     //creates a Booking in supa
@@ -62,19 +63,33 @@ export class Booking {
 
     private async updateProviderAvailability(bookingData: BookingData & { id: string }): Promise<void> {
         const { providerId, businessId, quoteId, dateTime } = bookingData;
-        const bookingDate = new Date(dateTime);
 
-        // Fetch all necessary data
-        const [provider, business, quote, existingBookings] = await Promise.all([
+        // Create a new Booking instance for the just-created booking
+        const newBooking = new Booking(bookingData);
+        
+        // Fetch all necessary data first to get timezone information
+        const [provider, business, quote] = await Promise.all([
             User.getById(providerId),
             Business.getById(businessId),
             Quote.getById(quoteId),
-            Booking.getByProviderAndDateRange(providerId, bookingDate, bookingDate)
         ]);
 
+        const providerTimezone = business.timeZone;
+        const bookingDate = DateTime.fromISO(dateTime, { zone: providerTimezone });
+
+        // Set the time to the start and end of the day IN THE PROVIDER'S TIMEZONE
+        const dayStart = bookingDate.startOf('day').toJSDate();
+        const dayEnd = bookingDate.endOf('day').toJSDate();
+
+        // Fetch all bookings for that day, which won't include the one just made
+        let existingBookings = await Booking.getByProviderAndDateRange(providerId, dayStart, dayEnd);
+
+        // Manually add the new booking to the list to ensure it's part of the calculation
+        existingBookings.push(newBooking);
+
         // Call the availability update function
-        await updateDayAvailability(provider, existingBookings, bookingDate, business, quote);
-        console.log(`[Booking.add] Successfully updated availability for provider ${providerId} on ${bookingDate.toISOString().split('T')[0]}`);
+        await updateDayAvailability(provider, existingBookings, bookingDate.toJSDate(), business, quote);
+        console.log(`[Booking.add] Successfully updated availability for provider ${providerId} on ${bookingDate.toISODate()}`);
     }
 
     // Get booking by ID

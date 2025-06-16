@@ -7,6 +7,8 @@ import { Quote } from '../../database/models/quote';
 import { Booking } from '../../database/models/booking';
 import { computeQuoteEstimation, type QuoteEstimation } from '../../general-helpers/quote-cost-calculator';
 import { v4 as uuidv4 } from 'uuid';
+import { CalendarSettings } from '../../database/models/calendar-settings';
+import { DateTime } from 'luxon';
 
 // Configuration constants for booking steps
 const BOOKING_CONFIG = {
@@ -229,13 +231,16 @@ class AvailabilityService {
     try {
       console.log(`[AvailabilityService] Getting next 3 slots for business with WhatsApp ${businessWhatsappNumber}, service duration ${serviceDuration} minutes`);
       
-      const userIdOfBusinessOwner = await this.findUserIdByBusinessWhatsappNumber(businessWhatsappNumber);
-      if (!userIdOfBusinessOwner) {
+      const userOwningThisBusiness = await User.findUserByBusinessWhatsappNumber(businessWhatsappNumber);
+      if (!userOwningThisBusiness) {
         console.error('[AvailabilityService] No business owner found for this WhatsApp number');
         return [];
       }
       
-      const rawSlots = await AvailabilitySlots.getNext3AvailableSlots(userIdOfBusinessOwner, serviceDuration);
+      const calendarSettings = await CalendarSettings.getByUserAndBusiness(userOwningThisBusiness.id, userOwningThisBusiness.businessId);
+      const providerTimezone = calendarSettings?.settings?.timezone || 'UTC';
+
+      const rawSlots = await AvailabilitySlots.getNext3AvailableSlots(userOwningThisBusiness.id, serviceDuration, 14, providerTimezone);
       
       // Simple display formatting
       return rawSlots.map(slot => {
@@ -328,7 +333,7 @@ export const showAvailableTimesHandler: IndividualStepHandler = {
     }
     
     // If this is a button click, reject it so it goes to handleTimeChoice
-    if (userInput.startsWith('slot_') || userInput === 'choose_another_day') {
+    if (userInput.startsWith('slot_') || userInput === 'choose_another_day' || userInput === 'open_calendar') {
       console.log('[ShowAvailableTimes] Button click detected - rejecting to pass to next step');
       return { 
         isValidInput: false,
@@ -380,7 +385,7 @@ export const showAvailableTimesHandler: IndividualStepHandler = {
     };
   },
   
-  // Show exactly 2 time slots + "Choose another day" button
+  // Show exactly 2 rounded time slots + "Choose another day" button
   fixedUiButtons: async (currentGoalData) => {
     const next3Slots = currentGoalData.next3AvailableSlots as Array<{ date: string; time: string; displayText: string }> | undefined;
     const availabilityError = currentGoalData.availabilityError as string | undefined;
@@ -390,18 +395,36 @@ export const showAvailableTimesHandler: IndividualStepHandler = {
     }
     
     if (!next3Slots || next3Slots.length === 0) {
-      return [{ buttonText: '📅 Choose another day', buttonValue: 'choose_another_day' }];
+      return [{ buttonText: '📅 Other days', buttonValue: 'choose_another_day' }];
     }
     
-    // Show first 2 slots + choose another day
-    const timeSlotButtons = next3Slots.slice(0, 2).map((slot, index) => ({
-      buttonText: slot.displayText,
-      buttonValue: `slot_${index}_${slot.date}_${slot.time}`
-    }));
+    // Filter to only rounded times (00 minutes) and take first 2
+    const roundedTimeSlots = next3Slots.filter(slot => {
+      const [hours, minutes] = slot.time.split(':');
+      return minutes === '00'; // Only show rounded hours (7:00, 8:00, etc.)
+    }).slice(0, 2);
+    
+    if (roundedTimeSlots.length === 0) {
+      return [{ buttonText: '📅 Other days', buttonValue: 'choose_another_day' }];
+    }
+    
+    const timeSlotButtons = roundedTimeSlots.map((slot, index) => {
+      // Extract just the time part for cleaner button display
+      const [hours, minutes] = slot.time.split(':');
+      const hour24 = parseInt(hours);
+      const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
+      const ampm = hour24 >= 12 ? 'PM' : 'AM';
+      const timeOnly = `${hour12} ${ampm}`;
+      
+      return {
+        buttonText: `${slot.displayText.split(' ')[0]} ${timeOnly}`, // "Tomorrow 7 AM"
+        buttonValue: `slot_${index}_${slot.date}_${slot.time}`
+      };
+    });
     
     return [
       ...timeSlotButtons,
-      { buttonText: '📅 Choose another day', buttonValue: 'choose_another_day' }
+      { buttonText: '📅 Other days', buttonValue: 'choose_another_day' }
     ];
   }
 };
@@ -558,12 +581,12 @@ export const showDayBrowserHandler: IndividualStepHandler = {
         if (businessHasAvailabilityOnThisDate) {
           let displayText = '';
           if (i === 0) {
-            displayText = `Today ${date.getDate()} ${date.toLocaleDateString('en-GB', { month: 'short' })}`;
+            displayText = `Today`;
           } else if (i === 1) {
-            displayText = `Tomorrow ${date.getDate()} ${date.toLocaleDateString('en-GB', { month: 'short' })}`;
+            displayText = `Tomorrow`;
           } else {
             displayText = date.toLocaleDateString('en-GB', { 
-              weekday: 'long', day: 'numeric', month: 'short'
+              weekday: 'short', day: 'numeric', month: 'short'
             });
           }
           
@@ -591,7 +614,7 @@ export const showDayBrowserHandler: IndividualStepHandler = {
     return {
       ...currentGoalData,
       availableDays: availableDaysForThisBusiness,
-      confirmationMessage: 'Please select a day:'
+      confirmationMessage: 'Available days:'
     };
   },
   
@@ -610,8 +633,8 @@ export const showDayBrowserHandler: IndividualStepHandler = {
       return [{ buttonText: '📞 No availability - Contact us', buttonValue: 'contact_support' }];
     }
     
-    // Show up to 10 days as buttons (WhatsApp limit)
-    const buttons = availableDays.slice(0, 10).map(day => ({
+    // Show up to 8 days as buttons (WhatsApp actual limit observed)
+    const buttons = availableDays.slice(0, 8).map(day => ({
       buttonText: day.displayText,
       buttonValue: `day_${day.date}`
     }));
@@ -728,15 +751,20 @@ export const showHoursForDayHandler: IndividualStepHandler = {
       };
     }
     
-    // Format hours for display
-    const formattedHoursForDisplay = availableHoursForBusinessOnSelectedDate.map(time => {
+    // Filter to only rounded times (00 minutes) and format for display
+    const roundedTimesOnly = availableHoursForBusinessOnSelectedDate.filter(time => {
+      const [hours, minutes] = time.split(':');
+      return minutes === '00'; // Only show rounded hours (7:00, 8:00, etc.)
+    });
+    
+    const formattedHoursForDisplay = roundedTimesOnly.map(time => {
       const [hours, minutes] = time.split(':');
       const hour24 = parseInt(hours);
       const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
       const ampm = hour24 >= 12 ? 'PM' : 'AM';
       return {
         time24: time,
-        display: `${hour12}${minutes !== '00' ? `:${minutes}` : ''} ${ampm}`
+        display: `${hour12} ${ampm}` // Always rounded, so no minutes needed
       };
     });
     
@@ -748,7 +776,7 @@ export const showHoursForDayHandler: IndividualStepHandler = {
     };
   },
   
-  // Show all available time buttons (up to 10 to fit WhatsApp limits)
+  // Show all available rounded time buttons (up to 10 to fit WhatsApp limits)
   fixedUiButtons: async (currentGoalData) => {
     if (currentGoalData.quickBookingSelected) {
       return []; // No buttons when skipping
@@ -759,17 +787,17 @@ export const showHoursForDayHandler: IndividualStepHandler = {
     
     if (availabilityError) {
       return [
-        { buttonText: '📞 Contact us for available times', buttonValue: 'contact_support' },
-        { buttonText: '📅 Choose different date', buttonValue: 'choose_different_date' }
+        { buttonText: '📞 Contact us', buttonValue: 'contact_support' },
+        { buttonText: '📅 Other days', buttonValue: 'choose_different_date' }
       ];
     }
     
-    if (!formattedHours || formattedHours.length === 0) {
-      return [{ buttonText: '📅 Choose different date', buttonValue: 'choose_different_date' }];
-    }
+          if (!formattedHours || formattedHours.length === 0) {
+        return [{ buttonText: '📅 Other days', buttonValue: 'choose_different_date' }];
+      }
     
-    // Show up to 10 time slots as buttons (WhatsApp limit)
-    return formattedHours.slice(0, 10).map((hour: any) => ({
+    // Show all available rounded time slots as buttons (up to 8 for WhatsApp limit)
+    return formattedHours.slice(0, 8).map((hour: any) => ({
       buttonText: hour.display,
       buttonValue: hour.display
     }));
@@ -1676,12 +1704,24 @@ export const createBookingHandler: IndividualStepHandler = {
 
       console.log('[CreateBooking] Found provider ID:', providerId);
 
-      // Create dateTime in ISO format from selected date and time
-      const bookingDateTime = new Date(selectedDate);
-      const [hours, minutes] = selectedTime.split(':');
-      bookingDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      // Get provider's timezone for accurate booking creation
+      const calendarSettings = await CalendarSettings.getByUserAndBusiness(providerId, businessId);
+      const providerTimezone = calendarSettings?.settings?.timezone || 'UTC';
+
+      // Create dateTime in ISO format from selected date and time IN THE PROVIDER'S TIMEZONE
+      const [hour, minute] = selectedTime.split(':').map(Number);
+      const bookingDateTime = DateTime.fromObject(
+          {
+              year: new Date(selectedDate).getFullYear(),
+              month: new Date(selectedDate).getMonth() + 1,
+              day: new Date(selectedDate).getDate(),
+              hour: hour,
+              minute: minute,
+          },
+          { zone: providerTimezone }
+      );
       
-      console.log('[CreateBooking] Creating booking for datetime:', bookingDateTime.toISOString());
+      console.log('[CreateBooking] Creating booking for datetime:', bookingDateTime.toISO());
 
       // Create the booking object
       const booking = new Booking({
@@ -1690,7 +1730,7 @@ export const createBookingHandler: IndividualStepHandler = {
         providerId: providerId,
         quoteId: quoteId,
         businessId: businessId,
-        dateTime: bookingDateTime.toISOString()
+        dateTime: bookingDateTime.toISO() as string
       });
 
       // Persist to database

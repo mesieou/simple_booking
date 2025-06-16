@@ -9,6 +9,30 @@ import { Quote } from "../database/models/quote";
 // Standard duration intervals in minutes
 const DURATION_INTERVALS = [60, 90, 120, 150, 180, 240, 300, 360]; // 1h, 1.5h, 2h, 2.5h, 3h, 4h, 5h, 6h
 
+// Helper function to generate availability slots for a single day
+const generateDaySlots = (
+  workStart: DateTime,
+  workEnd: DateTime
+): { [key: string]: string[] } => {
+  const availableSlots: { [key: string]: string[] } = {};
+  
+  for (const duration of DURATION_INTERVALS) {
+    let slotStart = workStart;
+    const times: string[] = [];
+
+    while (slotStart.plus({ minutes: duration }).toMillis() <= workEnd.toMillis()) {
+      times.push(slotStart.toFormat("HH:mm"));
+      slotStart = slotStart.plus({ minutes: 30 });
+    }
+
+    if (times.length > 0) {
+      availableSlots[duration.toString()] = times;
+    }
+  }
+
+  return availableSlots;
+};
+
 // Compute initial availability for a new provider
 export async function computeInitialAvailability(
   user: User,
@@ -42,6 +66,10 @@ export async function computeInitialAvailability(
       user.id,
       user.businessId
     );
+    
+    if (!calendarSettings) {
+        throw new Error(`[computeInitialAvailability] Could not find calendar settings for provider ${user.id}`);
+    }
 
     const providerTZ = calendarSettings.settings?.timezone ?? 'UTC';
     const bufferTime = calendarSettings.settings?.bufferTime ?? 0;
@@ -139,6 +167,11 @@ export async function updateDayAvailability(
     user.businessId
   );
 
+  if (!calendarSettings) {
+    // This should ideally not be hit if called from a valid booking context, but it's a safe-guard.
+    throw new Error(`[updateDayAvailability] Could not find calendar settings for provider ${user.id}`);
+  }
+
   const providerTZ = calendarSettings.settings?.timezone ?? 'UTC';
   const bufferTime = calendarSettings.settings?.bufferTime ?? 0;
 
@@ -166,11 +199,16 @@ export async function updateDayAvailability(
     millisecond: 0
   });
 
-  // Fetch all quotes for the existing bookings
+  // Consolidate the new booking with its quote, and fetch quotes for all other existing bookings
   const bookingQuotes = await Promise.all(
     existingBookings.map(async (booking: Booking) => {
-      const quote = await Quote.getById(booking.quoteId);
-      return { booking, quote };
+      // If the booking in the list is the one that was just created, we already have the quote.
+      if (booking.quoteId === quote.id) {
+        return { booking, quote };
+      }
+      // Otherwise, fetch the quote for the other bookings.
+      const bookingQuote = await Quote.getById(booking.quoteId);
+      return { booking, quote: bookingQuote };
     })
   );
 
@@ -198,14 +236,13 @@ export async function updateDayAvailability(
 
       // Check if this slot overlaps with any existing bookings
       const overlaps = bookingQuotes.some(
-        ({ booking, quote: bookingQuote }: { booking: Booking; quote: Quote }) => {
-          const bookingDateTime = DateTime.fromISO(booking.dateTime);
+        ({ booking, quote: bookingQuote }: { booking: Booking; quote: Quote | null }) => {
+          if (!bookingQuote) return false; // Skip if a quote is missing for some reason
+          
+          const bookingDateTime = DateTime.fromISO(booking.dateTime, { zone: providerTZ });
           const bookingEnd = bookingDateTime.plus({ minutes: bookingQuote.totalJobDurationEstimation });
           const bookingEndWithBuffer = bookingEnd.plus({ minutes: bufferTime });
-          
-          // A slot overlaps if:
-          // 1. It starts before the booking ends (including buffer)
-          // 2. It ends after the booking starts
+
           return slotStartUTC.toMillis() < bookingEndWithBuffer.toMillis() && 
                  slotEndUTC.toMillis() > bookingDateTime.toMillis();
         }
@@ -247,63 +284,225 @@ export async function updateDayAvailability(
   }
 }
 
-// Roll availability forward by adding one day and removing the first day
+// Optimized version of rollAvailability that reduces DB queries
+export async function rollAvailabilityOptimized(
+  user: User,
+  business: Business,
+  calendarSettings: CalendarSettings
+): Promise<void> {
+  const providerTZ = calendarSettings.settings?.timezone ?? 'UTC';
+  const today = DateTime.now().setZone(providerTZ);
+  const todayStr = today.toFormat("yyyy-MM-dd");
+
+  console.log(`[CRON-ROLLOVER] Provider: ${user.id} (${user.firstName} ${user.lastName}), Timezone: ${providerTZ}`);
+  console.log(`[CRON-ROLLOVER] Today is ${today.toISODate()}. Rolling availability forward one day.`);
+
+  // 1. Delete ALL past availability (< today) - this is safe since past slots are useless
+  await AvailabilitySlots.deleteBefore(user.id, todayStr);
+
+  // 2. Check if we need to add the NEW day (today + 30)
+  const newDay = today.plus({ days: 30 });
+  const newDayStr = newDay.toFormat("yyyy-MM-dd");
+  const dayKey = newDay.toFormat("ccc").toLowerCase() as keyof CalendarSettings["workingHours"];
+  const workingHours = calendarSettings.workingHours[dayKey];
+
+  console.log(`[CRON-ROLLOVER] Checking if need to add availability for ${newDayStr} (${dayKey})`);
+
+  // 3. Only add the new day if provider works on that day and it doesn't already exist
+  if (workingHours) {
+    const existingAvailability = await AvailabilitySlots.getByProviderAndDate(user.id, newDayStr);
+    
+    if (!existingAvailability) {
+      const [startHour, startMin] = workingHours.start.split(":").map(Number);
+      const [endHour, endMin] = workingHours.end.split(":").map(Number);
+
+      const workStart = newDay.set({
+        hour: startHour,
+        minute: startMin,
+        second: 0,
+        millisecond: 0
+      });
+      
+      const workEnd = newDay.set({
+        hour: endHour,
+        minute: endMin,
+        second: 0,
+        millisecond: 0
+      });
+
+      const availableSlots = generateDaySlots(workStart, workEnd);
+
+      // Create the new availability slot for just this one day
+      if (Object.keys(availableSlots).length > 0) {
+        const newAvailabilitySlot = new AvailabilitySlots({
+          providerId: user.id,
+          date: newDayStr,
+          slots: availableSlots
+        });
+        
+        await newAvailabilitySlot.add();
+        console.log(`[CRON-ROLLOVER] Added availability for ${newDayStr} (${dayKey})`);
+      }
+    } else {
+      console.log(`[CRON-ROLLOVER] Availability for ${newDayStr} already exists, skipping`);
+    }
+  } else {
+    console.log(`[CRON-ROLLOVER] Provider doesn't work on ${dayKey}, skipping ${newDayStr}`);
+  }
+
+  console.log(`[CRON-ROLLOVER] Completed availability roll for provider ${user.id}.`);
+}
+
+// Roll availability forward by maintaining a window of today + 30 days
 export async function rollAvailability(
   user: User,
   business: Business
 ): Promise<void> {
-  // Get calendar settings to determine provider's timezone
+  // Get calendar settings for this specific provider
   const calendarSettings = await CalendarSettings.getByUserAndBusiness(
     user.id,
     user.businessId
   );
-  const providerTZ = calendarSettings.settings?.timezone ?? 'UTC';
 
-  // Calculate dates in provider's timezone
-  const today = DateTime.now().setZone(providerTZ);
-  const yesterday = today.minus({ days: 1 });
-  const day30 = today.plus({ days: 30 });
-
-  // Delete yesterday's availability (oldest day)
-  await AvailabilitySlots.delete(
-    user.id,
-    yesterday.toFormat("yyyy-MM-dd")
-  );
-
-  // Create new availability for day 30
-  const newAvailability = await computeInitialAvailability(
-    user,
-    day30.toJSDate(),
-    1,
-    business
-  );
-
-  // Add the new availability
-  if (newAvailability.length > 0) {
-    await newAvailability[0].add();
+  // This should not happen if called from rollAllProvidersAvailability, but safety check
+  if (!calendarSettings) {
+    throw new Error(`[rollAvailability] No calendar settings found for provider ${user.id}`);
   }
+
+  const providerTZ = calendarSettings.settings?.timezone ?? 'UTC';
+  const today = DateTime.now().setZone(providerTZ);
+  const todayStr = today.toFormat("yyyy-MM-dd");
+
+  console.log(`[CRON-ROLLOVER] Provider: ${user.id} (${user.firstName} ${user.lastName}), Timezone: ${providerTZ}`);
+  console.log(`[CRON-ROLLOVER] Today is ${today.toISODate()}. Cleaning up past availability and ensuring 30-day window.`);
+  console.log(`[CRON-ROLLOVER] Business ID: ${user.businessId}`);
+
+  // 1. Delete ALL past availability (< today) - this is safe since past slots are useless
+  await AvailabilitySlots.deleteBefore(user.id, todayStr);
+
+  // 2. Ensure we have 30 days of availability from today
+  let daysAdded = 0;
+  let currentDay = today;
+  
+  for (let i = 0; i < 30; i++) {
+    const dayStr = currentDay.toFormat("yyyy-MM-dd");
+    const dayKey = currentDay.toFormat("ccc").toLowerCase() as keyof CalendarSettings["workingHours"];
+    const workingHours = calendarSettings.workingHours[dayKey];
+    
+    // Skip if provider doesn't work on this day
+    if (!workingHours) {
+      currentDay = currentDay.plus({ days: 1 });
+      continue;
+    }
+
+    // Check if availability already exists for this day
+    const existingAvailability = await AvailabilitySlots.getByProviderAndDate(user.id, dayStr);
+    
+    // Add availability if it doesn't exist for this working day
+    if (!existingAvailability) {
+      const [startHour, startMin] = workingHours.start.split(":").map(Number);
+      const [endHour, endMin] = workingHours.end.split(":").map(Number);
+
+      const workStart = currentDay.set({
+        hour: startHour,
+        minute: startMin,
+        second: 0,
+        millisecond: 0
+      });
+      
+      const workEnd = currentDay.set({
+        hour: endHour,
+        minute: endMin,
+        second: 0,
+        millisecond: 0
+      });
+
+      const availableSlots = generateDaySlots(workStart, workEnd);
+
+      // Create and save the new availability
+      if (Object.keys(availableSlots).length > 0) {
+        const newAvailabilitySlot = new AvailabilitySlots({
+          providerId: user.id,
+          date: dayStr,
+          slots: availableSlots
+        });
+        
+        await newAvailabilitySlot.add();
+        daysAdded++;
+        console.log(`[CRON-ROLLOVER] Added availability for ${dayStr} (${dayKey})`);
+      }
+    }
+
+    currentDay = currentDay.plus({ days: 1 });
+  }
+
+  console.log(`[CRON-ROLLOVER] Completed availability roll for provider ${user.id}. Added ${daysAdded} new days.`);
 }
 
-// Roll availability forward for all providers
-export async function rollAllProvidersAvailability(): Promise<void> {
-  // Get all providers
+// Roll availability forward for all providers with timeout protection
+export async function rollAllProvidersAvailability(maxTimeoutMs: number = 45000): Promise<void> {
+  const startTime = Date.now();
   const providers = await User.getAllProviders();
   
-  // Roll availability for each provider
-  for (const provider of providers) {
+  let processed = 0;
+  let skipped = 0;
+  let errors = 0;
+  let timedOut = false;
+  
+  console.log(`[CRON] Starting availability roll for ${providers.length} providers (max timeout: ${maxTimeoutMs}ms)`);
+  
+  // Roll availability for each provider with timeout check
+  for (let i = 0; i < providers.length; i++) {
+    const provider = providers[i];
+    const elapsedTime = Date.now() - startTime;
+    
+    // Check if we're approaching timeout (leave 5 seconds buffer)
+    if (elapsedTime > maxTimeoutMs - 5000) {
+      console.warn(`[CRON-TIMEOUT] Stopping early to avoid timeout. Processed ${processed}/${providers.length} providers`);
+      timedOut = true;
+      break;
+    }
+    
     try {
       const business = await Business.getById(provider.businessId);
       if (!business) {
-        console.error(`Business not found for provider ${provider.id}`);
+        console.error(`[CRON-ERROR] Business not found for provider ${provider.id}`);
+        errors++;
+        continue;
+      }
+      
+      // Check if provider has calendar settings before processing
+      const calendarSettings = await CalendarSettings.getByUserAndBusiness(
+        provider.id,
+        provider.businessId
+      );
+      
+      if (!calendarSettings) {
+        console.error(`[CRON-ERROR] Provider ${provider.id} has no calendar settings. Please configure calendar settings for this provider.`);
+        skipped++;
         continue;
       }
       
       await rollAvailability(provider, business);
+      processed++;
+      
+      // Log progress every 5 providers
+      if ((processed + skipped + errors) % 5 === 0) {
+        console.log(`[CRON-PROGRESS] Processed ${processed + skipped + errors}/${providers.length} providers (${Date.now() - startTime}ms elapsed)`);
+      }
+      
     } catch (error) {
-      console.error(`Failed to roll availability for provider ${provider.id}:`, error);
-      // Continue with next provider even if one fails
+      console.error(`[CRON-ERROR] Failed to roll availability for provider ${provider.id}:`, error);
+      errors++;
       continue;
     }
+  }
+  
+  const totalTime = Date.now() - startTime;
+  console.log(`[CRON] Availability roll completed in ${totalTime}ms: ${processed} processed, ${skipped} skipped, ${errors} errors${timedOut ? ' (TIMED OUT)' : ''}`);
+  
+  if (timedOut) {
+    throw new Error(`Processing timed out after ${totalTime}ms. Only processed ${processed}/${providers.length} providers.`);
   }
 }
 
@@ -332,46 +531,15 @@ export async function findAvailableDates(
   numberOfDatesToSuggest: number = 5,
   searchRangeInDays: number = 60
 ): Promise<string[]> {
-  console.log("findAvailableDates called (dummy implementation)", { providerId, businessId, jobDurationMinutes, startDate: startDate.toISOString(), numberOfDatesToSuggest, searchRangeInDays });
-  const roundedJobDuration = roundDurationUpTo30(jobDurationMinutes);
-  console.log(`Rounded job duration for availability check: ${roundedJobDuration} minutes`);
-
-  const suggestedDates: string[] = [];
-  let currentSearchDate = DateTime.fromJSDate(startDate);
-
-  // Dummy logic: Suggest next 5 days, skipping weekends for slight realism
-  while (suggestedDates.length < numberOfDatesToSuggest && searchRangeInDays > 0) {
-    // Skip weekends (Saturday: 6, Sunday: 7 in Luxon)
-    if (currentSearchDate.weekday !== 6 && currentSearchDate.weekday !== 7) {
-      suggestedDates.push(currentSearchDate.toFormat("yyyy-MM-dd"));
-    }
-    currentSearchDate = currentSearchDate.plus({ days: 1 });
-    searchRangeInDays--; // Decrement to avoid infinite loop if no dates are found
-  }
+  console.log("findAvailableDates - TODO: Implement actual logic");
   
-  // If not enough dates found by skipping weekends, fill with subsequent days
-  while (suggestedDates.length < numberOfDatesToSuggest && searchRangeInDays > 0) {
-     // Ensure currentSearchDate is not already added if the previous loop exited early
-    if (currentSearchDate.weekday !== 6 && currentSearchDate.weekday !== 7 && !suggestedDates.includes(currentSearchDate.toFormat("yyyy-MM-dd"))) {
-        suggestedDates.push(currentSearchDate.toFormat("yyyy-MM-dd"));
-    } else if (currentSearchDate.weekday === 6 || currentSearchDate.weekday === 7) {
-        // if it is a weekend, and we still need to fill, we search for next non-weekend
-         while(currentSearchDate.weekday === 6 || currentSearchDate.weekday === 7) {
-            currentSearchDate = currentSearchDate.plus({ days: 1 });
-            searchRangeInDays--;
-         }
-         if (searchRangeInDays > 0 && !suggestedDates.includes(currentSearchDate.toFormat("yyyy-MM-dd"))) {
-            suggestedDates.push(currentSearchDate.toFormat("yyyy-MM-dd"));
-         }
-    }
-    if (suggestedDates.length >= numberOfDatesToSuggest) break;
-    currentSearchDate = currentSearchDate.plus({ days: 1 });
-    searchRangeInDays--;
-  }
-
-
-  console.log("findAvailableDates (dummy) returning:", suggestedDates);
-  return suggestedDates;
+  // TODO: Replace with actual implementation that:
+  // 1. Gets provider's calendar settings and timezone
+  // 2. Fetches actual availability slots from database
+  // 3. Filters by job duration requirements
+  // 4. Returns real available dates
+  
+  return ["2024-01-15", "2024-01-16", "2024-01-17"]; // Dummy data
 }
 
 /**
@@ -383,31 +551,14 @@ export async function getSlotsForDate(
   providerId: string,
   businessId: string,
   jobDurationMinutes: number,
-  targetDateISO: string // Expecting "yyyy-MM-dd"
+  targetDateISO: string
 ): Promise<string[]> {
-  console.log("getSlotsForDate called (dummy implementation)", { providerId, businessId, jobDurationMinutes, targetDateISO });
-  const roundedJobDuration = roundDurationUpTo30(jobDurationMinutes);
-  console.log(`Rounded job duration for slot check: ${roundedJobDuration} minutes`);
-
-  const targetDate = DateTime.fromISO(targetDateISO);
-  if (!targetDate.isValid) {
-    console.error(`getSlotsForDate: Invalid targetDateISO: ${targetDateISO}`);
-    return [];
-  }
-
-  // Dummy slots, e.g., 9:00, 10:30, 14:00 for any roundedJobDuration
-  const availableSlots: string[] = ["09:00", "10:30", "14:00"]; 
+  console.log("getSlotsForDate - TODO: Implement actual logic");
   
-  // More advanced dummy slots based on a 9-5 day with 30-min intervals
-  // const availableSlots: string[] = [];
-  // let slot = targetDate.set({ hour: 9, minute: 0});
-  // const endOfDay = targetDate.set({ hour: 17, minute: 0});
-  // while(slot.plus({minutes: roundedJobDuration}) <= endOfDay) {
-  //   availableSlots.push(slot.toFormat("HH:mm"));
-  //   slot = slot.plus({ minutes: 30 }); // Check every 30 mins
-  //   if(slot.hour === 12 || slot.hour === 13) slot = slot.set({hour: 14, minute: 0}); // Skip lunch
-  // }
-
-  console.log("getSlotsForDate (dummy) returning for", targetDateISO, ":", availableSlots);
-  return availableSlots;
+  // TODO: Replace with actual implementation that:
+  // 1. Gets availability slots for the specific date
+  // 2. Filters by job duration requirements
+  // 3. Returns actual available time slots
+  
+  return ["09:00", "10:30", "14:00"]; // Dummy data
 }
