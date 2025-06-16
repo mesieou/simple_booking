@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 import { User } from '@/lib/database/models/user';
+import { Business } from '@/lib/database/models/business';
+import { CalendarSettings } from '@/lib/database/models/calendar-settings';
+import { rollAvailability } from '@/lib/general-helpers/availability';
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
@@ -19,109 +22,93 @@ export async function GET(request: Request) {
     console.log(`[CRON-COORDINATOR-${executionId}] Starting dynamic availability rollover...`);
     console.log(`[CRON-COORDINATOR-${executionId}] Trigger type: ${triggerType}`);
     
-    // Get total number of providers to determine batches needed
+    // Get all providers and process them directly (no internal API calls)
     const allProviders = await User.getAllProviders();
     const totalProviders = allProviders.length;
-    const batchSize = 3; // Process 3 providers per batch (for Vercel timeout limits)
-    const totalBatches = Math.ceil(totalProviders / batchSize);
+    const batchSize = 5; // Process 5 providers per batch - direct processing is much faster
     
-    console.log(`[CRON-COORDINATOR-${executionId}] Found ${totalProviders} providers, need ${totalBatches} batches`);
+    console.log(`[CRON-COORDINATOR-${executionId}] Found ${totalProviders} providers, processing in batches of ${batchSize}`);
     
     let totalProcessed = 0;
     let totalSkipped = 0;
     let totalErrors = 0;
-    const batchResults = [];
+    const maxExecutionTime = 50000; // 50 seconds - safety margin for Vercel
     
-    // Process all batches sequentially
-    for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
-      const batchStartTime = Date.now();
+    // Process providers in batches directly (much faster than API calls)
+    for (let i = 0; i < totalProviders; i += batchSize) {
+      const elapsedTime = Date.now() - startTime.getTime();
       
-      try {
-        console.log(`[CRON-COORDINATOR-${executionId}] Processing batch ${batchIndex + 1}/${totalBatches}...`);
-        
-        // Make internal API call to batch processor
-        const batchUrl = `${request.url.split('/api/')[0]}/api/cron/daily-roll-availability-batch?batchSize=${batchSize}&batchIndex=${batchIndex}`;
-        
-        const batchResponse = await fetch(batchUrl, {
-          method: 'GET',
-          headers: {
-            'Authorization': authHeader,
-            'User-Agent': 'cron-coordinator-internal'
-          }
-        });
-        
-        if (!batchResponse.ok) {
-          throw new Error(`Batch ${batchIndex} failed with status ${batchResponse.status}`);
-        }
-        
-        const batchData = await batchResponse.json();
-        const batchDuration = Date.now() - batchStartTime;
-        
-        totalProcessed += batchData.batch.processedInBatch;
-        totalSkipped += batchData.batch.skippedInBatch;
-        totalErrors += batchData.batch.errorsInBatch;
-        
-        batchResults.push({
-          batchIndex,
-          processed: batchData.batch.processedInBatch,
-          skipped: batchData.batch.skippedInBatch,
-          errors: batchData.batch.errorsInBatch,
-          duration: batchDuration,
-          success: true
-        });
-        
-        console.log(`[CRON-COORDINATOR-${executionId}] ✅ Batch ${batchIndex + 1} completed: ${batchData.batch.processedInBatch} processed, ${batchData.batch.skippedInBatch} skipped, ${batchData.batch.errorsInBatch} errors (${batchDuration}ms)`);
-        
-        // Small delay between batches to avoid overwhelming the system
-        if (batchIndex < totalBatches - 1) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-        
-      } catch (batchError) {
-        const batchDuration = Date.now() - batchStartTime;
-        console.error(`[CRON-COORDINATOR-${executionId}] ❌ Batch ${batchIndex + 1} failed:`, batchError);
-        
-        batchResults.push({
-          batchIndex,
-          processed: 0,
-          skipped: 0,
-          errors: batchSize, // Assume all providers in batch failed
-          duration: batchDuration,
-          success: false,
-          error: batchError instanceof Error ? batchError.message : 'Unknown error'
-        });
-        
-        totalErrors += batchSize;
+      // Check if we're approaching timeout
+      if (elapsedTime > maxExecutionTime) {
+        console.warn(`[CRON-COORDINATOR-${executionId}] Stopping early to avoid timeout. Processed ${totalProcessed}/${totalProviders} providers`);
+        break;
       }
+      
+      const batchProviders = allProviders.slice(i, i + batchSize);
+      const batchNumber = Math.floor(i / batchSize) + 1;
+      const totalBatches = Math.ceil(totalProviders / batchSize);
+      
+      console.log(`[CRON-COORDINATOR-${executionId}] Processing batch ${batchNumber}/${totalBatches} (providers ${i + 1}-${Math.min(i + batchSize, totalProviders)})`);
+      
+      // Process this batch of providers directly
+      for (const provider of batchProviders) {
+        try {
+          const business = await Business.getById(provider.businessId);
+          if (!business) {
+            console.error(`[CRON-COORDINATOR-ERROR] Business not found for provider ${provider.id}`);
+            totalErrors++;
+            continue;
+          }
+          
+          const calendarSettings = await CalendarSettings.getByUserAndBusiness(
+            provider.id,
+            provider.businessId
+          );
+          
+          if (!calendarSettings) {
+            console.error(`[CRON-COORDINATOR-ERROR] Provider ${provider.id} has no calendar settings`);
+            totalSkipped++;
+            continue;
+          }
+          
+          await rollAvailability(provider, business);
+          totalProcessed++;
+          console.log(`[CRON-COORDINATOR-${executionId}] ✅ Processed ${provider.firstName} ${provider.lastName} (${provider.id})`);
+          
+        } catch (error) {
+          console.error(`[CRON-COORDINATOR-ERROR] Failed to roll availability for provider ${provider.id}:`, error);
+          totalErrors++;
+        }
+      }
+      
+      const batchElapsed = Date.now() - startTime.getTime();
+      console.log(`[CRON-COORDINATOR-${executionId}] ✅ Batch ${batchNumber} completed (${batchElapsed}ms total elapsed)`);
     }
     
     const endTime = new Date();
     const totalDuration = endTime.getTime() - startTime.getTime();
     
-    console.log(`[CRON-COORDINATOR-${executionId}] ✅ All batches completed!`);
+    console.log(`[CRON-COORDINATOR-${executionId}] ✅ Processing completed!`);
     console.log(`[CRON-COORDINATOR-${executionId}] Final results: ${totalProcessed} processed, ${totalSkipped} skipped, ${totalErrors} errors`);
     console.log(`[CRON-COORDINATOR-${executionId}] Total execution time: ${totalDuration}ms`);
     
-    const successfulBatches = batchResults.filter(b => b.success).length;
-    const overallSuccess = successfulBatches === totalBatches;
+    const overallSuccess = totalErrors === 0;
+    const processedCount = totalProcessed + totalSkipped; // Include skipped as "handled"
     
     return NextResponse.json({
       success: overallSuccess,
       message: overallSuccess 
-        ? `All ${totalBatches} batches completed successfully`
-        : `${successfulBatches}/${totalBatches} batches succeeded`,
+        ? `All ${processedCount} providers processed successfully`
+        : `${totalProcessed} processed, ${totalSkipped} skipped, ${totalErrors} errors`,
       executionId,
       summary: {
         totalProviders,
-        totalBatches,
-        batchSize,
         totalProcessed,
         totalSkipped,
         totalErrors,
-        successfulBatches,
+        processedCount,
         overallSuccess
       },
-      batchResults,
       executionTime: totalDuration,
       triggerType,
       startTime: startTime.toISOString(),
