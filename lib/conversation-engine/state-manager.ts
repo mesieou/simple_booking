@@ -58,6 +58,17 @@ export interface LLMProcessingResult {
   isValidInput?: boolean;
   validationErrorMessage?: string;
   extractedInformation?: Record<string, any>;
+  /**
+   * An optional, transformed version of the user's input. If provided, the state
+   * manager will use this string for the `processAndExtractData` step instead of
+   * the original user message. This allows a validation step to also perform
+   * sanitization or semantic interpretation.
+   */
+  transformedInput?: string;
+  /**
+   * A specific reason for validation failure, used by the orchestrator for nuanced responses.
+   */
+  reason?: 'NOT_FOUND' | 'AMBIGUOUS' | 'OTHER';
 }
 
 export type ButtonConfig = {
@@ -72,14 +83,19 @@ export interface IndividualStepHandler {
   processAndExtractData: (validatedInput: string, currentGoalData: Record<string, any>, chatContext: ChatContext) => Promise<Record<string, any> | LLMProcessingResult>;
   fixedUiButtons?: (currentGoalData: Record<string, any>, chatContext: ChatContext) => Promise<ButtonConfig[]> | ButtonConfig[];
   autoAdvance?: boolean;
+  /**
+   * A list of keys to delete from the `collectedData` object *after* this step
+   * has been successfully processed. This is used for progressive context pruning.
+   */
+  pruneKeysAfterCompletion?: string[];
 }
 
 // --- Conversation Flow Configuration ---
 const conversationFlowBlueprints: Record<string, string[]> = {
   businessAccountCreation: ['getName', 'getBusinessEmail', 'getBusinessPhone', 'selectTimeZone', 'confirmAccountDetails'],
   businessAccountDeletion: ['confirmDeletionRequest', 'verifyUserPassword', 'initiateAccountDeletion'],
-  bookingCreatingForMobileService: ['askAddress', 'validateAddress', 'selectService', 'confirmLocation', 'showAvailableTimes', 'handleTimeChoice', 'showDayBrowser', 'selectSpecificDay', 'showHoursForDay', 'selectSpecificTime', 'checkExistingUser', 'handleUserStatus', 'askUserName', 'createNewUser', 'quoteSummary', 'handleQuoteChoice', 'createBooking', 'displayConfirmedBooking'],
-  bookingCreatingForNoneMobileService: ['selectService', 'confirmLocation', 'showAvailableTimes', 'handleTimeChoice', 'showDayBrowser', 'selectSpecificDay', 'showHoursForDay', 'selectSpecificTime', 'checkExistingUser', 'handleUserStatus', 'askUserName', 'createNewUser', 'quoteSummary', 'handleQuoteChoice', 'createBooking', 'displayConfirmedBooking'],
+  bookingCreatingForMobileService: ['askAddress', 'validateAddress', 'selectService', 'confirmLocation', 'selectTime', 'selectDay', 'selectHour', 'checkExistingUser', 'handleUserStatus', 'askUserName', 'createNewUser', 'quoteSummary', 'handleQuoteChoice', 'showEditOptions', 'createBooking', 'displayConfirmedBooking'],
+  bookingCreatingForNoneMobileService: ['selectService', 'confirmLocation', 'selectTime', 'selectDay', 'selectHour', 'checkExistingUser', 'handleUserStatus', 'askUserName', 'createNewUser', 'quoteSummary', 'handleQuoteChoice', 'showEditOptions', 'createBooking', 'displayConfirmedBooking'],
 };
 
 // --- Step Handler Imports ---
@@ -98,12 +114,9 @@ import {
     validateAddressHandler,
     selectServiceHandler, 
     confirmLocationHandler,
-    showAvailableTimesHandler,
-    handleTimeChoiceHandler,
-    showDayBrowserHandler,
-    selectSpecificDayHandler,
-    showHoursForDayHandler,
-    selectSpecificTimeHandler,
+    selectTimeHandler,
+    selectDayHandler,
+    selectHourHandler,
     checkExistingUserHandler,
     handleUserStatusHandler,
     askUserNameHandler,
@@ -112,6 +125,7 @@ import {
     handleQuoteChoiceHandler,
     createBookingHandler,
     displayConfirmedBookingHandler,
+    showEditOptionsHandler,
 } from './flows/bookings/customer-booking-steps';
 
 const botTasks: Record<string, IndividualStepHandler> = {
@@ -132,12 +146,9 @@ const botTasks: Record<string, IndividualStepHandler> = {
   validateAddress: validateAddressHandler,
   selectService: selectServiceHandler,
   confirmLocation: confirmLocationHandler,
-  showAvailableTimes: showAvailableTimesHandler,
-  handleTimeChoice: handleTimeChoiceHandler,
-  showDayBrowser: showDayBrowserHandler,
-  selectSpecificDay: selectSpecificDayHandler,
-  showHoursForDay: showHoursForDayHandler,
-  selectSpecificTime: selectSpecificTimeHandler,
+  selectTime: selectTimeHandler,
+  selectDay: selectDayHandler,
+  selectHour: selectHourHandler,
   checkExistingUser: checkExistingUserHandler,
   handleUserStatus: handleUserStatusHandler,
   askUserName: askUserNameHandler,
@@ -146,6 +157,7 @@ const botTasks: Record<string, IndividualStepHandler> = {
   handleQuoteChoice: handleQuoteChoiceHandler,
   createBooking: createBookingHandler,
   displayConfirmedBooking: displayConfirmedBookingHandler,
+  showEditOptions: showEditOptionsHandler,
 };
 
 // --- Helper Functions ---
@@ -170,7 +182,32 @@ function shouldSkipStep(stepName: string, goalData: Record<string, any>): boolea
     console.log(`[State Manager] Skipping step for existing user: ${stepName}`);
     return true;
   }
+  // If the user has confirmed the quote, skip the step for showing edit options.
+  if (stepName === 'showEditOptions' && !!goalData.quoteConfirmedFromSummary) {
+    console.log(`[State Manager] Skipping edit options step because quote is confirmed.`);
+    return true;
+  }
   return false;
+}
+
+/**
+ * A centralized function to prune keys from the context's collectedData object.
+ * This is the core of the "Progressive Pruning" strategy.
+ * @param collectedData The `collectedData` object from the current goal.
+ * @param keysToPrune An array of string keys to delete from the object.
+ */
+function pruneContextData(collectedData: Record<string, any>, keysToPrune: string[] | undefined): void {
+  if (!keysToPrune || keysToPrune.length === 0) {
+    return;
+  }
+  
+  console.log(`[State Manager] Pruning the following keys from context...`);
+  for (const key of keysToPrune) {
+    if (collectedData.hasOwnProperty(key)) {
+      console.log(`  - Pruning [${key}]:`, JSON.stringify(collectedData[key], null, 2));
+      delete collectedData[key];
+    }
+  }
 }
 
 // --- Main State Machine Logic ---
@@ -243,7 +280,7 @@ class MessageProcessor {
         userCurrentGoal.collectedData.finalServiceAddress = undefined;
         userCurrentGoal.collectedData.serviceLocation = undefined;
         userCurrentGoal.collectedData.bookingSummary = undefined;
-      } else if (targetStepName === 'showAvailableTimes') {
+      } else if (targetStepName === 'selectTime') {
         userCurrentGoal.collectedData.selectedDate = undefined;
         userCurrentGoal.collectedData.selectedTime = undefined;
         userCurrentGoal.collectedData.quickBookingSelected = undefined;
@@ -299,7 +336,6 @@ class MessageProcessor {
         ...analyzedIntent.extractedInformation,
         availableServices: servicesData 
       },
-      messageHistory: [],
       flowKey
     };
   }
@@ -351,7 +387,8 @@ class MessageProcessor {
   private async processExistingGoal(
     userCurrentGoal: UserGoal,
     currentContext: ChatContext,
-    incomingUserMessage: string
+    incomingUserMessage: string,
+    analyzedIntent: AnalyzedIntent,
   ): Promise<void> {
     const currentSteps = conversationFlowBlueprints[userCurrentGoal.flowKey];
     if (!currentSteps || !currentSteps[userCurrentGoal.currentStepIndex]) {
@@ -366,18 +403,29 @@ class MessageProcessor {
     const validationResult = await currentStepHandler.validateUserInput(incomingUserMessage, userCurrentGoal.collectedData, currentContext);
     const isInputValid = typeof validationResult === 'boolean' ? validationResult : validationResult.isValidInput || false;
     const specificValidationError = typeof validationResult === 'object' ? validationResult.validationErrorMessage : undefined;
+    const validationFailureReason = typeof validationResult === 'object' ? validationResult.reason : undefined;
 
     // Reset previous response artifacts from collectedData
     delete userCurrentGoal.collectedData.confirmationMessage;
     delete userCurrentGoal.collectedData.uiButtons;
+    // Also clear any previous validation failure reason
+    delete userCurrentGoal.collectedData.validationFailureReason;
 
     if (isInputValid) {
-      const processingResult = await currentStepHandler.processAndExtractData(incomingUserMessage, userCurrentGoal.collectedData, currentContext);
+      // If validation returned a transformed input, use it. Otherwise, use the original message.
+      const inputForProcessor = (typeof validationResult === 'object' && validationResult.transformedInput)
+          ? validationResult.transformedInput
+          : incomingUserMessage;
+          
+      const processingResult = await currentStepHandler.processAndExtractData(inputForProcessor, userCurrentGoal.collectedData, currentContext);
       const extractedData = typeof processingResult === 'object' && 'extractedInformation' in processingResult 
         ? processingResult.extractedInformation 
         : processingResult;
       userCurrentGoal.collectedData = { ...userCurrentGoal.collectedData, ...extractedData };
       
+      // *** NEW: Prune data after successful processing ***
+      pruneContextData(userCurrentGoal.collectedData, currentStepHandler.pruneKeysAfterCompletion);
+
       // Check if we need to navigate back to a specific step (for editing)
       const navigateBackTo = userCurrentGoal.collectedData.navigateBackTo as string | undefined;
       if (navigateBackTo) {
@@ -402,6 +450,18 @@ class MessageProcessor {
         }
       }
     } else {
+      // If validation fails, check if it's just a question. If so, stay on the current step.
+      if (analyzedIntent.goalType === 'frequentlyAskedQuestion') {
+          console.log('[State Manager] Validation failed, but it was an FAQ. Staying on the current step to preserve context and buttons.');
+          // Regenerate the UI for the current step so the agent can display it after answering the question.
+          if (currentStepHandler.fixedUiButtons) {
+              userCurrentGoal.collectedData.uiButtons = typeof currentStepHandler.fixedUiButtons === 'function'
+              ? await currentStepHandler.fixedUiButtons(userCurrentGoal.collectedData, currentContext)
+              : currentStepHandler.fixedUiButtons;
+          }
+          return; // Stop processing, let the agent handle the response.
+      }
+
       // If validation failed with an empty error message, it's a signal to advance
       // to the next step and re-process the input there.
       if (!specificValidationError) {
@@ -415,7 +475,7 @@ class MessageProcessor {
           userCurrentGoal.collectedData.confirmationMessage = "Great! Your booking request has been processed.";
         } else {
           // Re-process the same user input with the new, advanced step
-          await this.processExistingGoal(userCurrentGoal, currentContext, incomingUserMessage);
+          await this.processExistingGoal(userCurrentGoal, currentContext, incomingUserMessage, analyzedIntent);
         }
       } else {
         // Normal validation failure - stay on current step and show error.
@@ -424,6 +484,10 @@ class MessageProcessor {
             userCurrentGoal.collectedData.uiButtons = typeof currentStepHandler.fixedUiButtons === 'function'
             ? await currentStepHandler.fixedUiButtons(userCurrentGoal.collectedData, currentContext)
             : currentStepHandler.fixedUiButtons;
+        }
+        // Persist the failure reason for the orchestrator
+        if (validationFailureReason) {
+          userCurrentGoal.collectedData.validationFailureReason = validationFailureReason;
         }
       }
     }
@@ -453,58 +517,59 @@ class MessageProcessor {
     }
 
     // --- Goal Management ---
-    // Handle context switch: pause current goal if user changes topic
-    if (analyzedIntent.contextSwitch && userContext.currentGoal) {
-      console.log(`[State Manager] Context switch detected. Pausing goal: ${userContext.currentGoal.goalType}`);
-      userContext.currentGoal.goalStatus = 'paused';
-      userContext.previousGoal = userContext.currentGoal;
+    // A "hard" context switch (like switching to a different, major goal) should pause the current goal.
+    // A "soft" context switch (like asking an FAQ during a booking) should be ignored here,
+    // allowing the current goal to remain active so the Agent Brain can handle the question.
+    const isInterruptingGoal = analyzedIntent.goalType === 'accountManagement'; // Define truly interrupting goals here
+
+    if (analyzedIntent.contextSwitch && userCurrentGoal && isInterruptingGoal) {
+      console.log(`[State Manager] Interrupting context switch detected. Pausing goal: ${userCurrentGoal.goalType}`);
+      userCurrentGoal.goalStatus = 'paused';
+      userContext.previousGoal = userCurrentGoal;
+      userCurrentGoal = null; 
       userContext.currentGoal = null;
+    } else if (analyzedIntent.contextSwitch) {
+      console.log(`[State Manager] Non-interrupting context switch (e.g., FAQ) detected. Keeping current goal active to provide context to the agent.`);
     }
     
-    // Add user message to history of the current goal
-    userCurrentGoal?.messageHistory.push({
-      speakerRole: 'user',
-      content: incomingUserMessage,
-      messageTimestamp: new Date().toISOString()
-    });
-
     // If there's no active goal, try to create one from the intent
     if (!userCurrentGoal) {
       console.log(`[State Manager] No active goal. Attempting to create new one for intent: ${analyzedIntent.goalType}`);
       try {
-        // Create a new goal if the intent is recognized and actionable
-        if (analyzedIntent.goalType !== 'unknown' && analyzedIntent.goalType !== 'generalChitChat') {
+        // Create a new goal only for recognized, stateful tasks, not for one-off questions.
+        const isActionableGoal = analyzedIntent.goalType === 'serviceBooking' || analyzedIntent.goalType === 'accountManagement';
+
+        if (isActionableGoal) {
           userCurrentGoal = await this.createNewGoal(analyzedIntent, chatContextAdapter.currentParticipant.type, chatContextAdapter);
           userContext.currentGoal = userCurrentGoal;
-          await this.executeStep(userCurrentGoal, chatContextAdapter);
+          // Instead of just executing the first step with empty input,
+          // immediately process the user's message against this new goal.
+          // This handles the case where the message that creates the goal also completes the first step.
+          console.log(`[State Manager] New goal created. Immediately processing user input against it.`);
+          await this.processExistingGoal(userCurrentGoal, chatContextAdapter, incomingUserMessage, analyzedIntent);
         } else {
-          // Intent is to chit-chat or is unknown, prepare a generic response.
+          // Intent is an FAQ, chit-chat, or is unknown. Do not create a goal.
           userContext.currentGoal = null; // Ensure no goal is active
-          // The orchestrator will handle this case, e.g., by calling a generic AI response.
-          console.log(`[State Manager] Intent is ${analyzedIntent.goalType}, no action taken.`);
+          // The orchestrator's Agent Brain will handle this case statelessly.
+          console.log(`[State Manager] Intent is ${analyzedIntent.goalType}, which is not an actionable goal. No state machine action taken.`);
         }
       } catch (error) {
         console.error("[State Manager] Error creating new goal:", error);
         // Set a response message in a temporary goal object for the orchestrator
         userContext.currentGoal = { 
-          goalType: 'unknown', goalStatus: 'failed', flowKey: 'error', currentStepIndex: 0, collectedData: { confirmationMessage: "I'm sorry, I ran into an error trying to understand that." }, messageHistory: []
+          goalType: 'unknown', 
+          goalStatus: 'failed', 
+          flowKey: 'error', 
+          currentStepIndex: 0, 
+          collectedData: { confirmationMessage: "I'm sorry, I ran into an error trying to understand that." }
         };
       }
     } else {
       // Process the message against the existing, active goal
       console.log(`[State Manager] Processing existing goal: ${userCurrentGoal.goalType}, Step: ${userCurrentGoal.flowKey}[${userCurrentGoal.currentStepIndex}]`);
-      await this.processExistingGoal(userCurrentGoal, chatContextAdapter, incomingUserMessage);
+      await this.processExistingGoal(userCurrentGoal, chatContextAdapter, incomingUserMessage, analyzedIntent);
     }
     
-    // Add chatbot response to history
-    if (userCurrentGoal?.collectedData.confirmationMessage) {
-        userCurrentGoal.messageHistory.push({
-            speakerRole: 'chatbot',
-            content: userCurrentGoal.collectedData.confirmationMessage,
-            messageTimestamp: new Date().toISOString()
-        });
-    }
-
     return userContext;
   }
 }

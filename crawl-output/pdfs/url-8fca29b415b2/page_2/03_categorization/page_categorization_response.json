@@ -1,0 +1,47 @@
+{
+  "modelUsed": "gpt-4o",
+  "originalContentCharacterLength": 1357,
+  "llmSegmentedChunks": [
+    {
+      "chunkOrder": 1,
+      "chunkText": "How does scheduling work? ● Quick Booking: Bot shows 2 – 3 next available slots. ● Browse Options: Select \"Choose another day\". ● Day & Time Selection: Pick a day, then a time slot.",
+      "category": 3,
+      "categoryName": "booking or scheduling",
+      "confidence": 0.95,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 2,
+      "chunkText": "Can I book for today or tomorrow? Yes, if availability exists. Slots are labeled \"Today\" or \"Tomorrow\".",
+      "category": 5,
+      "categoryName": "faq",
+      "confidence": 0.85,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 3,
+      "chunkText": "What happens after I select a time? ● Bot checks if you're a returning customer. ● If new, asks for name. ● Then shows you a full booking summary and quote.",
+      "category": 3,
+      "categoryName": "booking or scheduling",
+      "confidence": 0.95,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 4,
+      "chunkText": "Can I edit my booking before confirming? Yes, use \"Edit Quote\" to change: ● Service ● Date/time",
+      "category": 3,
+      "categoryName": "booking or scheduling",
+      "confidence": 0.9,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 5,
+      "chunkText": "How do I know my booking is confirmed? You’ll receive a final confirmation with: ● Booking ID ● Service ● Date & Time ● Location",
+      "category": 3,
+      "categoryName": "booking or scheduling",
+      "confidence": 0.95,
+      "preChunkSourceIndex": 0
+    }
+  ],
+  "promptUsedLength": 4176
+}

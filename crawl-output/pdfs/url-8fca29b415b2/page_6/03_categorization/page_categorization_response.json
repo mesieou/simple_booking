@@ -1,0 +1,31 @@
+{
+  "modelUsed": "gpt-4o",
+  "originalContentCharacterLength": 1283,
+  "llmSegmentedChunks": [
+    {
+      "chunkOrder": 1,
+      "chunkText": "If late or absent, please notify Luisa so she isn't waiting unnecessarily.",
+      "category": 3,
+      "categoryName": "booking or scheduling",
+      "confidence": 0.8,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 2,
+      "chunkText": "Troubleshooting & Support Invalid Address? Bot prompts you to enter: ● Street number ● Street name ● Suburb ● Postcode No services or times available? Bot informs you and offers: ● Alternative day suggestions ● Button to contact support What if I ask a question mid-booking? The bot will answer and then resume where you left off, re-showing the next step or buttons.",
+      "category": 5,
+      "categoryName": "faq",
+      "confidence": 0.9,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 3,
+      "chunkText": "Let me know when you're ready to incorporate more business context (like staff, promos, or seasonal offerings), or if you want to generate a JSON or structured format for the bot backend.",
+      "category": 8,
+      "categoryName": "Uncategorized",
+      "confidence": 0.7,
+      "preChunkSourceIndex": 0
+    }
+  ],
+  "promptUsedLength": 4102
+}

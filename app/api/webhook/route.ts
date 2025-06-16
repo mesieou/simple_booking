@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
         const historyAndContext = await extractSessionHistoryAndContext(
           parsedMessage.channelType,
           parsedMessage.senderId,
-          '6c77fa8b-952e-480d-819d-3e9499e272e6', // TODO: Replace with actual business ID
+          '228c7e8e-ec15-4eeb-a766-d1ebee07104f', // TODO: Replace with actual business ID
           12
         );
 
@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
 
         // --- STEP 3: Delegate to the Conversation Orchestrator ---
         // The orchestrator will handle intent analysis, state management, and response generation.
-        const { finalBotResponse, updatedContext } = await routeInteraction(
+        const { finalBotResponse, updatedContext, history } = await routeInteraction(
           parsedMessage,
           userContext,
           historyForLLM
@@ -130,17 +130,9 @@ export async function POST(req: NextRequest) {
           // --- Persist ChatSession History ---
           if (historyAndContext) {
             try {
-              // The most up-to-date history is now in the returned context's goal.
-              // We will use that as the new source of truth for the session's message log.
-              const updatedHistory = updatedContext.currentGoal?.messageHistory || [];
-              
-              const historyForDb = updatedHistory.map(msg => ({
-                ...msg,
-                role: (msg.speakerRole === 'chatbot' ? 'bot' : 'user') as 'user' | 'bot'
-              }));
-              
+              // The orchestrator now returns the fully updated history.
               await ChatSession.update(currentSessionId, {
-                allMessages: historyForDb
+                allMessages: history
               });
               
               console.log(`[Webhook] Updated session ${currentSessionId} with latest conversation history.`);

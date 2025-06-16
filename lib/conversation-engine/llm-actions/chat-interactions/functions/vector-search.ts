@@ -30,6 +30,13 @@ import { createClient } from "@/lib/database/supabase/server";
  * Helper functions for cosine similarity and category key mapping are also included.
  */
 
+// --- CONFIGURATION FOR SCORE BOOSTING ---
+// We define boost factors for specific document types to give them priority.
+// A factor of 1.2 means a 20% boost in similarity score.
+const BOOST_FACTORS: { [key: string]: number } = {
+  'service': 1.2,
+};
+
 // Accepts string (category) and returns string (index or original)
 function getCategoryKey(category: string | Category): string {
   if (typeof category === 'number') return category.toString();
@@ -47,6 +54,7 @@ export interface VectorSearchResult {
   source: string;
   confidenceScore: number;
   sourceUrl?: string;
+  type?: string;
 }
 
 export async function findBestVectorResult(
@@ -80,7 +88,8 @@ export async function findBestVectorResult(
     similarityScore: item.similarity,
     source: item.source || 'Database',
     confidenceScore: item.similarity, // Use similarity as confidence for now
-    sourceUrl: item.source
+    sourceUrl: item.source,
+    type: item.type
   }));
 }
 
@@ -107,17 +116,45 @@ export async function getBestKnowledgeMatch(
     console.log('[Vector Search] No relevant documents found.');
     return null;
   }
+  
+  console.log(`[Vector Search] Top result before boosting: Type='${matches[0].type}', Score=${matches[0].similarityScore}, ID=${matches[0].documentId}`);
 
-  // Log the best match for debugging.
-  const bestMatch = matches[0];
-  console.log('[Vector Search] Best match found:', {
-    documentId: bestMatch.documentId,
-    similarityScore: bestMatch.similarityScore,
-    content: bestMatch.content.substring(0, 150) + '...',
-    source: bestMatch.source,
+  // 2. Re-rank matches by applying boost factors
+  const reRankedMatches = matches.map(match => {
+    // The document's type might be null or undefined, so we use a fallback key.
+    const typeKey = match.type || 'default';
+    const boost = BOOST_FACTORS[typeKey] || 1; // Default boost is 1 (no change)
+
+    if (boost > 1) {
+      console.log(`[Vector Search] Boosting score for document ID ${match.documentId} (Type: ${typeKey}) by ${((boost - 1) * 100).toFixed(0)}%`);
+    }
+
+    return {
+      ...match,
+      boostedScore: match.similarityScore * boost
+    };
   });
 
-  // 2. Return the raw text content of the top result.
+  // 3. Sort the matches by their new boosted score
+  reRankedMatches.sort((a, b) => b.boostedScore - a.boostedScore);
+
+
+  // 4. The best match is now the first one in the re-ranked list.
+  const bestMatch = reRankedMatches[0];
+  console.log(`[Vector Search] Best match after boosting: Type='${bestMatch.type}', Final Score=${bestMatch.boostedScore}, ID=${bestMatch.documentId}`);
+
+  // Log the best match for debugging.
+  // const bestMatch = matches[0]; // Old logic
+  console.log('[Vector Search] Final chosen match details:', {
+    documentId: bestMatch.documentId,
+    originalScore: bestMatch.similarityScore,
+    boostedScore: bestMatch.boostedScore,
+    content: bestMatch.content.substring(0, 150) + '...',
+    source: bestMatch.source,
+    type: bestMatch.type
+  });
+
+  // 5. Return the raw text content of the top result.
   return bestMatch.content;
 }
 

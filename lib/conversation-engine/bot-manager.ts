@@ -5,7 +5,7 @@ type GoalActionType = 'create' | 'delete' | 'update';
 
 // Configuration constants
 const BOT_CONFIG = {
-  DEFAULT_BUSINESS_ID: '6c77fa8b-952e-480d-819d-3e9499e272e6', // Beauty Asiul business ID
+  DEFAULT_BUSINESS_ID: '228c7e8e-ec15-4eeb-a766-d1ebee07104f', // Beauty Asiul business ID
   DEFAULT_TIMEZONE: 'Australia/Melbourne',
   DEFAULT_LANGUAGE: 'en',
   SESSION_TIMEOUT_HOURS: 24
@@ -92,8 +92,8 @@ export interface IndividualStepHandler {
 const conversationFlowBlueprints: Record<string, string[]> = {
   businessAccountCreation: ['getName', 'getBusinessEmail', 'getBusinessPhone', 'selectTimeZone', 'confirmAccountDetails'],
   businessAccountDeletion: ['confirmDeletionRequest', 'verifyUserPassword', 'initiateAccountDeletion'],
-  bookingCreatingForMobileService: ['askAddress', 'validateAddress', 'selectService', 'confirmLocation', 'showAvailableTimes', 'handleTimeChoice', 'showDayBrowser', 'selectSpecificDay', 'showHoursForDay', 'selectSpecificTime', 'checkExistingUser', 'handleUserStatus', 'askUserName', 'createNewUser', 'quoteSummary', 'handleQuoteChoice', 'createBooking', 'displayConfirmedBooking'],
-  bookingCreatingForNoneMobileService: ['selectService', 'confirmLocation', 'showAvailableTimes', 'handleTimeChoice', 'showDayBrowser', 'selectSpecificDay', 'showHoursForDay', 'selectSpecificTime', 'checkExistingUser', 'handleUserStatus', 'askUserName', 'createNewUser', 'quoteSummary', 'handleQuoteChoice', 'createBooking', 'displayConfirmedBooking'],
+  bookingCreatingForMobileService: ['askAddress', 'validateAddress', 'selectService', 'confirmLocation', 'selectTime', 'selectDay', 'selectHour', 'checkExistingUser', 'handleUserStatus', 'askUserName', 'createNewUser', 'quoteSummary', 'handleQuoteChoice', 'createBooking', 'displayConfirmedBooking'],
+  bookingCreatingForNoneMobileService: ['selectService', 'confirmLocation', 'selectTime', 'selectDay', 'selectHour', 'checkExistingUser', 'handleUserStatus', 'askUserName', 'createNewUser', 'quoteSummary', 'handleQuoteChoice', 'createBooking', 'displayConfirmedBooking'],
   customerFaqHandling: ['identifyUserQuestion', 'searchKnowledgeBase', 'provideAnswerToUser', 'checkUserSatisfaction'],
 };
 
@@ -104,12 +104,9 @@ import {
     validateAddressHandler,
     selectServiceHandler, 
     confirmLocationHandler,
-    showAvailableTimesHandler,
-    handleTimeChoiceHandler,
-    showDayBrowserHandler,
-    selectSpecificDayHandler,
-    showHoursForDayHandler,
-    selectSpecificTimeHandler,
+    selectTimeHandler,
+    selectDayHandler,
+    selectHourHandler,
     checkExistingUserHandler,
     handleUserStatusHandler,
     askUserNameHandler,
@@ -126,12 +123,9 @@ const botTasks: Record<string, IndividualStepHandler> = {
   validateAddress: validateAddressHandler,
   selectService: selectServiceHandler,
   confirmLocation: confirmLocationHandler,
-  showAvailableTimes: showAvailableTimesHandler,
-  handleTimeChoice: handleTimeChoiceHandler,
-  showDayBrowser: showDayBrowserHandler,
-  selectSpecificDay: selectSpecificDayHandler,
-  showHoursForDay: showHoursForDayHandler,
-  selectSpecificTime: selectSpecificTimeHandler,
+  selectTime: selectTimeHandler,
+  selectDay: selectDayHandler,
+  selectHour: selectHourHandler,
   checkExistingUser: checkExistingUserHandler,
   handleUserStatus: handleUserStatusHandler,
   askUserName: askUserNameHandler,

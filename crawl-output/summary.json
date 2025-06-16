@@ -1,8 +1,8 @@
 {
   "processingStats": {
-    "totalUrls": 3,
+    "totalUrls": 6,
     "processedUrls": [
-      "pdf:skedy-knowledge-base.pdf"
+      "pdf:luisa_business_document.pdf"
     ],
     "filteredUrls": [],
     "skippedUrls": [],
@@ -17,10 +17,10 @@
     "totalDocuments": 0,
     "processedDocuments": 0,
     "failedDocuments": 0,
-    "totalEmbeddings": 11,
-    "processedEmbeddings": 11,
+    "totalEmbeddings": 21,
+    "processedEmbeddings": 21,
     "failedEmbeddings": 0,
-    "startTime": 1749645362398,
+    "startTime": 1749980595166,
     "baseOutputPath": "C:\\Users\\hsueh\\Desktop\\SKEDY\\simple_booking\\crawl-output",
     "domainProcessingSummary": {
       "": {
@@ -28,17 +28,20 @@
         "result": ""
       }
     },
-    "endTime": 1749645406542
+    "endTime": 1749980667900
   },
-  "durationSeconds": 44.144,
+  "durationSeconds": 72.734,
   "allFoundUrls": [
-    "pdf:skedy-knowledge-base.pdf#page=1",
-    "pdf:skedy-knowledge-base.pdf#page=2",
-    "pdf:skedy-knowledge-base.pdf#page=3"
+    "pdf:luisa_business_document.pdf#page=1",
+    "pdf:luisa_business_document.pdf#page=2",
+    "pdf:luisa_business_document.pdf#page=3",
+    "pdf:luisa_business_document.pdf#page=4",
+    "pdf:luisa_business_document.pdf#page=5",
+    "pdf:luisa_business_document.pdf#page=6"
   ],
   "urlLogs": [
     {
-      "url": "pdf:skedy-knowledge-base.pdf",
+      "url": "pdf:luisa_business_document.pdf",
       "status": "processed",
       "prompt": "",
       "result": ""

@@ -10,11 +10,6 @@ export interface UserGoal {
   goalStatus: 'inProgress' | 'completed' | 'failed' | 'paused';
   currentStepIndex: number;
   collectedData: Record<string, any>;
-  messageHistory: Array<{
-    speakerRole: 'user' | 'chatbot';
-    content: string;
-    messageTimestamp: string;
-  }>;
   flowKey: string;
 }
 
@@ -192,7 +187,6 @@ export class UserContext {
       typeof goal.goalStatus === 'string' &&
       typeof goal.currentStepIndex === 'number' &&
       typeof goal.collectedData === 'object' &&
-      Array.isArray(goal.messageHistory) &&
       typeof goal.flowKey === 'string'
     );
   }

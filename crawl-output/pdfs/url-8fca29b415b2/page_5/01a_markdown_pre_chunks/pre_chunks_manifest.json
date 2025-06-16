@@ -1,0 +1,12 @@
+{
+  "sourceUrl": "pdf:luisa_business_document.pdf#page=5",
+  "originalCleanedTextPath": "../../01_cleaned_text/cleaned_pdf_page.txt",
+  "maxCharsPerGptChunk": 6000,
+  "numberOfPreChunks": 1,
+  "preChunkFileNames": [
+    "pre_chunk_0.txt"
+  ],
+  "timestamp": "2025-06-15T09:43:41.703Z",
+  "sessionId": "bd54824f-a425-47cd-b051-b4933d5b8fb5",
+  "domain": "luisa_business_document.pdf"
+}
