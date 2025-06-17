@@ -53,7 +53,7 @@ export type OpenAIChatMessage = {
 };
 
 export type ChatMessage = {
-  role: 'user' | 'assistant';
+  role: 'user' | 'bot';
   content: string;
 } | {
   role: 'function';
@@ -127,7 +127,7 @@ export async function executeChatCompletion(
         }
       }
 
-      console.log(`[OpenAI Core] Executing chat completion. Model: ${model}, Max Tokens: ${maxTokens}, Hint: ${urlHint}`);
+      //console.log(`[OpenAI Core] Executing chat completion. Model: ${model}, Max Tokens: ${maxTokens}, Hint: ${urlHint}`);
       
       const response = await openai.chat.completions.create({
         model,
@@ -139,13 +139,13 @@ export async function executeChatCompletion(
 
       const firstChoice = response.choices && response.choices[0];
       if (firstChoice) {
-        console.log(`[OpenAI Core] API Call Success. Finish Reason: ${firstChoice.finish_reason}, Hint: ${urlHint}`);
+        //console.log(`[OpenAI Core] API Call Success. Finish Reason: ${firstChoice.finish_reason}, Hint: ${urlHint}`);
         if (firstChoice.finish_reason === 'length') {
           console.warn(`[OpenAI Core] WARNING: Completion for model ${model} (Hint: ${urlHint}) stopped due to max_tokens limit (${maxTokens}).`);
         }
       }
       if (response.usage) {
-         console.log(`[OpenAI Core] Token Usage (Hint: ${urlHint}): Prompt: ${response.usage.prompt_tokens}, Completion: ${response.usage.completion_tokens}, Total: ${response.usage.total_tokens}`);
+         //console.log(`[OpenAI Core] Token Usage (Hint: ${urlHint}): Prompt: ${response.usage.prompt_tokens}, Completion: ${response.usage.completion_tokens}, Total: ${response.usage.total_tokens}`);
       }
 
       const normalized: OpenAIChatCompletionResponse = {

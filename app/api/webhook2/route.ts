@@ -66,9 +66,10 @@ export async function POST(req: NextRequest) {
     const payload = (await req.json()) as WebhookAPIBody; // Type assertion from parser
     console.log(`${LOG_PREFIX} POST request received.`); // Simplified log
 
-    const parsedMessage: ParsedMessage | null = parseWhatsappMessage(payload);
+    const parsedEvent = parseWhatsappMessage(payload);
 
-    if (parsedMessage && parsedMessage.senderId && parsedMessage.text) {
+    if (parsedEvent && "text" in parsedEvent && parsedEvent.senderId && parsedEvent.text) {
+      const parsedMessage = parsedEvent; // Treat as ParsedMessage
       console.log(`${LOG_PREFIX} Successfully parsed message from ${parsedMessage.senderId}: "${parsedMessage.text}"`);
       
       const participant: ConversationalParticipant = {
@@ -83,6 +84,10 @@ export async function POST(req: NextRequest) {
 
       try {
         // Process with juan-bot's specific engine
+        if (!parsedMessage.text) {
+          console.log(`${LOG_PREFIX} Parsed message has no text content. Skipping bot processing.`);
+          return; // Or handle as appropriate
+        }
         const juanBotRawResponse = await processIncomingMessage(parsedMessage.text, participant);
         
         // Adapt the juanBotRawResponse to the BotResponse interface expected by WhatsappSender
@@ -92,9 +97,9 @@ export async function POST(req: NextRequest) {
             text: juanBotRawResponse.chatbotResponse,
             // Convert bot manager's uiButtons to standardized buttons format
             buttons: juanBotRawResponse.uiButtons?.map(btn => ({
-              title: btn.buttonText,
-              payload: btn.buttonValue,
-              type: (btn.buttonType === 'link' ? 'url' : btn.buttonType) as 'postback' | 'url' || 'postback'
+              buttonText: btn.buttonText,
+              buttonValue: btn.buttonValue,
+              buttonType: btn.buttonType
             }))
           };
         }
@@ -120,9 +125,10 @@ export async function POST(req: NextRequest) {
       }
     } else {
       let reason = "Payload could not be parsed into an actionable message.";
-      if (parsedMessage && !parsedMessage.senderId) reason = "Parsed message missing senderId.";
-      if (parsedMessage && !parsedMessage.text) reason = "Parsed message missing text content.";
-      console.log(`${LOG_PREFIX} Skipping processing: ${reason}.`); // Simplified log, removed full parsedMessage
+      if (parsedEvent && "id" in parsedEvent) { // Handle ParsedStatusUpdate
+        reason = `Received a status update for message ${parsedEvent.id}, not an incoming message.`;
+      }
+      console.log(`${LOG_PREFIX} Skipping processing: ${reason}.`); // Simplified log
     }
     
     // Always acknowledge WhatsApp's request quickly.
