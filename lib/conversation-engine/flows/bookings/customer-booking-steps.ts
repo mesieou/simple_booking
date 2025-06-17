@@ -16,6 +16,7 @@ import { Quote } from '../../../database/models/quote';
 import { computeQuoteEstimation, type QuoteEstimation } from '../../../general-helpers/quote-cost-calculator';
 import { Booking } from '../../../database/models/booking';
 import { executeChatCompletion, OpenAIChatMessage } from '../../llm-actions/chat-interactions/openai-config/openai-core';
+import { enrichServiceDataWithVectorSearch } from '../../llm-actions/chat-interactions/functions/vector-search';
 
 // Configuration constants for booking steps
 const BOOKING_CONFIG = {
@@ -213,12 +214,15 @@ export class BookingButtonGenerator {
   // Creates service selection buttons with pricing and duration
   static createServiceButtons(services: ServiceData[]): ButtonConfig[] {
     return services.map(service => {
-      const priceDisplay = service.fixedPrice ? ` - $${service.fixedPrice}` : '';
-      const durationDisplay = service.durationEstimate ? ` (${service.durationEstimate}min)` : '';
+      const details = [];
+      if (service.fixedPrice) details.push(`$${service.fixedPrice}`);
+      if (service.durationEstimate) details.push(`${service.durationEstimate}min`);
+      
+      const detailsDisplay = details.length > 0 ? ` (${details.join(', ')})` : '';
       const mobileIcon = service.mobile ? '🚗 ' : '🏪 ';
       
       return {
-        buttonText: `${mobileIcon}${service.name}${priceDisplay}${durationDisplay}`,
+        buttonText: `${mobileIcon}${service.name}${detailsDisplay}`,
         buttonValue: service.id || 'error_service_id_missing'
       };
     });
@@ -381,7 +385,7 @@ export const selectTimeHandler: IndividualStepHandler = {
     if (!userInput) {
       return { isValidInput: true };
     }
-
+    
     // If the user has provided input, use the LLM interpreter to validate it against the available options.
     const availableSlots = currentGoalData.next3AvailableSlots as Array<{ date: string; time: string; displayText: string }> | undefined;
     if (!availableSlots) {
@@ -392,7 +396,7 @@ export const selectTimeHandler: IndividualStepHandler = {
       buttonText: slot.displayText,
       buttonValue: `slot_${index}_${slot.date}_${slot.time}`
     }));
-    buttonOptions.push({ buttonText: '📅 Choose another day', buttonValue: 'choose_another_day' });
+    buttonOptions.push({ buttonText: '📅 Other days', buttonValue: 'choose_another_day' });
 
     return LLMButtonInterpreter.interpretUserChoice(userInput, buttonOptions);
   },
@@ -401,35 +405,35 @@ export const selectTimeHandler: IndividualStepHandler = {
     // SCENARIO 1: The step is being displayed for the first time (no user input yet).
     // Fetch the data needed to display the prompt and buttons.
     if (validatedInput === "") {
-      const businessId = chatContext.currentParticipant.associatedBusinessId;
-      const selectedServiceByCustomer = currentGoalData.selectedService;
-      
-      if (!businessId || !selectedServiceByCustomer?.durationEstimate) {
+    const businessId = chatContext.currentParticipant.associatedBusinessId;
+    const selectedServiceByCustomer = currentGoalData.selectedService;
+    
+    if (!businessId || !selectedServiceByCustomer?.durationEstimate) {
         return { ...currentGoalData, availabilityError: 'Configuration error' };
-      }
-      
-      const next3AvailableSlotsFromBusiness = await AvailabilityService.getNext3AvailableSlotsForBusiness(
-        businessId,
-        selectedServiceByCustomer.durationEstimate
-      );
-      
-      if (next3AvailableSlotsFromBusiness.length === 0) {
+    }
+    
+    const next3AvailableSlotsFromBusiness = await AvailabilityService.getNext3AvailableSlotsForBusiness(
+      businessId,
+      selectedServiceByCustomer.durationEstimate
+    );
+    
+    if (next3AvailableSlotsFromBusiness.length === 0) {
         return { ...currentGoalData, availabilityError: 'No appointments currently available' };
-      }
-      
+    }
+    
       return { ...currentGoalData, next3AvailableSlots: next3AvailableSlotsFromBusiness };
     }
 
     // SCENARIO 2: The user has provided a valid choice. Process it.
     if (validatedInput === 'choose_another_day') {
-      return {
-        ...currentGoalData,
+    return {
+      ...currentGoalData,
         browseModeSelected: true,
         shouldAutoAdvance: true,
         confirmationMessage: 'Let me show you all available days...'
       };
     }
-
+    
     if (validatedInput.startsWith('slot_')) {
       const parts = validatedInput.split('_');
       const selectedDate = parts[2];
@@ -453,7 +457,7 @@ export const selectTimeHandler: IndividualStepHandler = {
   fixedUiButtons: async (currentGoalData: Record<string, any>): Promise<ButtonConfig[]> => {
     if (currentGoalData.availabilityError) return [{ buttonText: '📞 Contact us', buttonValue: 'contact_support' }];
     const slots = currentGoalData.next3AvailableSlots || [];
-    if (slots.length === 0) return [{ buttonText: '📅 Choose another day', buttonValue: 'choose_another_day' }];
+    if (slots.length === 0) return [{ buttonText: '📅 Other days', buttonValue: 'choose_another_day' }];
     
     const timeSlotButtons = slots.slice(0, 2).map((slot: any, index: number) => ({
       buttonText: slot.displayText,
@@ -462,14 +466,14 @@ export const selectTimeHandler: IndividualStepHandler = {
     
     return [
       ...timeSlotButtons,
-      { buttonText: '📅 Choose another day', buttonValue: 'choose_another_day' }
+      { buttonText: '📅 Other days', buttonValue: 'choose_another_day' }
     ];
   }
 };
 
 // Step: Display available days and handle user's selection.
 export const selectDayHandler: IndividualStepHandler = {
-    defaultChatbotPrompt: 'Here are the available days:',
+  defaultChatbotPrompt: 'Here are the available days:',
     pruneKeysAfterCompletion: ['availableDays'],
 
     validateUserInput: async (userInput, currentGoalData) => {
@@ -489,16 +493,16 @@ export const selectDayHandler: IndividualStepHandler = {
 
         // Initial display: Fetch available days
         if (validatedInput === "") {
-            const businessId = chatContext.currentParticipant.associatedBusinessId;
+    const businessId = chatContext.currentParticipant.associatedBusinessId;
             const service = currentGoalData.selectedService;
             if (!businessId || !service?.durationEstimate) return { ...currentGoalData, availabilityError: 'Config error' };
 
             const availableDays = [];
-            const today = new Date();
-            for (let i = 0; i < 10; i++) {
-                const date = new Date(today);
-                date.setDate(today.getDate() + i);
-                const dateString = date.toISOString().split('T')[0];
+    const today = new Date();
+    for (let i = 0; i < 10; i++) {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      const dateString = date.toISOString().split('T')[0];
                 if (await AvailabilityService.validateCustomDateForBusiness(businessId, dateString, service.durationEstimate)) {
                     // Simplified displayText logic
                     availableDays.push({ date: dateString, displayText: date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' }) });
@@ -522,9 +526,9 @@ export const selectDayHandler: IndividualStepHandler = {
         if (days.length === 0) return [{ buttonText: '📞 No availability - Contact us', buttonValue: 'contact_support' }];
 
         return days.slice(0, 10).map((day: any) => ({
-            buttonText: day.displayText,
-            buttonValue: `day_${day.date}`
-        }));
+      buttonText: day.displayText,
+      buttonValue: `day_${day.date}`
+    }));
     }
 };
 
@@ -571,7 +575,7 @@ export const selectHourHandler: IndividualStepHandler = {
   fixedUiButtons: async (currentGoalData) => {
       if (currentGoalData.quickBookingSelected) return [];
       const hours = currentGoalData.formattedAvailableHours || [];
-      if (hours.length === 0) return [{ buttonText: '📅 Choose different date', buttonValue: 'choose_different_date' }];
+      if (hours.length === 0) return [{ buttonText: '📅 Other days', buttonValue: 'choose_different_date' }];
       
       return hours.slice(0, 10).map((hour: any) => ({
           buttonText: hour.display,
@@ -889,10 +893,10 @@ export const quoteSummaryHandler: IndividualStepHandler = {
     // next step (handleQuoteChoice) to process it. We signal this by returning
     // a validation failure with no error message.
     console.log('[QuoteSummary] Non-empty input detected - rejecting to pass to next step for processing.');
-    return { 
-      isValidInput: false,
+      return { 
+        isValidInput: false,
       validationErrorMessage: '' 
-    };
+      };
   },
   
   // Calculate quote using proper helpers, persist to database, and generate comprehensive summary
@@ -1122,8 +1126,8 @@ export const showEditOptionsHandler: IndividualStepHandler = {
     }
     
     const buttonOptions = [
-      { buttonText: '🔧 Change Service', buttonValue: 'edit_service' },
-      { buttonText: '⏰ Change Date/Time', buttonValue: 'edit_time' }
+      { buttonText: '💼 Change Service', buttonValue: 'edit_service' },
+      { buttonText: '🕐 Change Date/Time', buttonValue: 'edit_time' }
     ];
     return LLMButtonInterpreter.interpretUserChoice(userInput, buttonOptions);
   },
@@ -1161,8 +1165,8 @@ export const showEditOptionsHandler: IndividualStepHandler = {
   // Show the actual edit buttons
   fixedUiButtons: async () => {
     return [
-      { buttonText: '🔧 Change Service', buttonValue: 'edit_service' },
-      { buttonText: '⏰ Change Date/Time', buttonValue: 'edit_time' }
+      { buttonText: '💼 Change Service', buttonValue: 'edit_service' },
+      { buttonText: '🕐 Change Date/Time', buttonValue: 'edit_time' }
     ];
   }
 };
@@ -1265,7 +1269,7 @@ export const validateAddressHandler: IndividualStepHandler = {
 
 // Combined service display and selection - single responsibility
 export const selectServiceHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: '[DYNAMIC_GREETING] Here are the services we offer:',
+  defaultChatbotPrompt: 'Of course! I can help with that. Here are the services we offer. You must present the services as a list using a hyphen and a space (`- `) for each item. For each service, you must include its name, price, and estimated duration from the `availableServices` context variable.',
   pruneKeysAfterCompletion: ['availableServices'],
   
   // Validates service selection (or accepts first-time display)
@@ -1308,8 +1312,11 @@ export const selectServiceHandler: IndividualStepHandler = {
       if (businessId) {
         const { services, error } = await ServiceDataProcessor.fetchServicesForBusiness(businessId);
         if (services && services.length > 0) {
-          availableServices = services;
-          console.log('[SelectService] Successfully loaded services:', services.map(s => ({ id: s.id, name: s.name })));
+          // Enrich service data with information from vector search
+          const servicesWithIds = services.filter(s => s.id) as { id: string; name: string }[];
+          const enrichedServices = await enrichServiceDataWithVectorSearch(servicesWithIds, businessId);
+          availableServices = enrichedServices;
+          console.log('[SelectService] Successfully loaded and enriched services:', enrichedServices.map(s => ({ id: s.id, name: s.name, price: s.fixedPrice, duration: s.durationEstimate })));
         } else {
           console.log('[SelectService] Failed to load services:', error);
           return {

@@ -176,4 +176,64 @@ function preprocessUserMessage(message: string): string {
     .replace(/[^a-zA-Z0-9\s.,?!'\"]/g, '') // Remove most special characters
     .replace(/\s([?.!\"](?:\s|$))/g, '$1') // Remove space before punctuation
     .toLowerCase(); // Convert to lowercase
+}
+
+export async function enrichServiceDataWithVectorSearch(
+  services: { id: string; name: string }[],
+  businessId: string
+): Promise<any[]> {
+  console.log('[Vector Search] Enriching service data for:', services.map(s => s.name).join(', '));
+  // 1. Perform a vector search to find relevant documents
+  const serviceListQuery = `list of all services with their prices and durations: ${services.map(s => s.name).join(', ')}`;
+  const searchResults = await findBestVectorResult(await generateEmbedding(serviceListQuery), businessId);
+
+  if (searchResults.length === 0) {
+    console.log('[Vector Search] No documents found for service enrichment.');
+    return services; // Return original services if no info found
+  }
+
+  // 2. Consolidate the content from the search results
+  const contextText = searchResults.map(r => r.content).join('\n\n---\n\n');
+
+  // 3. Use an LLM to extract and structure the information
+  const systemPrompt = `You are an expert data extraction tool. Your task is to analyze the provided knowledge base text and extract specific details (price and duration) for a given list of services.
+
+  CRITICAL RULES:
+  1.  You MUST analyze the "Knowledge Base Text".
+  2.  For each "Service Name" in the input list, find its price and estimated duration in the text.
+  3.  The price should be a single number (e.g., 45, not "$40-50"). If there's a range, take the average.
+  4.  The duration should be in minutes (e.g., 60).
+  5.  If a detail (price or duration) for a specific service is not found in the text, you MUST use a value of 'null' for it.
+  6.  Your response MUST be a valid JSON array of objects, with each object containing "id", "name", "fixedPrice", and "durationEstimate".
+  7.  Do NOT include any services that are not in the original service list.
+  8.  Do not add any explanation or conversational text. Your output must ONLY be the JSON array.`;
+
+  const userPrompt = `CONTEXT:
+  - Service List (JSON): ${JSON.stringify(services, null, 2)}
+  - Knowledge Base Text:
+  ---
+  ${contextText}
+  ---
+
+  Based on the Knowledge Base Text, provide a JSON array with the extracted price and duration for each service in the list.`;
+
+  try {
+    const messages: OpenAIChatMessage[] = [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ];
+    const llmResult = await executeChatCompletion(messages, 'gpt-4o', 0.1, 1000);
+    const jsonOutput = llmResult.choices[0]?.message?.content?.trim();
+    
+    if (jsonOutput) {
+      const enrichedServices = JSON.parse(jsonOutput);
+      console.log('[Vector Search] Successfully enriched service data:', enrichedServices);
+      return enrichedServices;
+    }
+  } catch (error) {
+    console.error('[Vector Search] Failed to enrich service data via LLM:', error);
+  }
+
+  // Fallback to original services if enrichment fails
+  return services;
 } 

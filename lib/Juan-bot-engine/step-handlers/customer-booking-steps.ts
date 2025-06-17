@@ -160,9 +160,11 @@ class BookingButtonGenerator {
       const priceDisplay = service.fixedPrice ? ` - $${service.fixedPrice}` : '';
       const durationDisplay = service.durationEstimate ? ` (${service.durationEstimate}min)` : '';
       const mobileIcon = service.mobile ? '🚗 ' : '🏪 ';
-      
+      const description = service.description || ''; // Fallback for services without a description
+
       return {
-        buttonText: `${mobileIcon}${service.name}${priceDisplay}${durationDisplay}`,
+        buttonText: `${mobileIcon}${service.name}`,
+        buttonDescription: `${description}${priceDisplay}${durationDisplay}`,
         buttonValue: service.id || 'error_service_id_missing'
       };
     });

@@ -11,6 +11,7 @@
  * 4.  Return the final bot response and the updated user state to the caller (e.g., the webhook).
  */
 
+import { ServiceData } from '../database/models/service';
 import { ParsedMessage } from '../cross-channel-interfaces/standardized-conversation-interface';
 import { UserContext } from '../database/models/user-context';
 import { BotResponse } from '../cross-channel-interfaces/standardized-conversation-interface';
@@ -140,6 +141,29 @@ export async function routeInteraction(
         }
     }
     
+    // --- Special Instructions for Agent ---
+    // Check for the specific scenario where we want to list services proactively.
+    let specialInstructions: string | undefined = undefined;
+    const validationFailureReason =
+      taskContext.currentGoal?.collectedData?.validationFailureReason;
+    const isNewBookingFlow =
+      analyzedIntent.goalType === 'serviceBooking' &&
+      (!userContext.currentGoal || userContext.currentGoal.currentStepIndex === 0);
+
+    if (validationFailureReason === 'NOT_FOUND' && isNewBookingFlow) {
+      const availableServices = taskContext.currentGoal?.collectedData
+        ?.availableServices as ServiceData[] | undefined;
+      if (availableServices && availableServices.length > 0) {
+        const serviceList = availableServices
+          .map(
+            service =>
+              `* ${service.name} - $${service.fixedPrice} (${service.durationEstimate} min)`,
+          )
+          .join('\n');
+        specialInstructions = `The user asked for a service we don't offer. First, politely inform them of this. Then, you MUST proactively list the services we DO offer, formatted as a clear, bulleted list with name, price, and duration. For example: "We offer the following services:\n* Basic Manicure - $40 (30 min)\n* Gel Pedicure - $60 (45 min)". The available services are:\n${serviceList}\n\nThis overrides the rule about not repeating button text. Finally, ask the user to select an option from the buttons below to proceed.`;
+      }
+    }
+
     // 3. Always get business identity for personalization.
     let businessName = 'the salon'; // Default fallback
     try {
@@ -149,20 +173,6 @@ export async function routeInteraction(
         }
     } catch (error) {
         console.error(`[Orchestrator] Could not fetch business name for ID: ${businessId}`, error);
-    }
-
-    // --- Special Instructions for Agent ---
-    // Check for the specific scenario where we want to list services proactively.
-    let specialInstructions: string | undefined = undefined;
-    const validationFailureReason = taskContext.currentGoal?.collectedData?.validationFailureReason;
-    const isNewBookingFlow = analyzedIntent.goalType === 'serviceBooking' && (!userContext.currentGoal || userContext.currentGoal.currentStepIndex === 0);
-
-    if (validationFailureReason === 'NOT_FOUND' && isNewBookingFlow) {
-        const availableServices = taskContext.currentGoal?.collectedData?.uiButtons;
-        if (availableServices && availableServices.length > 0) {
-            const serviceList = availableServices.map((btn: { buttonText: string }) => `- ${btn.buttonText.replace(/🚗 |🏪 /g, '').split(' - ')[0]}`).join('\n');
-            specialInstructions = `The user asked for a service we don't offer. First, politely inform them of this. Then, you MUST proactively list the names of the services we DO offer, formatted as a clear, bulleted list. For example: "We offer the following services:\n* Service A\n* Service B". The available services are:\n${serviceList}\n\nThis overrides the rule about not repeating button text.`;
-        }
     }
 
     // 4. Call the central "Agent Brain" with all gathered context to generate a response.
