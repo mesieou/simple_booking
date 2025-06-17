@@ -1,0 +1,31 @@
+{
+  "modelUsed": "gpt-4o",
+  "originalContentCharacterLength": 1235,
+  "llmSegmentedChunks": [
+    {
+      "chunkOrder": 1,
+      "chunkText": "How is my info used? To: ● Manage bookings ● Contact you Internally, a temporary system email like wa_YOUR_NUMBER@skedy.ai is created.",
+      "category": 6,
+      "categoryName": "terms & conditions / legal policies",
+      "confidence": 0.8,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 2,
+      "chunkText": "Payments How do I pay? ● Cash is preferred. ● Transfers accepted when discussed beforehand. ● Some clients have paid after service, with trust. Deposits: ● 50% deposit required for bookings. ● Payment via: ○ +61 451 375 263 or 0404 278 733 ● Deposit refundable or transferable if cancelled 24 hours in advance.",
+      "category": 1,
+      "categoryName": "pricing or quotes",
+      "confidence": 0.9,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 3,
+      "chunkText": "Cancellations & No-shows ● Cancel or reschedule at least 24 hours in advance to keep deposit. ● Frequent late cancellations may lead to stricter policies.",
+      "category": 3,
+      "categoryName": "booking or scheduling",
+      "confidence": 0.85,
+      "preChunkSourceIndex": 0
+    }
+  ],
+  "promptUsedLength": 4054
+}

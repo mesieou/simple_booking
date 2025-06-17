@@ -38,7 +38,7 @@
         },
         {
             "folderPath": "simple_booking\\lib\\general-config\\",
-            "color": "foldercolorizer.color_99cc00"
+            "color": "foldercolorizer.color_33ccff"
         },
         {
             "folderPath": "simple_booking\\lib\\general-helpers\\",
@@ -59,6 +59,30 @@
         {
             "folderPath": "simple_booking\\lib\\conversation-engine\\modes\\",
             "color": "foldercolorizer.color_66cc33"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\conversation-engine\\",
+            "color": "foldercolorizer.color_00ccff"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\conversation-engine\\whatsapp\\",
+            "color": "foldercolorizer.color_00cc00"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\database\\",
+            "color": "foldercolorizer.color_99cc00"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\Juan-bot-engine\\",
+            "color": "foldercolorizer.color_cc66cc"
+        },
+        {
+            "folderPath": "simple_booking\\.env.local\\",
+            "color": "foldercolorizer.color_ccff33"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\conversation-engine\\flows\\",
+            "color": "foldercolorizer.color_66cc00"
         }
     ]
 }

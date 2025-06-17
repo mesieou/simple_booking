@@ -85,14 +85,14 @@ async function processQueue() {
 
     activeRequests++;
     recordRequest(queuedItem.tokens); // Record it as starting now
-    console.log(`[RateLimiter] Starting task. Active: ${activeRequests}, Queue: ${requestQueue.length}. RPM: ${requestsInLastMinute + 1}, TPM: ${tokensInLastMinute + queuedItem.tokens}`);
+    //console.log(`[RateLimiter] Starting task. Active: ${activeRequests}, Queue: ${requestQueue.length}. RPM: ${requestsInLastMinute + 1}, TPM: ${tokensInLastMinute + queuedItem.tokens}`);
 
     queuedItem.task()
       .then(queuedItem.resolve)
       .catch(queuedItem.reject) // This ensures the original promise from scheduleTask is rejected
       .finally(() => {
         activeRequests--;
-        console.log(`[RateLimiter] Finished task. Active: ${activeRequests}`);
+        //console.log(`[RateLimiter] Finished task. Active: ${activeRequests}`);
         // Immediately try to process next if queue has items
         // This ensures the queue keeps flowing as slots/limits free up.
         // Set isProcessingQueue to false before calling processQueue to allow re-entry if needed.
@@ -104,6 +104,6 @@ async function processQueue() {
   // If queue is now empty
   isProcessingQueue = false;
   if (activeRequests === 0) {
-    console.log('[RateLimiter] Queue is empty and all active tasks finished.');
+    //console.log('[RateLimiter] Queue is empty and all active tasks finished.');
   }
 } 

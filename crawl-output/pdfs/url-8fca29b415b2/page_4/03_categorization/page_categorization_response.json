@@ -1,0 +1,31 @@
+{
+  "modelUsed": "gpt-4o",
+  "originalContentCharacterLength": 1567,
+  "llmSegmentedChunks": [
+    {
+      "chunkOrder": 1,
+      "chunkText": "Service cost (fixed or time-based) ● Travel cost (if mobile) – based on estimated travel time The bot will display a quote breakdown. Is the quote final? Yes. Once you confirm, it is the total price.",
+      "category": 1,
+      "categoryName": "pricing or quotes",
+      "confidence": 0.9,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 2,
+      "chunkText": "Location & Hours ● Address: 9 Dryburgh Street, West Melbourne VIC 3003, Apartment 111 ● Landmark: Across from North Melbourne Station ● Business Hours: ○ Monday to Friday: 10:00 AM – 6:00 PM ○ Weekends: by request only ○ Special early/late hours available: as early as 7:00 AM, or as late as 9:00 PM",
+      "category": 2,
+      "categoryName": "contact",
+      "confidence": 0.95,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 3,
+      "chunkText": "Account & Customer Info Do I need an account? Yes, a basic account is created automatically using: ● Your WhatsApp number ● Your first name What if I’m a returning customer? The system will recognize your WhatsApp and greet you by name. No need to re-enter details.",
+      "category": 5,
+      "categoryName": "faq",
+      "confidence": 0.9,
+      "preChunkSourceIndex": 0
+    }
+  ],
+  "promptUsedLength": 4386
+}

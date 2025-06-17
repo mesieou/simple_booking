@@ -212,6 +212,43 @@ export class User {
         });
     }
 
+    // Get the user (owner) of a business by its ID
+    static async findUserByBusinessId(businessId: string): Promise<User | null> {
+        if (!User.isValidUUID(businessId)) {
+            handleModelError("Invalid businessId UUID format", new Error("Invalid UUID"));
+        }
+        
+        try {
+            const supa = await createClient();
+            // Find a user associated with the business who is a provider/admin
+            const { data: users, error } = await supa
+                .from('users')
+                .select('*')
+                .eq('businessId', businessId)
+                .in('role', PROVIDER_ROLES); 
+
+            if (error) {
+                console.error(`[User] Error fetching user for businessId ${businessId}:`, error);
+                return null;
+            }
+
+            if (!users || users.length === 0) {
+                console.log(`[User] No admin/provider user found for businessId: ${businessId}`);
+                return null;
+            }
+
+            // Return the first owner/provider found
+            const ownerData = users[0];
+            const user = new User(ownerData.firstName, ownerData.lastName, ownerData.role, ownerData.businessId);
+            user.id = ownerData.id;
+            return user;
+
+        } catch (error) {
+            console.error(`[User] Exception in findUserByBusinessId for ${businessId}:`, error);
+            return null;
+        }
+    }
+
     // Unified method for finding user by business phone or WhatsApp number - FIXED
     private static async findUserByBusinessContact(phoneNumber: string, contactType: 'phone' | 'whatsapp' | 'both' = 'both'): Promise<User | null> {
         try {
