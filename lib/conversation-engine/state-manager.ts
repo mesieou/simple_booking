@@ -74,6 +74,7 @@ export interface LLMProcessingResult {
 export type ButtonConfig = {
   buttonText: string;
   buttonValue: string;
+  buttonDescription?: string;
   buttonType?: 'postback' | 'link';
 };
 
@@ -542,11 +543,30 @@ class MessageProcessor {
         if (isActionableGoal) {
           userCurrentGoal = await this.createNewGoal(analyzedIntent, chatContextAdapter.currentParticipant.type, chatContextAdapter);
           userContext.currentGoal = userCurrentGoal;
-          // Instead of just executing the first step with empty input,
-          // immediately process the user's message against this new goal.
-          // This handles the case where the message that creates the goal also completes the first step.
-          console.log(`[State Manager] New goal created. Immediately processing user input against it.`);
-          await this.processExistingGoal(userCurrentGoal, chatContextAdapter, incomingUserMessage, analyzedIntent);
+          
+          // Execute the first step to pre-load its data and get the correct prompt
+          await this.executeStep(userCurrentGoal, chatContextAdapter);
+          
+          // Now, if the user's initial message could satisfy this first step, process it.
+          // This prevents asking for information the user already provided.
+          const firstStepHandler = botTasks[conversationFlowBlueprints[userCurrentGoal.flowKey][0]];
+          const validationResult = await firstStepHandler.validateUserInput(incomingUserMessage, userCurrentGoal.collectedData, chatContextAdapter);
+          const isInputValid = typeof validationResult === 'boolean' ? validationResult : validationResult.isValidInput;
+
+          if (isInputValid) {
+            console.log(`[State Manager] Initial user message is valid for the first step. Processing it now.`);
+            await this.processExistingGoal(userCurrentGoal, chatContextAdapter, incomingUserMessage, analyzedIntent);
+          } else {
+            const validationFailureReason =
+              typeof validationResult === 'object'
+                ? validationResult.reason
+                : undefined;
+            if (validationFailureReason) {
+              userCurrentGoal.collectedData.validationFailureReason =
+                validationFailureReason;
+            }
+          }
+
         } else {
           // Intent is an FAQ, chit-chat, or is unknown. Do not create a goal.
           userContext.currentGoal = null; // Ensure no goal is active
