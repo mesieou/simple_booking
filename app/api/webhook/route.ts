@@ -14,12 +14,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { WebhookAPIBody } from "@/lib/conversation-engine/whatsapp/whatsapp-message-logger";
 import { processWhatsappPayload } from "@/lib/conversation-engine/whatsapp/whatsapp-payload-parser";
 import { WhatsappSender } from "@/lib/conversation-engine/whatsapp/whatsapp-message-sender";
-import { BotResponse } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
-import { extractSessionHistoryAndContext } from "@/lib/conversation-engine/llm-actions/chat-interactions/functions/history-extractor";
-import { analyzeConversationIntent } from "@/lib/conversation-engine/llm-actions/chat-interactions/functions/intention-detector";
+import { extractSessionHistoryAndContext } from "@/lib/conversation-engine/llm-actions/chat-interactions/functions/extract-history-and-context.ts";
 import { routeInteraction } from "@/lib/conversation-engine/conversation-orchestrator";
-import { ChatSession } from "@/lib/database/models/chat-session";
-import { UserContext } from "@/lib/database/models/user-context";
+import { persistSessionState } from "@/lib/conversation-engine/llm-actions/chat-interactions/functions/save-history-and-context";
 
 export const dynamic = "force-dynamic";
 
@@ -91,11 +88,13 @@ export async function POST(req: NextRequest) {
           12
         );
 
+        // fail to extract history and context
         if (!historyAndContext) {
           console.error("[Webhook] Failed to get history and context. Aborting.");
           return NextResponse.json({ message: "Failed to process context" }, { status: 500 });
         }
         
+        // in case of success, extract the history for LLM, user context, and current session id
         const { historyForLLM, userContext, currentSessionId } = historyAndContext;
         
         console.log(`[Webhook] Context Loaded for ${parsedMessage.senderId} (Commented out context log)`);
@@ -118,27 +117,10 @@ export async function POST(req: NextRequest) {
           await whatsappSender.sendMessage(parsedMessage.senderId, finalBotResponse);
           console.log(`[Webhook] Sent orchestrator response to ${parsedMessage.senderId}: "${finalBotResponse.text}"`);
           
-          // --- Persist UserContext State ---
-          await UserContext.updateByChannelUserId(updatedContext.channelUserId, {
-            currentGoal: updatedContext.currentGoal,
-            previousGoal: updatedContext.previousGoal,
-            frequentlyDiscussedTopics: updatedContext.frequentlyDiscussedTopics,
-            participantPreferences: updatedContext.participantPreferences,
-          });
-          console.log(`[Webhook] Successfully persisted updated UserContext for ${updatedContext.channelUserId}.`);
-          
-          // --- Persist ChatSession History ---
           if (historyAndContext) {
-            try {
-              // The orchestrator now returns the fully updated history.
-              await ChatSession.update(currentSessionId, {
-                allMessages: history
-              });
-              
-              console.log(`[Webhook] Updated session ${currentSessionId} with latest conversation history.`);
-            } catch (updateError) {
-              console.error("[Webhook] Error updating session with messages:", updateError);
-            }
+            // save last history and context 
+            await persistSessionState(currentSessionId, updatedContext, history);
+
           }
           
           return NextResponse.json({ 
