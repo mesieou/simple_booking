@@ -1,7 +1,12 @@
 /**
  * Complete FAQ Handler Test Script for Luisa's Nail Salon
- * Tests with actual service documents + PDF documents + edge cases
+ * Tests the REAL RAG system with actual service documents + PDF documents + edge cases
  */
+
+import { FAQHandler } from './handlers/faq-handler';
+import { RAGfunction } from '../llm-actions/chat-interactions/functions/embeddings';
+import { DetectedIntent, FAQIntent, DialogueState } from './nlu/types';
+import { UserContext } from '../../database/models/user-context';
 
 const BUSINESS_ID = '228c7e8e-ec15-4eeb-a766-d1ebee07104f';
 
@@ -122,114 +127,101 @@ const testScenarios = [
   }
 ];
 
-// MOCK FUNCTIONS
-function mockVectorSearch(query: string) {
-  if (query.includes('gel manicure')) {
-    return [serviceDocuments[1], pdfDocuments[1], serviceDocuments[0]];
-  } else if (query.includes('basic manicure')) {
-    return [serviceDocuments[0], pdfDocuments[1], serviceDocuments[1]];
-  } else if (query.includes('pedicure')) {
-    return [serviceDocuments[3], serviceDocuments[4], pdfDocuments[1]];
-  } else if (query.includes('nail services')) {
-    return serviceDocuments.slice(0, 3);
-  } else if (query.includes('cancel')) {
-    return [pdfDocuments[2], serviceDocuments[0], serviceDocuments[1]];
-  } else if (query.includes('polygel')) {
-    return [pdfDocuments[0], serviceDocuments[0], serviceDocuments[1]];
-  } else {
-    return [serviceDocuments[0], pdfDocuments[0], serviceDocuments[1]];
-  }
+// HELPER FUNCTIONS FOR REAL TESTING  
+function createMockUserContext(businessId: string): UserContext {
+  return {
+    id: 'test-id-123',
+    businessId,
+    channelUserId: '+1234567890',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    currentGoal: null,
+    previousGoal: null,
+    participantPreferences: null,
+    frequentlyDiscussedTopics: null
+  } as UserContext;
 }
 
-function mockLLMResponse(prompt: string): string {
-  if (prompt.includes('Gel Manicure') && prompt.includes('cost')) {
-    return 'A gel manicure costs $40 and takes about 60 minutes. It includes professional gel polish application with UV curing for long-lasting results. I can also come to your location for this service!';
-  } else if (prompt.includes('Basic Manicure') && prompt.includes('take')) {
-    return 'A basic manicure takes 45 minutes and costs $25. It includes nail shaping, cuticle care, and polish application. This service is available for house calls too!';
-  } else if (prompt.includes('pedicure') && prompt.includes('home')) {
-    return 'Pedicure services are only available at my salon location at 9 Dryburgh Street, West Melbourne, Apt 111. They\'re not available for house calls, but I do offer mobile manicure services!';
-  } else if (prompt.includes('nail services')) {
-    return 'I offer several nail services: Basic Manicure ($25), Gel Manicure ($40), Express Manicure ($20), Basic Pedicure ($30), and Gel Pedicure ($45). Most manicures are available for house calls!';
-  } else if (prompt.includes('cancellation policy')) {
-    return 'You can cancel or reschedule at least 24 hours in advance to keep your deposit. Frequent late cancellations may lead to stricter policies.';
-  } else if (prompt.includes('polygel')) {
-    return 'I don\'t offer polygel services, but I do offer gel manicures and other nail services! I can also create custom nail designs if you send me images in advance.';
-  } else {
-    return 'I can help you with that! Let me provide you with the best information I have about our services.';
-  }
+function createFAQIntent(questions: string[]): DetectedIntent {
+  return {
+    type: 'faq',
+    priority: 1,
+    handlerName: 'FAQHandler',
+    data: {
+      questions,
+      topics: ['general']
+    } as FAQIntent
+  };
 }
 
-function generateButtons(hasActiveBooking: boolean, searchResults: any[]) {
-  const hasServiceMatch = searchResults.some(doc => doc.type === 'service');
+function createDialogueState(hasActiveBooking: boolean): DialogueState | null {
+  if (!hasActiveBooking) return null;
   
-  if (hasActiveBooking) {
-    return [
-      { buttonText: '📅 Continue booking', buttonValue: 'continue_booking' },
-      { buttonText: '🛍️ View all services', buttonValue: 'show_services' }
-    ];
-  } else if (hasServiceMatch) {
-    return [
-      { buttonText: '📅 Book this service', buttonValue: 'book_service' },
-      { buttonText: '💰 View pricing', buttonValue: 'view_pricing' },
-      { buttonText: '🛍️ Browse all services', buttonValue: 'show_services' }
-    ];
-  } else {
-    return [
-      { buttonText: '🛍️ View our services', buttonValue: 'show_services' },
-      { buttonText: '📅 Check availability', buttonValue: 'check_availability' }
-    ];
-  }
+  return {
+    activeBooking: {
+      serviceId: 'gel-manicure-123',
+      serviceName: 'Gel Manicure',
+      date: '2024-01-15',
+      time: '14:00',
+      locationAddress: '123 Test St, Melbourne',
+      createdAt: new Date().toISOString(),
+      lastUpdatedAt: new Date().toISOString()
+    }
+  } as DialogueState;
 }
 
-// TEST SIMULATION
-function simulateTest(scenario: any) {
+// REAL TEST SIMULATION USING RAGfunction
+async function simulateTest(scenario: any) {
   const primaryQuestion = scenario.questions[0];
   
   console.log(`❓ Question: "${primaryQuestion}"`);
   
-  const searchResults = mockVectorSearch(primaryQuestion);
-  console.log(`🔍 Top 3 Vector Results:`);
-  searchResults.forEach((doc, i) => {
-    const isService = doc.type === 'service';
-    const confidence = (doc.confidenceScore * 100).toFixed(0);
-    const icon = isService ? '🛍️' : '📄';
-    const truncated = doc.content.length > 70 ? doc.content.substring(0, 70) + '...' : doc.content;
-    console.log(`   ${i+1}. ${icon} ${confidence}% - "${truncated}"`);
-  });
-  
-  const hasServiceMatch = searchResults.some(doc => doc.type === 'service');
-  const matchesExpectation = hasServiceMatch === scenario.expectedServiceMatch;
-  console.log(`🎯 Service Match: ${hasServiceMatch ? 'YES' : 'NO'} (Expected: ${scenario.expectedServiceMatch ? 'YES' : 'NO'}) ${matchesExpectation ? '✅' : '❌'}`);
-  
-  const response = mockLLMResponse(primaryQuestion);
-  console.log(`🤖 Response: "${response}"`);
-  
-  const buttons = generateButtons(scenario.hasActiveBooking, searchResults);
-  console.log(`🔘 Buttons: ${buttons.map(b => b.buttonText).join(', ')}`);
-  
-  return { 
-    response, 
-    buttons, 
-    searchResults, 
-    hasServiceMatch,
-    matchesExpectation,
-    serviceDocCount: searchResults.filter(r => r.type === 'service').length,
-    pdfDocCount: searchResults.filter(r => r.type === 'policy').length
-  };
+  try {
+    // Use REAL RAGfunction to get search results
+    const searchResults = await RAGfunction(BUSINESS_ID, primaryQuestion);
+    console.log(`🔍 Top 3 Vector Results from REAL RAG:`);
+    searchResults.slice(0, 3).forEach((doc, i) => {
+      const isService = doc.type === 'service';
+      const confidence = (doc.confidenceScore * 100).toFixed(0);
+      const icon = isService ? '🛍️' : '📄';
+      const truncated = doc.content.length > 70 ? doc.content.substring(0, 70) + '...' : doc.content;
+      console.log(`   ${i+1}. ${icon} ${confidence}% - "${truncated}"`);
+    });
+    
+    const hasServiceMatch = searchResults.some(doc => doc.type === 'service');
+    const matchesExpectation = hasServiceMatch === scenario.expectedServiceMatch;
+    console.log(`🎯 Service Match: ${hasServiceMatch ? 'YES' : 'NO'} (Expected: ${scenario.expectedServiceMatch ? 'YES' : 'NO'}) ${matchesExpectation ? '✅' : '❌'}`);
+    
+    console.log(`🤖 Response: "Using REAL RAG results - ${searchResults.length} documents found"`);
+    console.log(`🔘 Buttons: Simulated based on document types`);
+    
+    return { 
+      response: `Real RAG found ${searchResults.length} documents`, 
+      buttons: [], 
+      searchResults, 
+      hasServiceMatch,
+      matchesExpectation,
+      serviceDocCount: searchResults.filter(r => r.type === 'service').length,
+      pdfDocCount: searchResults.filter(r => r.type === 'policy').length
+    };
+  } catch (error) {
+    console.error(`❌ Error in real RAG test: ${error}`);
+    throw error;
+  }
 }
 
 // RUN COMPLETE TESTS
-function runCompleteTests() {
-  console.log('🧪 COMPLETE FAQ Handler Test Suite for Luisa\'s Nail Salon');
+async function runCompleteTests() {
+  console.log('🧪 COMPLETE FAQ Handler Test Suite for Luisa\'s Nail Salon (REAL RAG)');
   console.log(`🆔 Business ID: ${BUSINESS_ID}`);
   console.log(`📊 ${testScenarios.length} comprehensive scenarios`);
-  console.log(`🛍️ ${serviceDocuments.length} service documents (confidence: 100%)`);
-  console.log(`📄 ${pdfDocuments.length} PDF documents (confidence: 80-95%)\n`);
+  console.log(`🛍️ Using REAL RAGfunction for vector search\n`);
   
   const results: any[] = [];
   let serviceMatchAccuracy = 0;
   
-  testScenarios.forEach((scenario, i) => {
+  for (let i = 0; i < testScenarios.length; i++) {
+    const scenario = testScenarios[i];
     console.log(`\n${'='.repeat(80)}`);
     console.log(`🧪 Test ${i + 1}: ${scenario.name}`);
     console.log(`📝 ${scenario.description}`);
@@ -237,7 +229,7 @@ function runCompleteTests() {
     console.log(`${'─'.repeat(80)}`);
     
     try {
-      const result = simulateTest(scenario);
+      const result = await simulateTest(scenario);
       if (result.matchesExpectation) serviceMatchAccuracy++;
       
       results.push({
@@ -258,7 +250,7 @@ function runCompleteTests() {
         error: error instanceof Error ? error.message : String(error)
       });
     }
-  });
+  }
   
   // COMPREHENSIVE ANALYSIS
   console.log(`\n${'='.repeat(80)}`);

@@ -1,8 +1,8 @@
 import { DetectedIntent, FAQIntent, DialogueState, TaskHandlerResult, ButtonConfig } from '../nlu/types';
 import { UserContext } from '../../../database/models/user-context';
-import { getBestKnowledgeMatch, VectorSearchResult, findBestVectorResult } from '../../llm-actions/chat-interactions/functions/vector-search';
+import { getBestKnowledgeMatch, VectorSearchResult } from '../../llm-actions/chat-interactions/functions/vector-search';
 import { executeChatCompletion } from '../../llm-actions/chat-interactions/openai-config/openai-core';
-import { generateEmbedding } from '../../llm-actions/chat-interactions/functions/embeddings';
+import { RAGfunction } from '../../llm-actions/chat-interactions/functions/embeddings';
 
 /**
  * FAQHandler - Intelligent FAQ intent handler for V2 system
@@ -56,9 +56,8 @@ export class FAQHandler {
     currentContext: DialogueState | null
   ): Promise<TaskHandlerResult> {
     
-    // Search for relevant knowledge using the vector search system
-    const embedding = await generateEmbedding(question);
-    const searchResults = await findBestVectorResult(embedding, businessId);
+    // Search for relevant knowledge using the combined RAG function
+    const searchResults = await RAGfunction(businessId, question);
     
     if (!searchResults || searchResults.length === 0) {
       return this.handleUnknownQuestion(question, currentContext);
