@@ -1,4 +1,5 @@
 import OpenAI from "openai";
+import { findBestVectorResult, VectorSearchResult } from "./vector-search";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -39,5 +40,39 @@ export async function generateEmbedding(text: string): Promise<number[]> {
   } catch (error) {
     console.error(`[generateEmbedding] CAUGHT ERROR for text (first 80 chars): "${text.substring(0, 80).replace(/\n/g, ' ')}...". Error:`, error);
     throw new Error(`Failed to generate embedding: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+/**
+ * RAG (Retrieval-Augmented Generation) function that combines embedding generation 
+ * with vector search to find the most relevant documents for a user query.
+ * 
+ * @param businessId - The ID of the business to search within
+ * @param userMessage - The user's message/query to search for
+ * @returns Promise<VectorSearchResult[]> - Array of top 3 most relevant documents
+ */
+export async function RAGfunction(
+  businessId: string,
+  userMessage: string
+): Promise<VectorSearchResult[]> {
+  console.log(`[RAGfunction] Starting RAG search for business ${businessId} with message: "${userMessage.substring(0, 100)}..."`);
+  
+  try {
+    // Step 1: Convert user message to embedding vector
+    const userEmbedding = await generateEmbedding(userMessage);
+    console.log(`[RAGfunction] Successfully generated embedding for user message`);
+    
+    // Step 2: Perform vector search to find relevant documents
+    const searchResults = await findBestVectorResult(userEmbedding, businessId);
+    console.log(`[RAGfunction] Vector search returned ${searchResults.length} results`);
+    
+    // Step 3: Return top 3 documents
+    const top3Results = searchResults.slice(0, 3);
+    console.log(`[RAGfunction] Returning top ${top3Results.length} documents`);
+    
+    return top3Results;
+  } catch (error) {
+    console.error(`[RAGfunction] Error during RAG search:`, error);
+    throw new Error(`RAG function failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 } 
