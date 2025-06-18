@@ -78,6 +78,9 @@ export class WhatsappSender implements IMessageSender {
     if (!WHATSAPP_CONFIG.ACCESS_TOKEN) {
       throw new Error("WHATSAPP_VERIFY_TOKEN environment variable is required");
     }
+    if (!WHATSAPP_CONFIG.PHONE_NUMBER_ID) {
+      throw new Error("WHATSAPP_PHONE_NUMBER_ID environment variable is required");
+    }
   }
 
   // Determines the optimal message type based on button count
@@ -124,6 +127,7 @@ export class WhatsappSender implements IMessageSender {
   // Creates an interactive list message payload
   private createListPayload(recipientId: string, text: string, buttons: BotResponse['buttons']): WhatsappListPayload {
     const limitedButtons = buttons!.slice(0, WHATSAPP_CONFIG.LIMITS.MAX_LIST_ITEMS);
+    console.log('[WhatsappSender] Creating list with buttons:', limitedButtons.map(b => ({ text: b.buttonText, desc: b.buttonDescription })));
     
     return {
       messaging_product: "whatsapp",
@@ -145,15 +149,33 @@ export class WhatsappSender implements IMessageSender {
 
   // Creates a list row with optimized title and description
   private createListRow(button: NonNullable<BotResponse['buttons']>[0]) {
+    console.log('[WhatsappSender] Creating list row for button:', { text: button.buttonText, desc: button.buttonDescription });
+    
+    // Use buttonDescription if available (contains price and duration info)
+    // Otherwise fall back to parsing buttonText for backward compatibility
+    if (button.buttonDescription) {
+      const row = {
+        id: button.buttonValue,
+        title: this.truncateText(button.buttonText, WHATSAPP_CONFIG.LIMITS.LIST_TITLE_MAX_LENGTH),
+        description: this.truncateText(button.buttonDescription, WHATSAPP_CONFIG.LIMITS.LIST_DESCRIPTION_MAX_LENGTH)
+      };
+      console.log('[WhatsappSender] Created row with description:', row);
+      return row;
+    }
+    
+    // Fallback: parse buttonText for older format
+    console.log('[WhatsappSender] Using fallback - no buttonDescription found');
     const parts = button.buttonText.split(' - ');
     const serviceName = parts[0];
     const priceAndDuration = parts.slice(1).join(' - ');
     
-    return {
+    const fallbackRow = {
       id: button.buttonValue,
       title: this.truncateText(serviceName, WHATSAPP_CONFIG.LIMITS.LIST_TITLE_MAX_LENGTH),
       description: priceAndDuration || `Select ${serviceName}`
     };
+    console.log('[WhatsappSender] Created fallback row:', fallbackRow);
+    return fallbackRow;
   }
 
   // Truncates text to specified length if needed
@@ -199,7 +221,7 @@ export class WhatsappSender implements IMessageSender {
     }
 
     const responseData = await response.json();
-    //console.log("[WhatsappSender] Message sent successfully. Response:", responseData);
+    console.log("[WhatsappSender] Message sent successfully. Response:", responseData);
   }
 
   // Main method: sends message response via WhatsApp Cloud API

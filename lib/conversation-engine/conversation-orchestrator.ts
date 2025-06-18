@@ -23,7 +23,7 @@ import { getBestKnowledgeMatch } from './llm-actions/chat-interactions/functions
 import { generateAgentResponse } from './llm-actions/llm-response-generator';
 import { Business } from '../database/models/business';
 import { Service } from '../database/models/service';
-import { BookingButtonGenerator } from './flows/bookings/customer-booking-steps';
+import { BookingButtonGenerator } from '../Juan-bot-engine/step-handlers/customer-booking-steps';
 
 export interface OrchestratorResult {
     finalBotResponse: BotResponse;

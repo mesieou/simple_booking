@@ -27,7 +27,8 @@ export interface BotResponse {
   buttons?: Array<{ 
     buttonText: string;   // The text displayed on the button
     buttonValue: string;  // The value sent back to the bot when pressed
-    buttonType?: 'postback' | 'link'; 
+    buttonType?: 'postback' | 'link';
+    buttonDescription?: string; // Additional description for the button (e.g., price, duration)
   }>;
   // Future enhancements for rich responses:
   // images?: Array<{ url: string; altText?: string }>;

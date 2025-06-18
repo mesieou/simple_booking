@@ -18,7 +18,7 @@ const BOOKING_CONFIG = {
     NO_SERVICES_AVAILABLE: 'No services available', 
     SERVICES_LOAD_ERROR: 'Unable to load services at the moment',
     SERVICE_SELECTION_ERROR: 'Could not process service selection.',
-    INVALID_SERVICE_SELECTION: 'Please select a valid service from the options provided.',
+    INVALID_SERVICE_SELECTION: 'Please select a valid service from the options provided or type the name of the service you\'d like.',
     NO_SERVICES_TO_CHOOSE: 'No services are currently available to choose from.',
     INVALID_ADDRESS: 'Please provide a valid address with street, suburb, and postcode.'
   },
@@ -119,6 +119,66 @@ class ServiceDataProcessor {
     return availableServices.find(service => service.id === serviceId);
   }
 
+  // NEW: Finds a service by name (intelligent matching)
+  static findServiceByName(serviceName: string, availableServices: ServiceData[]): ServiceData | undefined {
+    if (!serviceName || !availableServices.length) return undefined;
+    
+    const normalizedInput = serviceName.toLowerCase().trim();
+    console.log(`[ServiceProcessor] Looking for service by name: "${normalizedInput}"`);
+    
+    // Try exact name match first
+    let found = availableServices.find(service => 
+      service.name.toLowerCase() === normalizedInput
+    );
+    
+    if (found) {
+      console.log(`[ServiceProcessor] Found exact match: ${found.name}`);
+      return found;
+    }
+    
+    // Try partial/contains matching
+    found = availableServices.find(service => 
+      service.name.toLowerCase().includes(normalizedInput) || 
+      normalizedInput.includes(service.name.toLowerCase())
+    );
+    
+    if (found) {
+      console.log(`[ServiceProcessor] Found partial match: ${found.name}`);
+      return found;
+    }
+    
+    // Try word-based matching (for compound service names)
+    const inputWords = normalizedInput.split(/\s+/);
+    found = availableServices.find(service => {
+      const serviceWords = service.name.toLowerCase().split(/\s+/);
+      return inputWords.some(inputWord => 
+        serviceWords.some(serviceWord => 
+          serviceWord.includes(inputWord) || inputWord.includes(serviceWord)
+        )
+      );
+    });
+    
+    if (found) {
+      console.log(`[ServiceProcessor] Found word-based match: ${found.name}`);
+      return found;
+    }
+    
+    console.log(`[ServiceProcessor] No match found for: "${serviceName}"`);
+    return undefined;
+  }
+
+  // NEW: Smart service finding (tries ID first, then name)
+  static findServiceSmart(input: string, availableServices: ServiceData[]): ServiceData | undefined {
+    // Try UUID pattern first
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(input)) {
+      return this.findServiceById(input, availableServices);
+    }
+    
+    // Otherwise try name matching
+    return this.findServiceByName(input, availableServices);
+  }
+
   // Extracts essential service details for booking
   static extractServiceDetails(service: ServiceData) {
     return {
@@ -133,7 +193,7 @@ class ServiceDataProcessor {
 }
 
 // UI button generation utilities
-class BookingButtonGenerator {
+export class BookingButtonGenerator {
   
   // Creates error buttons based on error type
   static createErrorButtons(errorType: string): ButtonConfig[] {
@@ -182,7 +242,7 @@ class BookingButtonGenerator {
 // Validation utilities
 class BookingValidator {
   
-  // Validates service selection input
+  // Enhanced service selection validation with intelligent matching
   static validateServiceSelection(userInput: string, availableServices: ServiceData[]): LLMProcessingResult {
     console.log('[BookingValidator] Validating service selection:');
     console.log('[BookingValidator] User input:', userInput);
@@ -196,17 +256,25 @@ class BookingValidator {
       };
     }
 
-    const chosenService = ServiceDataProcessor.findServiceById(userInput, availableServices);
+    // Use smart service finding (tries ID first, then name matching)
+    const chosenService = ServiceDataProcessor.findServiceSmart(userInput, availableServices);
     console.log('[BookingValidator] Found service:', chosenService ? { id: chosenService.id, name: chosenService.name } : 'NOT FOUND');
     
     if (chosenService) {
-      return { isValidInput: true };
+      return { 
+        isValidInput: true,
+        // Store the actual service ID for later processing
+        transformedInput: chosenService.id
+      };
     }
 
     console.log('[BookingValidator] Service validation failed - service not found');
+    
+    // Provide helpful error message with available options
+    const serviceNames = availableServices.map(s => s.name).join(', ');
     return {
       isValidInput: false,
-      validationErrorMessage: BOOKING_CONFIG.ERROR_MESSAGES.INVALID_SERVICE_SELECTION
+      validationErrorMessage: `I couldn't find that service. Please select one of these options: ${serviceNames}`
     };
   }
 }
@@ -225,13 +293,13 @@ class AvailabilityService {
     }
   }
   
-  // Gets next 3 chronologically available time slots for the business that owns this WhatsApp number
-  static async getNext3AvailableSlotsForBusinessWhatsapp(
+  // Gets next 2 whole-hour chronologically available time slots for the business that owns this WhatsApp number
+  static async getNext2WholeHourSlotsForBusinessWhatsapp(
     businessWhatsappNumber: string, 
     serviceDuration: number
   ): Promise<Array<{ date: string; time: string; displayText: string }>> {
     try {
-      console.log(`[AvailabilityService] Getting next 3 slots for business with WhatsApp ${businessWhatsappNumber}, service duration ${serviceDuration} minutes`);
+      console.log(`[AvailabilityService] Getting next 2 whole-hour slots for business with WhatsApp ${businessWhatsappNumber}, service duration ${serviceDuration} minutes`);
       
       const userOwningThisBusiness = await User.findUserByBusinessWhatsappNumber(businessWhatsappNumber);
       if (!userOwningThisBusiness) {
@@ -242,10 +310,88 @@ class AvailabilityService {
       const calendarSettings = await CalendarSettings.getByUserAndBusiness(userOwningThisBusiness.id, userOwningThisBusiness.businessId);
       const providerTimezone = calendarSettings?.settings?.timezone || 'UTC';
 
-      const rawSlots = await AvailabilitySlots.getNext3AvailableSlots(userOwningThisBusiness.id, serviceDuration, 14, providerTimezone);
+      // Custom implementation to find whole hour slots by searching through raw availability data
+      // getNext3AvailableSlots is hardcoded to return only 3 slots total, so we need a different approach
       
-      // Simple display formatting
-      return rawSlots.map(slot => {
+      const today = new Date();
+      const endDate = new Date();
+      endDate.setDate(today.getDate() + 30); // Search 30 days ahead
+      
+      console.log(`[AvailabilityService] Searching for whole hour slots from ${today.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}`);
+      
+      // Get raw availability data for the date range
+      const availabilityData = await AvailabilitySlots.getByProviderAndDateRange(
+        userOwningThisBusiness.id,
+        today.toISOString().split('T')[0],
+        endDate.toISOString().split('T')[0]
+      );
+      
+      console.log(`[AvailabilityService] Found ${availabilityData.length} days of availability data`);
+      
+      // Find the suitable duration for the service
+      const availableDurations = [60, 90, 120, 150, 180, 240, 300, 360];
+      const suitableDuration = availableDurations.find(duration => duration >= serviceDuration);
+      
+      if (!suitableDuration) {
+        console.log(`[AvailabilityService] No suitable duration found for ${serviceDuration} minutes`);
+        return [];
+      }
+      
+      const durationKey = suitableDuration.toString();
+      console.log(`[AvailabilityService] Using duration ${durationKey} for service duration ${serviceDuration}`);
+      
+      // Collect all available slots and filter for whole hours
+      const wholeHourSlots: Array<{ date: string; time: string }> = [];
+      const nowInProviderTz = DateTime.now().setZone(providerTimezone);
+      
+      // Sort availability data by date
+      availabilityData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      
+      for (const dayData of availabilityData) {
+        const slotsForDuration = dayData.slots[durationKey] || [];
+        
+        // Filter for whole hours and future times only
+        for (const timeSlot of slotsForDuration) {
+          const [hours, minutes] = timeSlot.split(':');
+          
+          // Only consider whole hours (minutes = '00')
+          if (minutes === '00') {
+            const datePart = dayData.date.substring(0, 10);
+            const slotDateTime = DateTime.fromISO(`${datePart}T${timeSlot}`, { zone: providerTimezone });
+            
+            // Only consider slots that are in the future
+            if (slotDateTime.isValid && slotDateTime > nowInProviderTz) {
+              wholeHourSlots.push({
+                date: dayData.date,
+                time: timeSlot
+              });
+              
+              // Stop once we have 2 whole hour slots
+              if (wholeHourSlots.length >= 2) {
+                break;
+              }
+            }
+          }
+        }
+        
+        // Stop searching if we have enough slots
+        if (wholeHourSlots.length >= 2) {
+          break;
+        }
+      }
+      
+      console.log(`[AvailabilityService] Found ${wholeHourSlots.length} whole hour slots:`, wholeHourSlots.map(s => ({ date: s.date, time: s.time })));
+      
+      if (wholeHourSlots.length === 0) {
+        console.log(`[AvailabilityService] No whole hour slots found. This might indicate availability data only has 30-minute intervals.`);
+        return [];
+      }
+      
+      // Use all the whole hour slots we found (up to 2)
+      const selectedSlots = wholeHourSlots;
+      
+             // Format for display
+       return selectedSlots.map((slot: { date: string; time: string }) => {
         const date = new Date(slot.date);
         const today = new Date();
         const tomorrow = new Date(today);
@@ -260,12 +406,12 @@ class AvailabilityService {
           dateText = date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
         }
         
-        // Simple time formatting
-        const [hours, minutes] = slot.time.split(':');
+        // Simple time formatting for whole hours
+        const [hours] = slot.time.split(':');
         const hour24 = parseInt(hours);
         const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
         const ampm = hour24 >= 12 ? 'pm' : 'am';
-        const timeText = `${hour12}${minutes !== '00' ? `:${minutes}` : ''} ${ampm}`;
+        const timeText = `${hour12} ${ampm}`;
         
         return {
           ...slot,
@@ -274,7 +420,7 @@ class AvailabilityService {
       });
       
     } catch (error) {
-      console.error('[AvailabilityService] Error getting next 3 available slots for business WhatsApp:', error);
+      console.error('[AvailabilityService] Error getting next 2 whole-hour slots for business WhatsApp:', error);
       return [];
     }
   }
@@ -307,6 +453,7 @@ class AvailabilityService {
   ): Promise<boolean> {
     try {
       const availableHoursForThisBusinessAndDate = await AvailabilityService.getAvailableHoursForDateByBusinessWhatsapp(businessWhatsappNumber, date, serviceDuration);
+      console.log(`[ValidateCustomDate] Date: ${date}, Service Duration: ${serviceDuration}, Available Hours: [${availableHoursForThisBusinessAndDate.join(', ')}], Has Availability: ${availableHoursForThisBusinessAndDate.length > 0}`);
       return availableHoursForThisBusinessAndDate.length > 0;
     } catch (error) {
       console.error('[AvailabilityService] Error validating custom date for business WhatsApp:', error);
@@ -318,6 +465,15 @@ class AvailabilityService {
 // =====================================
 // NEW SIMPLIFIED STEP HANDLERS
 // =====================================
+
+import { 
+  BookingDataChecker, 
+  DateTimeFormatter, 
+  BookingDataManager, 
+  BookingButtonGenerator as UtilityButtonGenerator,
+  StepProcessorBase,
+  BookingMessageGenerator 
+} from './booking-utilities';
 
 // Step 1: Show next 2 available times + "choose another day" button
 // Job: ONLY display times, no input processing
@@ -335,7 +491,7 @@ export const showAvailableTimesHandler: IndividualStepHandler = {
     }
     
     // If this is a button click, reject it so it goes to handleTimeChoice
-    if (userInput.startsWith('slot_') || userInput === 'choose_another_day' || userInput === 'open_calendar') {
+    if (userInput.startsWith('slot_') || userInput === 'choose_another_day') {
       console.log('[ShowAvailableTimes] Button click detected - rejecting to pass to next step');
       return { 
         isValidInput: false,
@@ -343,11 +499,13 @@ export const showAvailableTimesHandler: IndividualStepHandler = {
       };
     }
     
-    // Other input types also rejected
-    console.log('[ShowAvailableTimes] Other input - rejecting');
-    return { isValidInput: false };
+    return { 
+      isValidInput: false,
+      validationErrorMessage: 'Please select one of the available options.' 
+    };
   },
   
+  // Use generic processor with custom availability fetching logic
   // Get and display available times only on first display
   processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
     console.log('[ShowAvailableTimes] Processing input:', validatedInput);
@@ -361,68 +519,48 @@ export const showAvailableTimesHandler: IndividualStepHandler = {
     const businessWhatsappNumberCustomersMessagedTo = chatContext.currentParticipant.businessWhatsappNumber;
     const selectedServiceByCustomer = currentGoalData.selectedService;
     
+    console.log('[ShowAvailableTimes] Business WhatsApp number customers messaged TO:', businessWhatsappNumberCustomersMessagedTo);
+    console.log('[ShowAvailableTimes] Service selected by customer:', selectedServiceByCustomer);
+    
     if (!businessWhatsappNumberCustomersMessagedTo || !selectedServiceByCustomer?.durationEstimate) {
       return {
         ...currentGoalData,
-        availabilityError: 'Configuration error'
+        availabilityError: 'Configuration error - missing business or service information',
+        confirmationMessage: 'Sorry, there was a configuration error. Please contact us directly.'
       };
     }
     
-    // Get next 3 available slots for the business that owns this WhatsApp number
-    const next3AvailableSlotsFromBusiness = await AvailabilityService.getNext3AvailableSlotsForBusinessWhatsapp(
+    const next2WholeHourSlots = await AvailabilityService.getNext2WholeHourSlotsForBusinessWhatsapp(
       businessWhatsappNumberCustomersMessagedTo,
       selectedServiceByCustomer.durationEstimate
     );
     
-    if (next3AvailableSlotsFromBusiness.length === 0) {
-      return {
-        ...currentGoalData,
-        availabilityError: 'No appointments currently available'
-      };
-    }
+    console.log('[ShowAvailableTimes] Next 2 whole hour slots:', next2WholeHourSlots);
     
     return {
       ...currentGoalData,
-      next3AvailableSlots: next3AvailableSlotsFromBusiness
+      next2WholeHourSlots: next2WholeHourSlots,
+      confirmationMessage: 'Here are the next available appointment times:'
     };
   },
   
-  // Show exactly 2 rounded time slots + "Choose another day" button
+  // Show exactly 2 whole hour time slots + "Choose another day" button
   fixedUiButtons: async (currentGoalData) => {
-    const next3Slots = currentGoalData.next3AvailableSlots as Array<{ date: string; time: string; displayText: string }> | undefined;
     const availabilityError = currentGoalData.availabilityError as string | undefined;
-    
     if (availabilityError) {
       return [{ buttonText: '📞 Contact us directly', buttonValue: 'contact_support' }];
     }
     
-    if (!next3Slots || next3Slots.length === 0) {
+    const next2WholeHourSlots = currentGoalData.next2WholeHourSlots as Array<{ date: string; time: string; displayText: string }> | undefined;
+    
+    if (!next2WholeHourSlots || next2WholeHourSlots.length === 0) {
       return [{ buttonText: '📅 Other days', buttonValue: 'choose_another_day' }];
     }
     
-    // Filter to only rounded times (00 minutes) and take first 2
-    const roundedTimeSlots = next3Slots.filter(slot => {
-      const [hours, minutes] = slot.time.split(':');
-      return minutes === '00'; // Only show rounded hours (7:00, 8:00, etc.)
-    }).slice(0, 2);
-    
-    if (roundedTimeSlots.length === 0) {
-      return [{ buttonText: '📅 Other days', buttonValue: 'choose_another_day' }];
-    }
-    
-    const timeSlotButtons = roundedTimeSlots.map((slot, index) => {
-      // Extract just the time part for cleaner button display
-      const [hours, minutes] = slot.time.split(':');
-      const hour24 = parseInt(hours);
-      const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
-      const ampm = hour24 >= 12 ? 'PM' : 'AM';
-      const timeOnly = `${hour12} ${ampm}`;
-      
-      return {
-        buttonText: `${slot.displayText.split(' ')[0]} ${timeOnly}`, // "Tomorrow 7 AM"
-        buttonValue: `slot_${index}_${slot.date}_${slot.time}`
-      };
-    });
+    const timeSlotButtons = next2WholeHourSlots.map((slot, index) => ({
+      buttonText: slot.displayText,
+      buttonValue: `slot_${index}_${slot.date}_${slot.time}`
+    }));
     
     return [
       ...timeSlotButtons,
@@ -449,37 +587,24 @@ export const handleTimeChoiceHandler: IndividualStepHandler = {
     };
   },
   
-  // Process user choice and set flags for subsequent steps
+  // Process user choice and set flags for subsequent steps using utilities
   processAndExtractData: async (validatedInput, currentGoalData) => {
     console.log('[HandleTimeChoice] Processing input:', validatedInput);
-    console.log('[HandleTimeChoice] Current goal data keys:', Object.keys(currentGoalData));
     
     if (validatedInput.startsWith('slot_')) {
-      // User selected a quick time slot
+      // User selected a quick time slot - use utility to set quick booking
       const parts = validatedInput.split('_');
       const selectedDate = parts[2];
       const selectedTime = parts[3];
       
       console.log('[HandleTimeChoice] Quick booking selected:', { selectedDate, selectedTime });
-      
-      return {
-        ...currentGoalData,
-        selectedDate,
-        selectedTime,
-        quickBookingSelected: true, // Flag to skip browse steps
-        confirmationMessage: 'Great! Your time slot has been selected.'
-      };
+      return BookingDataManager.setQuickBooking(currentGoalData, selectedDate, selectedTime);
     }
     
     if (validatedInput === 'choose_another_day') {
-      // User wants to browse more options
-      console.log('[HandleTimeChoice] Browse mode selected - advancing to day browser');
-      
-      return {
-        ...currentGoalData,
-        browseModeSelected: true, // Flag to show browse steps
-        confirmationMessage: 'Let me show you all available days...'
-      };
+      // User wants to browse more options - use utility to set browse mode and clear time data
+      console.log('[HandleTimeChoice] Browse mode selected - clearing time data');
+      return BookingDataManager.setBrowseMode(currentGoalData);
     }
     
     console.log('[HandleTimeChoice] Unexpected input, returning current data');
@@ -515,7 +640,10 @@ export const showDayBrowserHandler: IndividualStepHandler = {
     }
     
     console.log('[ShowDayBrowser] Other input, rejecting');
-    return { isValidInput: false };
+    return { 
+      isValidInput: false,
+      validationErrorMessage: 'Please select one of the available days.' 
+    };
   },
   
   // Show days only if in browse mode
@@ -569,7 +697,13 @@ export const showDayBrowserHandler: IndividualStepHandler = {
       date.setDate(today.getDate() + i);
       const dateString = date.toISOString().split('T')[0];
       
-      console.log(`[ShowDayBrowser] Checking if business has availability on ${dateString}`);
+      console.log(`[ShowDayBrowser] === DAY ${i} DEBUG ===`);
+      console.log(`[ShowDayBrowser] Today reference: ${today.toISOString()}`);
+      console.log(`[ShowDayBrowser] Adding ${i} days to today`);
+      console.log(`[ShowDayBrowser] Calculated date object: ${date.toISOString()}`);
+      console.log(`[ShowDayBrowser] Date string for availability check: ${dateString}`);
+      console.log(`[ShowDayBrowser] Date.getDay() (0=Sun, 6=Sat): ${date.getDay()}`);
+      console.log(`[ShowDayBrowser] Date breakdown - Year: ${date.getFullYear()}, Month: ${date.getMonth() + 1}, Day: ${date.getDate()}`);
       
       try {
         const businessHasAvailabilityOnThisDate = await AvailabilityService.validateCustomDateForBusinessWhatsapp(
@@ -578,24 +712,39 @@ export const showDayBrowserHandler: IndividualStepHandler = {
           selectedServiceByCustomer.durationEstimate
         );
         
+        // Calculate display text for all days (for debugging)
+        let displayText = '';
+        if (i === 0) {
+          displayText = `Today`;
+        } else if (i === 1) {
+          displayText = `Tomorrow`;
+        } else {
+          displayText = date.toLocaleDateString('en-GB', { 
+            weekday: 'short', day: 'numeric', month: 'short'
+          });
+        }
+        
         console.log(`[ShowDayBrowser] Business has availability on ${dateString}: ${businessHasAvailabilityOnThisDate}`);
+        console.log(`[ShowDayBrowser] Calculated display text: ${displayText}`);
         
         if (businessHasAvailabilityOnThisDate) {
-          let displayText = '';
-          if (i === 0) {
-            displayText = `Today`;
-          } else if (i === 1) {
-            displayText = `Tomorrow`;
-          } else {
-            displayText = date.toLocaleDateString('en-GB', { 
-              weekday: 'short', day: 'numeric', month: 'short'
-            });
-          }
+          // Enhanced debug logging
+          console.log(`[ShowDayBrowser] === ADDING AVAILABLE DAY ===`);
+          console.log(`[ShowDayBrowser] Date value (what goes in button): ${dateString}`);
+          console.log(`[ShowDayBrowser] Display text (what user sees): ${displayText}`);
+          console.log(`[ShowDayBrowser] Date object for display: ${date.toISOString()}`);
+          console.log(`[ShowDayBrowser] toLocaleDateString result: ${date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}`);
+          console.log(`[ShowDayBrowser] Weekday: ${date.toLocaleDateString('en-GB', { weekday: 'short' })}`);
+          console.log(`[ShowDayBrowser] Day of month: ${date.toLocaleDateString('en-GB', { day: 'numeric' })}`);
+          console.log(`[ShowDayBrowser] Month: ${date.toLocaleDateString('en-GB', { month: 'short' })}`);
+          console.log(`[ShowDayBrowser] === END AVAILABLE DAY ===`);
           
           availableDaysForThisBusiness.push({
             date: dateString,
             displayText: displayText
           });
+        } else {
+          console.log(`[ShowDayBrowser] No availability on ${dateString} (${displayText}), skipping`);
         }
       } catch (error) {
         console.error(`[ShowDayBrowser] Error checking business availability for ${dateString}:`, error);
@@ -651,7 +800,7 @@ export const showDayBrowserHandler: IndividualStepHandler = {
 // Job: ONLY process day selection when in browse mode
 export const selectSpecificDayHandler: IndividualStepHandler = {
   defaultChatbotPrompt: 'Please select a day:',
-  autoAdvance: true, // Auto-advance to next step after processing
+  // No autoAdvance - only advance when user actually selects a day
   
   // Skip if quick booking, validate day selection if browsing
   validateUserInput: async (userInput, currentGoalData) => {
@@ -678,9 +827,18 @@ export const selectSpecificDayHandler: IndividualStepHandler = {
     
     if (validatedInput.startsWith('day_')) {
       const selectedDate = validatedInput.replace('day_', '');
+      
+      console.log(`[SelectSpecificDay] === DAY SELECTION DEBUG ===`);
+      console.log(`[SelectSpecificDay] User clicked button with value: ${validatedInput}`);
+      console.log(`[SelectSpecificDay] Extracted date: ${selectedDate}`);
+      console.log(`[SelectSpecificDay] Date object from extracted date: ${new Date(selectedDate).toISOString()}`);
+      console.log(`[SelectSpecificDay] Day of week: ${new Date(selectedDate).toLocaleDateString('en-GB', { weekday: 'long' })}`);
+      console.log(`[SelectSpecificDay] === END DAY SELECTION DEBUG ===`);
+      
       return {
         ...currentGoalData,
         selectedDate,
+        shouldAutoAdvance: true, // Only auto-advance when day is successfully selected
         confirmationMessage: 'Got it. Let me get available times...' // Give feedback
       };
     }
@@ -763,7 +921,7 @@ export const showHoursForDayHandler: IndividualStepHandler = {
       const [hours, minutes] = time.split(':');
       const hour24 = parseInt(hours);
       const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
-      const ampm = hour24 >= 12 ? 'PM' : 'AM';
+      const ampm = hour24 >= 12 ? 'PM' : 'AM';  
       return {
         time24: time,
         display: `${hour12} ${ampm}` // Always rounded, so no minutes needed
@@ -810,7 +968,7 @@ export const showHoursForDayHandler: IndividualStepHandler = {
 // Job: ONLY process time selection when in browse mode
 export const selectSpecificTimeHandler: IndividualStepHandler = {
   defaultChatbotPrompt: 'Please select your preferred time:',
-  autoAdvance: true, // Auto-advance to the next step
+  // No autoAdvance - only advance when user actually selects a time
   
   // Skip if quick booking, validate time if browsing
   validateUserInput: async (userInput, currentGoalData) => {
@@ -819,6 +977,22 @@ export const selectSpecificTimeHandler: IndividualStepHandler = {
     }
     
     const formattedHours = currentGoalData.formattedAvailableHours || [];
+    
+    // If no time options are available but we're in browse mode, we need to go back to load hours
+    if (formattedHours.length === 0 && currentGoalData.selectedDate) {
+      return {
+        isValidInput: false,
+        validationErrorMessage: 'Loading available times...'
+      };
+    }
+    
+    // If no time options and no selected date, there's a bigger issue
+    if (formattedHours.length === 0) {
+      return {
+        isValidInput: false,
+        validationErrorMessage: 'Please select a date first.'
+      };
+    }
     
     // Check if the user input is one of the displayed options
     if (formattedHours.some((h: any) => h.display === userInput)) {
@@ -831,27 +1005,105 @@ export const selectSpecificTimeHandler: IndividualStepHandler = {
     };
   },
   
-  // Process time selection
-  processAndExtractData: async (validatedInput, currentGoalData) => {
+  // Process time selection or load time data if missing
+  processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
     if (currentGoalData.quickBookingSelected) {
       return currentGoalData; // Skip, time already set
     }
     
-    // Convert display format back to 24h if needed
-    let selectedTime = validatedInput;
-    const formattedHours = currentGoalData.formattedAvailableHours;
-    if (formattedHours) {
-      const matchedHour = formattedHours.find((h: any) => h.display === validatedInput);
-      if (matchedHour) {
-        selectedTime = matchedHour.time24;
+    const formattedHours = currentGoalData.formattedAvailableHours || [];
+    
+    // If we don't have time data but have a selected date, load the time data now
+    if (formattedHours.length === 0 && currentGoalData.selectedDate) {
+      const businessWhatsappNumber = chatContext.currentParticipant.businessWhatsappNumber;
+      const selectedService = currentGoalData.selectedService;
+      const selectedDate = currentGoalData.selectedDate;
+      
+      if (businessWhatsappNumber && selectedService?.durationEstimate && selectedDate) {
+        try {
+          // Load available hours for the selected date
+          const availableHours = await AvailabilityService.getAvailableHoursForDateByBusinessWhatsapp(
+            businessWhatsappNumber,
+            selectedDate,
+            selectedService.durationEstimate
+          );
+          
+          // Filter to only rounded times (00 minutes) and format for display
+          const roundedTimesOnly = availableHours.filter(time => {
+            const [hours, minutes] = time.split(':');
+            return minutes === '00'; // Only show rounded hours (7:00, 8:00, etc.)
+          });
+          
+          const formattedHoursForDisplay = roundedTimesOnly.map(time => {
+            const [hours, minutes] = time.split(':');
+            const hour24 = parseInt(hours);
+            const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
+            const ampm = hour24 >= 12 ? 'PM' : 'AM';
+            return {
+              time24: time,
+              display: `${hour12} ${ampm}`
+            };
+          });
+          
+          return {
+            ...currentGoalData,
+            availableHours,
+            formattedAvailableHours: formattedHoursForDisplay,
+            confirmationMessage: 'Please select a time:'
+          };
+          
+        } catch (error) {
+          console.error('[SelectSpecificTime] Error loading hours:', error);
+          return {
+            ...currentGoalData,
+            confirmationMessage: 'Sorry, there was an error loading available times. Please try selecting a date again.'
+          };
+        }
       }
+    }
+    
+    // If we still don't have time data, there's an issue
+    if (formattedHours.length === 0) {
+      return {
+        ...currentGoalData,
+        confirmationMessage: 'Please select a date first to see available times.'
+      };
+    }
+    
+    // Process time selection - convert display format back to 24h if needed
+    let selectedTime = validatedInput;
+    const matchedHour = formattedHours.find((h: any) => h.display === validatedInput);
+    if (matchedHour) {
+      selectedTime = matchedHour.time24;
     }
     
     return {
       ...currentGoalData,
       selectedTime,
+      shouldAutoAdvance: true, // Only auto-advance when time is successfully selected
       confirmationMessage: `Great! You've selected ${validatedInput}. Let's confirm your details.`
     };
+  },
+  
+  // Show time buttons if available
+  fixedUiButtons: async (currentGoalData) => {
+    if (currentGoalData.quickBookingSelected) {
+      return []; // No buttons needed for quick booking
+    }
+    
+    const formattedHours = currentGoalData.formattedAvailableHours || [];
+    
+    if (formattedHours.length === 0) {
+      return [{ buttonText: '📅 Choose a date first', buttonValue: 'choose_date' }];
+    }
+    
+    // Create buttons for each available time
+    const timeButtons = formattedHours.map((hour: any) => ({
+      buttonText: hour.display,
+      buttonValue: hour.display
+    }));
+    
+    return timeButtons;
   }
 };
 
@@ -864,8 +1116,8 @@ export const selectSpecificTimeHandler: IndividualStepHandler = {
 export const quoteSummaryHandler: IndividualStepHandler = {
   defaultChatbotPrompt: 'Here\'s your booking summary:',
   
-  // Only accept empty input (first display), reject button clicks so they go to next step
-  validateUserInput: async (userInput) => {
+  // Accept empty input (first display) and detect service selections
+  validateUserInput: async (userInput, currentGoalData) => {
     console.log('[QuoteSummary] Validating input:', userInput);
     
     // If this is empty input (first display), accept it
@@ -883,16 +1135,66 @@ export const quoteSummaryHandler: IndividualStepHandler = {
       };
     }
     
-    // Other input types also rejected
+    // Check if this looks like a service ID (UUID format)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(userInput)) {
+      console.log('[QuoteSummary] Service ID detected - accepting to restart booking process');
+      return { isValidInput: true };
+    }
+    
+    // Other input types rejected with a more helpful message
     console.log('[QuoteSummary] Other input - rejecting');
-    return { isValidInput: false };
+    return { 
+      isValidInput: false,
+      validationErrorMessage: 'Please use the buttons below to confirm or edit your quote.' 
+    };
   },
   
   // Calculate quote using proper helpers, persist to database, and generate comprehensive summary
   processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
     console.log('[QuoteSummary] Processing input:', validatedInput);
     
-    // Only process empty input (first display)
+    // Check if user selected a different service (UUID format)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(validatedInput)) {
+      console.log('[QuoteSummary] User selected different service, restarting booking process');
+      
+      // Find the service they selected
+      const availableServices = currentGoalData.availableServices;
+      const selectedServiceData = ServiceDataProcessor.findServiceById(validatedInput, availableServices);
+      
+      if (selectedServiceData) {
+        console.log('[QuoteSummary] Found new service:', selectedServiceData.name);
+        
+        // Reset the booking process with the new service
+        return {
+          availableServices: availableServices, // Keep the services list
+          selectedService: ServiceDataProcessor.extractServiceDetails(selectedServiceData),
+          // Clear all other booking data to restart the process
+          selectedDate: undefined,
+          selectedTime: undefined,
+          quickBookingSelected: undefined,
+          browseModeSelected: undefined,
+          finalServiceAddress: undefined,
+          serviceLocation: undefined,
+          persistedQuote: undefined,
+          quoteId: undefined,
+          bookingSummary: undefined,
+          // Set a flag to restart from the appropriate step
+          restartBookingFlow: true,
+          shouldAutoAdvance: true,
+          confirmationMessage: `Great! Let's book a ${selectedServiceData.name} appointment.`
+        };
+      } else {
+        console.log('[QuoteSummary] Service not found in available services');
+        return {
+          ...currentGoalData,
+          confirmationMessage: 'Sorry, that service is not available. Please use the buttons below.'
+        };
+      }
+    }
+    
+    // Only process empty input (first display) for normal quote generation
     if (validatedInput !== "") {
       console.log('[QuoteSummary] Non-empty input - not processing');
       return currentGoalData;
@@ -1485,7 +1787,7 @@ export const validateAddressHandler: IndividualStepHandler = {
 
 // Combined service display and selection - single responsibility
 export const selectServiceHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: 'Here are our available services:',
+  defaultChatbotPrompt: 'Here are our available services. Please select one from the list below, or type the name of the service you\'d like:',
   
   // Validates service selection (or accepts first-time display)
   validateUserInput: async (userInput, currentGoalData) => {
@@ -1548,11 +1850,12 @@ export const selectServiceHandler: IndividualStepHandler = {
       };
     }
     
-    // Process the service selection
-    const selectedServiceData = ServiceDataProcessor.findServiceById(validatedInput, availableServices || []);
+    // Process the service selection - use transformed input if available
+    const inputToProcess = validatedInput;
+    const selectedServiceData = ServiceDataProcessor.findServiceSmart(inputToProcess, availableServices || []);
     
     if (!selectedServiceData) {
-      console.log('[SelectService] ERROR: Service not found by ID:', validatedInput);
+      console.log('[SelectService] ERROR: Service not found:', inputToProcess);
       return { 
         ...currentGoalData, 
         availableServices: availableServices,
@@ -1563,8 +1866,15 @@ export const selectServiceHandler: IndividualStepHandler = {
     console.log('[SelectService] Successfully selected service:', selectedServiceData.name);
     return {
       ...currentGoalData,
+      // Update the service
       availableServices: availableServices,
-      selectedService: ServiceDataProcessor.extractServiceDetails(selectedServiceData)
+      selectedService: ServiceDataProcessor.extractServiceDetails(selectedServiceData),
+      // Clear only service-related data that needs recalculation
+      persistedQuote: undefined,
+      quoteId: undefined,
+      bookingSummary: undefined,
+      // Keep existing date/time selections - only clear if user specifically requests time change
+      // Keep: selectedDate, selectedTime, finalServiceAddress, serviceLocation, etc.
     };
   },
   
@@ -1580,6 +1890,7 @@ export const selectServiceHandler: IndividualStepHandler = {
 
     console.log('[SelectService] Creating service buttons for:', availableServices.length, 'services');
     const buttons = BookingButtonGenerator.createServiceButtons(availableServices);
+    console.log('[SelectService] Created buttons:', buttons.map(b => ({ text: b.buttonText, desc: b.buttonDescription })));
     return buttons;
   }
 };

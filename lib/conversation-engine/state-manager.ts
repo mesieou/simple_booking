@@ -282,6 +282,7 @@ class MessageProcessor {
         userCurrentGoal.collectedData.serviceLocation = undefined;
         userCurrentGoal.collectedData.bookingSummary = undefined;
       } else if (targetStepName === 'selectTime') {
+        // Clear date/time data when specifically navigating back to time selection
         userCurrentGoal.collectedData.selectedDate = undefined;
         userCurrentGoal.collectedData.selectedTime = undefined;
         userCurrentGoal.collectedData.quickBookingSelected = undefined;
@@ -289,6 +290,8 @@ class MessageProcessor {
         userCurrentGoal.collectedData.next3AvailableSlots = undefined;
         userCurrentGoal.collectedData.availableHours = undefined;
         userCurrentGoal.collectedData.formattedAvailableHours = undefined;
+        userCurrentGoal.collectedData.persistedQuote = undefined;
+        userCurrentGoal.collectedData.quoteId = undefined;
         userCurrentGoal.collectedData.bookingSummary = undefined;
       }
     } else {

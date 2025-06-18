@@ -282,13 +282,13 @@ class AvailabilityService {
     }
   }
   
-  // Gets next 3 chronologically available time slots for the given business
-  static async getNext3AvailableSlotsForBusiness(
+  // Gets next 2 whole-hour chronologically available time slots for the given business
+  static async getNext2WholeHourSlotsForBusiness(
     businessId: string, 
     serviceDuration: number
   ): Promise<Array<{ date: string; time: string; displayText: string }>> {
     try {
-      console.log(`[AvailabilityService] Getting next 3 slots for business ${businessId}, service duration ${serviceDuration} minutes`);
+      console.log(`[AvailabilityService] Getting next 2 whole-hour slots for business ${businessId}, service duration ${serviceDuration} minutes`);
       
       const userIdOfBusinessOwner = await this.findUserIdByBusinessId(businessId);
       if (!userIdOfBusinessOwner) {
@@ -296,10 +296,22 @@ class AvailabilityService {
         return [];
       }
       
-      const rawSlots = await AvailabilitySlots.getNext3AvailableSlots(userIdOfBusinessOwner, serviceDuration);
+      // Fetch more slots across more days to ensure we get enough whole hours
+      const rawSlots = await AvailabilitySlots.getNext3AvailableSlots(userIdOfBusinessOwner, serviceDuration, 21);
       
-      // Simple display formatting
-      return rawSlots.map(slot => {
+      // Filter for whole hours only (minutes must be '00')
+      const wholeHourSlots = rawSlots.filter((slot: { time: string }) => {
+        const [hours, minutes] = slot.time.split(':');
+        return minutes === '00'; // Only show rounded hours (9:00, 10:00, etc.)
+      });
+      
+      console.log(`[AvailabilityService] Found ${rawSlots.length} total slots, ${wholeHourSlots.length} whole hour slots`);
+      
+      // Take only the first 2 whole hour slots
+      const selectedSlots = wholeHourSlots.slice(0, 2);
+      
+      // Format for display
+      return selectedSlots.map((slot: { date: string; time: string }) => {
         const date = new Date(slot.date);
         const today = new Date();
         const tomorrow = new Date(today);
@@ -314,12 +326,12 @@ class AvailabilityService {
           dateText = date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
         }
         
-        // Simple time formatting
-        const [hours, minutes] = slot.time.split(':');
+        // Simple time formatting for whole hours
+        const [hours] = slot.time.split(':');
         const hour24 = parseInt(hours);
         const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
         const ampm = hour24 >= 12 ? 'pm' : 'am';
-        const timeText = `${hour12}${minutes !== '00' ? `:${minutes}` : ''} ${ampm}`;
+        const timeText = `${hour12} ${ampm}`;
         
         return {
           ...slot,
@@ -328,7 +340,7 @@ class AvailabilityService {
       });
       
     } catch (error) {
-      console.error('[AvailabilityService] Error getting next 3 available slots for business:', error);
+      console.error('[AvailabilityService] Error getting next 2 whole-hour slots for business:', error);
       return [];
     }
   }
@@ -377,7 +389,7 @@ class AvailabilityService {
 // Job: ONLY display times, no input processing
 export const selectTimeHandler: IndividualStepHandler = {
   defaultChatbotPrompt: 'Great. Your appointment will be at {{providerAddress}}. Please select one of the available times below, or let me know if you\'d like to see other days.',
-  pruneKeysAfterCompletion: ['next3AvailableSlots'],
+  pruneKeysAfterCompletion: ['next2WholeHourSlots'],
   
   validateUserInput: async (userInput: string, currentGoalData: Record<string, any>): Promise<LLMProcessingResult> => {
     // If this is the first time the step is being displayed, the input will be empty.
@@ -387,7 +399,7 @@ export const selectTimeHandler: IndividualStepHandler = {
     }
     
     // If the user has provided input, use the LLM interpreter to validate it against the available options.
-    const availableSlots = currentGoalData.next3AvailableSlots as Array<{ date: string; time: string; displayText: string }> | undefined;
+    const availableSlots = currentGoalData.next2WholeHourSlots as Array<{ date: string; time: string; displayText: string }> | undefined;
     if (!availableSlots) {
         return { isValidInput: false, validationErrorMessage: 'No time slots available to choose from.' };
     }
@@ -412,16 +424,16 @@ export const selectTimeHandler: IndividualStepHandler = {
         return { ...currentGoalData, availabilityError: 'Configuration error' };
     }
     
-    const next3AvailableSlotsFromBusiness = await AvailabilityService.getNext3AvailableSlotsForBusiness(
+    const next2WholeHourSlotsFromBusiness = await AvailabilityService.getNext2WholeHourSlotsForBusiness(
       businessId,
       selectedServiceByCustomer.durationEstimate
     );
     
-    if (next3AvailableSlotsFromBusiness.length === 0) {
+    if (next2WholeHourSlotsFromBusiness.length === 0) {
         return { ...currentGoalData, availabilityError: 'No appointments currently available' };
     }
     
-      return { ...currentGoalData, next3AvailableSlots: next3AvailableSlotsFromBusiness };
+      return { ...currentGoalData, next2WholeHourSlots: next2WholeHourSlotsFromBusiness };
     }
 
     // SCENARIO 2: The user has provided a valid choice. Process it.
@@ -453,13 +465,13 @@ export const selectTimeHandler: IndividualStepHandler = {
     return currentGoalData;
   },
   
-  // Show exactly 2 time slots + "Choose another day" button
+  // Show exactly 2 whole hour time slots + "Choose another day" button
   fixedUiButtons: async (currentGoalData: Record<string, any>): Promise<ButtonConfig[]> => {
     if (currentGoalData.availabilityError) return [{ buttonText: '📞 Contact us', buttonValue: 'contact_support' }];
-    const slots = currentGoalData.next3AvailableSlots || [];
+    const slots = currentGoalData.next2WholeHourSlots || [];
     if (slots.length === 0) return [{ buttonText: '📅 Other days', buttonValue: 'choose_another_day' }];
     
-    const timeSlotButtons = slots.slice(0, 2).map((slot: any, index: number) => ({
+    const timeSlotButtons = slots.map((slot: any, index: number) => ({
       buttonText: slot.displayText,
       buttonValue: `slot_${index}_${slot.date}_${slot.time}`
     }));
@@ -1122,7 +1134,7 @@ export const showEditOptionsHandler: IndividualStepHandler = {
   validateUserInput: async (userInput) => {
     // On first display (empty input), we just want to show the prompt and buttons.
     if (!userInput) {
-      return { isValidInput: false, validationErrorMessage: '' };
+      return { isValidInput: false, validationErrorMessage: 'Please select what you would like to edit.' };
     }
     
     const buttonOptions = [
@@ -1149,6 +1161,17 @@ export const showEditOptionsHandler: IndividualStepHandler = {
       console.log('[ShowEditOptions] Time edit requested - navigating back to showAvailableTimes');
       return {
         ...currentGoalData,
+        // Clear date/time data when user specifically requests time change
+        selectedDate: undefined,
+        selectedTime: undefined,
+        quickBookingSelected: undefined,
+        browseModeSelected: undefined,
+        next2WholeHourSlots: undefined,
+        availableHours: undefined,
+        formattedAvailableHours: undefined,
+        persistedQuote: undefined,
+        quoteId: undefined,
+        bookingSummary: undefined,
         navigateBackTo: 'showAvailableTimes',
         shouldAutoAdvance: true, // Auto-advance to navigate back
         confirmationMessage: 'Let\'s pick a different time...'
@@ -1351,8 +1374,15 @@ export const selectServiceHandler: IndividualStepHandler = {
     console.log('[SelectService] Successfully selected service:', selectedServiceData.name);
     return {
       ...currentGoalData,
+      // Update the service
       availableServices: availableServices,
-      selectedService: ServiceDataProcessor.extractServiceDetails(selectedServiceData)
+      selectedService: ServiceDataProcessor.extractServiceDetails(selectedServiceData),
+      // Clear only service-related data that needs recalculation
+      persistedQuote: undefined,
+      quoteId: undefined,
+      bookingSummary: undefined,
+      // Keep existing date/time selections - only clear if user specifically requests time change
+      // Keep: selectedDate, selectedTime, finalServiceAddress, serviceLocation, etc.
     };
   },
   
