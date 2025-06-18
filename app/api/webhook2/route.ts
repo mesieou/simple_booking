@@ -68,10 +68,10 @@ export async function POST(req: NextRequest) {
 
     const parsedEvent = parseWhatsappMessage(payload);
 
-    if (parsedEvent && "text" in parsedEvent && parsedEvent.senderId && parsedEvent.text) {
+    if (parsedEvent && "text" in parsedEvent && parsedEvent.senderId && parsedEvent.text && parsedEvent.text.trim()) {
       const parsedMessage = parsedEvent; // Treat as ParsedMessage
       console.log(`${LOG_PREFIX} Successfully parsed message from ${parsedMessage.senderId}: "${parsedMessage.text}"`);
-      
+
       const participant: ConversationalParticipant = {
         id: parsedMessage.senderId,
         type: 'customer', // Assuming WhatsApp users are customers
@@ -82,31 +82,36 @@ export async function POST(req: NextRequest) {
         // Add other participant details if available from parsedMessage or context
       };
 
-      try {
+              try {
         // Process with juan-bot's specific engine
         if (!parsedMessage.text) {
           console.log(`${LOG_PREFIX} Parsed message has no text content. Skipping bot processing.`);
           return; // Or handle as appropriate
         }
+        
         const juanBotRawResponse = await processIncomingMessage(parsedMessage.text, participant);
         
         // Adapt the juanBotRawResponse to the BotResponse interface expected by WhatsappSender
         let botManagerResponse: BotResponse | null = null;
         if (juanBotRawResponse && typeof juanBotRawResponse.chatbotResponse === 'string') {
+          const convertedButtons = juanBotRawResponse.uiButtons?.map(btn => ({
+            buttonText: btn.buttonText,
+            buttonValue: btn.buttonValue,
+            buttonDescription: btn.buttonDescription,
+            buttonType: btn.buttonType
+          }));
+          console.log(`${LOG_PREFIX} Converted buttons:`, convertedButtons?.map(b => ({ text: b.buttonText, desc: b.buttonDescription })));
+          
           botManagerResponse = { 
             text: juanBotRawResponse.chatbotResponse,
             // Convert bot manager's uiButtons to standardized buttons format
-            buttons: juanBotRawResponse.uiButtons?.map(btn => ({
-              buttonText: btn.buttonText,
-              buttonValue: btn.buttonValue,
-              buttonType: btn.buttonType
-            }))
+            buttons: convertedButtons
           };
         }
 
         console.log(`${LOG_PREFIX} Bot Manager generated response for ${parsedMessage.senderId}.`);
 
-        if (botManagerResponse && botManagerResponse.text) { // Check adapted response
+        if (botManagerResponse && botManagerResponse.text && botManagerResponse.text.trim()) { // Check adapted response has actual content
           const sender = new WhatsappSender();
           try {
             console.log(`${LOG_PREFIX} Attempting to send reply to ${parsedMessage.senderId}: "${botManagerResponse.text}"`);
@@ -117,7 +122,11 @@ export async function POST(req: NextRequest) {
             // Decide on error handling: maybe send a generic error to user or just log
           }
         } else {
-          console.log(`${LOG_PREFIX} No text in Bot Manager Response to send for ${parsedMessage.senderId}.`);
+          if (botManagerResponse && !botManagerResponse.text?.trim()) {
+            console.log(`${LOG_PREFIX} Bot Manager returned empty response - not sending message to ${parsedMessage.senderId}.`);
+          } else {
+            console.log(`${LOG_PREFIX} No text in Bot Manager Response to send for ${parsedMessage.senderId}.`);
+          }
         }
       } catch (botError) {
         console.error(`${LOG_PREFIX} Error processing message with Bot Manager for ${parsedMessage.senderId}:`, botError);
