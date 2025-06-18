@@ -466,6 +466,15 @@ class AvailabilityService {
 // NEW SIMPLIFIED STEP HANDLERS
 // =====================================
 
+import { 
+  BookingDataChecker, 
+  DateTimeFormatter, 
+  BookingDataManager, 
+  BookingButtonGenerator as UtilityButtonGenerator,
+  StepProcessorBase,
+  BookingMessageGenerator 
+} from './booking-utilities';
+
 // Step 1: Show next 2 available times + "choose another day" button
 // Job: ONLY display times, no input processing
 export const showAvailableTimesHandler: IndividualStepHandler = {
@@ -482,7 +491,7 @@ export const showAvailableTimesHandler: IndividualStepHandler = {
     }
     
     // If this is a button click, reject it so it goes to handleTimeChoice
-    if (userInput.startsWith('slot_') || userInput === 'choose_another_day' || userInput === 'open_calendar') {
+    if (userInput.startsWith('slot_') || userInput === 'choose_another_day') {
       console.log('[ShowAvailableTimes] Button click detected - rejecting to pass to next step');
       return { 
         isValidInput: false,
@@ -490,11 +499,13 @@ export const showAvailableTimesHandler: IndividualStepHandler = {
       };
     }
     
-    // Other input types also rejected
-    console.log('[ShowAvailableTimes] Other input - rejecting');
-    return { isValidInput: false };
+    return { 
+      isValidInput: false,
+      validationErrorMessage: 'Please select one of the available options.' 
+    };
   },
   
+  // Use generic processor with custom availability fetching logic
   // Get and display available times only on first display
   processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
     console.log('[ShowAvailableTimes] Processing input:', validatedInput);
@@ -508,59 +519,48 @@ export const showAvailableTimesHandler: IndividualStepHandler = {
     const businessWhatsappNumberCustomersMessagedTo = chatContext.currentParticipant.businessWhatsappNumber;
     const selectedServiceByCustomer = currentGoalData.selectedService;
     
+    console.log('[ShowAvailableTimes] Business WhatsApp number customers messaged TO:', businessWhatsappNumberCustomersMessagedTo);
+    console.log('[ShowAvailableTimes] Service selected by customer:', selectedServiceByCustomer);
+    
     if (!businessWhatsappNumberCustomersMessagedTo || !selectedServiceByCustomer?.durationEstimate) {
       return {
         ...currentGoalData,
-        availabilityError: 'Configuration error'
+        availabilityError: 'Configuration error - missing business or service information',
+        confirmationMessage: 'Sorry, there was a configuration error. Please contact us directly.'
       };
     }
     
-    // Get next 2 whole-hour available slots for the business that owns this WhatsApp number
-    const next2WholeHourSlotsFromBusiness = await AvailabilityService.getNext2WholeHourSlotsForBusinessWhatsapp(
+    const next2WholeHourSlots = await AvailabilityService.getNext2WholeHourSlotsForBusinessWhatsapp(
       businessWhatsappNumberCustomersMessagedTo,
       selectedServiceByCustomer.durationEstimate
     );
     
-    if (next2WholeHourSlotsFromBusiness.length === 0) {
-      return {
-        ...currentGoalData,
-        availabilityError: 'No appointments currently available'
-      };
-    }
+    console.log('[ShowAvailableTimes] Next 2 whole hour slots:', next2WholeHourSlots);
     
     return {
       ...currentGoalData,
-      next2WholeHourSlots: next2WholeHourSlotsFromBusiness
+      next2WholeHourSlots: next2WholeHourSlots,
+      confirmationMessage: 'Here are the next available appointment times:'
     };
   },
   
   // Show exactly 2 whole hour time slots + "Choose another day" button
   fixedUiButtons: async (currentGoalData) => {
-    const next2WholeHourSlots = currentGoalData.next2WholeHourSlots as Array<{ date: string; time: string; displayText: string }> | undefined;
     const availabilityError = currentGoalData.availabilityError as string | undefined;
-    
     if (availabilityError) {
       return [{ buttonText: '📞 Contact us directly', buttonValue: 'contact_support' }];
     }
+    
+    const next2WholeHourSlots = currentGoalData.next2WholeHourSlots as Array<{ date: string; time: string; displayText: string }> | undefined;
     
     if (!next2WholeHourSlots || next2WholeHourSlots.length === 0) {
       return [{ buttonText: '📅 Other days', buttonValue: 'choose_another_day' }];
     }
     
-    // No need to filter since we already have whole hour slots
-    const timeSlotButtons = next2WholeHourSlots.map((slot, index) => {
-      // Extract just the time part for cleaner button display
-      const [hours] = slot.time.split(':');
-      const hour24 = parseInt(hours);
-      const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
-      const ampm = hour24 >= 12 ? 'PM' : 'AM';
-      const timeOnly = `${hour12} ${ampm}`;
-      
-      return {
-        buttonText: `${slot.displayText.split(' ')[0]} ${timeOnly}`, // "Tomorrow 9 AM"
-        buttonValue: `slot_${index}_${slot.date}_${slot.time}`
-      };
-    });
+    const timeSlotButtons = next2WholeHourSlots.map((slot, index) => ({
+      buttonText: slot.displayText,
+      buttonValue: `slot_${index}_${slot.date}_${slot.time}`
+    }));
     
     return [
       ...timeSlotButtons,
@@ -587,37 +587,24 @@ export const handleTimeChoiceHandler: IndividualStepHandler = {
     };
   },
   
-  // Process user choice and set flags for subsequent steps
+  // Process user choice and set flags for subsequent steps using utilities
   processAndExtractData: async (validatedInput, currentGoalData) => {
     console.log('[HandleTimeChoice] Processing input:', validatedInput);
-    console.log('[HandleTimeChoice] Current goal data keys:', Object.keys(currentGoalData));
     
     if (validatedInput.startsWith('slot_')) {
-      // User selected a quick time slot
+      // User selected a quick time slot - use utility to set quick booking
       const parts = validatedInput.split('_');
       const selectedDate = parts[2];
       const selectedTime = parts[3];
       
       console.log('[HandleTimeChoice] Quick booking selected:', { selectedDate, selectedTime });
-      
-      return {
-        ...currentGoalData,
-        selectedDate,
-        selectedTime,
-        quickBookingSelected: true, // Flag to skip browse steps
-        confirmationMessage: 'Great! Your time slot has been selected.'
-      };
+      return BookingDataManager.setQuickBooking(currentGoalData, selectedDate, selectedTime);
     }
     
     if (validatedInput === 'choose_another_day') {
-      // User wants to browse more options
-      console.log('[HandleTimeChoice] Browse mode selected - advancing to day browser');
-      
-      return {
-        ...currentGoalData,
-        browseModeSelected: true, // Flag to show browse steps
-        confirmationMessage: 'Let me show you all available days...'
-      };
+      // User wants to browse more options - use utility to set browse mode and clear time data
+      console.log('[HandleTimeChoice] Browse mode selected - clearing time data');
+      return BookingDataManager.setBrowseMode(currentGoalData);
     }
     
     console.log('[HandleTimeChoice] Unexpected input, returning current data');
@@ -653,7 +640,10 @@ export const showDayBrowserHandler: IndividualStepHandler = {
     }
     
     console.log('[ShowDayBrowser] Other input, rejecting');
-    return { isValidInput: false };
+    return { 
+      isValidInput: false,
+      validationErrorMessage: 'Please select one of the available days.' 
+    };
   },
   
   // Show days only if in browse mode
@@ -810,7 +800,7 @@ export const showDayBrowserHandler: IndividualStepHandler = {
 // Job: ONLY process day selection when in browse mode
 export const selectSpecificDayHandler: IndividualStepHandler = {
   defaultChatbotPrompt: 'Please select a day:',
-  autoAdvance: true, // Auto-advance to next step after processing
+  // No autoAdvance - only advance when user actually selects a day
   
   // Skip if quick booking, validate day selection if browsing
   validateUserInput: async (userInput, currentGoalData) => {
@@ -848,6 +838,7 @@ export const selectSpecificDayHandler: IndividualStepHandler = {
       return {
         ...currentGoalData,
         selectedDate,
+        shouldAutoAdvance: true, // Only auto-advance when day is successfully selected
         confirmationMessage: 'Got it. Let me get available times...' // Give feedback
       };
     }
@@ -977,7 +968,7 @@ export const showHoursForDayHandler: IndividualStepHandler = {
 // Job: ONLY process time selection when in browse mode
 export const selectSpecificTimeHandler: IndividualStepHandler = {
   defaultChatbotPrompt: 'Please select your preferred time:',
-  autoAdvance: true, // Auto-advance to the next step
+  // No autoAdvance - only advance when user actually selects a time
   
   // Skip if quick booking, validate time if browsing
   validateUserInput: async (userInput, currentGoalData) => {
@@ -1089,6 +1080,7 @@ export const selectSpecificTimeHandler: IndividualStepHandler = {
     return {
       ...currentGoalData,
       selectedTime,
+      shouldAutoAdvance: true, // Only auto-advance when time is successfully selected
       confirmationMessage: `Great! You've selected ${validatedInput}. Let's confirm your details.`
     };
   },
@@ -1874,8 +1866,15 @@ export const selectServiceHandler: IndividualStepHandler = {
     console.log('[SelectService] Successfully selected service:', selectedServiceData.name);
     return {
       ...currentGoalData,
+      // Update the service
       availableServices: availableServices,
-      selectedService: ServiceDataProcessor.extractServiceDetails(selectedServiceData)
+      selectedService: ServiceDataProcessor.extractServiceDetails(selectedServiceData),
+      // Clear only service-related data that needs recalculation
+      persistedQuote: undefined,
+      quoteId: undefined,
+      bookingSummary: undefined,
+      // Keep existing date/time selections - only clear if user specifically requests time change
+      // Keep: selectedDate, selectedTime, finalServiceAddress, serviceLocation, etc.
     };
   },
   

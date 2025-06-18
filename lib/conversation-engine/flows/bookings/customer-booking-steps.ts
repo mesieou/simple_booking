@@ -1134,7 +1134,7 @@ export const showEditOptionsHandler: IndividualStepHandler = {
   validateUserInput: async (userInput) => {
     // On first display (empty input), we just want to show the prompt and buttons.
     if (!userInput) {
-      return { isValidInput: false, validationErrorMessage: '' };
+      return { isValidInput: false, validationErrorMessage: 'Please select what you would like to edit.' };
     }
     
     const buttonOptions = [
@@ -1161,6 +1161,17 @@ export const showEditOptionsHandler: IndividualStepHandler = {
       console.log('[ShowEditOptions] Time edit requested - navigating back to showAvailableTimes');
       return {
         ...currentGoalData,
+        // Clear date/time data when user specifically requests time change
+        selectedDate: undefined,
+        selectedTime: undefined,
+        quickBookingSelected: undefined,
+        browseModeSelected: undefined,
+        next2WholeHourSlots: undefined,
+        availableHours: undefined,
+        formattedAvailableHours: undefined,
+        persistedQuote: undefined,
+        quoteId: undefined,
+        bookingSummary: undefined,
         navigateBackTo: 'showAvailableTimes',
         shouldAutoAdvance: true, // Auto-advance to navigate back
         confirmationMessage: 'Let\'s pick a different time...'
@@ -1363,8 +1374,15 @@ export const selectServiceHandler: IndividualStepHandler = {
     console.log('[SelectService] Successfully selected service:', selectedServiceData.name);
     return {
       ...currentGoalData,
+      // Update the service
       availableServices: availableServices,
-      selectedService: ServiceDataProcessor.extractServiceDetails(selectedServiceData)
+      selectedService: ServiceDataProcessor.extractServiceDetails(selectedServiceData),
+      // Clear only service-related data that needs recalculation
+      persistedQuote: undefined,
+      quoteId: undefined,
+      bookingSummary: undefined,
+      // Keep existing date/time selections - only clear if user specifically requests time change
+      // Keep: selectedDate, selectedTime, finalServiceAddress, serviceLocation, etc.
     };
   },
   
