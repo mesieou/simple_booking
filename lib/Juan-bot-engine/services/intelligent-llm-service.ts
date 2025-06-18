@@ -33,6 +33,33 @@ export interface ContextualResponse {
   customButtons?: Array<{buttonText: string, buttonValue: string, buttonDescription?: string}>;
 }
 
+export interface ComprehensiveContext {
+  customer: {
+    name?: string;
+    phoneNumber?: string;
+    id?: string;
+  };
+  business: {
+    name?: string;
+    whatsappNumber?: string;
+    id?: string;
+  };
+  currentBooking: {
+    step?: string;
+    service?: any;
+    date?: string;
+    time?: string;
+    location?: any;
+    address?: string;
+    price?: number;
+    summary?: any;
+  };
+  availableServices: any[];
+  messageHistory: Array<{role: 'user' | 'assistant', content: string, timestamp: Date}>;
+  previousGoals: any[];
+  preferences: any;
+}
+
 export class IntelligentLLMService {
   
   /**
@@ -143,36 +170,123 @@ Analyze this message and determine the appropriate conversation flow action.`;
   }
 
   /**
-   * Generates contextual response based on conversation state and history
+   * Builds comprehensive context from all available information
+   */
+  private async buildComprehensiveContext(
+    currentGoal: UserGoal,
+    chatContext: ChatContext,
+    messageHistory: Array<{role: 'user' | 'assistant', content: string, timestamp: Date}>,
+    customerUser?: {firstName: string, lastName: string, id: string}
+  ): Promise<ComprehensiveContext> {
+    
+    const context: ComprehensiveContext = {
+      customer: {
+        name: customerUser ? `${customerUser.firstName} ${customerUser.lastName}` : undefined,
+        phoneNumber: chatContext.currentParticipant.customerWhatsappNumber,
+        id: customerUser?.id
+      },
+      business: {
+        name: undefined, // Will be filled below
+        whatsappNumber: chatContext.currentParticipant.businessWhatsappNumber,
+        id: chatContext.currentParticipant.associatedBusinessId
+      },
+      currentBooking: {
+        step: this.getCurrentStepName(currentGoal),
+        service: currentGoal.collectedData.selectedService,
+        date: currentGoal.collectedData.selectedDate,
+        time: currentGoal.collectedData.selectedTime,
+        location: currentGoal.collectedData.serviceLocation,
+        address: currentGoal.collectedData.finalServiceAddress || currentGoal.collectedData.customerAddress,
+        price: currentGoal.collectedData.selectedService?.fixedPrice,
+        summary: currentGoal.collectedData.bookingSummary
+      },
+      availableServices: currentGoal.collectedData.availableServices || [],
+      messageHistory: messageHistory,
+      previousGoals: chatContext.previousConversationSession?.activeGoals || [],
+      preferences: chatContext.participantPreferences
+    };
+
+    // Fetch business name if available
+    if (context.business.id) {
+      try {
+        const { Business } = await import('../../database/models/business');
+        const business = await Business.getById(context.business.id);
+        if (business) {
+          context.business.name = business.name;
+        }
+      } catch (error) {
+        console.error('[IntelligentLLMService] Error fetching business name:', error);
+      }
+    }
+
+    return context;
+  }
+
+  /**
+   * Gets current step name from goal
+   */
+  private getCurrentStepName(currentGoal: UserGoal): string {
+    try {
+      const { conversationFlowBlueprints } = require('../bot-manager');
+      const currentSteps = conversationFlowBlueprints[currentGoal.flowKey];
+      return currentSteps[currentGoal.currentStepIndex] || 'unknown';
+    } catch (error) {
+      return 'unknown';
+    }
+  }
+
+  /**
+   * Enhanced contextual response that can answer ANY question from available context
    */
   async generateContextualResponse(
     currentGoal: UserGoal,
     chatContext: ChatContext,
     lastUserMessage: string,
     conversationDecision: ConversationDecision,
-    messageHistory: Array<{role: 'user' | 'assistant', content: string, timestamp: Date}>
+    messageHistory: Array<{role: 'user' | 'assistant', content: string, timestamp: Date}>,
+    customerUser?: {firstName: string, lastName: string, id: string}
   ): Promise<ContextualResponse> {
     
+    // Build comprehensive context
+    const comprehensiveContext = await this.buildComprehensiveContext(
+      currentGoal, 
+      chatContext, 
+      messageHistory, 
+      customerUser
+    );
+
     const currentFlow = conversationFlowBlueprints[currentGoal.flowKey];
     const currentStepName = currentFlow[currentGoal.currentStepIndex];
-    const currentStepHandler = botTasks[currentStepName];
     
-    const systemPrompt = `You are a friendly, professional booking assistant. Generate a natural, helpful response based on the conversation context.
+    const systemPrompt = `You are a friendly, professional booking assistant with access to comprehensive conversation context. Your role is to answer ANY question the user asks using the available information, then smoothly guide them back to their booking.
 
-CURRENT CONTEXT:
-- User Goal: ${currentGoal.goalType} 
+COMPREHENSIVE KNOWLEDGE BASE:
+${this.formatContextForLLM(comprehensiveContext)}
+
+CURRENT BOOKING CONTEXT:
 - Current Step: ${currentStepName}
 - Flow Decision: ${conversationDecision.action}
 - Decision Reasoning: ${conversationDecision.reasoning}
-- Data Collected: ${JSON.stringify(currentGoal.collectedData)}
 
-RESPONSE GUIDELINES:
-1. Be natural and conversational, not robotic
-2. Acknowledge what the user said
-3. Guide them appropriately based on the flow decision
-4. If going back or switching, be understanding and helpful
-5. Keep responses concise but friendly
-6. Don't repeat information unnecessarily
+RESPONSE STRATEGY:
+1. **Answer ANY question** using the knowledge base above
+2. **Be specific and accurate** - use actual names, dates, services, etc. from the context
+3. **If information isn't available**, politely explain what you don't have access to
+4. **Always end with booking guidance** to return to the main flow
+5. **Be natural and conversational**, not robotic
+
+EXAMPLE RESPONSE PATTERNS:
+- Name question: "Hi [CustomerName]! Your name is [ActualName] from our customer records. Now, let's..."
+- Service question: "We offer [ListServices]. You've selected [CurrentService]. Would you like to..."
+- Booking status: "Your current booking is for [Service] on [Date] at [Time]. Let's..."
+- Business question: "We're [BusinessName] located at [Address]. For your appointment..."
+
+CRITICAL RULES:
+- Use ACTUAL information from the knowledge base, never make up details
+- If specific info isn't available, say so honestly
+- Always transition back to the booking flow
+- Keep responses concise but complete
+- Use the customer's actual name when available
 
 FLOW DECISION HANDLING:
 - "continue": Ask for clarification or provide helpful guidance
@@ -196,9 +310,9 @@ Return ONLY a JSON object:
     const userPrompt = `RECENT CONVERSATION:
 ${historyText}
 
-USER'S LAST MESSAGE: "${lastUserMessage}"
+USER'S QUESTION: "${lastUserMessage}"
 
-Generate an appropriate response for this situation.`;
+Using the comprehensive knowledge base above, answer the user's question with specific, accurate information, then guide them back to their booking.`;
 
     try {
       const response = await executeChatCompletion(
@@ -208,12 +322,12 @@ Generate an appropriate response for this situation.`;
         ],
         "gpt-4o",
         0.7, // Higher temperature for more natural responses
-        500
+        800 // Increased token limit for comprehensive responses
       );
 
       const resultText = response.choices[0]?.message?.content?.trim();
       if (!resultText) {
-        return this.getFallbackResponse(currentStepName);
+        return this.getFallbackResponse(currentStepName, comprehensiveContext);
       }
 
       // Parse JSON response
@@ -234,8 +348,77 @@ Generate an appropriate response for this situation.`;
 
     } catch (error) {
       console.error('[IntelligentLLMService] Error generating response:', error);
-      return this.getFallbackResponse(currentStepName);
+      return this.getFallbackResponse(currentStepName, comprehensiveContext);
     }
+  }
+
+  /**
+   * Formats comprehensive context for LLM consumption
+   */
+  private formatContextForLLM(context: ComprehensiveContext): string {
+    let formatted = "";
+
+    // Customer Information
+    if (context.customer.name) {
+      formatted += `CUSTOMER INFO:\n- Name: ${context.customer.name}\n- Phone: ${context.customer.phoneNumber || 'Unknown'}\n\n`;
+    } else {
+      formatted += `CUSTOMER INFO:\n- Name: Not available in our records\n- Phone: ${context.customer.phoneNumber || 'Unknown'}\n\n`;
+    }
+
+    // Business Information
+    if (context.business.name) {
+      formatted += `BUSINESS INFO:\n- Name: ${context.business.name}\n- WhatsApp: ${context.business.whatsappNumber || 'Unknown'}\n\n`;
+    }
+
+    // Current Booking Progress
+    formatted += `CURRENT BOOKING PROGRESS:\n`;
+    if (context.currentBooking.service) {
+      formatted += `- Service: ${context.currentBooking.service.name} ($${context.currentBooking.service.fixedPrice}, ${context.currentBooking.service.durationEstimate}min)\n`;
+    }
+    if (context.currentBooking.date) {
+      formatted += `- Date: ${context.currentBooking.date}\n`;
+    }
+    if (context.currentBooking.time) {
+      formatted += `- Time: ${context.currentBooking.time}\n`;
+    }
+    if (context.currentBooking.address) {
+      formatted += `- Location: ${context.currentBooking.address}\n`;
+    }
+    if (context.currentBooking.summary) {
+      formatted += `- Booking Summary: ${JSON.stringify(context.currentBooking.summary)}\n`;
+    }
+    formatted += `- Current Step: ${context.currentBooking.step}\n\n`;
+
+    // Available Services
+    if (context.availableServices && context.availableServices.length > 0) {
+      formatted += `AVAILABLE SERVICES:\n`;
+      context.availableServices.forEach(service => {
+        formatted += `- ${service.name}: $${service.fixedPrice} (${service.durationEstimate}min) - ${service.description || 'No description'}\n`;
+      });
+      formatted += `\n`;
+    }
+
+    // Recent Conversation History
+    if (context.messageHistory && context.messageHistory.length > 0) {
+      formatted += `RECENT CONVERSATION:\n`;
+      context.messageHistory.slice(-8).forEach(msg => {
+        formatted += `${msg.role}: ${msg.content}\n`;
+      });
+      formatted += `\n`;
+    }
+
+    // Previous Goals/Bookings
+    if (context.previousGoals && context.previousGoals.length > 0) {
+      formatted += `PREVIOUS BOOKINGS:\n`;
+      context.previousGoals.forEach(goal => {
+        if (goal.collectedData?.selectedService) {
+          formatted += `- ${goal.collectedData.selectedService.name} on ${goal.collectedData.selectedDate || 'unknown date'}\n`;
+        }
+      });
+      formatted += `\n`;
+    }
+
+    return formatted;
   }
 
   /**
@@ -350,11 +533,23 @@ Return ONLY JSON:
   }
 
   /**
-   * Provides fallback response when generation fails
+   * Enhanced fallback response with context awareness
    */
-  private getFallbackResponse(stepName: string): ContextualResponse {
+  private getFallbackResponse(stepName: string, context?: ComprehensiveContext): ContextualResponse {
+    let fallbackText = "I'm here to help you";
+    
+    if (context?.customer.name) {
+      fallbackText = `I'm here to help you, ${context.customer.name.split(' ')[0]}`;
+    }
+    
+    if (context?.currentBooking.service) {
+      fallbackText += ` with your ${context.currentBooking.service.name} booking`;
+    }
+    
+    fallbackText += ". What would you like to know?";
+    
     return {
-      text: "I'm here to help you. Could you please let me know what you'd like to do?",
+      text: fallbackText,
       shouldShowButtons: true
     };
   }
