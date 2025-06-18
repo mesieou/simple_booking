@@ -1,4 +1,9 @@
 import { Business } from "../database/models/business";
+import { extractSessionHistoryAndContext } from "../conversation-engine/llm-actions/chat-interactions/functions/extract-history-and-context.ts";
+import { persistSessionState } from "../conversation-engine/llm-actions/chat-interactions/functions/save-history-and-context";
+import { ChatMessage } from "../database/models/chat-session";
+import { UserContext } from "../database/models/user-context";
+import { IntelligentLLMService } from './services/intelligent-llm-service';
 // --- Core Type Definitions ---
 export type ConversationalParticipantType = 'business' | 'customer';
 type UserGoalType = 'accountManagement' | 'serviceBooking' | 'frequentlyAskedQuestion' | 'humanAgentEscalation';
@@ -37,7 +42,7 @@ interface ChatConversationSession {
   };
 }
 
-interface UserGoal {
+export interface UserGoal {
   goalType: UserGoalType;
   goalAction?: GoalActionType;
   goalStatus: 'inProgress' | 'completed' | 'failed';
@@ -60,6 +65,7 @@ export interface LLMProcessingResult {
   isValidInput?: boolean;
   validationErrorMessage?: string;
   errorMessageDetails?: string;
+  transformedInput?: string; // For intelligent input transformation (e.g., service name -> service ID)
 }
 
 export interface ChatContext {
@@ -78,6 +84,7 @@ export interface ChatContext {
 export type ButtonConfig = {
   buttonText: string;
   buttonValue: string;
+  buttonDescription?: string;
   buttonType?: 'postback' | 'link';
 };
 
@@ -90,7 +97,7 @@ export interface IndividualStepHandler {
 }
 
 // --- Conversation Flow Configuration ---
-const conversationFlowBlueprints: Record<string, string[]> = {
+export const conversationFlowBlueprints: Record<string, string[]> = {
   businessAccountCreation: ['getName', 'getBusinessEmail', 'getBusinessPhone', 'selectTimeZone', 'confirmAccountDetails'],
   businessAccountDeletion: ['confirmDeletionRequest', 'verifyUserPassword', 'initiateAccountDeletion'],
   bookingCreatingForMobileService: ['askAddress', 'validateAddress', 'selectService', 'confirmLocation', 'showAvailableTimes', 'handleTimeChoice', 'showDayBrowser', 'selectSpecificDay', 'showHoursForDay', 'selectSpecificTime', 'checkExistingUser', 'handleUserStatus', 'askUserName', 'createNewUser', 'quoteSummary', 'handleQuoteChoice', 'createBooking', 'displayConfirmedBooking'],
@@ -126,7 +133,7 @@ import {
     displayConfirmedBookingHandler
 } from './step-handlers/customer-booking-steps';
 
-const botTasks: Record<string, IndividualStepHandler> = {
+export const botTasks: Record<string, IndividualStepHandler> = {
   getBusinessEmail: getBusinessEmailHandler,
   askAddress: askAddressHandler,
   validateAddress: validateAddressHandler,
@@ -178,58 +185,11 @@ function shouldSkipStep(stepName: string, goalData: Record<string, any>): boolea
   return false;
 }
 
-// --- LLM Interface (Mock Implementation) ---
-class LLMService {
-  
-  // Detects user intention from message content
-  async detectIntention(userMessage: string, context: ChatContext): Promise<LLMProcessingResult> {
-    const message = userMessage.toLowerCase();
-    const participantType = context.currentParticipant.type;
-    
-    // Business user intentions
-    if (participantType === 'business') {
-      if (message.includes('create account')) return { detectedUserGoalType: 'accountManagement', detectedGoalAction: 'create', confidenceScore: 0.9 };
-      if (message.includes('delete account')) return { detectedUserGoalType: 'accountManagement', detectedGoalAction: 'delete', confidenceScore: 0.9 };
-    }
-    
-    // Customer user intentions
-    if (participantType === 'customer') {
-      // Explicit booking requests
-      if (message.includes('book') || message.includes('appointment') || message.includes('schedule')) {
-        return { detectedUserGoalType: 'serviceBooking', detectedGoalAction: 'create', confidenceScore: 0.9 };
-      }
-      
-      // FAQ-style questions
-      if (message.includes('question') || message.includes('how') || message.includes('what') || message.includes('when') || message.includes('where') || message.includes('price') || message.includes('cost')) {
-        return { detectedUserGoalType: 'frequentlyAskedQuestion', confidenceScore: 0.7 };
-      }
-      
-      // Greetings and general messages - default to booking for service businesses
-      if (message.includes('hola') || message.includes('hello') || message.includes('hi') || message.includes('hey') || message.length < 20) {
-        return { detectedUserGoalType: 'serviceBooking', detectedGoalAction: 'create', confidenceScore: 0.6 };
-      }
-      
-      // Default for customers: assume they want to book something
-      return { detectedUserGoalType: 'serviceBooking', detectedGoalAction: 'create', confidenceScore: 0.5 };
-    }
-    
-    return {}; // No clear intention detected
-  }
-
-  // Validates user input
-  async validateInput(content: string): Promise<LLMProcessingResult> {
-    return { isValidInput: content.includes('@') }; // Simple email validation mock
-  }
-
-  // Extracts information from user input
-  async extractInformation(content: string): Promise<LLMProcessingResult> {
-    return { extractedInformation: { extractedValue: content } };
-  }
-}
+// --- Enhanced LLM Interface using Intelligent Service ---
 
 // --- Message Processing Logic ---
 class MessageProcessor {
-  private llmService = new LLMService();
+  private llmService = new IntelligentLLMService();
 
   /**
    * Advances the goal's step index, skipping any steps that are not applicable
@@ -249,6 +209,86 @@ class MessageProcessor {
         nextStepName = ''; 
       }
     } while (nextStepName && shouldSkipStep(nextStepName, userCurrentGoal.collectedData));
+  }
+
+  /**
+   * Maps LLM-suggested step names to actual blueprint step names
+   */
+  private mapToActualStep(suggestedStep: string, flowKey: string): string | undefined {
+    const currentSteps = conversationFlowBlueprints[flowKey];
+    
+    // Direct match first
+    if (currentSteps.includes(suggestedStep)) {
+      return suggestedStep;
+    }
+    
+    // Common mappings for user intentions
+    const stepMappings: Record<string, string[]> = {
+      'selectService': ['selectService'],
+      'selectDateTime': ['showAvailableTimes'],
+      'selectDate': ['showAvailableTimes'],
+      'selectTime': ['showAvailableTimes'],
+      'changeDate': ['showAvailableTimes'],
+      'changeTime': ['showAvailableTimes'],
+      'changeDateTime': ['showAvailableTimes'],
+      'address': ['askAddress'],
+      'changeAddress': ['askAddress'],
+      'location': ['confirmLocation'],
+      'changeLocation': ['askAddress']
+    };
+    
+    for (const [pattern, possibleSteps] of Object.entries(stepMappings)) {
+      if (suggestedStep.toLowerCase().includes(pattern.toLowerCase())) {
+        for (const step of possibleSteps) {
+          if (currentSteps.includes(step)) {
+            console.log(`[MessageProcessor] Mapped "${suggestedStep}" to "${step}"`);
+            return step;
+          }
+        }
+      }
+    }
+    
+    return undefined;
+  }
+
+  /**
+   * Infers the correct step based on user intent when LLM suggestion doesn't match
+   */
+  private inferStepFromUserIntent(suggestedStep: string, flowKey: string): string | undefined {
+    const currentSteps = conversationFlowBlueprints[flowKey];
+    
+    // Analyze the suggested step for keywords
+    const lowerSuggestion = suggestedStep.toLowerCase();
+    
+    if (lowerSuggestion.includes('date') || lowerSuggestion.includes('time') || lowerSuggestion.includes('when')) {
+      // User wants to change date/time - go back to time selection
+      const timeSteps = ['showAvailableTimes', 'handleTimeChoice', 'showDayBrowser', 'selectSpecificDay', 'showHoursForDay'];
+      for (const step of timeSteps) {
+        if (currentSteps.includes(step)) {
+          console.log(`[MessageProcessor] Inferred step "${step}" for date/time change request`);
+          return step;
+        }
+      }
+    }
+    
+    if (lowerSuggestion.includes('service')) {
+      // User wants to change service
+      if (currentSteps.includes('selectService')) {
+        console.log(`[MessageProcessor] Inferred step "selectService" for service change request`);
+        return 'selectService';
+      }
+    }
+    
+    if (lowerSuggestion.includes('address') || lowerSuggestion.includes('location')) {
+      // User wants to change address/location
+      if (currentSteps.includes('askAddress')) {
+        console.log(`[MessageProcessor] Inferred step "askAddress" for address change request`);
+        return 'askAddress';
+      }
+    }
+    
+    console.log(`[MessageProcessor] Could not infer step from: ${suggestedStep}`);
+    return undefined;
   }
 
   /**
@@ -287,64 +327,151 @@ class MessageProcessor {
     }
   }
 
-  // Creates a new chat session for a participant
-  private async createNewChatSession(participant: ConversationalParticipant): Promise<ChatConversationSession> {
-    console.log(`[MessageProcessor] Creating new session for participant: ${participant.id}`);
-    const newSession: ChatConversationSession = {
-      id: `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+
+
+  // Converts database models to internal session format
+  private convertToInternalSession(historyAndContext: any, participant: ConversationalParticipant): ChatConversationSession {
+    // Convert ChatMessage[] to our internal UserGoal format
+    const activeGoals: UserGoal[] = [];
+    
+    // If there's a current goal in the user context that's still in progress, reconstruct it
+    if (historyAndContext.userContext.currentGoal && historyAndContext.userContext.currentGoal.goalStatus === 'inProgress') {
+      const currentGoal = historyAndContext.userContext.currentGoal;
+      
+      // Convert message history from ChatMessage[] to our internal format
+      const messageHistory = historyAndContext.historyForLLM.map((msg: ChatMessage) => ({
+        speakerRole: msg.role === 'user' ? 'user' as const : 'chatbot' as const,
+        content: msg.content,
+        messageTimestamp: msg.timestamp ? new Date(msg.timestamp) : new Date()
+      }));
+
+      const userGoal: UserGoal = {
+        goalType: currentGoal.goalType || 'serviceBooking',
+        goalAction: currentGoal.goalAction,
+        goalStatus: currentGoal.goalStatus,
+        currentStepIndex: currentGoal.currentStepIndex || 0,
+        collectedData: currentGoal.collectedData || {},
+        messageHistory: messageHistory,
+        flowKey: currentGoal.flowKey || 'bookingCreatingForMobileService'
+      };
+      
+      activeGoals.push(userGoal);
+      console.log(`[ConvertToInternalSession] Restored in-progress goal: ${currentGoal.goalType} at step ${currentGoal.currentStepIndex}`);
+    } else if (historyAndContext.userContext.currentGoal) {
+      console.log(`[ConvertToInternalSession] Found completed/failed goal, not restoring to active goals`);
+    } else {
+      console.log(`[ConvertToInternalSession] No current goal found, ready for new conversation`);
+    }
+
+    return {
+      id: historyAndContext.currentSessionId,
       participantId: participant.id,
       participantType: participant.type,
-      activeGoals: [],
-      sessionStartTimestamp: new Date(),
+      activeGoals: activeGoals,
+      sessionStartTimestamp: new Date(), // This could be improved with actual session start time
       lastMessageTimestamp: new Date(),
-      sessionStatus: 'active',
-      communicationChannel: 'whatsapp',
-      sessionMetadata: { languagePreference: BOT_CONFIG.DEFAULT_LANGUAGE }
+      sessionStatus: 'active' as const,
+      communicationChannel: 'whatsapp' as const,
+      sessionMetadata: {
+        languagePreference: historyAndContext.userContext.participantPreferences?.language || BOT_CONFIG.DEFAULT_LANGUAGE
+      }
     };
-    activeSessionsDB[participant.id] = newSession;
-    return newSession;
   }
 
-  // Gets or creates chat context for a participant
-  private async getOrCreateChatContext(participant: ConversationalParticipant): Promise<ChatContext> {
+  // Gets or creates chat context for a participant using database persistence
+  private async getOrCreateChatContext(participant: ConversationalParticipant): Promise<{context: ChatContext, sessionId: string, userContext: UserContext}> {
     console.log(`[MessageProcessor] Building context for participant: ${participant.id}`);
-    console.log(`[MessageProcessor] Business WhatsApp number customers messaged TO: ${participant.businessWhatsappNumber}`);
-    console.log(`[MessageProcessor] Customer WhatsApp number messaging FROM: ${participant.customerWhatsappNumber}`);
-    const existingSession = activeSessionsDB[participant.id];
 
-    // Dynamically find the business ID
+    // Dynamically find the business ID - LENIENT like old mock storage
     let associatedBusinessId: string | undefined;
     if (participant.businessWhatsappNumber) {
-        const business = await Business.getByWhatsappNumber(participant.businessWhatsappNumber);
+        let business = await Business.getByWhatsappNumber(participant.businessWhatsappNumber);
+        
+        if (!business) {
+            // If direct lookup fails, just use the first available business (like old mock storage)
+            const allBusinesses = await Business.getAll();
+            if (allBusinesses.length > 0) {
+                business = allBusinesses[0]; // Just use first business - lenient like before
+            }
+        }
+        
         if (business && business.id) {
             associatedBusinessId = business.id;
-            console.log(`[MessageProcessor] Dynamically found business ID: ${associatedBusinessId}`);
         } else {
-            console.error(`[MessageProcessor] CRITICAL: Could not find business for WhatsApp number: ${participant.businessWhatsappNumber}`);
-            // Handle cases where business is not found. For now, we'll leave it undefined.
+            // Even if no business found, continue with a default ID (like old mock storage did)
+            associatedBusinessId = undefined; // Let it continue without business ID
         }
     }
 
     const participantWithBusinessId: ConversationalParticipant = {
       ...participant,
       associatedBusinessId: associatedBusinessId,
-      businessWhatsappNumber: participant.businessWhatsappNumber, // Preserve the business WhatsApp number customers message TO
-      customerWhatsappNumber: participant.customerWhatsappNumber // Preserve the customer WhatsApp number messaging FROM
+      businessWhatsappNumber: participant.businessWhatsappNumber,
+      customerWhatsappNumber: participant.customerWhatsappNumber
     };
 
-    console.log(`[MessageProcessor] Final participant business WhatsApp number (customers message TO): ${participantWithBusinessId.businessWhatsappNumber}`);
-    console.log(`[MessageProcessor] Final participant customer WhatsApp number (messaging FROM): ${participantWithBusinessId.customerWhatsappNumber}`);
+    // Use the persistence layer to get session history and context - LENIENT like old mock storage
+    let historyAndContext;
+    if (associatedBusinessId) {
+      historyAndContext = await extractSessionHistoryAndContext(
+        'whatsapp', // channel
+        participant.customerWhatsappNumber || participant.id, // channelUserId 
+        associatedBusinessId, // businessId
+        BOT_CONFIG.SESSION_TIMEOUT_HOURS, // sessionTimeoutHours
+        {
+          // Don't pass userId since we don't have a proper user UUID mapping yet
+          // The channelUserId (phone number) is sufficient for session management
+        }
+      );
+    } else {
+      // No business ID found - create minimal mock-like context (like old system)
+      historyAndContext = null;
+    }
 
-    return {
+    if (!historyAndContext) {
+      // Create a minimal mock-like response when persistence fails (like old mock storage)
+      historyAndContext = {
+        currentSessionId: `mock-session-${Date.now()}`,
+        historyForLLM: [],
+        isNewSession: true,
+        userContext: {
+          id: `mock-context-${Date.now()}`,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          channelUserId: participant.customerWhatsappNumber || participant.id,
+          businessId: null,
+          currentGoal: null,
+          previousGoal: null,
+          participantPreferences: null,
+          frequentlyDiscussedTopics: null
+        }
+      };
+    }
+
+    // Convert database models to our internal format
+    const currentSession = this.convertToInternalSession(historyAndContext, participantWithBusinessId);
+    
+    // Convert frequentlyDiscussedTopics from comma-separated string to array
+    const frequentlyDiscussedTopics = historyAndContext.userContext.frequentlyDiscussedTopics
+      ? historyAndContext.userContext.frequentlyDiscussedTopics.split(', ').filter(topic => topic.trim() !== '')
+      : ['general queries', 'booking help'];
+    
+    const context: ChatContext = {
       currentParticipant: participantWithBusinessId,
-      currentConversationSession: existingSession,
-      previousConversationSession: completedSessionsDB[participant.id]?.slice(-1)[0],
-      frequentlyDiscussedTopics: ['general queries', 'booking help'],
-      participantPreferences: userPreferencesDB[participant.id] || { 
+      currentConversationSession: currentSession,
+      previousConversationSession: undefined, // Previous sessions are already included in history
+      frequentlyDiscussedTopics: frequentlyDiscussedTopics,
+      participantPreferences: historyAndContext.userContext.participantPreferences || { 
         language: BOT_CONFIG.DEFAULT_LANGUAGE, 
         timezone: BOT_CONFIG.DEFAULT_TIMEZONE, 
         notificationSettings: { email: true } 
       }
+    };
+
+    return {
+      context,
+      sessionId: historyAndContext.currentSessionId,
+      userContext: historyAndContext.userContext
     };
   }
 
@@ -510,7 +637,528 @@ class MessageProcessor {
     return { responseToUser, uiButtonsToDisplay };
   }
 
-  // Processes user input for an existing goal
+  // Enhanced goal processing with intelligent analysis while preserving blueprint flow
+  private async processExistingGoalIntelligent(
+    userCurrentGoal: UserGoal,
+    currentContext: ChatContext,
+    incomingUserMessage: string
+  ): Promise<{ responseToUser: string; uiButtonsToDisplay?: ButtonConfig[] }> {
+    console.log(`[MessageProcessor] Processing existing goal with intelligent enhancement`);
+    
+    // Prepare message history for LLM analysis
+    const messageHistory = userCurrentGoal.messageHistory.map(msg => ({
+      role: msg.speakerRole === 'user' ? 'user' as const : 'assistant' as const,
+      content: msg.content,
+      timestamp: msg.messageTimestamp
+    }));
+
+    try {
+      // Analyze conversation flow decision with LLM
+      const conversationDecision = await this.llmService.analyzeConversationFlow(
+        incomingUserMessage,
+        userCurrentGoal,
+        currentContext,
+        messageHistory
+      );
+
+      console.log(`[MessageProcessor] Intelligent analysis:`, conversationDecision);
+
+      // Handle special navigation requests ONLY
+      if (conversationDecision.action === 'go_back' && conversationDecision.confidence > 0.7) {
+        return this.handleGoBack(userCurrentGoal, currentContext, conversationDecision);
+      }
+      
+      if (conversationDecision.action === 'restart' && conversationDecision.confidence > 0.8) {
+        return this.handleRestart(userCurrentGoal, currentContext);
+      }
+      
+      if (conversationDecision.action === 'switch_topic' && conversationDecision.confidence > 0.8) {
+        return this.handleTopicSwitch(currentContext, conversationDecision, incomingUserMessage);
+      }
+
+      // For all other cases (continue/advance), use original blueprint flow with intelligent enhancement
+      return this.processOriginalFlowWithIntelligentEnhancement(
+        userCurrentGoal, 
+        currentContext, 
+        incomingUserMessage, 
+        conversationDecision
+      );
+
+    } catch (error) {
+      console.error(`[MessageProcessor] LLM analysis failed, falling back to original flow:`, error);
+      // Fallback to original processing if LLM fails
+      return this.processExistingGoal(userCurrentGoal, currentContext, incomingUserMessage);
+    }
+  }
+
+  // Handles when user wants to go back and change something
+  private async handleGoBack(
+    userCurrentGoal: UserGoal,
+    currentContext: ChatContext,
+    conversationDecision: any
+  ): Promise<{ responseToUser: string; uiButtonsToDisplay?: ButtonConfig[] }> {
+    console.log(`[MessageProcessor] Handling go_back request`);
+    
+    // Map LLM suggested steps to actual blueprint steps
+    let actualTargetStep: string | undefined;
+    
+    if (conversationDecision.targetStep) {
+      actualTargetStep = this.mapToActualStep(conversationDecision.targetStep, userCurrentGoal.flowKey);
+    }
+
+    // If we have a valid target step, navigate there
+    if (actualTargetStep) {
+      this.navigateBackToStep(userCurrentGoal, actualTargetStep);
+    } else if (conversationDecision.targetStep) {
+      // LLM suggested a step but it doesn't exist - try to infer from the suggestion
+      actualTargetStep = this.inferStepFromUserIntent(conversationDecision.targetStep, userCurrentGoal.flowKey);
+      if (actualTargetStep) {
+        this.navigateBackToStep(userCurrentGoal, actualTargetStep);
+      } else {
+        // Default: go back one step if possible
+        if (userCurrentGoal.currentStepIndex > 0) {
+          userCurrentGoal.currentStepIndex--;
+        }
+      }
+    } else {
+      // Default: go back one step if possible
+      if (userCurrentGoal.currentStepIndex > 0) {
+        userCurrentGoal.currentStepIndex--;
+      }
+    }
+
+    // Now execute the target step to show the actual content/buttons
+    const currentSteps = conversationFlowBlueprints[userCurrentGoal.flowKey];
+    const targetStepName = currentSteps[userCurrentGoal.currentStepIndex];
+    const targetStepHandler = botTasks[targetStepName];
+    
+    console.log(`[MessageProcessor] Executing target step after go_back: ${targetStepName}`);
+
+    if (targetStepHandler) {
+      // Execute the target step's processAndExtractData to get the actual content
+      const targetStepResult = await targetStepHandler.processAndExtractData("", userCurrentGoal.collectedData, currentContext);
+      userCurrentGoal.collectedData = typeof targetStepResult === 'object' && 'extractedInformation' in targetStepResult ?
+                                      { ...userCurrentGoal.collectedData, ...targetStepResult.extractedInformation } :
+                                      targetStepResult as Record<string, any>;
+      
+      // Generate contextual response for going back
+      let responseToUser: string;
+      try {
+        const contextualResponse = await this.llmService.generateContextualResponse(
+          userCurrentGoal,
+          currentContext,
+          'User wants to go back and change something',
+          conversationDecision,
+          userCurrentGoal.messageHistory.map(msg => ({
+            role: msg.speakerRole === 'user' ? 'user' as const : 'assistant' as const,
+            content: msg.content,
+            timestamp: msg.messageTimestamp
+          }))
+        );
+        responseToUser = contextualResponse.text;
+      } catch (error) {
+        console.error(`[MessageProcessor] LLM response generation failed for go_back:`, error);
+        responseToUser = userCurrentGoal.collectedData.confirmationMessage || 
+                        targetStepHandler.defaultChatbotPrompt || 
+                        "Let's update your selection.";
+      }
+      
+      // Get the actual buttons from the target step handler
+      let uiButtonsToDisplay: ButtonConfig[] | undefined;
+      if (targetStepHandler.fixedUiButtons) {
+        if (typeof targetStepHandler.fixedUiButtons === 'function') {
+          uiButtonsToDisplay = await targetStepHandler.fixedUiButtons(userCurrentGoal.collectedData, currentContext);
+        } else {
+          uiButtonsToDisplay = targetStepHandler.fixedUiButtons;
+        }
+      }
+
+      return {
+        responseToUser,
+        uiButtonsToDisplay
+      };
+    } else {
+      console.error(`[MessageProcessor] No handler found for target step: ${targetStepName}`);
+      return {
+        responseToUser: "Something went wrong while navigating back. Please try again.",
+        uiButtonsToDisplay: []
+      };
+    }
+  }
+
+  // Handles when user wants to restart the conversation
+  private async handleRestart(
+    userCurrentGoal: UserGoal,
+    currentContext: ChatContext
+  ): Promise<{ responseToUser: string; uiButtonsToDisplay?: ButtonConfig[] }> {
+    console.log(`[MessageProcessor] Handling restart request`);
+    
+    // Reset goal to beginning
+    userCurrentGoal.currentStepIndex = 0;
+    userCurrentGoal.collectedData = {
+      availableServices: userCurrentGoal.collectedData.availableServices // Keep services data
+    };
+
+    // Execute first step
+    return this.executeFirstStep(userCurrentGoal, currentContext, "restart");
+  }
+
+  // Handles when user switches to a completely different topic
+  private async handleTopicSwitch(
+    currentContext: ChatContext,
+    conversationDecision: any,
+    incomingUserMessage: string
+  ): Promise<{ responseToUser: string; uiButtonsToDisplay?: ButtonConfig[] }> {
+    console.log(`[MessageProcessor] Handling topic switch to: ${conversationDecision.newGoalType}`);
+    
+    // This will be handled by creating a new goal in the main processing logic
+    // For now, return a response indicating we understand the topic change
+    return {
+      responseToUser: "I understand you'd like to switch topics. Let me help you with that.",
+      uiButtonsToDisplay: []
+    };
+  }
+
+  // Enhanced original flow that preserves all blueprint steps and buttons but adds intelligent responses
+  private async processOriginalFlowWithIntelligentEnhancement(
+    userCurrentGoal: UserGoal,
+    currentContext: ChatContext,
+    incomingUserMessage: string,
+    conversationDecision?: any
+  ): Promise<{ responseToUser: string; uiButtonsToDisplay?: ButtonConfig[] }> {
+    console.log(`[MessageProcessor] Processing original blueprint flow with intelligent enhancement`);
+    
+    // Add user message to goal history
+    userCurrentGoal.messageHistory.push({ 
+      speakerRole: 'user', 
+      content: incomingUserMessage, 
+      messageTimestamp: new Date() 
+    });
+
+    const currentSteps = conversationFlowBlueprints[userCurrentGoal.flowKey];
+    if (!currentSteps || !currentSteps[userCurrentGoal.currentStepIndex]) {
+      throw new Error('No handler found for current step');
+    }
+
+    const stepName = currentSteps[userCurrentGoal.currentStepIndex];
+    const currentStepHandler = botTasks[stepName];
+
+    console.log(`[MessageProcessor] Current step: ${stepName} (${userCurrentGoal.currentStepIndex})`);
+    console.log(`[MessageProcessor] Processing user input: "${incomingUserMessage}"`);
+
+    if (!currentStepHandler) {
+      throw new Error('No handler found for current step');
+    }
+
+    // === ORIGINAL VALIDATION LOGIC ===
+    const validationResult = await currentStepHandler.validateUserInput(incomingUserMessage, userCurrentGoal.collectedData, currentContext);
+    const isInputValid = typeof validationResult === 'boolean' ? validationResult : validationResult.isValidInput || false;
+    const specificValidationError = typeof validationResult === 'object' ? validationResult.validationErrorMessage : undefined;
+    const transformedInput = typeof validationResult === 'object' ? validationResult.transformedInput : undefined;
+
+    let responseToUser: string;
+    let uiButtonsToDisplay: ButtonConfig[] | undefined;
+
+    if (isInputValid) {
+      // === ENHANCED PROCESSING LOGIC - Use transformed input if available ===
+      const inputToProcess = transformedInput || incomingUserMessage;
+      console.log(`[MessageProcessor] Processing input: "${inputToProcess}" ${transformedInput ? '(transformed from: "' + incomingUserMessage + '")' : ''}`);
+      const processingResult = await currentStepHandler.processAndExtractData(inputToProcess, userCurrentGoal.collectedData, currentContext);
+      userCurrentGoal.collectedData = typeof processingResult === 'object' && 'extractedInformation' in processingResult ?
+                                      { ...userCurrentGoal.collectedData, ...processingResult.extractedInformation } :
+                                      processingResult as Record<string, any>;
+
+      // === ORIGINAL SPECIAL HANDLING LOGIC ===
+      // Handle restart booking flow
+      if (userCurrentGoal.collectedData.restartBookingFlow) {
+        return this.handleOriginalRestartFlow(userCurrentGoal, currentContext);
+      }
+
+      // Handle navigate back
+      if (userCurrentGoal.collectedData.navigateBackTo) {
+        return this.handleOriginalNavigateBack(userCurrentGoal, currentContext);
+      }
+
+      // === ORIGINAL STEP ADVANCEMENT ===
+      this.advanceAndSkipStep(userCurrentGoal);
+      
+      // Check if flow is completed
+      if (userCurrentGoal.currentStepIndex >= currentSteps.length) {
+        userCurrentGoal.goalStatus = 'completed';
+        responseToUser = "Great! Your booking request has been processed.";
+        uiButtonsToDisplay = undefined;
+      } else {
+        // === ORIGINAL NEXT STEP EXECUTION ===
+        const nextStepName = currentSteps[userCurrentGoal.currentStepIndex];
+        const nextStepHandler = botTasks[nextStepName];
+        if (nextStepHandler) {
+          console.log(`[MessageProcessor] Executing next step: ${nextStepName}`);
+          
+          const nextStepResult = await nextStepHandler.processAndExtractData("", userCurrentGoal.collectedData, currentContext);
+          userCurrentGoal.collectedData = typeof nextStepResult === 'object' && 'extractedInformation' in nextStepResult ?
+                                          { ...userCurrentGoal.collectedData, ...nextStepResult.extractedInformation } :
+                                          nextStepResult as Record<string, any>;
+          
+          // === ORIGINAL AUTO-ADVANCE LOGIC ===
+          if (nextStepHandler.autoAdvance || userCurrentGoal.collectedData.shouldAutoAdvance) {
+            console.log(`[MessageProcessor] Auto-advancing from step: ${nextStepName}`);
+            if (userCurrentGoal.collectedData.shouldAutoAdvance) {
+                userCurrentGoal.collectedData.shouldAutoAdvance = false;
+            }
+            this.advanceAndSkipStep(userCurrentGoal);
+            
+            if (userCurrentGoal.currentStepIndex < currentSteps.length) {
+              const autoAdvanceResult = await this.executeAutoAdvanceStep(userCurrentGoal, currentContext);
+              responseToUser = autoAdvanceResult.responseToUser;
+              uiButtonsToDisplay = autoAdvanceResult.uiButtonsToDisplay;
+            } else {
+              userCurrentGoal.goalStatus = 'completed';
+              responseToUser = "Great! Your booking request has been processed.";
+              uiButtonsToDisplay = undefined;
+            }
+          } else {
+            // === ENHANCED: Use intelligent response generation while keeping original buttons ===
+            try {
+              if (conversationDecision) {
+                const contextualResponse = await this.llmService.generateContextualResponse(
+                  userCurrentGoal,
+                  currentContext,
+                  incomingUserMessage,
+                  conversationDecision,
+                  userCurrentGoal.messageHistory.map(msg => ({
+                    role: msg.speakerRole === 'user' ? 'user' as const : 'assistant' as const,
+                    content: msg.content,
+                    timestamp: msg.messageTimestamp
+                  }))
+                );
+                responseToUser = contextualResponse.text;
+              } else {
+                // Fallback to original response
+                responseToUser = userCurrentGoal.collectedData.confirmationMessage || 
+                                nextStepHandler.defaultChatbotPrompt || 
+                                "Let's continue with your booking.";
+              }
+            } catch (error) {
+              console.error(`[MessageProcessor] LLM response generation failed, using original:`, error);
+              responseToUser = userCurrentGoal.collectedData.confirmationMessage || 
+                              nextStepHandler.defaultChatbotPrompt || 
+                              "Let's continue with your booking.";
+            }
+            
+            // === ALWAYS USE ORIGINAL BUTTONS ===
+            if (nextStepHandler.fixedUiButtons) {
+              if (typeof nextStepHandler.fixedUiButtons === 'function') {
+                uiButtonsToDisplay = await nextStepHandler.fixedUiButtons(userCurrentGoal.collectedData, currentContext);
+              } else {
+                uiButtonsToDisplay = nextStepHandler.fixedUiButtons;
+              }
+            }
+          }
+        } else {
+          responseToUser = "Something went wrong with the booking flow.";
+        }
+      }
+    } else {
+      // === ORIGINAL VALIDATION FAILURE HANDLING ===
+      if (specificValidationError === '' || !specificValidationError) {
+        console.log(`[MessageProcessor] Validation failed with empty error - advancing to next step`);
+        return this.handleOriginalEmptyValidationError(userCurrentGoal, currentContext, incomingUserMessage);
+      } else {
+        // === ENHANCED: Use intelligent response for validation errors while keeping original buttons ===
+        try {
+          if (conversationDecision) {
+            const contextualResponse = await this.llmService.generateContextualResponse(
+              userCurrentGoal,
+              currentContext,
+              incomingUserMessage,
+              { ...conversationDecision, action: 'continue' },
+              userCurrentGoal.messageHistory.map(msg => ({
+                role: msg.speakerRole === 'user' ? 'user' as const : 'assistant' as const,
+                content: msg.content,
+                timestamp: msg.messageTimestamp
+              }))
+            );
+            responseToUser = contextualResponse.text || specificValidationError;
+          } else {
+            responseToUser = specificValidationError;
+          }
+        } catch (error) {
+          console.error(`[MessageProcessor] LLM error response generation failed:`, error);
+          responseToUser = specificValidationError || "I didn't understand that. Could you please try again?";
+        }
+        
+        // === ALWAYS USE ORIGINAL BUTTONS ===
+        if (currentStepHandler.fixedUiButtons) {
+          if (typeof currentStepHandler.fixedUiButtons === 'function') {
+            uiButtonsToDisplay = await currentStepHandler.fixedUiButtons(userCurrentGoal.collectedData, currentContext);
+          } else {
+            uiButtonsToDisplay = currentStepHandler.fixedUiButtons;
+          }
+        }
+      }
+    }
+
+    userCurrentGoal.messageHistory.push({ speakerRole: 'chatbot', content: responseToUser, messageTimestamp: new Date() });
+    return { responseToUser, uiButtonsToDisplay };
+  }
+
+  // Helper methods for original flow logic
+  private async handleOriginalRestartFlow(userCurrentGoal: UserGoal, currentContext: ChatContext) {
+    console.log(`[MessageProcessor] Handling original restart booking flow`);
+    const selectedService = userCurrentGoal.collectedData.selectedService;
+    let targetStep: string;
+    
+    if (selectedService?.mobile) {
+      targetStep = 'askAddress';
+    } else {
+      targetStep = 'confirmLocation';
+    }
+    
+    userCurrentGoal.collectedData.restartBookingFlow = false;
+    this.navigateBackToStep(userCurrentGoal, targetStep);
+    
+    const currentSteps = conversationFlowBlueprints[userCurrentGoal.flowKey];
+    const targetStepName = currentSteps[userCurrentGoal.currentStepIndex];
+    const targetStepHandler = botTasks[targetStepName];
+    
+    if (targetStepHandler) {
+      const targetStepResult = await targetStepHandler.processAndExtractData("", userCurrentGoal.collectedData, currentContext);
+      userCurrentGoal.collectedData = typeof targetStepResult === 'object' && 'extractedInformation' in targetStepResult ?
+                                      { ...userCurrentGoal.collectedData, ...targetStepResult.extractedInformation } :
+                                      targetStepResult as Record<string, any>;
+      
+      const responseToUser = userCurrentGoal.collectedData.confirmationMessage || 
+                      targetStepHandler.defaultChatbotPrompt || 
+                      "Let's continue with your new service selection.";
+      
+      let uiButtonsToDisplay: ButtonConfig[] | undefined;
+      if (targetStepHandler.fixedUiButtons) {
+        if (typeof targetStepHandler.fixedUiButtons === 'function') {
+          uiButtonsToDisplay = await targetStepHandler.fixedUiButtons(userCurrentGoal.collectedData, currentContext);
+        } else {
+          uiButtonsToDisplay = targetStepHandler.fixedUiButtons;
+        }
+      }
+      
+      userCurrentGoal.messageHistory.push({ speakerRole: 'chatbot', content: responseToUser, messageTimestamp: new Date() });
+      return { responseToUser, uiButtonsToDisplay };
+    } else {
+      const responseToUser = "Something went wrong while restarting the booking. Please try again.";
+      userCurrentGoal.messageHistory.push({ speakerRole: 'chatbot', content: responseToUser, messageTimestamp: new Date() });
+      return { responseToUser };
+    }
+  }
+
+  private async handleOriginalNavigateBack(userCurrentGoal: UserGoal, currentContext: ChatContext) {
+    const targetStep = userCurrentGoal.collectedData.navigateBackTo as string;
+    console.log(`[MessageProcessor] Handling original navigate back to: ${targetStep}`);
+    
+    this.navigateBackToStep(userCurrentGoal, targetStep);
+    
+    const currentSteps = conversationFlowBlueprints[userCurrentGoal.flowKey];
+    const targetStepName = currentSteps[userCurrentGoal.currentStepIndex];
+    const targetStepHandler = botTasks[targetStepName];
+    
+    if (targetStepHandler) {
+      const targetStepResult = await targetStepHandler.processAndExtractData("", userCurrentGoal.collectedData, currentContext);
+      userCurrentGoal.collectedData = typeof targetStepResult === 'object' && 'extractedInformation' in targetStepResult ?
+                                      { ...userCurrentGoal.collectedData, ...targetStepResult.extractedInformation } :
+                                      targetStepResult as Record<string, any>;
+      
+      const responseToUser = userCurrentGoal.collectedData.confirmationMessage || 
+                      targetStepHandler.defaultChatbotPrompt || 
+                      "Let's update your selection.";
+      
+      let uiButtonsToDisplay: ButtonConfig[] | undefined;
+      if (targetStepHandler.fixedUiButtons) {
+        if (typeof targetStepHandler.fixedUiButtons === 'function') {
+          uiButtonsToDisplay = await targetStepHandler.fixedUiButtons(userCurrentGoal.collectedData, currentContext);
+        } else {
+          uiButtonsToDisplay = targetStepHandler.fixedUiButtons;
+        }
+      }
+      
+      userCurrentGoal.messageHistory.push({ speakerRole: 'chatbot', content: responseToUser, messageTimestamp: new Date() });
+      return { responseToUser, uiButtonsToDisplay };
+    } else {
+      const responseToUser = "Something went wrong while navigating back. Please try again.";
+      userCurrentGoal.messageHistory.push({ speakerRole: 'chatbot', content: responseToUser, messageTimestamp: new Date() });
+      return { responseToUser };
+    }
+  }
+
+  private async handleOriginalEmptyValidationError(userCurrentGoal: UserGoal, currentContext: ChatContext, incomingUserMessage: string) {
+    const currentSteps = conversationFlowBlueprints[userCurrentGoal.flowKey];
+    this.advanceAndSkipStep(userCurrentGoal);
+    
+    if (userCurrentGoal.currentStepIndex >= currentSteps.length) {
+      userCurrentGoal.goalStatus = 'completed';
+      const responseToUser = "Great! Your booking request has been processed.";
+      userCurrentGoal.messageHistory.push({ speakerRole: 'chatbot', content: responseToUser, messageTimestamp: new Date() });
+      return { responseToUser };
+    } else {
+      const nextStepName = currentSteps[userCurrentGoal.currentStepIndex];
+      const nextStepHandler = botTasks[nextStepName];
+      if (nextStepHandler) {
+        console.log(`[MessageProcessor] Processing user input "${incomingUserMessage}" with next step: ${nextStepName}`);
+        
+        const nextValidationResult = await nextStepHandler.validateUserInput(incomingUserMessage, userCurrentGoal.collectedData, currentContext);
+        const nextIsInputValid = typeof nextValidationResult === 'boolean' ? nextValidationResult : nextValidationResult.isValidInput || false;
+        
+        if (nextIsInputValid) {
+          const nextStepResult = await nextStepHandler.processAndExtractData(incomingUserMessage, userCurrentGoal.collectedData, currentContext);
+          userCurrentGoal.collectedData = typeof nextStepResult === 'object' && 'extractedInformation' in nextStepResult ?
+                                          { ...userCurrentGoal.collectedData, ...nextStepResult.extractedInformation } :
+                                          nextStepResult as Record<string, any>;
+          
+          if (nextStepHandler.autoAdvance || userCurrentGoal.collectedData.shouldAutoAdvance) {
+            console.log(`[MessageProcessor] Auto-advancing from step: ${nextStepName}`);
+            if (userCurrentGoal.collectedData.shouldAutoAdvance) {
+                userCurrentGoal.collectedData.shouldAutoAdvance = false;
+            }
+            this.advanceAndSkipStep(userCurrentGoal);
+            
+            if (userCurrentGoal.currentStepIndex < currentSteps.length) {
+              const autoAdvanceResult = await this.executeAutoAdvanceStep(userCurrentGoal, currentContext);
+              userCurrentGoal.messageHistory.push({ speakerRole: 'chatbot', content: autoAdvanceResult.responseToUser, messageTimestamp: new Date() });
+              return autoAdvanceResult;
+            } else {
+              userCurrentGoal.goalStatus = 'completed';
+              const responseToUser = "Great! Your booking request has been processed.";
+              userCurrentGoal.messageHistory.push({ speakerRole: 'chatbot', content: responseToUser, messageTimestamp: new Date() });
+              return { responseToUser };
+            }
+          } else {
+            const responseToUser = userCurrentGoal.collectedData.confirmationMessage || 
+                            nextStepHandler.defaultChatbotPrompt || 
+                            "Let's continue with your booking.";
+            
+            let uiButtonsToDisplay: ButtonConfig[] | undefined;
+            if (nextStepHandler.fixedUiButtons) {
+              if (typeof nextStepHandler.fixedUiButtons === 'function') {
+                uiButtonsToDisplay = await nextStepHandler.fixedUiButtons(userCurrentGoal.collectedData, currentContext);
+              } else {
+                uiButtonsToDisplay = nextStepHandler.fixedUiButtons;
+              }
+            }
+            
+            userCurrentGoal.messageHistory.push({ speakerRole: 'chatbot', content: responseToUser, messageTimestamp: new Date() });
+            return { responseToUser, uiButtonsToDisplay };
+          }
+        } else {
+          const responseToUser = "I didn't understand that. Could you please try again?";
+          userCurrentGoal.messageHistory.push({ speakerRole: 'chatbot', content: responseToUser, messageTimestamp: new Date() });
+          return { responseToUser };
+        }
+      } else {
+        const responseToUser = "Something went wrong with the booking flow.";
+        userCurrentGoal.messageHistory.push({ speakerRole: 'chatbot', content: responseToUser, messageTimestamp: new Date() });
+        return { responseToUser };
+      }
+    }
+  }
+
+  // Original method for backward compatibility and fallback
   private async processExistingGoal(
     userCurrentGoal: UserGoal,
     currentContext: ChatContext,
@@ -549,6 +1197,60 @@ class MessageProcessor {
       userCurrentGoal.collectedData = typeof processingResult === 'object' && 'extractedInformation' in processingResult ?
                                       { ...userCurrentGoal.collectedData, ...processingResult.extractedInformation } :
                                       processingResult as Record<string, any>;
+
+      // Check if we need to restart the booking flow with a new service
+      if (userCurrentGoal.collectedData.restartBookingFlow) {
+        console.log(`[MessageProcessor] Restarting booking flow with new service`);
+        
+        // Determine the appropriate step based on service type
+        const selectedService = userCurrentGoal.collectedData.selectedService;
+        let targetStep: string;
+        
+        if (selectedService?.mobile) {
+          // Mobile service - start from address collection
+          targetStep = 'askAddress';
+        } else {
+          // Non-mobile service - start from location confirmation
+          targetStep = 'confirmLocation';
+        }
+        
+        console.log(`[MessageProcessor] Navigating to step: ${targetStep} for ${selectedService?.mobile ? 'mobile' : 'non-mobile'} service`);
+        
+        // Clear the restart flag
+        userCurrentGoal.collectedData.restartBookingFlow = false;
+        
+        this.navigateBackToStep(userCurrentGoal, targetStep);
+        
+        // Execute the target step to show its content
+        const currentSteps = conversationFlowBlueprints[userCurrentGoal.flowKey];
+        const targetStepName = currentSteps[userCurrentGoal.currentStepIndex];
+        const targetStepHandler = botTasks[targetStepName];
+        
+        if (targetStepHandler) {
+          // Execute the target step's processAndExtractData for initial display
+          const targetStepResult = await targetStepHandler.processAndExtractData("", userCurrentGoal.collectedData, currentContext);
+          userCurrentGoal.collectedData = typeof targetStepResult === 'object' && 'extractedInformation' in targetStepResult ?
+                                          { ...userCurrentGoal.collectedData, ...targetStepResult.extractedInformation } :
+                                          targetStepResult as Record<string, any>;
+          
+          responseToUser = userCurrentGoal.collectedData.confirmationMessage || 
+                          targetStepHandler.defaultChatbotPrompt || 
+                          "Let's continue with your new service selection.";
+          
+          if (targetStepHandler.fixedUiButtons) {
+            if (typeof targetStepHandler.fixedUiButtons === 'function') {
+              uiButtonsToDisplay = await targetStepHandler.fixedUiButtons(userCurrentGoal.collectedData, currentContext);
+            } else {
+              uiButtonsToDisplay = targetStepHandler.fixedUiButtons;
+            }
+          }
+        } else {
+          responseToUser = "Something went wrong while restarting the booking. Please try again.";
+        }
+        
+        userCurrentGoal.messageHistory.push({ speakerRole: 'chatbot', content: responseToUser, messageTimestamp: new Date() });
+        return { responseToUser, uiButtonsToDisplay };
+      }
 
       // Check if we need to navigate back to a specific step (for editing)
       if (userCurrentGoal.collectedData.navigateBackTo) {
@@ -741,37 +1443,116 @@ class MessageProcessor {
     return { responseToUser, uiButtonsToDisplay };
   }
 
-  // Updates chat session in storage
-  private async updateChatSession(session: ChatConversationSession, updates: Partial<ChatConversationSession>): Promise<ChatConversationSession> {
-    console.log(`[MessageProcessor] Updating session ${session.id}`);
-  
-  let currentSession = activeSessionsDB[session.participantId];
-  if (!currentSession || currentSession.id !== session.id) {
-      currentSession = session;
-  }
-  
-  const updatedSession = { ...currentSession, ...updates };
-  updatedSession.activeGoals = updates.activeGoals || currentSession.activeGoals || [];
 
-  if (updatedSession.sessionStatus === 'completed' || updatedSession.sessionStatus === 'expired') {
-    if (!completedSessionsDB[updatedSession.participantId]) {
-        completedSessionsDB[updatedSession.participantId] = [];
+
+  // Persists the updated conversation state to the database
+  private async persistUpdatedState(
+    sessionId: string,
+    userContext: UserContext,
+    activeSession: ChatConversationSession,
+    currentGoal: UserGoal | undefined,
+    userMessage: string,
+    botResponse: string
+  ): Promise<void> {
+    try {
+      // Update userContext with current goal state
+      let updatedContext: UserContext;
+      
+      if (currentGoal && currentGoal.goalStatus === 'completed') {
+        // If goal is completed, move it to previousGoal and clear currentGoal
+        updatedContext = {
+          ...userContext,
+          currentGoal: null, // Clear current goal to allow new bookings
+          previousGoal: {
+            goalType: currentGoal.goalType,
+            goalAction: currentGoal.goalAction,
+            goalStatus: currentGoal.goalStatus,
+            currentStepIndex: currentGoal.currentStepIndex,
+            collectedData: currentGoal.collectedData,
+            flowKey: currentGoal.flowKey
+          },
+          // Update frequently discussed topics if needed (stored as comma-separated string)
+          frequentlyDiscussedTopics: Array.isArray(userContext.frequentlyDiscussedTopics) 
+            ? userContext.frequentlyDiscussedTopics.join(', ')
+            : userContext.frequentlyDiscussedTopics || null
+        };
+        console.log(`[PersistUpdatedState] Goal completed - moved to previousGoal and cleared currentGoal`);
+      } else {
+        // Goal is still in progress, save as currentGoal
+        updatedContext = {
+          ...userContext,
+          currentGoal: currentGoal ? {
+            goalType: currentGoal.goalType,
+            goalAction: currentGoal.goalAction,
+            goalStatus: currentGoal.goalStatus,
+            currentStepIndex: currentGoal.currentStepIndex,
+            collectedData: currentGoal.collectedData,
+            flowKey: currentGoal.flowKey
+          } : null,
+          // Update frequently discussed topics if needed (stored as comma-separated string)
+          frequentlyDiscussedTopics: Array.isArray(userContext.frequentlyDiscussedTopics) 
+            ? userContext.frequentlyDiscussedTopics.join(', ')
+            : userContext.frequentlyDiscussedTopics || null
+        };
+      }
+
+      // Convert message history to ChatMessage format
+      const chatMessages: ChatMessage[] = [];
+      
+      // Add existing messages from session
+      if (activeSession.activeGoals.length > 0 && activeSession.activeGoals[0].messageHistory) {
+        for (const msg of activeSession.activeGoals[0].messageHistory) {
+          chatMessages.push({
+            role: msg.speakerRole === 'user' ? 'user' : 'bot',
+            content: msg.content,
+            timestamp: msg.messageTimestamp.toISOString()
+          });
+        }
+      }
+
+      // Add the current message exchange if not already included
+      const lastMessage = chatMessages[chatMessages.length - 1];
+      
+      if (!lastMessage || lastMessage.content !== botResponse) {
+        // Add user message
+        chatMessages.push({
+          role: 'user',
+          content: userMessage,
+          timestamp: new Date().toISOString()
+        });
+        
+        // Add bot response
+        chatMessages.push({
+          role: 'bot',
+          content: botResponse,
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      // Persist to database
+      await persistSessionState(sessionId, updatedContext, chatMessages);
+    } catch (error) {
+      console.error(`[MessageProcessor] Error persisting session state:`, error);
+      // Don't throw - we don't want persistence errors to break the conversation flow
     }
-    completedSessionsDB[updatedSession.participantId]?.push(updatedSession);
-    delete activeSessionsDB[updatedSession.participantId];
-  } else {
-    activeSessionsDB[updatedSession.participantId] = updatedSession;
   }
-  return updatedSession;
-}
 
   // Main processing method
   async processIncomingMessage(incomingUserMessage: string, currentUser: ConversationalParticipant): Promise<{ chatbotResponse: string; uiButtons?: ButtonConfig[] }> {
-    // Establish conversational context
-    const currentContext: ChatContext = await this.getOrCreateChatContext(currentUser);
+    // Validate that we have actual user input to process
+    if (!incomingUserMessage || incomingUserMessage.trim() === '') {
+      console.log('[MessageProcessor] Empty or null user message - not processing');
+      return { chatbotResponse: '' }; // Return empty response for empty input
+    }
 
-    // Manage chat session
-    let activeSession: ChatConversationSession = currentContext.currentConversationSession || await this.createNewChatSession(currentUser);
+    // Establish conversational context
+    const contextResult = await this.getOrCreateChatContext(currentUser);
+    const currentContext: ChatContext = contextResult.context;
+    const sessionId = contextResult.sessionId;
+    const userContext = contextResult.userContext;
+
+    // Manage chat session (handled by persistence layer)
+    let activeSession: ChatConversationSession = currentContext.currentConversationSession!;
 
     // Find or detect user goal
     let userCurrentGoal: UserGoal | undefined = activeSession.activeGoals.find(g => g.goalStatus === 'inProgress');
@@ -791,21 +1572,24 @@ class MessageProcessor {
         responseToUser = result.responseToUser;
         uiButtonsToDisplay = result.uiButtonsToDisplay;
         
-        await this.updateChatSession(activeSession, { lastMessageTimestamp: new Date(), activeGoals: activeSession.activeGoals });
+        // Convert internal state to database format and persist
+        await this.persistUpdatedState(sessionId, userContext, activeSession, userCurrentGoal, incomingUserMessage, responseToUser);
         return { chatbotResponse: responseToUser, uiButtons: uiButtonsToDisplay };
       } else {
         responseToUser = "Could you tell me more clearly what you'd like to do?";
-        await this.updateChatSession(activeSession, { lastMessageTimestamp: new Date() });
+        // Still persist even if no goal was detected
+        await this.persistUpdatedState(sessionId, userContext, activeSession, undefined, incomingUserMessage, responseToUser);
         return { chatbotResponse: responseToUser };
       }
     }
 
-    // Process existing goal
-    const result = await this.processExistingGoal(userCurrentGoal, currentContext, incomingUserMessage);
+    // Process existing goal using intelligent conversation analysis
+    const result = await this.processExistingGoalIntelligent(userCurrentGoal, currentContext, incomingUserMessage);
     responseToUser = result.responseToUser;
     uiButtonsToDisplay = result.uiButtonsToDisplay;
 
-    await this.updateChatSession(activeSession, { lastMessageTimestamp: new Date(), activeGoals: activeSession.activeGoals });
+    // Convert internal state to database format and persist
+    await this.persistUpdatedState(sessionId, userContext, activeSession, userCurrentGoal, incomingUserMessage, responseToUser);
     return { chatbotResponse: responseToUser, uiButtons: uiButtonsToDisplay };
   }
 }
@@ -817,9 +1601,4 @@ export async function processIncomingMessage(incomingUserMessage: string, curren
   return messageProcessor.processIncomingMessage(incomingUserMessage, currentUser);
 }
 
-// --- Mock Storage (temporary) ---
-const activeSessionsDB: Record<string, ChatConversationSession | undefined> = {};
-const completedSessionsDB: Record<string, ChatConversationSession[] | undefined> = {};
-const userPreferencesDB: Record<string, ChatContext['participantPreferences'] | undefined> = {
-    'user123': { language: 'en', timezone: 'America/New_York', notificationSettings: { email: true, sms: false } }
-};
+// Mock storage removed - now using database persistence
