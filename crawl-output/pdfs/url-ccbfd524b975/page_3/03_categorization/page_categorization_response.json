@@ -1,0 +1,31 @@
+{
+  "modelUsed": "gpt-4o",
+  "originalContentCharacterLength": 1595,
+  "llmSegmentedChunks": [
+    {
+      "chunkOrder": 1,
+      "chunkText": "Sometimes, minor delays may occur on her side due to caring for her baby. She always communicates openly and keeps the client updated.",
+      "category": 8,
+      "categoryName": "Uncategorized",
+      "confidence": 0.7,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 2,
+      "chunkText": "Location and Entry: ● Exact address: 9 Dryburgh Street, Apartment 111, West Melbourne ● Clients need to ring the bell and go up to the apartment. Sometimes she provides additional instructions (e.g., “press 1”). ● If Luisa isn’t ready yet, clients are asked to wait in the lobby.",
+      "category": 2,
+      "categoryName": "contact",
+      "confidence": 0.9,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 3,
+      "chunkText": "How to Book an Appointment: 1. The client sends a message with the desired service (optionally including a design photo). 2. They must provide their name, design/color preferences, and pay the 50% deposit to the provided mobile number. 3. Once the booking is confirmed, the day and time are locked in. 4. On the day of the appointment, the remaining amount is paid in cash.",
+      "category": 3,
+      "categoryName": "booking or scheduling",
+      "confidence": 1,
+      "preChunkSourceIndex": 0
+    }
+  ],
+  "promptUsedLength": 4414
+}

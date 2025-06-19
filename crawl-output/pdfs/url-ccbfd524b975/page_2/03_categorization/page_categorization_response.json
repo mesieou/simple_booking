@@ -1,0 +1,47 @@
+{
+  "modelUsed": "gpt-4o",
+  "originalContentCharacterLength": 2255,
+  "llmSegmentedChunks": [
+    {
+      "chunkOrder": 1,
+      "chunkText": "● Press-on nails: Available ● Gel polish removal: $10 AUD ● Nail repairs (using powder/acrylic mix): Available, though pricing is not always discussed ● Simple nail cleaning (e.g., pedicure without polish): Available, typically $40 AUD ● Haircuts are not offered. Luisa does not offer any beauty services outside of nails and braiding.",
+      "category": 0,
+      "categoryName": "services offered",
+      "confidence": 0.95,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 2,
+      "chunkText": "Materials and Techniques: ● Luisa does not use polygel. ● She works with shellac, traditional nail polish, and press-on nails. ● Clients are encouraged to send a photo of their desired design and colors in advance, to ensure preparation.",
+      "category": 0,
+      "categoryName": "services offered",
+      "confidence": 0.9,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 3,
+      "chunkText": "Estimated Time per Appointment: ● Nail services usually take between 30 to 40 minutes, depending on the service. ● For braids, it’s recommended to discuss the desired style and confirm availability—she has done braiding for both adults and children.",
+      "category": 3,
+      "categoryName": "booking or scheduling",
+      "confidence": 0.85,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 4,
+      "chunkText": "Client Profile: ● Luisa serves both women and men. ● Male clients have booked pedicures and braiding. ● She is also able to work with children, as seen in braiding requests for younger clients.",
+      "category": 7,
+      "categoryName": "General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories.",
+      "confidence": 0.8,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 5,
+      "chunkText": "Punctuality and Delays: ● Luisa asks clients to notify her in case of delays or cancellations.",
+      "category": 3,
+      "categoryName": "booking or scheduling",
+      "confidence": 0.9,
+      "preChunkSourceIndex": 0
+    }
+  ],
+  "promptUsedLength": 5074
+}

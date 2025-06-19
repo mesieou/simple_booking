@@ -1,8 +1,8 @@
 {
   "processingStats": {
-    "totalUrls": 6,
+    "totalUrls": 3,
     "processedUrls": [
-      "pdf:luisa_business_document.pdf"
+      "pdf:Historial luisa merged (1).pdf"
     ],
     "filteredUrls": [],
     "skippedUrls": [],
@@ -17,10 +17,10 @@
     "totalDocuments": 0,
     "processedDocuments": 0,
     "failedDocuments": 0,
-    "totalEmbeddings": 21,
-    "processedEmbeddings": 21,
+    "totalEmbeddings": 12,
+    "processedEmbeddings": 12,
     "failedEmbeddings": 0,
-    "startTime": 1749980595166,
+    "startTime": 1750306789160,
     "baseOutputPath": "C:\\Users\\hsueh\\Desktop\\SKEDY\\simple_booking\\crawl-output",
     "domainProcessingSummary": {
       "": {
@@ -28,20 +28,17 @@
         "result": ""
       }
     },
-    "endTime": 1749980667900
+    "endTime": 1750306817509
   },
-  "durationSeconds": 72.734,
+  "durationSeconds": 28.349,
   "allFoundUrls": [
-    "pdf:luisa_business_document.pdf#page=1",
-    "pdf:luisa_business_document.pdf#page=2",
-    "pdf:luisa_business_document.pdf#page=3",
-    "pdf:luisa_business_document.pdf#page=4",
-    "pdf:luisa_business_document.pdf#page=5",
-    "pdf:luisa_business_document.pdf#page=6"
+    "pdf:Historial luisa merged (1).pdf#page=1",
+    "pdf:Historial luisa merged (1).pdf#page=2",
+    "pdf:Historial luisa merged (1).pdf#page=3"
   ],
   "urlLogs": [
     {
-      "url": "pdf:luisa_business_document.pdf",
+      "url": "pdf:Historial luisa merged (1).pdf",
       "status": "processed",
       "prompt": "",
       "result": ""

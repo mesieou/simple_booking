@@ -1,0 +1,12 @@
+{
+  "sourceUrl": "pdf:Historial luisa merged (1).pdf#page=3",
+  "originalCleanedTextPath": "../../01_cleaned_text/cleaned_pdf_page.txt",
+  "maxCharsPerGptChunk": 6000,
+  "numberOfPreChunks": 1,
+  "preChunkFileNames": [
+    "pre_chunk_0.txt"
+  ],
+  "timestamp": "2025-06-19T04:20:15.962Z",
+  "sessionId": "8084e97f-1043-4af1-b925-146906e3c5f7",
+  "domain": "Historial luisa merged (1).pdf"
+}

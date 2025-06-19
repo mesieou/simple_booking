@@ -3,6 +3,8 @@ import { BookingManager } from './handlers/booking-manager';
 import { FAQHandler } from './handlers/faq-handler';
 import { ChitchatHandler } from './handlers/chitchat-handler';
 import { ConversationOrchestrator } from './conversation-orchestrator';
+import { EscalationManager } from '../../escalation-system/manager';
+import { EscalationDetector } from '../../escalation-system/detector';
 import { 
   DetectedIntent, 
   DialogueState, 
@@ -57,13 +59,45 @@ export class MainOrchestrator {
    */
   static async processConversation(input: ConversationInput): Promise<ConversationOutput> {
     try {
-      // Step 1: Analyze user message for multiple intents
+      // Step 1: Check if conversation is locked for human intervention
+      if (EscalationManager.isConversationLocked(input.currentDialogueState?.escalationStatus)) {
+        const pausedOutput = EscalationManager.createPausedResponse();
+        return {
+            ...pausedOutput,
+            updatedDialogueState: input.currentDialogueState!
+        };
+      }
+      
+      // Step 2: Check if the new message is an escalation request
+      if (EscalationDetector.isEscalationRequired(input.userMessage)) {
+        const escalationResult = await EscalationManager.initiateEscalation(
+          input.userContext.businessId!,
+          input.sessionId,
+          input.userContext.channelUserId,
+          input.userMessage
+        );
+        
+        const updatedDialogueState: DialogueState = {
+            ...input.currentDialogueState,
+            ...escalationResult.updatedState,
+            lastActivityAt: new Date().toISOString()
+        };
+
+        return {
+          response: escalationResult.response,
+          buttons: [],
+          updatedDialogueState,
+          shouldPersistContext: true,
+        };
+      }
+
+      // Step 3: Analyze user message for multiple intents
       const classification = await this.classifyUserMessage(
         input.userMessage, 
         input.currentDialogueState
       );
       
-      // Step 2: Process each detected intent with appropriate handlers
+      // Step 4: Process each detected intent with appropriate handlers
       const handlerResults = await this.processDetectedIntents(
         classification.intents,
         input.currentDialogueState,
@@ -71,7 +105,7 @@ export class MainOrchestrator {
         input.userMessage
       );
       
-      // Step 3: Generate unified response from all handler results
+      // Step 5: Generate unified response from all handler results
       const unifiedResponse = await this.generateUnifiedResponse(
         handlerResults,
         classification,
@@ -81,7 +115,7 @@ export class MainOrchestrator {
         input.chatHistory
       );
       
-      // Step 4: Create final dialogue state with all updates
+      // Step 6: Create final dialogue state with all updates
       const finalDialogueState = this.buildFinalDialogueState(
         input.currentDialogueState,
         unifiedResponse.contextUpdates

@@ -1,0 +1,92 @@
+{
+  "sourceUrl": "pdf:Historial luisa merged (1).pdf#page=1",
+  "pageTitle": "Historial luisa merged (1).pdf - Page 1",
+  "isPdf": true,
+  "totalLlmChunks": 12,
+  "documents": [
+    {
+      "documentId": "6fc8a2df-6cc8-42c8-ab66-23fcca71729c",
+      "chunkOrder": 1,
+      "category": "Uncategorized",
+      "originalTextLength": 172,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "07304c0c-7823-48a4-b938-703987c30eee",
+      "chunkOrder": 2,
+      "category": "booking or scheduling",
+      "originalTextLength": 349,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "8bdcd3da-cfbc-4fd4-b8fd-768a2c1290b0",
+      "chunkOrder": 3,
+      "category": "pricing or quotes",
+      "originalTextLength": 401,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "1396783f-9486-4edd-a788-b17875a639d9",
+      "chunkOrder": 4,
+      "category": "General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories.",
+      "originalTextLength": 288,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "3202ea36-a32c-4a9b-be27-2e16db0cf9af",
+      "chunkOrder": 1,
+      "category": "Uncategorized",
+      "originalTextLength": 335,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "94ab37a3-a7b5-43eb-943b-bbfdc9cc7c27",
+      "chunkOrder": 2,
+      "category": "Uncategorized",
+      "originalTextLength": 237,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "08f54438-7381-45f6-9032-ea10e34e9db7",
+      "chunkOrder": 3,
+      "category": "booking or scheduling",
+      "originalTextLength": 249,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "4056a5f8-592c-417f-8ef3-71b5c8410549",
+      "chunkOrder": 4,
+      "category": "General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories.",
+      "originalTextLength": 193,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "037de55f-5b26-407d-beaa-a69b706b85a3",
+      "chunkOrder": 5,
+      "category": "booking or scheduling",
+      "originalTextLength": 94,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "7be55884-fe55-4aeb-9536-46607ba81894",
+      "chunkOrder": 1,
+      "category": "Uncategorized",
+      "originalTextLength": 134,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "a88928e3-80b2-42e0-a54e-3cde1e3845f3",
+      "chunkOrder": 2,
+      "category": "contact",
+      "originalTextLength": 279,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "0420fb58-a436-4f55-a4c1-a3cee1002da6",
+      "chunkOrder": 3,
+      "category": "booking or scheduling",
+      "originalTextLength": 373,
+      "preChunkSourceIndex": 0
+    }
+  ]
+}

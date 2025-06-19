@@ -1,0 +1,39 @@
+{
+  "modelUsed": "gpt-4o",
+  "originalContentCharacterLength": 2454,
+  "llmSegmentedChunks": [
+    {
+      "chunkOrder": 1,
+      "chunkText": "Services Offered: ● Traditional manicure: $30 AUD ● Traditional pedicure: $40 AUD ● Shellac (semi-permanent) manicure: $40 AUD ● Shellac pedicure: $50 AUD ● Braids: $50 AUD",
+      "category": 0,
+      "categoryName": "services offered",
+      "confidence": 0.95,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 2,
+      "chunkText": "Availability and Schedule: ● Luisa works Monday to Friday, from 10:00 am to 6:00 pm. ● On weekends, she works by availability only. ● It’s recommended to book at least one week in advance, as her schedule is often fully booked. ● If a client cancels with at least 24 hours’ notice, the deposit can either be refunded or rescheduled for another date.",
+      "category": 3,
+      "categoryName": "booking or scheduling",
+      "confidence": 0.9,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 3,
+      "chunkText": "Payment Methods: ● Cash only at the appointment. ● A 50% deposit is required to confirm a booking, paid via mobile transfer (number is shared privately). ● Deposits are refundable or transferable if changes are made at least 24 hours before the appointment. ● In some rare cases, she may accept Bancolombia transfers if the client doesn't yet have an Australian bank account, but this is not standard.",
+      "category": 1,
+      "categoryName": "pricing or quotes",
+      "confidence": 0.95,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 4,
+      "chunkText": "General Information about Luisa Bernal’s Services (Nail Technician in Melbourne): Luisa offers manicure and pedicure services from her apartment located at 9 Dryburgh Street, West Melbourne, VIC 3003, apartment 111. The building is located right across from North Melbourne train station.",
+      "category": 7,
+      "categoryName": "General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories.",
+      "confidence": 0.85,
+      "preChunkSourceIndex": 0
+    }
+  ],
+  "promptUsedLength": 5273
+}

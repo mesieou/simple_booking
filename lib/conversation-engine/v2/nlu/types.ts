@@ -95,6 +95,11 @@ export interface DialogueState {
     needsModification: boolean;
   };
   
+  // NEW: Module for human escalation
+  escalationStatus?: 'none' | 'pending_human' | 'in_progress_human' | 'resolved_human';
+  escalatedAt?: string;
+  resolvedAt?: string;
+  
   // USER CONTEXT (Minimal persistent info)
   userEmail?: string;          // user@skedy.io format
   
