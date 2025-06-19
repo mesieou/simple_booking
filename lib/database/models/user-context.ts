@@ -175,6 +175,23 @@ export class UserContext {
     }
   }
 
+  /**
+   * Returns a plain object representation of the user context data.
+   */
+  getData(): UserContextDBSchema {
+    return {
+      id: this.id,
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
+      channelUserId: this.channelUserId,
+      businessId: this.businessId,
+      currentGoal: this.currentGoal,
+      previousGoal: this.previousGoal,
+      participantPreferences: this.participantPreferences,
+      frequentlyDiscussedTopics: this.frequentlyDiscussedTopics,
+    };
+  }
+
   // --- Helper Methods ---
 
   /**

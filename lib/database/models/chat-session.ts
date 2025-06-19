@@ -4,7 +4,7 @@ import { handleModelError } from '@/lib/general-helpers/error';
 
 // Represents a single message within the allMessages array
 export interface ChatMessage {
-  role: 'user' | 'bot';
+  role: 'user' | 'bot' | 'human';
   content: string;
   timestamp?: string; // ISO date string, when the message was recorded in allMessages
 }
@@ -133,6 +133,24 @@ export class ChatSession {
       handleModelError(`Failed to fetch chat session by ID ${id}`, error);
     }
     return data ? new ChatSession(data as ChatSessionDBSchema) : null;
+  }
+
+  static async getByBusinessId(businessId: string): Promise<ChatSession[]> {
+    if (!this.isValidUUID(businessId)) {
+        console.warn(`[ChatSessionModel] Attempted to fetch with invalid business UUID: ${businessId}`);
+        return [];
+    }
+    const supa = await createClient();
+    const { data, error } = await supa
+        .from('chatSessions')
+        .select('*')
+        .eq('businessId', businessId)
+        .order('updatedAt', { ascending: false });
+
+    if (error) {
+        handleModelError(`Failed to fetch chat sessions for businessId ${businessId}`, error);
+    }
+    return data ? data.map(d => new ChatSession(d as ChatSessionDBSchema)) : [];
   }
 
   static async getActiveByChannelUserId(
@@ -277,5 +295,27 @@ export class ChatSession {
     if (error) {
       handleModelError(`Failed to delete chat session ${id}`, error);
     }
+  }
+
+  /**
+   * Returns a plain object representation of the chat session data.
+   * This is useful for passing data from Server to Client Components.
+   */
+  getData(): ChatSessionDBSchema {
+    return {
+      id: this.id,
+      userId: this.userId,
+      businessId: this.businessId,
+      channel: this.channel,
+      channelUserId: this.channelUserId,
+      endedAt: this.endedAt,
+      sessionIntent: this.sessionIntent,
+      allMessages: this.allMessages,
+      summarySession: this.summarySession,
+      feedbackDataAveraged: this.feedbackDataAveraged,
+      overallChatScore: this.overallChatScore,
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
+    };
   }
 } 

@@ -1,6 +1,7 @@
 import { ChatSession, ChatMessage, ChatSessionCreateInput } from "@/lib/database/models/chat-session"; 
 import { getOrCreateSession } from "./sessions-manager";
 import { UserContext } from "@/lib/database/models/user-context";
+import { DialogueState } from "@/lib/conversation-engine/v2/nlu/types";
 
 // Default session timeout in hours if not specified by the caller
 const DEFAULT_SESSION_TIMEOUT_HOURS = 12;
@@ -10,6 +11,7 @@ export interface HistoryAndContextResult {
   historyForLLM: ChatMessage[];
   isNewSession: boolean;
   userContext: UserContext; // The user's stateful context
+  dialogueState: DialogueState | null; // Add dialogueState to the result
   userId?: string | null; 
   businessId?: string | null; 
 }
@@ -95,12 +97,16 @@ export async function extractSessionHistoryAndContext(
   // Step 3: Build the historical context based on the resolved session.
   const history = await buildHistoryForContext(sessionToUse);
 
+  // Extract dialogueState from userContext
+  const dialogueState = userContext?.currentGoal?.collectedData?.dialogueState as DialogueState | null;
+
   // Step 4: Combine results and return.
   return {
     currentSessionId: sessionToUse.id,
     historyForLLM: history,
     isNewSession: isNew,
     userContext: userContext,
+    dialogueState: dialogueState,
     userId: sessionToUse.userId,
     businessId: sessionToUse.businessId,
   };
