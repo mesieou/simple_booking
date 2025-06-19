@@ -2104,12 +2104,13 @@ export const displayConfirmedBookingHandler: IndividualStepHandler = {
   // Always accept input
   validateUserInput: async () => true,
   
-  // Show booking confirmation
+  // Show booking confirmation and mark goal as completed
   processAndExtractData: async (validatedInput, currentGoalData) => {
     const booking = currentGoalData.bookingDetails;
     
     return {
       ...currentGoalData,
+      goalStatus: 'completed', // Mark the goal as completed when booking is displayed
       confirmationMessage: `🎉 Your booking is confirmed!\n\n📅 Service: ${booking?.service}\n🗓️ Date: ${booking?.date}\n⏰ Time: ${booking?.time}\n📍 Location: ${booking?.location}\n\nBooking ID: ${booking?.id}\n\nWe look forward to seeing you!`
     };
   }
