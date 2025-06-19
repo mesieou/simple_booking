@@ -900,8 +900,22 @@ class MessageProcessor {
         return this.handleRestart(userCurrentGoal, currentContext);
       }
       
-      if (conversationDecision.action === 'switch_topic' && conversationDecision.confidence > 0.8) {
-        return this.handleTopicSwitch(currentContext, conversationDecision, incomingUserMessage);
+      if (conversationDecision.action === 'switch_topic' && conversationDecision.confidence >= 0.8) {
+        const topicSwitchResult = await this.handleTopicSwitch(currentContext, conversationDecision, incomingUserMessage, userCurrentGoal);
+        
+        // If a new goal was created, update the session
+        if (topicSwitchResult.newGoal) {
+          // Replace the current goal with the new goal
+          if (currentContext.currentConversationSession) {
+            currentContext.currentConversationSession.activeGoals = [topicSwitchResult.newGoal];
+          }
+          console.log(`[MessageProcessor] Updated session with new goal for topic switch`);
+        }
+        
+        return {
+          responseToUser: topicSwitchResult.responseToUser,
+          uiButtonsToDisplay: topicSwitchResult.uiButtonsToDisplay
+        };  
       }
 
       // For all other cases (continue/advance), use original blueprint flow with intelligent enhancement
@@ -1038,12 +1052,45 @@ class MessageProcessor {
   private async handleTopicSwitch(
     currentContext: ChatContext,
     conversationDecision: any,
-    incomingUserMessage: string
-  ): Promise<{ responseToUser: string; uiButtonsToDisplay?: ButtonConfig[] }> {
+    incomingUserMessage: string,
+    currentGoal?: UserGoal
+  ): Promise<{ responseToUser: string; uiButtonsToDisplay?: ButtonConfig[]; newGoal?: UserGoal }> {
     console.log(`[MessageProcessor] Handling topic switch to: ${conversationDecision.newGoalType}`);
     
-    // This will be handled by creating a new goal in the main processing logic
-    // For now, return a response indicating we understand the topic change
+    // For booking topic switches (like "another booking"), create a new booking goal
+    if (conversationDecision.newGoalType === 'serviceBooking' && conversationDecision.newGoalAction === 'create') {
+      console.log(`[MessageProcessor] Creating new booking goal for topic switch`);
+      
+      // Mark the current goal as completed if it exists
+      if (currentGoal) {
+        currentGoal.goalStatus = 'completed';
+        console.log(`[MessageProcessor] Marked previous goal as completed`);
+      }
+      
+      // Create a new goal from scratch
+      const newGoal = await this.createNewGoal(
+        {
+          detectedUserGoalType: 'serviceBooking',
+          detectedGoalAction: 'create',
+          extractedInformation: conversationDecision.extractedData || {}
+        },
+        'customer',
+        currentContext
+      );
+      
+      console.log(`[MessageProcessor] Created new goal, executing first step`);
+      
+      // Execute the first step of the new goal
+      const result = await this.executeFirstStep(newGoal, currentContext, incomingUserMessage);
+      
+      // Return the result with the new goal
+      return {
+        ...result,
+        newGoal
+      };
+    }
+    
+    // For other topic switches, return a generic message for now
     return {
       responseToUser: "I understand you'd like to switch topics. Let me help you with that.",
       uiButtonsToDisplay: []
@@ -1120,8 +1167,8 @@ class MessageProcessor {
         this.advanceAndSkipStep(userCurrentGoal);
       }
       
-      // Check if flow is completed
-      if (userCurrentGoal.currentStepIndex >= currentSteps.length) {
+      // Check if flow is completed OR if the goal is marked as completed by a step
+      if (userCurrentGoal.currentStepIndex >= currentSteps.length || userCurrentGoal.collectedData.goalStatus === 'completed') {
         userCurrentGoal.goalStatus = 'completed';
         responseToUser = "Great! Your booking request has been processed.";
         uiButtonsToDisplay = undefined;
@@ -1601,8 +1648,8 @@ class MessageProcessor {
 
       this.advanceAndSkipStep(userCurrentGoal);
       
-      // Check if flow is completed
-      if (userCurrentGoal.currentStepIndex >= currentSteps.length) {
+      // Check if flow is completed OR if the goal is marked as completed by a step
+      if (userCurrentGoal.currentStepIndex >= currentSteps.length || userCurrentGoal.collectedData.goalStatus === 'completed') {
         userCurrentGoal.goalStatus = 'completed';
         responseToUser = "Great! Your booking request has been processed.";
         uiButtonsToDisplay = undefined;
