@@ -83,6 +83,26 @@
         {
             "folderPath": "simple_booking\\lib\\conversation-engine\\flows\\",
             "color": "foldercolorizer.color_66cc00"
+        },
+        {
+            "folderPath": "simple_booking\\app\\api\\webhook2\\",
+            "color": "foldercolorizer.color_ffccff"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\conversation-engine\\v3\\",
+            "color": "foldercolorizer.color_cc3399"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\conversation-engine\\juan-bot-engine-copy\\",
+            "color": "foldercolorizer.color_ffccff"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\conversation-engine\\juan-bot-engine-v2\\",
+            "color": "foldercolorizer.color_9999ff"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\conversation-engine\\escalation\\",
+            "color": "foldercolorizer.color_6666ff"
         }
     ]
 }

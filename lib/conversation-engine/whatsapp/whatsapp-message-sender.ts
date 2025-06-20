@@ -206,13 +206,19 @@ export class WhatsappSender implements IMessageSender {
 
   // Sends HTTP request to WhatsApp API
   private async sendToWhatsappApi(payload: WhatsappPayload): Promise<void> {
-    const response = await fetch(this.getApiUrl(), {
+    const apiUrl = this.getApiUrl();
+    const headers = {
+      "Authorization": `Bearer ${WHATSAPP_CONFIG.ACCESS_TOKEN}`,
+      "Content-Type": "application/json",
+    };
+    const body = JSON.stringify(payload);
+
+    console.log(`[WhatsappSender] Sending payload to ${apiUrl}:`, body);
+
+    const response = await fetch(apiUrl, {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${WHATSAPP_CONFIG.ACCESS_TOKEN}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
+      headers,
+      body,
     });
 
     if (!response.ok) {

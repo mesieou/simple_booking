@@ -9,7 +9,6 @@
  */
 
 import { executeChatCompletion, OpenAIChatMessage } from "@/lib/conversation-engine/llm-actions/chat-interactions/openai-config/openai-core";
-import { RAGfunction } from "@/lib/conversation-engine/llm-actions/chat-interactions/functions/embeddings";
 import { 
   ChatContext, 
   UserGoal, 
@@ -26,6 +25,13 @@ export interface ConversationDecision {
   confidence: number;
   reasoning: string;
   extractedData?: Record<string, any>;
+  customButtons?: Array<{buttonText: string, buttonValue: string, buttonDescription?: string}>;
+}
+
+export interface EscalationAnalysis {
+  escalate: boolean;
+  reason: 'human_request' | 'aggression' | 'none';
+  summary_for_agent: string;
 }
 
 export interface ContextualResponse {
@@ -210,7 +216,7 @@ Analyze this message and determine the appropriate conversation flow action.`;
     // Fetch business name if available
     if (context.business.id) {
       try {
-        const { Business } = await import('../../database/models/business');
+        const { Business } = await import('@/lib/database/models/business');
         const business = await Business.getById(context.business.id);
         if (business) {
           context.business.name = business.name;
@@ -228,7 +234,7 @@ Analyze this message and determine the appropriate conversation flow action.`;
    */
   private getCurrentStepName(currentGoal: UserGoal): string {
     try {
-      const { conversationFlowBlueprints } = require('../bot-manager');
+      const { conversationFlowBlueprints } = require('@/lib/conversation-engine/juan-bot-engine-v2/bot-manager');
       const currentSteps = conversationFlowBlueprints[currentGoal.flowKey];
       return currentSteps[currentGoal.currentStepIndex] || 'unknown';
     } catch (error) {
@@ -567,5 +573,75 @@ Return ONLY JSON:
       };
     }
     return {};
+  }
+
+  /**
+   * Analyzes a user message to check for escalation triggers like aggression or explicit requests for a human.
+   */
+  async analyzeForEscalation(
+    userMessage: string,
+    messageHistory: Array<{ role: 'user' | 'assistant'; content: string }>
+  ): Promise<EscalationAnalysis> {
+    const systemPrompt = `You are an escalation detection agent for a customer service bot. Your task is to analyze the user's message and recent conversation history to determine if the conversation needs to be escalated to a human agent.
+
+There are two reasons for escalation:
+1.  **Human Request:** The user explicitly asks to speak to a human, person, agent, or staff member.
+2.  **Aggression:** The user is showing significant aggression, using insults, threats, or is extremely angry.
+
+Based on the user's message and history, you must return a JSON object with the following structure:
+{
+  "escalate": true | false,
+  "reason": "human_request" | "aggression" | "none",
+  "summary_for_agent": "A brief, one-sentence summary of the user's problem to give the human agent context. If the reason is aggression, describe the nature of the aggression. If the user states their problem, summarize it."
+}
+
+CRITICAL RULES:
+- If the user says something like "can a person help me with my booking?", you MUST escalate.
+- If the user uses swear words or is clearly insulting the bot or service, you MUST escalate.
+- If no escalation is needed, set "escalate" to false, "reason" to "none", and the summary can be an empty string.
+- Provide the summary even if the user is just being aggressive without stating a problem. In that case, summarize the situation (e.g., "The user is expressing frustration and using aggressive language.").
+`;
+
+    const historyText = messageHistory
+      .slice(-6)
+      .map(msg => `${msg.role}: ${msg.content}`)
+      .join('\n');
+
+    const userPrompt = `CONVERSATION HISTORY:
+${historyText}
+
+CURRENT USER MESSAGE: "${userMessage}"
+
+Analyze this message and determine if an escalation is required. Return ONLY the JSON object.`;
+
+    try {
+      const response = await executeChatCompletion(
+        [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        'gpt-4o',
+        0.1,
+        200
+      );
+
+      const resultText = response.choices[0]?.message?.content?.trim();
+      if (!resultText) {
+        return { escalate: false, reason: 'none', summary_for_agent: '' };
+      }
+
+      let jsonText = resultText;
+      if (resultText.includes('```')) {
+        const jsonStart = resultText.indexOf('{');
+        const jsonEnd = resultText.lastIndexOf('}') + 1;
+        jsonText = resultText.substring(jsonStart, jsonEnd);
+      }
+
+      return JSON.parse(jsonText) as EscalationAnalysis;
+
+    } catch (error) {
+      console.error('[IntelligentLLMService] Error in escalation analysis:', error);
+      return { escalate: false, reason: 'none', summary_for_agent: '' };
+    }
   }
 } 
