@@ -8,6 +8,7 @@ import { Business } from '@/lib/database/models/business';
 
 export const START_BOOKING_PAYLOAD = 'start_booking_flow';
 
+
 // Converts database models to internal session format
 function convertToInternalSession(historyAndContext: any, participant: ConversationalParticipant): ChatConversationSession {
     const activeGoals: UserGoal[] = [];
@@ -51,7 +52,6 @@ function convertToInternalSession(historyAndContext: any, participant: Conversat
 
 // Gets or creates chat context for a participant using database persistence
 export async function getOrCreateChatContext(participant: ConversationalParticipant): Promise<{context: ChatContext, sessionId: string, userContext: UserContext, historyForLLM: ChatMessage[], customerUser?: any}> {
-    
     const business = await Business.getByWhatsappNumber(participant.businessWhatsappNumber as string);
     const associatedBusinessId = business ? business.id : null;
 

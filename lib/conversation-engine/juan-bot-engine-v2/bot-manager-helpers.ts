@@ -1,4 +1,4 @@
-import { ConversationalParticipant, ChatContext, UserGoal, ChatConversationSession, BOT_CONFIG } from './bot-manager';
+import { ConversationalParticipant, ChatContext, UserGoal, ChatConversationSession, BOT_CONFIG } from '@/lib/Juan-bot-engine/bot-manager';
 import { extractSessionHistoryAndContext } from "@/lib/conversation-engine/llm-actions/chat-interactions/functions/extract-history-and-context.ts";
 import { persistSessionState as persistState } from "@/lib/conversation-engine/llm-actions/chat-interactions/functions/save-history-and-context";
 import { UserContext } from '@/lib/database/models/user-context';
@@ -6,6 +6,7 @@ import { ChatMessage } from '@/lib/database/models/chat-session';
 import { User } from '@/lib/database/models/user';
 
 export const START_BOOKING_PAYLOAD = 'start_booking_flow';
+
 
 // Converts database models to internal session format
 function convertToInternalSession(historyAndContext: any, participant: ConversationalParticipant): ChatConversationSession {
