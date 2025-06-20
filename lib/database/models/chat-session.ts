@@ -278,4 +278,40 @@ export class ChatSession {
       handleModelError(`Failed to delete chat session ${id}`, error);
     }
   }
+
+  static async updateStatus(
+    sessionId: string,
+    status: 'active' | 'completed' | 'expired' | 'escalated'
+  ): Promise<ChatSession> {
+    const supa = await createClient();
+    const { data, error } = await supa
+      .from('chatSessions')
+      .update({ status: status, updated_at: new Date().toISOString() })
+      .eq('id', sessionId)
+      .select()
+      .single();
+
+    if (error) {
+      handleModelError(`Failed to update chat session status for session ${sessionId}`, error);
+    }
+
+    if (!data) {
+      handleModelError(`Chat session with id ${sessionId} not found for update`, new Error('Chat session not found'));
+    }
+
+    return new ChatSession(data);
+  }
+
+  static async getAll(): Promise<ChatSession[]> {
+    const supa = await createClient();
+    const { data, error } = await supa
+      .from('chatSessions')
+      .select('*');
+
+    if (error) {
+      handleModelError('Failed to fetch all chat sessions', error);
+    }
+
+    return data.map((row: ChatSessionDBSchema) => new ChatSession(row));
+  }
 } 

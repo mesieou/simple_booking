@@ -2,19 +2,29 @@ import { NextRequest, NextResponse } from "next/server";
 import { 
   processIncomingMessage, 
   type ConversationalParticipant, 
-} from "../../../lib/Juan-bot-engine/bot-manager";
+} from "@/lib/Juan-bot-engine/bot-manager";
 import { parseWhatsappMessage } from "@/lib/conversation-engine/whatsapp/whatsapp-payload-parser";
 import { type WebhookAPIBody } from "@/lib/conversation-engine/whatsapp/whatsapp-message-logger"; 
 import { WhatsappSender } from "@/lib/conversation-engine/whatsapp/whatsapp-message-sender";
 import { type ParsedMessage, type BotResponse } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
+import { 
+    handleEscalationOrAdminCommand, 
+    EscalationResult, 
+    AdminCommandResult 
+} from "@/lib/Juan-bot-engine/escalation/handler";
+import { getOrCreateChatContext, persistSessionState, START_BOOKING_PAYLOAD } from "@/lib/Juan-bot-engine/bot-manager-helpers";
+import { handleFaqOrChitchat } from "@/lib/Juan-bot-engine/step-handlers/faq-handler";
 
+// Type guard to check if the result is an EscalationResult
+function isEscalationResult(result: EscalationResult | AdminCommandResult): result is EscalationResult {
+    return 'isEscalated' in result;
+}
 
-export const dynamic = "force-dynamic"; // Ensures the route is re-evaluated on every request
-const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
-const rawUseWabaWebhook = process.env.USE_WABA_WEBHOOK;
+export const dynamic = "force-dynamic";
+const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || process.env.WHATSAPP_VERIFY_TOKEN;
+const rawUseWabaWebhook = process.env.USE_WABA_WEBHOOK || process.env.USE_WABA_WEBHOOK;
 const USE_WABA_WEBHOOK = rawUseWabaWebhook === "true";
-const LOG_PREFIX = "[Juan-Bot Webhook V2]"; // Updated prefix for clarity
-
+const LOG_PREFIX = "[Juan-Bot Webhook]";
 
 //Handles the GET request from Meta/WhatsApp to verify the webhook endpoint.
 export async function GET(req: NextRequest) {
@@ -57,61 +67,128 @@ export async function GET(req: NextRequest) {
 
 //Handles POST requests which contain WhatsApp webhook events (e.g., incoming messages).
 export async function POST(req: NextRequest) {
+  console.log(`${LOG_PREFIX} Received a POST request.`);
   if (!USE_WABA_WEBHOOK) {
     console.log(`${LOG_PREFIX} WABA Webhook for juan-bot is disabled. Skipping POST request.`);
     return NextResponse.json({ message: "Webhook for juan-bot disabled" }, { status: 403 });
   }
 
   try {
-    const payload = (await req.json()) as WebhookAPIBody; // Type assertion from parser
-    console.log(`${LOG_PREFIX} POST request received.`); // Simplified log
+    const payload = (await req.json()) as WebhookAPIBody;
+    console.log(`${LOG_PREFIX} POST request payload successfully parsed:`, JSON.stringify(payload, null, 2));
 
     const parsedEvent = parseWhatsappMessage(payload);
+    console.log(`${LOG_PREFIX} WhatsApp message parsed. Event:`, parsedEvent ? JSON.stringify(parsedEvent, null, 2) : "null");
 
     if (parsedEvent && "text" in parsedEvent && parsedEvent.senderId && parsedEvent.text && parsedEvent.text.trim()) {
-      const parsedMessage = parsedEvent; // Treat as ParsedMessage
+      const parsedMessage = parsedEvent;
       console.log(`${LOG_PREFIX} Successfully parsed message from ${parsedMessage.senderId}: "${parsedMessage.text}"`);
 
       const participant: ConversationalParticipant = {
         id: parsedMessage.senderId,
-        type: 'customer', // Assuming WhatsApp users are customers
-        businessWhatsappNumber: parsedMessage.businessWhatsappNumber, // Business WhatsApp number customers message TO
-        customerWhatsappNumber: parsedMessage.customerWhatsappNumber, // Customer's WhatsApp number who is messaging FROM
+        type: 'customer',
+        businessWhatsappNumber: parsedMessage.businessWhatsappNumber,
+        customerWhatsappNumber: parsedMessage.customerWhatsappNumber,
         creationTimestamp: parsedMessage.timestamp ? new Date(parsedMessage.timestamp) : new Date(),
         lastUpdatedTimestamp: new Date(),
-        // Add other participant details if available from parsedMessage or context
       };
 
-              try {
-        // Process with juan-bot's specific engine
+      try {
         if (!parsedMessage.text) {
-          console.log(`${LOG_PREFIX} Parsed message has no text content. Skipping bot processing.`);
-          return; // Or handle as appropriate
+          console.log(`${LOG_PREFIX} Parsed message has no text content. Skipping all processing.`);
+          return NextResponse.json({ status: "success - no text content" }, { status: 200 });
         }
         
-        const juanBotRawResponse = await processIncomingMessage(parsedMessage.text, participant);
+        const { context: chatContext, sessionId, userContext, historyForLLM, customerUser } = await getOrCreateChatContext(participant);
         
-        // Adapt the juanBotRawResponse to the BotResponse interface expected by WhatsappSender
+        // --- Step 1: Check for Escalation or Admin Command ---
+        if (chatContext.currentConversationSession) {
+            const escalationResult = await handleEscalationOrAdminCommand(
+                parsedMessage.text,
+                participant,
+                chatContext,
+                userContext,
+                historyForLLM,
+                customerUser
+            );
+
+            if (isEscalationResult(escalationResult)) {
+                if (escalationResult.isEscalated) {
+                    console.log(`${LOG_PREFIX} Message handled by escalation system. Reason: ${escalationResult.reason}`);
+                    if (escalationResult.response) {
+                        const sender = new WhatsappSender();
+                        await sender.sendMessage(parsedMessage.senderId, escalationResult.response);
+                        console.log(`${LOG_PREFIX} Sent escalation response to ${parsedMessage.senderId}.`);
+                        
+                        chatContext.currentConversationSession.sessionStatus = 'escalated';
+                        await persistSessionState(
+                            sessionId, 
+                            userContext, 
+                            chatContext.currentConversationSession, 
+                            undefined, 
+                            parsedMessage.text || '', 
+                            escalationResult.response.text || ''
+                        );
+                    }
+                    return NextResponse.json({ status: "success - handled by escalation system" }, { status: 200 });
+                }
+            } else { // It's an AdminCommandResult
+                if (escalationResult.isHandled) {
+                    console.log(`${LOG_PREFIX} Message handled by admin command system.`);
+                    if (escalationResult.response) {
+                        const sender = new WhatsappSender();
+                        await sender.sendMessage(parsedMessage.senderId, escalationResult.response);
+                        console.log(`${LOG_PREFIX} Sent admin command response to ${parsedMessage.senderId}.`);
+                    }
+                    return NextResponse.json({ status: "success - handled by admin system" }, { status: 200 });
+                }
+            }
+        }
+        
+        // --- Step 2: If not escalated, decide between FAQ/Chitchat and Booking Flow ---
         let botManagerResponse: BotResponse | null = null;
-        if (juanBotRawResponse && typeof juanBotRawResponse.chatbotResponse === 'string') {
-          const convertedButtons = juanBotRawResponse.uiButtons?.map(btn => ({
-            buttonText: btn.buttonText,
-            buttonValue: btn.buttonValue,
-            buttonDescription: btn.buttonDescription,
-            buttonType: btn.buttonType
-          }));
-          console.log(`${LOG_PREFIX} Converted buttons:`, convertedButtons?.map(b => ({ text: b.buttonText, desc: b.buttonDescription })));
-          
-          botManagerResponse = { 
-            text: juanBotRawResponse.chatbotResponse,
-            // Convert bot manager's uiButtons to standardized buttons format
-            buttons: convertedButtons
-          };
+        const userCurrentGoal = chatContext.currentConversationSession?.activeGoals.find(g => g.goalStatus === 'inProgress');
+
+        if (parsedMessage.text.toUpperCase() === START_BOOKING_PAYLOAD.toUpperCase() || (userCurrentGoal && userCurrentGoal.goalType === 'serviceBooking')) {
+            console.log(`${LOG_PREFIX} User is starting or continuing a booking flow. Routing to main engine.`);
+            
+            if (parsedMessage.text.toUpperCase() === START_BOOKING_PAYLOAD.toUpperCase() && userCurrentGoal) {
+                userCurrentGoal.goalStatus = 'completed';
+            }
+
+            const juanBotRawResponse = await processIncomingMessage(parsedMessage.text, participant);
+            
+            if (juanBotRawResponse && typeof juanBotRawResponse.chatbotResponse === 'string') {
+                const convertedButtons = juanBotRawResponse.uiButtons?.map(btn => ({
+                    buttonText: btn.buttonText,
+                    buttonValue: btn.buttonValue,
+                    buttonDescription: btn.buttonDescription,
+                    buttonType: btn.buttonType
+                }));
+                botManagerResponse = { 
+                    text: juanBotRawResponse.chatbotResponse,
+                    buttons: convertedButtons
+                };
+            }
+        } else {
+            console.log(`${LOG_PREFIX} No active booking goal. Routing to FAQ/Chitchat handler.`);
+            botManagerResponse = await handleFaqOrChitchat(chatContext, parsedMessage.text, historyForLLM);
+            
+            if (botManagerResponse.text && chatContext.currentConversationSession) {
+                await persistSessionState(
+                    sessionId, 
+                    userContext, 
+                    chatContext.currentConversationSession, 
+                    undefined,
+                    parsedMessage.text, 
+                    botManagerResponse.text
+                );
+            }
         }
 
         console.log(`${LOG_PREFIX} Bot Manager generated response for ${parsedMessage.senderId}.`);
 
-        if (botManagerResponse && botManagerResponse.text && botManagerResponse.text.trim()) { // Check adapted response has actual content
+        if (botManagerResponse && botManagerResponse.text && botManagerResponse.text.trim()) {
           const sender = new WhatsappSender();
           try {
             console.log(`${LOG_PREFIX} Attempting to send reply to ${parsedMessage.senderId}: "${botManagerResponse.text}"`);
@@ -119,7 +196,6 @@ export async function POST(req: NextRequest) {
             console.log(`${LOG_PREFIX} Reply successfully sent via WhatsappSender to ${parsedMessage.senderId}.`);
           } catch (sendError) {
             console.error(`${LOG_PREFIX} Error sending reply via WhatsappSender to ${parsedMessage.senderId}:`, sendError);
-            // Decide on error handling: maybe send a generic error to user or just log
           }
         } else {
           if (botManagerResponse && !botManagerResponse.text?.trim()) {
@@ -130,17 +206,15 @@ export async function POST(req: NextRequest) {
         }
       } catch (botError) {
         console.error(`${LOG_PREFIX} Error processing message with Bot Manager for ${parsedMessage.senderId}:`, botError);
-        // Handle error from bot manager, potentially send a generic error reply
       }
     } else {
       let reason = "Payload could not be parsed into an actionable message.";
-      if (parsedEvent && "id" in parsedEvent) { // Handle ParsedStatusUpdate
+      if (parsedEvent && "id" in parsedEvent) {
         reason = `Received a status update for message ${parsedEvent.id}, not an incoming message.`;
       }
-      console.log(`${LOG_PREFIX} Skipping processing: ${reason}.`); // Simplified log
+      console.log(`${LOG_PREFIX} Skipping processing: ${reason}. Full parsed event:`, parsedEvent ? JSON.stringify(parsedEvent, null, 2) : "null");
     }
     
-    // Always acknowledge WhatsApp's request quickly.
     return NextResponse.json({ status: "success - acknowledged by juan-bot v2" }, { status: 200 });
 
   } catch (error) {

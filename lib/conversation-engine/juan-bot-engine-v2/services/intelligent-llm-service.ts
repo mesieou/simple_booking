@@ -234,7 +234,7 @@ Analyze this message and determine the appropriate conversation flow action.`;
    */
   private getCurrentStepName(currentGoal: UserGoal): string {
     try {
-      const { conversationFlowBlueprints } = require('../bot-manager');
+      const { conversationFlowBlueprints } = require('@/lib/conversation-engine/juan-bot-engine-v2/bot-manager');
       const currentSteps = conversationFlowBlueprints[currentGoal.flowKey];
       return currentSteps[currentGoal.currentStepIndex] || 'unknown';
     } catch (error) {
