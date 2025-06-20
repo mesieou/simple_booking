@@ -4,6 +4,7 @@ import { persistSessionState as persistState } from "@/lib/conversation-engine/l
 import { UserContext } from '@/lib/database/models/user-context';
 import { ChatMessage } from '@/lib/database/models/chat-session';
 import { User } from '@/lib/database/models/user';
+import { Business } from '@/lib/database/models/business';
 
 export const START_BOOKING_PAYLOAD = 'start_booking_flow';
 
@@ -50,7 +51,16 @@ function convertToInternalSession(historyAndContext: any, participant: Conversat
 
 // Gets or creates chat context for a participant using database persistence
 export async function getOrCreateChatContext(participant: ConversationalParticipant): Promise<{context: ChatContext, sessionId: string, userContext: UserContext, historyForLLM: ChatMessage[], customerUser?: any}> {
-    const associatedBusinessId = '228c7e8e-ec15-4eeb-a766-d1ebee07104f';
+    
+    const business = await Business.getByWhatsappNumber(participant.businessWhatsappNumber as string);
+    const associatedBusinessId = business ? business.id : null;
+
+    if (!associatedBusinessId) {
+        console.error(`[getOrCreateChatContext] Critical: Could not find business associated with WhatsApp number ${participant.businessWhatsappNumber}`);
+        // Handle the case where no business is found. This might involve returning an error or a default context.
+        // For now, we'll proceed with a null ID, but a more robust implementation is needed.
+    }
+
     let customerUser: any = undefined;
 
     if (participant.customerWhatsappNumber && participant.type === 'customer') {
@@ -63,13 +73,13 @@ export async function getOrCreateChatContext(participant: ConversationalParticip
 
     const participantWithBusinessId: ConversationalParticipant = {
       ...participant,
-      associatedBusinessId: associatedBusinessId,
+      associatedBusinessId: associatedBusinessId || undefined,
     };
 
     let historyAndContext = await extractSessionHistoryAndContext(
         'whatsapp',
         participant.customerWhatsappNumber || participant.id,
-        associatedBusinessId,
+        associatedBusinessId || "", // Pass empty string if null
         BOT_CONFIG.SESSION_TIMEOUT_HOURS,
         {}
     );

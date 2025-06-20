@@ -4,7 +4,7 @@ import { Business } from '@/lib/database/models/business';
 import { AvailabilitySlots } from '@/lib/database/models/availability-slots';
 import { User } from '@/lib/database/models/user';
 import { Quote } from '@/lib/database/models/quote';
-import { Booking } from '@/lib/database/models/booking';
+import { Booking, type BookingData, BookingStatus } from '@/lib/database/models/booking';
 import { computeQuoteEstimation, type QuoteEstimation } from '@/lib/general-helpers/quote-cost-calculator';
 import { v4 as uuidv4 } from 'uuid';
 import { CalendarSettings } from '@/lib/database/models/calendar-settings';
@@ -1816,109 +1816,80 @@ export const validateAddressHandler: IndividualStepHandler = {
 
 // Combined service display and selection - single responsibility
 export const selectServiceHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: 'Here are our available services. Please select one from the list below, or type the name of the service you\'d like:',
+  defaultChatbotPrompt: BOOKING_CONFIG.ERROR_MESSAGES.INVALID_SERVICE_SELECTION,
   
-  // Validates service selection (or accepts first-time display)
+  // Use booking validator for intelligent matching
   validateUserInput: async (userInput, currentGoalData) => {
     console.log('[SelectService] Validating input:', userInput);
-    
-    // If this is the first time (empty input), just display services
-    if (!userInput || userInput === "") {
-      console.log('[SelectService] First time display - no validation needed');
-      return { isValidInput: true };
-    }
-    
-    // Otherwise validate the service selection
-    const availableServices = currentGoalData.availableServices as ServiceData[] | undefined;
-    console.log('[SelectService] Available services for validation:', availableServices?.map(s => ({ id: s.id, name: s.name })));
-    
-    if (!availableServices || availableServices.length === 0) {
-      console.log('[SelectService] ERROR: No services available for validation');
-      return {
-        isValidInput: false,
-        validationErrorMessage: BOOKING_CONFIG.ERROR_MESSAGES.NO_SERVICES_TO_CHOOSE
-      };
-    }
-    
-    const validationResult = BookingValidator.validateServiceSelection(userInput, availableServices);
-    console.log('[SelectService] Validation result:', validationResult);
-    return validationResult;
+    return BookingValidator.validateServiceSelection(userInput, currentGoalData.availableServices);
   },
   
-  // Loads services and processes selection
+  // Fetch services on first display, or process selection
   processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
-    console.log('[SelectService] Processing input:', validatedInput);
-    
-    // Load services if not already available
-    let availableServices = currentGoalData.availableServices as ServiceData[] | undefined;
-    
-    if (!availableServices || availableServices.length === 0) {
-      console.log('[SelectService] Loading services from database...');
-      const businessId = chatContext.currentParticipant.associatedBusinessId;
-      if (businessId) {
-        const { services, error } = await ServiceDataProcessor.fetchServicesForBusiness(businessId);
-        if (services && services.length > 0) {
-          availableServices = services;
-          console.log('[SelectService] Successfully loaded services:', services.map(s => ({ id: s.id, name: s.name })));
-        } else {
-          console.log('[SelectService] Failed to load services:', error);
-          return {
-            ...currentGoalData,
-            error: error || 'No services available'
-          };
+    const { businessId, availableServices } = {
+      businessId: chatContext.currentParticipant.associatedBusinessId,
+      availableServices: currentGoalData.availableServices || []
+    };
+
+    // If first display (validatedInput is empty), fetch and/or display services
+    if (validatedInput === "") {
+      // If services aren't loaded yet, fetch them.
+      if (availableServices.length === 0) {
+        console.log('[SelectService] First time display - fetching services');
+        const { services, error } = await ServiceDataProcessor.fetchServicesForBusiness(businessId as string);
+        
+        if (error) {
+          return { ...currentGoalData, serviceError: error };
         }
+        
+        return { 
+          ...currentGoalData, 
+          availableServices: services,
+          confirmationMessage: 'Please select a service from the list below:'
+        };
+      }
+      
+      // If services are already loaded, just return them for display.
+      return {
+        ...currentGoalData,
+        confirmationMessage: 'Please select a service from the list below:'
       }
     }
     
-    // If this is first time (no input) or empty input, just prepare services for display
-    if (!validatedInput || validatedInput === "") {
-      console.log('[SelectService] First time display - showing services');
+    // Process validated service selection (which is an ID from the validator)
+    console.log('[SelectService] Processing validated selection:', validatedInput);
+    const selectedServiceData = ServiceDataProcessor.findServiceById(validatedInput, availableServices);
+    
+    if (selectedServiceData) {
+      console.log('[SelectService] Service found:', selectedServiceData.name);
       return {
         ...currentGoalData,
-        availableServices: availableServices
-      };
-    }
-    
-    // Process the service selection - use transformed input if available
-    const inputToProcess = validatedInput;
-    const selectedServiceData = ServiceDataProcessor.findServiceSmart(inputToProcess, availableServices || []);
-    
-    if (!selectedServiceData) {
-      console.log('[SelectService] ERROR: Service not found:', inputToProcess);
-      return { 
-        ...currentGoalData, 
-        availableServices: availableServices,
-        error: BOOKING_CONFIG.ERROR_MESSAGES.SERVICE_SELECTION_ERROR 
+        selectedService: ServiceDataProcessor.extractServiceDetails(selectedServiceData),
+        // If the service is not mobile, we can skip the address step
+        finalServiceAddress: !selectedServiceData.mobile ? 'Business Location' : undefined,
+        serviceLocation: !selectedServiceData.mobile ? 'business_location' : undefined,
       };
     }
 
-    console.log('[SelectService] Successfully selected service:', selectedServiceData.name);
-    return {
-      ...currentGoalData,
-      // Update the service
-      availableServices: availableServices,
-      selectedService: ServiceDataProcessor.extractServiceDetails(selectedServiceData),
-      // Clear only service-related data that needs recalculation
-      persistedQuote: undefined,
-      quoteId: undefined,
-      bookingSummary: undefined,
-      // Keep existing date/time selections - only clear if user specifically requests time change
-      // Keep: selectedDate, selectedTime, finalServiceAddress, serviceLocation, etc.
+    console.log('[SelectService] Service not found after validation, should not happen');
+    return { 
+      ...currentGoalData, 
+      serviceError: BOOKING_CONFIG.ERROR_MESSAGES.SERVICE_SELECTION_ERROR 
     };
   },
   
-  // Creates service selection buttons
+  // Generate service buttons from fetched data
   fixedUiButtons: async (currentGoalData) => {
-    const availableServices = currentGoalData.availableServices as ServiceData[] | undefined;
-    const error = currentGoalData.error as string | undefined;
-
-    if (!availableServices || availableServices.length === 0) {
-      console.log('[SelectService] No services found, showing error buttons');
-      return BookingButtonGenerator.createErrorButtons(error || 'No services available');
+    if (currentGoalData.serviceError) {
+      return BookingButtonGenerator.createErrorButtons(currentGoalData.serviceError);
     }
-
-    console.log('[SelectService] Creating service buttons for:', availableServices.length, 'services');
-    const buttons = BookingButtonGenerator.createServiceButtons(availableServices);
+    
+    if (!currentGoalData.availableServices) {
+      return []; // No buttons if services not loaded yet
+    }
+    
+    console.log('[SelectService] Creating service buttons for:', currentGoalData.availableServices.length, 'services');
+    const buttons = BookingButtonGenerator.createServiceButtons(currentGoalData.availableServices);
     console.log('[SelectService] Created buttons:', buttons.map(b => ({ text: b.buttonText, desc: b.buttonDescription })));
     return buttons;
   }
@@ -2000,42 +1971,36 @@ export const askEmailHandler: IndividualStepHandler = {
 // Creates the actual booking - single responsibility
 export const createBookingHandler: IndividualStepHandler = {
   defaultChatbotPrompt: 'Creating your booking...',
-  autoAdvance: true, // Auto-advance after creating the booking
   
-  // Always accept input for booking creation
-  validateUserInput: async () => true,
+  // Accept only empty input (triggered by auto-advance from previous step)
+  validateUserInput: async (userInput) => {
+    if (!userInput || userInput === "") {
+      return { isValidInput: true };
+    }
+    return { isValidInput: false, validationErrorMessage: '' };
+  },
   
-  // Create booking in database with reference to the persisted quote
+  // Create booking, format final confirmation, and complete the goal in one step
   processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
-    console.log('[CreateBooking] Starting actual booking creation in database');
+    console.log('[CreateBooking] Creating booking from quote...');
+    const quoteId = currentGoalData.quoteId as string;
+    const userId = currentGoalData.userId as string;
+    const businessId = chatContext.currentParticipant.associatedBusinessId as string;
+    const selectedDate = currentGoalData.selectedDate as string;
+    const selectedTime = currentGoalData.selectedTime as string;
     
-    // Get required data
-    const quoteId = currentGoalData.quoteId;
-    const userId = currentGoalData.userId;
-    const businessId = chatContext.currentParticipant.associatedBusinessId;
-    const businessWhatsappNumber = chatContext.currentParticipant.businessWhatsappNumber;
-    const selectedDate = currentGoalData.selectedDate;
-    const selectedTime = currentGoalData.selectedTime;
-    
-    if (!quoteId || !userId || !businessId || !businessWhatsappNumber || !selectedDate || !selectedTime) {
-      console.error('[CreateBooking] Missing required data for booking creation:', {
-        quoteId: !!quoteId,
-        userId: !!userId,
-        businessId: !!businessId,
-        businessWhatsappNumber: !!businessWhatsappNumber,
-        selectedDate: !!selectedDate,
-        selectedTime: !!selectedTime
-      });
+    if (!quoteId || !userId || !businessId || !selectedDate || !selectedTime) {
       return {
         ...currentGoalData,
-        bookingError: 'Missing required information for booking creation'
+        bookingError: 'Missing information to create booking'
       };
     }
 
     try {
       // Get the provider ID (business owner) from the business WhatsApp number
+      const businessWhatsappNumber = chatContext.currentParticipant.businessWhatsappNumber as string;
       const providerId = await AvailabilityService.findUserIdByBusinessWhatsappNumber(businessWhatsappNumber, chatContext);
-      
+
       if (!providerId) {
         console.error('[CreateBooking] Cannot create booking without a provider ID');
         return {
@@ -2043,8 +2008,6 @@ export const createBookingHandler: IndividualStepHandler = {
           bookingError: 'Unable to find business provider for booking creation'
         };
       }
-
-      console.log('[CreateBooking] Found provider ID:', providerId);
 
       // Get provider's timezone for accurate booking creation
       const calendarSettings = await CalendarSettings.getByUserAndBusiness(providerId, businessId);
@@ -2063,84 +2026,79 @@ export const createBookingHandler: IndividualStepHandler = {
           { zone: providerTimezone }
       );
       
-      console.log('[CreateBooking] Creating booking for datetime:', bookingDateTime.toISO());
-
-      // Create the booking object
-      const booking = new Booking({
-        status: 'Not Completed',
-        userId: userId,
-        providerId: providerId,
-        quoteId: quoteId,
-        businessId: businessId,
-        dateTime: bookingDateTime.toISO() as string
-      });
-
-      // Persist to database
-      const savedBookingData = await booking.add();
-      const bookingWithId = savedBookingData as any; // Cast to access id property from database
-      
-      console.log('[CreateBooking] Booking successfully created in database with ID:', bookingWithId.id);
-
-      // Create booking details for display
-      const bookingDetails = {
-        id: bookingWithId.id,
-        service: currentGoalData.selectedService?.name,
-        date: selectedDate,
-        time: selectedTime,
-        location: currentGoalData.finalServiceAddress,
-        email: currentGoalData.customerEmail || currentGoalData.userEmail,
-        userId: userId,
-        quoteId: quoteId,
-        status: 'confirmed'
+      const bookingData = {
+        quoteId,
+        userId,
+        businessId,
+        providerId,
+        dateTime: bookingDateTime.toISO() as string,
+        status: 'confirmed' as BookingStatus
       };
+      
+      const newBooking = new Booking(bookingData);
+      const savedBooking = await newBooking.add() as BookingData & { id: string };
+      console.log('[CreateBooking] Booking successfully created:', savedBooking.id);
 
+      // Prepare details for final confirmation message using data from previous steps
+      const { bookingSummary, selectedService } = currentGoalData;
+
+      const confirmationMessage = `🎉 Your booking is confirmed!\n\n` +
+        `📅 Service: ${selectedService.name}\n` +
+        `🗓️ Date: ${bookingSummary.formattedDate}\n` +
+        `⏰ Time: ${bookingSummary.formattedTime}\n` +
+        `📍 Location: ${currentGoalData.finalServiceAddress}\n\n` +
+        `💰 *Pricing:*\n` +
+        `   • Service: $${bookingSummary.serviceCost.toFixed(2)}\n` +
+        `${bookingSummary.travelCost > 0 ? `   • Travel: $${bookingSummary.travelCost.toFixed(2)}\n` : ''}` +
+        `   • *Total Cost:* $${bookingSummary.totalCost.toFixed(2)}\n\n` +
+        `Booking ID: ${savedBooking.id}\n\n` +
+        `We look forward to seeing you! You can ask me anything else if you have more questions.`;
+        
+      console.log(`[BookingFlow] Booking ${savedBooking.id} completed. Bot is now in FAQ/Chitchat mode.`);
+      
       return {
         ...currentGoalData,
-        bookingId: bookingWithId.id,
-        bookingCreated: true,
-        bookingDetails,
-        persistedBooking: savedBookingData,
-        confirmationMessage: 'Perfect! Your booking has been created and saved to our system.'
+        persistedBooking: savedBooking,
+        goalStatus: 'completed', // Mark goal as completed here
+        confirmationMessage: confirmationMessage
       };
 
     } catch (error) {
-      console.error('[CreateBooking] Error creating booking in database:', error);
-      
+      console.error('[CreateBooking] Error creating booking:', error);
       return {
         ...currentGoalData,
-        bookingError: 'Failed to create booking. Please try again.',
-        confirmationMessage: 'Sorry, there was an issue creating your booking. Please try again.'
+        bookingError: 'Failed to save booking. Please try again.',
+        confirmationMessage: 'Sorry, there was a problem confirming your booking. Please contact us.'
       };
     }
   },
-
-  // Show error button if booking creation failed
-  fixedUiButtons: async (currentGoalData) => {
-    if (currentGoalData.bookingError) {
-      return [{ buttonText: '🔄 Try again', buttonValue: 'retry_booking_creation' }];
-    }
-    
-    // No buttons needed for successful booking creation (auto-advance)
-    return [];
-  }
 };
 
-// Displays booking confirmation - single responsibility
+// This handler is now redundant and will be removed.
+/*
 export const displayConfirmedBookingHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: '✅ Booking confirmed! Here are your booking details:',
-  // No autoAdvance - this is now the final step
+  defaultChatbotPrompt: 'Displaying your confirmed booking...',
   
-  // Always accept input
-  validateUserInput: async () => true,
+  // This step is now triggered by auto-advance from createBooking
+  validateUserInput: async (userInput) => {
+    if (!userInput || userInput === "") {
+      return { isValidInput: true };
+    }
+    return { isValidInput: false, validationErrorMessage: '' };
+  },
   
   // Show booking confirmation and mark goal as completed
   processAndExtractData: async (validatedInput, currentGoalData) => {
     const booking = currentGoalData.bookingDetails;
-    
-    return {
-      ...currentGoalData,
-      goalStatus: 'completed', // Mark the goal as completed when booking is displayed
-      confirmationMessage: `🎉 Your booking is confirmed!\n\n📅 Service: ${booking?.service}\n🗓️ Date: ${booking?.date}\n⏰ Time: ${booking?.time}\n📍 Location: ${booking?.location}\n\nBooking ID: ${booking?.id}\n\nWe look forward to seeing you!`
-    };
-  }
-}; 
+     
+     console.log(`[BookingFlow] Booking ${booking.id} completed. Bot is now in FAQ/Chitchat mode.`);
+     
+     return {
+       ...currentGoalData,
+       goalStatus: 'completed', // Mark the goal as completed when booking is displayed
+       confirmationMessage: `🎉 Your booking is confirmed!\n\n📅 Service: ${booking?.service}\n🗓️ Date: ${booking?.date}\n⏰ Time: ${booking?.time}\n📍 Location: ${booking?.location}\n\nBooking ID: ${booking?.id}\n\nWe look forward to seeing you!`
+     };
+   }
+};
+*/
+  

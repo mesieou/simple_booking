@@ -1,11 +1,12 @@
 import { BotResponse } from '@/lib/cross-channel-interfaces/standardized-conversation-interface';
-import { ChatContext, ConversationalParticipant } from '@/lib/conversation-engine/juan-bot-engine-v2/bot-manager';
+import { ChatContext, ConversationalParticipant } from '../../Juan-bot-engine/bot-manager';
 import { UserContext } from '@/lib/database/models/user-context';
 import { WhatsappSender } from '@/lib/conversation-engine/whatsapp/whatsapp-message-sender';
 import { Notification } from '@/lib/database/models/notification';
 import { ChatMessage } from '@/lib/database/models/chat-session';
 
 const LOG_PREFIX = '[EscalationHandler]';
+const ADMIN_ESCALATION_NUMBER = '+61450549485'; // Easy-to-modify admin phone number
 
 export interface EscalationResult {
   isEscalated: boolean;
@@ -139,7 +140,6 @@ async function checkForEscalationTrigger(
 
   if (keywordReason) {
     console.log(`${LOG_PREFIX} Escalation triggered by keyword. Reason: ${keywordReason}`);
-    const businessPhoneNumber = '+61450549485'; // Hardcoded as per original file
     const customerName = customerUser ? `${customerUser.firstName} ${customerUser.lastName}` : 'A customer';
     const customerPhone = currentContext.currentParticipant.customerWhatsappNumber;
     const customerPhoneUrl = customerPhone ? `https://wa.me/${customerPhone.replace('+', '')}` : 'Not available';
@@ -158,7 +158,7 @@ async function checkForEscalationTrigger(
         throw new Error("Failed to create a notification record in the database.");
       }
       
-      await sendEscalationNotifications(businessPhoneNumber, customerName, customerPhoneUrl, summary, messageHistory, notification.id);
+      await sendEscalationNotifications(ADMIN_ESCALATION_NUMBER, customerName, customerPhoneUrl, summary, messageHistory, notification.id);
       
       return {
         isEscalated: true,
@@ -167,13 +167,8 @@ async function checkForEscalationTrigger(
       };
     } catch (error) {
       console.error(`${LOG_PREFIX} Failed to process keyword-based escalation due to an internal error:`, error);
-      // Fall through to LLM check as a backup, but log the failure.
     }
   }
-
-  // --- Layer 2: LLM-based analysis (as a fallback) ---
-  // This part is removed as per the decision to simplify and rely on keywords first.
-  // If keyword check fails due to an error, we don't escalate automatically.
   
   return { isEscalated: false };
 }
