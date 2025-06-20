@@ -1,7 +1,6 @@
 import { createClient } from "../supabase/server";
 import { v4 as uuidv4 } from 'uuid';
 import { handleModelError } from '@/lib/general-helpers/error';
-import { syncServiceOnCreate, syncServiceOnUpdate, syncServiceOnDelete } from "@/lib/services/service-document-synchronizer";
 
 export type PricingType = 'fixed' | 'per_minute';
 
@@ -90,10 +89,6 @@ export class Service {
         }
         this.data = data;
 
-        // Sync with documents table
-        console.log(`[Sync Trigger] Firing sync for NEW service: ${data.name} (${data.id})`);
-        await syncServiceOnCreate(data);
-
         return data;
     }
 
@@ -150,18 +145,10 @@ export class Service {
             handleModelError("Failed to update service: No data returned", new Error("No data returned from update"));
         }
 
-        // Sync with documents table
-        console.log(`[Sync Trigger] Firing sync for UPDATED service: ${data.name} (${data.id})`);
-        await syncServiceOnUpdate(data);
-
         return new Service(data);
     }
 
     static async delete(id: string): Promise<void> {
-        // First, delete the associated document. If this fails, the service will not be deleted.
-        console.log(`[Sync Trigger] Firing sync for DELETED service ID: ${id}`);
-        await syncServiceOnDelete(id);
-
         const supa = await createClient();
         const { error } = await supa.from("services").delete().eq("id", id);
         if (error) {
