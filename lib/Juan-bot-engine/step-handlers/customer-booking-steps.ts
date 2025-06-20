@@ -4,19 +4,11 @@ import { Business } from '@/lib/database/models/business';
 import { AvailabilitySlots } from '@/lib/database/models/availability-slots';
 import { User } from '@/lib/database/models/user';
 import { Quote } from '@/lib/database/models/quote';
-import { Booking, type BookingData, type BookingStatus } from '@/lib/database/models/booking';
+import { Booking, type BookingData, BookingStatus } from '@/lib/database/models/booking';
 import { computeQuoteEstimation, type QuoteEstimation } from '@/lib/general-helpers/quote-cost-calculator';
 import { v4 as uuidv4 } from 'uuid';
 import { CalendarSettings } from '@/lib/database/models/calendar-settings';
 import { DateTime } from 'luxon';
-import { 
-  BookingDataChecker, 
-  DateTimeFormatter, 
-  BookingDataManager, 
-  BookingButtonGenerator as UtilityButtonGenerator,
-  StepProcessorBase,
-  BookingMessageGenerator 
-} from './booking-utilities';
 
 // Configuration constants for booking steps
 const BOOKING_CONFIG = {
@@ -293,7 +285,7 @@ class AvailabilityService {
   // Gets the actual user UUID by looking up which business owns this WhatsApp number
   static async findUserIdByBusinessWhatsappNumber(businessWhatsappNumber: string, chatContext: ChatContext): Promise<string | null> {
     try {
-      // --- START MODIFICATION: Find user by hardcoded business ID ---
+      
       const businessId = chatContext.currentParticipant.associatedBusinessId;
       if (!businessId) {
         console.error('[AvailabilityService] No business ID found in context for user lookup.');
@@ -498,6 +490,15 @@ class AvailabilityService {
 // =====================================
 // NEW SIMPLIFIED STEP HANDLERS
 // =====================================
+
+import { 
+  BookingDataChecker, 
+  DateTimeFormatter, 
+  BookingDataManager, 
+  BookingButtonGenerator as UtilityButtonGenerator,
+  StepProcessorBase,
+  BookingMessageGenerator 
+} from './booking-utilities';
 
 // Step 1: Show next 2 available times + "choose another day" button
 // Job: ONLY display times, no input processing
@@ -1499,176 +1500,475 @@ export const checkExistingUserHandler: IndividualStepHandler = {
       return { isValidInput: true };
     }
     
-    // Reject any other input as this step is automatic
-    return {
+    // Reject any other input so it goes to next step
+    console.log('[CheckExistingUser] Non-empty input - rejecting to pass to next step');
+    return { 
       isValidInput: false,
       validationErrorMessage: '' // No error message, just advance
     };
   },
   
-  // Check for user existence
+  // Check user existence only on first execution
   processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
-    console.log('[CheckExistingUser] Checking for existing user');
-    const customerUser = currentGoalData.customerUser;
+    console.log('[CheckExistingUser] Processing input:', validatedInput);
     
-    if (customerUser) {
-      console.log('[CheckExistingUser] Found existing user:', { id: customerUser.id, name: customerUser.firstName });
-      return {
-        ...currentGoalData,
-        existingUserFound: true,
-        userId: customerUser.id,
-        customerName: `${customerUser.firstName} ${customerUser.lastName}`,
-        confirmationMessage: `Welcome back, ${customerUser.firstName}! Let's continue.`
-      };
-    }
-    
-    console.log('[CheckExistingUser] No existing user found');
-    return {
-      ...currentGoalData,
-      existingUserFound: false
-    };
-  }
-};
-
-// Step 2: Handle user status (existing or new)
-// Job: ONLY route to appropriate next step, no input processing
-export const handleUserStatusHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: 'Let me get some details from you...',
-  autoAdvance: true,
-  
-  // This step is fully automatic, so any input is considered invalid
-  validateUserInput: async (userInput) => ({
-    isValidInput: !userInput || userInput === "",
-    validationErrorMessage: ''
-  }),
-  
-  // Skip user creation steps if user exists
-  processAndExtractData: async (validatedInput, currentGoalData) => {
-    console.log('[HandleUserStatus] Processing user status');
-    if (currentGoalData.existingUserFound) {
-      console.log('[HandleUserStatus] Existing user - skipping account creation steps');
+    // Only process empty input (first check)
+    if (validatedInput !== "") {
+      console.log('[CheckExistingUser] Non-empty input - not processing');
       return currentGoalData;
     }
     
-    console.log('[HandleUserStatus] New user - proceeding with account creation steps');
+    const customerWhatsappNumber = chatContext.currentParticipant.customerWhatsappNumber;
+    
+    if (!customerWhatsappNumber) {
+      console.error('[CheckExistingUser] No customer WhatsApp number found');
+      return {
+        ...currentGoalData,
+        userCheckError: 'Unable to identify customer WhatsApp number'
+      };
+    }
+    
+    try {
+      console.log('[CheckExistingUser] Checking if user exists for WhatsApp:', customerWhatsappNumber);
+      const existingUser = await User.findUserByCustomerWhatsappNumber(customerWhatsappNumber);
+      
+      if (existingUser) {
+        console.log('[CheckExistingUser] Found existing user:', existingUser.id);
+        return {
+          ...currentGoalData,
+          userExistenceChecked: true,
+          existingUserFound: true,
+          userId: existingUser.id,
+          userName: existingUser.firstName,
+          confirmationMessage: `Welcome back, ${existingUser.firstName}! I found your account.`
+        };
+      } else {
+        console.log('[CheckExistingUser] No existing user found');
+        return {
+          ...currentGoalData,
+          userExistenceChecked: true,
+          needsUserCreation: true,
+          confirmationMessage: 'I don\'t see you in our system yet.'
+        };
+      }
+    } catch (error) {
+      console.error('[CheckExistingUser] Error checking for existing user:', error);
+      return {
+        ...currentGoalData,
+        userExistenceChecked: true,
+        needsUserCreation: true,
+        confirmationMessage: 'Let me create your account.'
+      };
+    }
+  }
+};
+
+// Step 2: Route flow based on user status
+// Job: Silently route to name collection for new users, or skip creation steps for existing users.
+export const handleUserStatusHandler: IndividualStepHandler = {
+  defaultChatbotPrompt: 'Checking your account status...',
+  autoAdvance: true,
+
+  validateUserInput: async () => ({ isValidInput: true }),
+
+  processAndExtractData: async (validatedInput, currentGoalData) => {
+    // This handler is skipped by the message processor for existing users.
+    // Its only job is to set the flag for new users to proceed to name collection.
+    if (currentGoalData.needsUserCreation) {
+      return {
+        ...currentGoalData,
+        proceedToNameCollection: true,
+      };
+    }
+
+    // Fallback, should not be reached in a normal flow
     return currentGoalData;
   }
 };
 
-// Step 3: Ask for user's name
-// Job: Prompt for and process user's name
+// Step 3: Ask for user name
+// Job: ONLY ask for name if the user is new.
 export const askUserNameHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: 'First, what\'s your full name?',
+  defaultChatbotPrompt: 'What\'s your first name so I can create your account?',
   
-  // Simple validation for non-empty name
-  validateUserInput: async (userInput) => {
-    if (userInput && userInput.trim().length > 2 && userInput.includes(' ')) {
+  validateUserInput: async (userInput, currentGoalData) => {
+    // This step is skipped entirely for existing users by the message processor.
+    // Validation only runs for new users.
+    if (currentGoalData.proceedToNameCollection) {
+      // Accept empty input for the first time the prompt is shown
+      if (!userInput || userInput.trim() === "") {
+        return { isValidInput: true };
+      }
+      // Validate the name once provided
+      if (userInput.trim().length < 2) {
+        return {
+          isValidInput: false,
+          validationErrorMessage: 'Please provide your first name (at least 2 characters).'
+        };
+      }
       return { isValidInput: true };
     }
-    return {
-      isValidInput: false,
-      validationErrorMessage: 'Please enter your full name.'
-    };
+
+    // Default pass-through, though it shouldn't be reached in a normal flow
+    return { isValidInput: true };
   },
   
-  // Store the user's name
   processAndExtractData: async (validatedInput, currentGoalData) => {
-    console.log('[AskUserName] Storing user name:', validatedInput);
+    // This step is skipped for existing users. It assumes it's running for a new user.
+    if (!validatedInput || !validatedInput.trim()) {
+      return {
+        ...currentGoalData,
+        confirmationMessage: 'What\'s your first name so I can create your account?'
+      };
+    }
+    
+    // We have a name, so store it and prepare for the next step.
+    const firstName = validatedInput.trim();
     return {
       ...currentGoalData,
-      customerName: validatedInput.trim()
+      providedUserName: firstName,
+      readyForUserCreation: true,
+      shouldAutoAdvance: true, // Auto-advance to the creation step
+      confirmationMessage: `Thanks ${firstName}! Creating your account...`
     };
   }
 };
 
-// Step 4: Ask for user's email
-// Job: Prompt for and process user's email
-export const askEmailHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: 'Thanks! What\'s your email address?',
-  
-  // Simple email format validation
-  validateUserInput: async (userInput) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (emailRegex.test(userInput)) {
-      return { isValidInput: true };
-    }
-    return {
-      isValidInput: false,
-      validationErrorMessage: 'Please enter a valid email address.'
-    };
-  },
-  
-  // Store the user's email
-  processAndExtractData: async (validatedInput, currentGoalData) => {
-    console.log('[AskEmail] Storing user email:', validatedInput);
-    return {
-      ...currentGoalData,
-      customerEmail: validatedInput.trim()
-    };
-  }
-};
-
-// Step 5: Create new user in the database
-// Job: ONLY create user, no input processing
+// Step 4: Create new user
+// Job: ONLY create user if a name has been provided
 export const createNewUserHandler: IndividualStepHandler = {
   defaultChatbotPrompt: 'Creating your account...',
   autoAdvance: true,
   
-  // Automatic step, so no input is expected
-  validateUserInput: async (userInput) => ({
-    isValidInput: !userInput || userInput === "",
-    validationErrorMessage: ''
-  }),
+  validateUserInput: async () => ({ isValidInput: true }),
   
-  // Create user in database
   processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
-    console.log('[CreateNewUser] Creating new user in database');
-    const { customerName, customerEmail } = currentGoalData;
-    const customerWhatsappNumber = chatContext.currentParticipant.customerWhatsappNumber;
+    // This step is skipped for existing users.
+    // It will only run if readyForUserCreation is true, which is set by the previous step.
+    if (!currentGoalData.readyForUserCreation) {
+      return currentGoalData;
+    }
     
-    if (!customerName || !customerEmail || !customerWhatsappNumber) {
+    const firstName = currentGoalData.providedUserName as string;
+    const customerWhatsappNumber = chatContext.currentParticipant.customerWhatsappNumber;
+    const businessId = chatContext.currentParticipant.associatedBusinessId;
+    
+    if (!customerWhatsappNumber || !businessId) {
+      console.error('[CreateNewUser] Missing required data for user creation');
       return {
         ...currentGoalData,
-        userCreationError: 'Missing information for user creation'
+        userCreationError: 'Missing required information for user creation'
       };
     }
-
+    
     try {
-      const [firstName, ...lastNameParts] = customerName.split(' ');
-      const newUser = new User(
-        firstName,
-        lastNameParts.join(' '),
-        customerEmail,
-        customerWhatsappNumber
-      );
+      console.log('[CreateNewUser] Creating new user with name:', firstName);
       
-      const { data: savedUser, error } = await newUser.add();
-
+      // Generate email and password
+      const email = `wa_${customerWhatsappNumber}@skedy.ai`;
+      const password = uuidv4();
+      
+      // Create new user
+      const newUser = new User(firstName, '', 'customer', businessId);
+      const { error } = await newUser.add({
+        email: email,
+        password: password,
+        whatsappNumber: customerWhatsappNumber
+      });
+      
       if (error) {
-        throw error;
+        console.error('[CreateNewUser] Error creating user:', error);
+        return {
+          ...currentGoalData,
+          userCreationError: 'This WhatsApp number may already have an account. Please contact support.'
+        };
       }
       
-      console.log('[CreateNewUser] User successfully created with ID:', savedUser.id);
+      console.log('[CreateNewUser] Successfully created user:', newUser.id);
       
       return {
         ...currentGoalData,
-        userId: savedUser.id,
-        userCreated: true,
-        confirmationMessage: 'Great! Your account has been created.'
+        userId: newUser.id,
+        userName: firstName,
+        userEmail: email,
+        userProcessingComplete: true, // Mark processing as complete
+        confirmationMessage: `Perfect! I've created your account, ${firstName}. Let's continue with your booking.`
       };
       
     } catch (error) {
-      console.error('[CreateNewUser] Error creating user:', error);
+      console.error('[CreateNewUser] Error in user creation process:', error);
       return {
         ...currentGoalData,
-        userCreationError: 'Failed to create user. Please try again.'
+        userCreationError: 'Failed to create user account. Please try again.'
+      };
+    }
+  },
+  
+  // Show error button if creation failed
+  fixedUiButtons: async (currentGoalData) => {
+    if (currentGoalData.userCreationError) {
+      return [{ buttonText: '🔄 Try again', buttonValue: 'retry_user_creation' }];
+    }
+    
+    return [];
+  }
+};
+
+// =====================================
+// END USER MANAGEMENT STEPS  
+// =====================================
+
+// Asks for customer address - single responsibility
+export const askAddressHandler: IndividualStepHandler = {
+  defaultChatbotPrompt: BOOKING_CONFIG.ADDRESS_REQUEST_MESSAGE,
+  
+  // Validates address input meets requirements
+  validateUserInput: async (userInput) => {
+    return AddressValidator.validateAddress(userInput);
+  },
+  
+  // Simply stores the address
+  processAndExtractData: async (validatedInput, currentGoalData) => {
+    return { ...currentGoalData, customerAddress: validatedInput };
+  }
+};
+
+// Validates customer address with Google API - single responsibility
+export const validateAddressHandler: IndividualStepHandler = {
+  defaultChatbotPrompt: 'Let me validate your address...',
+  
+  // Handle address confirmation or re-entry
+  validateUserInput: async (userInput, currentGoalData) => {
+    // If we haven't validated yet, always accept to trigger validation
+    if (!currentGoalData.addressValidated && !currentGoalData.addressValidationError) {
+      return { isValidInput: true };
+    }
+    
+    // Handle user response to address confirmation
+    if (userInput === 'address_confirmed') {
+      return { isValidInput: true };
+    } else if (userInput === 'address_edit' || userInput === 'retry_address') {
+      return { 
+        isValidInput: false, 
+        validationErrorMessage: 'Please provide the correct address:' 
+      };
+    }
+    
+    return { isValidInput: true };
+  },
+  
+  // Validates address through Google API
+  processAndExtractData: async (validatedInput, currentGoalData) => {
+    // If user wants to edit, reset validation
+    if (validatedInput === 'address_edit' || validatedInput === 'retry_address') {
+      return { 
+        ...currentGoalData, 
+        customerAddress: undefined,
+        addressValidated: false,
+        addressValidationError: undefined
+      };
+    }
+    
+    // If user confirmed address, mark as confirmed
+    if (validatedInput === 'address_confirmed') {
+      return { ...currentGoalData, addressConfirmed: true };
+    }
+    
+    // If we haven't validated yet, validate the address
+    if (!currentGoalData.addressValidated && !currentGoalData.addressValidationError) {
+      const addressToValidate = currentGoalData.customerAddress as string;
+      const validationResult = await AddressValidator.validateWithGoogleAPI(addressToValidate);
+      
+      if (validationResult.isValid) {
+        return {
+          ...currentGoalData,
+          validatedCustomerAddress: validationResult.formattedAddress,
+          addressValidated: true
+        };
+      } else {
+        return {
+          ...currentGoalData,
+          addressValidationError: validationResult.errorMessage,
+          addressValidated: false
+        };
+      }
+    }
+    
+    return currentGoalData;
+  },
+  
+  // Show appropriate buttons based on validation state
+  fixedUiButtons: async (currentGoalData) => {
+    // If address validation succeeded, show confirmation buttons
+    if (currentGoalData.addressValidated && !currentGoalData.addressConfirmed) {
+      return BookingButtonGenerator.createAddressConfirmationButtons();
+    }
+    
+    // If address validation failed, show retry button
+    if (currentGoalData.addressValidated === false) {
+      return [{ buttonText: '🔄 Try again', buttonValue: 'retry_address' }];
+    }
+    
+    // No buttons needed (either validating or confirmed)
+    return [];
+  }
+};
+
+// Combined service display and selection - single responsibility
+export const selectServiceHandler: IndividualStepHandler = {
+  defaultChatbotPrompt: BOOKING_CONFIG.ERROR_MESSAGES.INVALID_SERVICE_SELECTION,
+  
+  // Use booking validator for intelligent matching
+  validateUserInput: async (userInput, currentGoalData) => {
+    console.log('[SelectService] Validating input:', userInput);
+    return BookingValidator.validateServiceSelection(userInput, currentGoalData.availableServices);
+  },
+  
+  // Fetch services on first display, or process selection
+  processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
+    const { businessId, availableServices } = {
+      businessId: chatContext.currentParticipant.associatedBusinessId,
+      availableServices: currentGoalData.availableServices || []
+    };
+
+    // If first display (validatedInput is empty), fetch and/or display services
+    if (validatedInput === "") {
+      // If services aren't loaded yet, fetch them.
+      if (availableServices.length === 0) {
+        console.log('[SelectService] First time display - fetching services');
+        const { services, error } = await ServiceDataProcessor.fetchServicesForBusiness(businessId as string);
+        
+        if (error) {
+          return { ...currentGoalData, serviceError: error };
+        }
+        
+        return { 
+          ...currentGoalData, 
+          availableServices: services,
+          confirmationMessage: 'Please select a service from the list below:'
+        };
+      }
+      
+      // If services are already loaded, just return them for display.
+      return {
+        ...currentGoalData,
+        confirmationMessage: 'Please select a service from the list below:'
+      }
+    }
+    
+    // Process validated service selection (which is an ID from the validator)
+    console.log('[SelectService] Processing validated selection:', validatedInput);
+    const selectedServiceData = ServiceDataProcessor.findServiceById(validatedInput, availableServices);
+    
+    if (selectedServiceData) {
+      console.log('[SelectService] Service found:', selectedServiceData.name);
+      return {
+        ...currentGoalData,
+        selectedService: ServiceDataProcessor.extractServiceDetails(selectedServiceData),
+        // If the service is not mobile, we can skip the address step
+        finalServiceAddress: !selectedServiceData.mobile ? 'Business Location' : undefined,
+        serviceLocation: !selectedServiceData.mobile ? 'business_location' : undefined,
+      };
+    }
+
+    console.log('[SelectService] Service not found after validation, should not happen');
+    return { 
+      ...currentGoalData, 
+      serviceError: BOOKING_CONFIG.ERROR_MESSAGES.SERVICE_SELECTION_ERROR 
+    };
+  },
+  
+  // Generate service buttons from fetched data
+  fixedUiButtons: async (currentGoalData) => {
+    if (currentGoalData.serviceError) {
+      return BookingButtonGenerator.createErrorButtons(currentGoalData.serviceError);
+    }
+    
+    if (!currentGoalData.availableServices) {
+      return []; // No buttons if services not loaded yet
+    }
+    
+    console.log('[SelectService] Creating service buttons for:', currentGoalData.availableServices.length, 'services');
+    const buttons = BookingButtonGenerator.createServiceButtons(currentGoalData.availableServices);
+    console.log('[SelectService] Created buttons:', buttons.map(b => ({ text: b.buttonText, desc: b.buttonDescription })));
+    return buttons;
+  }
+};
+
+// Confirms final service location - single responsibility
+export const confirmLocationHandler: IndividualStepHandler = {
+  defaultChatbotPrompt: 'Perfect! Let me confirm your service details...',
+  autoAdvance: true,
+  
+  // Always accept input for location confirmation
+  validateUserInput: async () => true,
+  
+  // Determines and confirms final service location
+  processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
+    const selectedService = currentGoalData.selectedService;
+    
+    if (selectedService?.mobile) {
+      // For mobile services, use the customer address
+      const finalAddress = currentGoalData.validatedCustomerAddress || currentGoalData.customerAddress;
+      return {
+        ...currentGoalData,
+        finalServiceAddress: finalAddress,
+        serviceLocation: 'customer_address',
+        confirmationMessage: `🚗 Excellent! We'll come to you at:\n📍 ${finalAddress}`
+      };
+    } else {
+      // For non-mobile services, use business address from database
+      const businessId = chatContext.currentParticipant.associatedBusinessId;
+      let businessAddress = 'Our salon location'; // Fallback
+      
+      if (businessId) {
+        try {
+          const business = await Business.getById(businessId);
+          businessAddress = business.businessAddress || business.name;
+        } catch (error) {
+          console.error('[ConfirmLocation] Error fetching business address:', error);
+          businessAddress = 'Our salon location';
+        }
+      }
+      
+      return {
+        ...currentGoalData,
+        finalServiceAddress: businessAddress,
+        serviceLocation: 'business_address',
+        confirmationMessage: `🏪 Great! Your appointment will be at our salon:\n📍 ${businessAddress}`
       };
     }
   }
 };
 
-// Step: Create the booking record in the database
-// Job: Take all confirmed data and create the final booking record
+// Asks for customer email - single responsibility
+export const askEmailHandler: IndividualStepHandler = {
+  defaultChatbotPrompt: 'Please provide your email address for booking confirmation:',
+  
+  // Validates email format
+  validateUserInput: async (userInput) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    
+    if (emailRegex.test(userInput)) {
+      return { isValidInput: true };
+    }
+    
+    return {
+      isValidInput: false,
+      validationErrorMessage: 'Please provide a valid email address.'
+    };
+  },
+  
+  // Stores email
+  processAndExtractData: async (validatedInput, currentGoalData) => {
+    return {
+      ...currentGoalData,
+      customerEmail: validatedInput.trim().toLowerCase()
+    };
+  }
+};
+
+// Creates the actual booking - single responsibility
 export const createBookingHandler: IndividualStepHandler = {
   defaultChatbotPrompt: 'Creating your booking...',
   
@@ -1801,232 +2101,4 @@ export const displayConfirmedBookingHandler: IndividualStepHandler = {
    }
 };
 */
-
-// =====================================
-// ADDRESS & LOCATION HANDLERS
-// =====================================
-
-// Step: Ask for address
-// Job: Prompt user for address and process their input
-export const askAddressHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: BOOKING_CONFIG.ADDRESS_REQUEST_MESSAGE,
   
-  // Validate address format
-  validateUserInput: async (userInput) => AddressValidator.validateAddress(userInput),
-  
-  // Store the address
-  processAndExtractData: async (validatedInput, currentGoalData) => {
-    console.log('[AskAddress] Storing address:', validatedInput);
-    return {
-      ...currentGoalData,
-      customerAddress: validatedInput
-    };
-  }
-};
-
-// Step: Validate address
-// Job: Validate address with Google API and show confirmation
-export const validateAddressHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: 'Validating your address...',
-  
-  // Accept confirmation or edit choice
-  validateUserInput: async (userInput) => {
-    if (userInput === 'address_confirmed' || userInput === 'address_edit') {
-      return { isValidInput: true };
-    }
-    return {
-      isValidInput: false,
-      validationErrorMessage: 'Please confirm or edit the address.'
-    };
-  },
-  
-  // Process validation and user choice
-  processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
-    // If user confirmed address, set it and move on
-    if (validatedInput === 'address_confirmed') {
-      return {
-        ...currentGoalData,
-        finalServiceAddress: currentGoalData.validatedAddress
-      };
-    }
-    
-    // If user wants to edit, reset address fields
-    if (validatedInput === 'address_edit') {
-      return {
-        ...currentGoalData,
-        customerAddress: undefined,
-        validatedAddress: undefined,
-        navigateBackTo: 'askAddress' // Navigate back to ask for address again
-      };
-    }
-    
-    // First time display: validate address
-    const { isValid, formattedAddress, errorMessage } = await AddressValidator.validateWithGoogleAPI(currentGoalData.customerAddress);
-    
-    if (isValid) {
-      return {
-        ...currentGoalData,
-        validatedAddress: formattedAddress,
-        confirmationMessage: `Is this correct? ${formattedAddress}`
-      };
-    }
-    
-    return {
-      ...currentGoalData,
-      addressError: errorMessage
-    };
-  },
-  
-  // Show confirmation buttons
-  fixedUiButtons: async (currentGoalData) => {
-    if (currentGoalData.addressError) {
-      return [{ buttonText: '🔄 Try again', buttonValue: 'address_edit' }];
-    }
-    return BookingButtonGenerator.createAddressConfirmationButtons();
-  }
-};
-
-// =====================================
-// LOCATION HANDLERS
-// =====================================
-
-// Step: Confirm location
-// Job: For non-mobile services, confirm that user understands they need to come to business location
-export const confirmLocationHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: 'Please note: This service is provided at our business location.',
-  
-  // Accept any input to proceed
-  validateUserInput: async () => ({ isValidInput: true }),
-  
-  // Set service location and move on
-  processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
-    const businessId = chatContext.currentParticipant.associatedBusinessId;
-    let businessAddress = 'our salon';
-    
-    if (businessId) {
-      try {
-        const business = await Business.getById(businessId);
-        if (business?.businessAddress) {
-          businessAddress = `our salon at ${business.businessAddress}`;
-        }
-      } catch (error) {
-        console.warn('[ConfirmLocation] Could not fetch business address');
-      }
-    }
-    
-    return {
-      ...currentGoalData,
-      serviceLocation: 'business_location',
-      finalServiceAddress: 'Business Location', // Standardized for quote
-      confirmationMessage: `This service is provided at ${businessAddress}. Let's find a time that works for you.`
-    };
-  },
-  autoAdvance: true
-};
-
-// =====================================
-// Business Account Steps
-// =====================================
-
-export const getBusinessEmailHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: 'What is your business email?',
-  async validateUserInput(userInput: string) {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (emailRegex.test(userInput)) {
-      return { isValidInput: true };
-    }
-    return {
-      isValidInput: false,
-      validationErrorMessage: 'Please provide a valid email address.'
-    };
-  },
-  async processAndExtractData(validatedInput: string, currentGoalData: Record<string, any>) {
-    return {
-      ...currentGoalData,
-      businessEmail: validatedInput
-    };
-  }
-};
-
-// Step: Select service
-// Job: Display available services and process user's selection intelligently
-export const selectServiceHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: BOOKING_CONFIG.ERROR_MESSAGES.INVALID_SERVICE_SELECTION,
-  
-  // Use booking validator for intelligent matching
-  validateUserInput: async (userInput, currentGoalData) => {
-    console.log('[SelectService] Validating input:', userInput);
-    return BookingValidator.validateServiceSelection(userInput, currentGoalData.availableServices);
-  },
-  
-  // Fetch services on first display, or process selection
-  processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
-    const { businessId, availableServices } = {
-      businessId: chatContext.currentParticipant.associatedBusinessId,
-      availableServices: currentGoalData.availableServices || []
-    };
-
-    // If first display (validatedInput is empty), fetch and/or display services
-    if (validatedInput === "") {
-      // If services aren't loaded yet, fetch them.
-      if (availableServices.length === 0) {
-        console.log('[SelectService] First time display - fetching services');
-        const { services, error } = await ServiceDataProcessor.fetchServicesForBusiness(businessId as string);
-        
-        if (error) {
-          return { ...currentGoalData, serviceError: error };
-        }
-        
-        return { 
-          ...currentGoalData, 
-          availableServices: services,
-          confirmationMessage: 'Please select a service from the list below:'
-        };
-      }
-      
-      // If services are already loaded, just return them for display.
-      return {
-        ...currentGoalData,
-        confirmationMessage: 'Please select a service from the list below:'
-      }
-    }
-    
-    // Process validated service selection (which is an ID from the validator)
-    console.log('[SelectService] Processing validated selection:', validatedInput);
-    const selectedServiceData = ServiceDataProcessor.findServiceById(validatedInput, availableServices);
-    
-    if (selectedServiceData) {
-      console.log('[SelectService] Service found:', selectedServiceData.name);
-      return {
-        ...currentGoalData,
-        selectedService: ServiceDataProcessor.extractServiceDetails(selectedServiceData),
-        // If the service is not mobile, we can skip the address step
-        finalServiceAddress: !selectedServiceData.mobile ? 'Business Location' : undefined,
-        serviceLocation: !selectedServiceData.mobile ? 'business_location' : undefined,
-      };
-    }
-
-    console.log('[SelectService] Service not found after validation, should not happen');
-    return { 
-      ...currentGoalData, 
-      serviceError: BOOKING_CONFIG.ERROR_MESSAGES.SERVICE_SELECTION_ERROR 
-    };
-  },
-  
-  // Generate service buttons from fetched data
-  fixedUiButtons: async (currentGoalData) => {
-    if (currentGoalData.serviceError) {
-      return BookingButtonGenerator.createErrorButtons(currentGoalData.serviceError);
-    }
-    
-    if (!currentGoalData.availableServices) {
-      return []; // No buttons if services not loaded yet
-    }
-    
-    console.log('[SelectService] Creating service buttons for:', currentGoalData.availableServices.length, 'services');
-    const buttons = BookingButtonGenerator.createServiceButtons(currentGoalData.availableServices);
-    console.log('[SelectService] Created buttons:', buttons.map(b => ({ text: b.buttonText, desc: b.buttonDescription })));
-    return buttons;
-  }
-};
-

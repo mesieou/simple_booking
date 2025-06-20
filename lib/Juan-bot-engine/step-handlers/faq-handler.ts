@@ -3,7 +3,7 @@ import { type ChatContext } from "../bot-manager";
 import { type ChatMessage } from "@/lib/database/models/chat-session";
 import { RAGfunction, type VectorSearchResult } from "@/lib/conversation-engine/llm-actions/chat-interactions/functions/embeddings";
 import { executeChatCompletion, type OpenAIChatMessage } from "@/lib/conversation-engine/llm-actions/chat-interactions/openai-config/openai-core";
-import { START_BOOKING_PAYLOAD } from "../bot-manager-helpers";
+import { START_BOOKING_PAYLOAD } from "@/lib/Juan-bot-engine/bot-manager-helpers";
 
 /**
  * Handles FAQ and chitchat messages.

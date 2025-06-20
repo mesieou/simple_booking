@@ -1,5 +1,5 @@
 import { BotResponse } from '@/lib/cross-channel-interfaces/standardized-conversation-interface';
-import { ChatContext, ConversationalParticipant } from '../../Juan-bot-engine/bot-manager';
+import { ChatContext, ConversationalParticipant } from '@/lib/Juan-bot-engine/bot-manager';
 import { UserContext } from '@/lib/database/models/user-context';
 import { WhatsappSender } from '@/lib/conversation-engine/whatsapp/whatsapp-message-sender';
 import { Notification } from '@/lib/database/models/notification';
@@ -167,9 +167,14 @@ async function checkForEscalationTrigger(
       };
     } catch (error) {
       console.error(`${LOG_PREFIX} Failed to process keyword-based escalation due to an internal error:`, error);
+
     }
   }
   
+  // --- Layer 2: LLM-based analysis (as a fallback) ---
+  // This part is removed as per the decision to simplify and rely on keywords first.
+  // If keyword check fails due to an error, we don't escalate automatically.
+
   return { isEscalated: false };
 }
 
