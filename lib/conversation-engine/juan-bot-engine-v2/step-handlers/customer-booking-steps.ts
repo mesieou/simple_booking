@@ -1,13 +1,13 @@
 import type { IndividualStepHandler, LLMProcessingResult, ChatContext, ButtonConfig } from '../bot-manager';
-import { Service, type ServiceData } from '../../database/models/service';
-import { Business } from '../../database/models/business';
-import { AvailabilitySlots } from '../../database/models/availability-slots';
-import { User } from '../../database/models/user';
-import { Quote } from '../../database/models/quote';
-import { Booking } from '../../database/models/booking';
-import { computeQuoteEstimation, type QuoteEstimation } from '../../general-helpers/quote-cost-calculator';
+import { Service, type ServiceData } from '@/lib/database/models/service';
+import { Business } from '@/lib/database/models/business';
+import { AvailabilitySlots } from '@/lib/database/models/availability-slots';
+import { User } from '@/lib/database/models/user';
+import { Quote } from '@/lib/database/models/quote';
+import { Booking } from '@/lib/database/models/booking';
+import { computeQuoteEstimation, type QuoteEstimation } from '@/lib/general-helpers/quote-cost-calculator';
 import { v4 as uuidv4 } from 'uuid';
-import { CalendarSettings } from '../../database/models/calendar-settings';
+import { CalendarSettings } from '@/lib/database/models/calendar-settings';
 import { DateTime } from 'luxon';
 
 // Configuration constants for booking steps

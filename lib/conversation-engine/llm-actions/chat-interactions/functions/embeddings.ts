@@ -1,5 +1,7 @@
 import OpenAI from "openai";
-import { findBestVectorResult, VectorSearchResult } from "./vector-search";
+import { findBestVectorResult, type VectorSearchResult } from "./vector-search";
+
+export type { VectorSearchResult };
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
