@@ -24,7 +24,8 @@ import {
     EscalationResult, 
     AdminCommandResult 
 } from "@/lib/conversation-engine/juan-bot-engine-v2/escalation/handler";
-import { getOrCreateChatContext, persistSessionState } from "@/lib/conversation-engine/juan-bot-engine-v2/bot-manager-helpers";
+import { getOrCreateChatContext, persistSessionState, START_BOOKING_PAYLOAD } from "@/lib/conversation-engine/juan-bot-engine-v2/bot-manager-helpers";
+import { handleFaqOrChitchat } from "@/lib/conversation-engine/juan-bot-engine-v2/step-handlers/faq-handler";
 
 // Type guard to check if the result is an EscalationResult
 function isEscalationResult(result: EscalationResult | AdminCommandResult): result is EscalationResult {
@@ -108,7 +109,7 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ status: "success - no text content" }, { status: 200 });
         }
         
-        const { context: chatContext, sessionId, userContext, customerUser } = await getOrCreateChatContext(participant);
+        const { context: chatContext, sessionId, userContext, historyForLLM, customerUser } = await getOrCreateChatContext(participant);
         
         // --- Step 1: Check for Escalation or Admin Command ---
         // We need a session to exist to check for escalations
@@ -118,6 +119,7 @@ export async function POST(req: NextRequest) {
                 participant,
                 chatContext,
                 userContext,
+                historyForLLM,
                 customerUser
             );
 
@@ -154,23 +156,50 @@ export async function POST(req: NextRequest) {
             }
         }
         
-        // --- Step 2: If not escalated, proceed with normal bot processing ---
-        const juanBotRawResponse = await processIncomingMessage(parsedMessage.text, participant);
-        
+        // --- Step 2: If not escalated, decide between FAQ/Chitchat and Booking Flow ---
         let botManagerResponse: BotResponse | null = null;
-        if (juanBotRawResponse && typeof juanBotRawResponse.chatbotResponse === 'string') {
-          const convertedButtons = juanBotRawResponse.uiButtons?.map(btn => ({
-            buttonText: btn.buttonText,
-            buttonValue: btn.buttonValue,
-            buttonDescription: btn.buttonDescription,
-            buttonType: btn.buttonType
-          }));
-          console.log(`${LOG_PREFIX} Converted buttons:`, convertedButtons?.map(b => ({ text: b.buttonText, desc: b.buttonDescription })));
-          
-          botManagerResponse = { 
-            text: juanBotRawResponse.chatbotResponse,
-            buttons: convertedButtons
-          };
+        const userCurrentGoal = chatContext.currentConversationSession?.activeGoals.find(g => g.goalStatus === 'inProgress');
+
+        // If the user wants to start booking or is already in a booking flow, let the main engine handle it.
+        if (parsedMessage.text.toUpperCase() === START_BOOKING_PAYLOAD.toUpperCase() || (userCurrentGoal && userCurrentGoal.goalType === 'serviceBooking')) {
+            console.log(`${LOG_PREFIX} User is starting or continuing a booking flow. Routing to main engine.`);
+            
+            // If starting fresh, ensure any previous goal is marked as completed.
+            if (parsedMessage.text.toUpperCase() === START_BOOKING_PAYLOAD.toUpperCase() && userCurrentGoal) {
+                userCurrentGoal.goalStatus = 'completed';
+            }
+
+            const juanBotRawResponse = await processIncomingMessage(parsedMessage.text, participant);
+            
+            // Adapt the response from the legacy bot manager format to the standard BotResponse format
+            if (juanBotRawResponse && typeof juanBotRawResponse.chatbotResponse === 'string') {
+                const convertedButtons = juanBotRawResponse.uiButtons?.map(btn => ({
+                    buttonText: btn.buttonText,
+                    buttonValue: btn.buttonValue,
+                    buttonDescription: btn.buttonDescription,
+                    buttonType: btn.buttonType
+                }));
+                botManagerResponse = { 
+                    text: juanBotRawResponse.chatbotResponse,
+                    buttons: convertedButtons
+                };
+            }
+        } else {
+            // Otherwise, handle as a general FAQ or chitchat.
+            console.log(`${LOG_PREFIX} No active booking goal. Routing to FAQ/Chitchat handler.`);
+            botManagerResponse = await handleFaqOrChitchat(chatContext, parsedMessage.text, historyForLLM);
+            
+            // Persist the state after the FAQ handler runs
+            if (botManagerResponse.text && chatContext.currentConversationSession) {
+                await persistSessionState(
+                    sessionId, 
+                    userContext, 
+                    chatContext.currentConversationSession, 
+                    undefined, // No active goal in FAQ mode
+                    parsedMessage.text, 
+                    botManagerResponse.text
+                );
+            }
         }
 
         console.log(`${LOG_PREFIX} Bot Manager generated response for ${parsedMessage.senderId}.`);

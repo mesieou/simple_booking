@@ -6,12 +6,13 @@ import { IntelligentLLMService } from './services/intelligent-llm-service';
 import { BotResponse } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
 import { 
   getOrCreateChatContext, 
-  persistSessionState 
+  persistSessionState,
+  START_BOOKING_PAYLOAD 
 } from './bot-manager-helpers';
 
 // --- Core Type Definitions ---
 export type ConversationalParticipantType = 'business' | 'customer';
-type UserGoalType = 'accountManagement' | 'serviceBooking' | 'frequentlyAskedQuestion' | 'humanAgentEscalation' | 'generalGreeting';
+type UserGoalType = 'accountManagement' | 'serviceBooking' | 'frequentlyAskedQuestion' | 'humanAgentEscalation';
 type GoalActionType = 'create' | 'delete' | 'update';
 
 // Configuration constants
@@ -62,7 +63,7 @@ export interface UserGoal {
 }
 
 export interface LLMProcessingResult {
-  detectedUserGoalType?: UserGoalType | 'generalGreeting';
+  detectedUserGoalType?: UserGoalType;
   detectedGoalAction?: GoalActionType;
   extractedInformation?: Record<string, any>;
   confidenceScore?: number;
@@ -105,9 +106,9 @@ export interface IndividualStepHandler {
 export const conversationFlowBlueprints: Record<string, string[]> = {
   businessAccountCreation: ['getName', 'getBusinessEmail', 'getBusinessPhone', 'selectTimeZone', 'confirmAccountDetails'],
   businessAccountDeletion: ['confirmDeletionRequest', 'verifyUserPassword', 'initiateAccountDeletion'],
-  bookingCreatingForMobileService: ['askAddress', 'validateAddress', 'selectService', 'confirmLocation', 'showAvailableTimes', 'handleTimeChoice', 'showDayBrowser', 'selectSpecificDay', 'showHoursForDay', 'selectSpecificTime', 'checkExistingUser', 'handleUserStatus', 'askUserName', 'createNewUser', 'quoteSummary', 'handleQuoteChoice', 'createBooking', 'displayConfirmedBooking'],
-  bookingCreatingForNoneMobileService: ['selectService', 'confirmLocation', 'showAvailableTimes', 'handleTimeChoice', 'showDayBrowser', 'selectSpecificDay', 'showHoursForDay', 'selectSpecificTime', 'checkExistingUser', 'handleUserStatus', 'askUserName', 'createNewUser', 'quoteSummary', 'handleQuoteChoice', 'createBooking', 'displayConfirmedBooking'],
-  customerFaqHandling: ['identifyUserQuestion', 'searchKnowledgeBase', 'provideAnswerToUser', 'checkUserSatisfaction'],
+  bookingCreatingForMobileService: ['askAddress', 'validateAddress', 'selectService', 'confirmLocation', 'showAvailableTimes', 'handleTimeChoice', 'showDayBrowser', 'selectSpecificDay', 'showHoursForDay', 'selectSpecificTime', 'checkExistingUser', 'handleUserStatus', 'askUserName', 'createNewUser', 'quoteSummary', 'handleQuoteChoice', 'createBooking'],
+  bookingCreatingForNoneMobileService: ['selectService', 'confirmLocation', 'showAvailableTimes', 'handleTimeChoice', 'showDayBrowser', 'selectSpecificDay', 'showHoursForDay', 'selectSpecificTime', 'checkExistingUser', 'handleUserStatus', 'askUserName', 'createNewUser', 'quoteSummary', 'handleQuoteChoice', 'createBooking'],
+  customerFaqHandling: ['handleFaqQuestion'],
 };
 
 // Import step handlers
@@ -135,7 +136,6 @@ import {
     // Other handlers
     askEmailHandler,
     createBookingHandler,
-    displayConfirmedBookingHandler
 } from './step-handlers/customer-booking-steps';
 
 export const botTasks: Record<string, IndividualStepHandler> = {
@@ -162,7 +162,6 @@ export const botTasks: Record<string, IndividualStepHandler> = {
   // Other handlers
   askEmail: askEmailHandler,
   createBooking: createBookingHandler,
-  displayConfirmedBooking: displayConfirmedBookingHandler,
 };
 
 // --- Helper function for step skipping ---
@@ -212,18 +211,28 @@ class MessageProcessor {
     let responseToUser: string;
     let uiButtonsToDisplay: ButtonConfig[] | undefined;
 
-    if (!userCurrentGoal) {
+    // Handle explicit request to start booking
+    if (incomingUserMessage.trim().toUpperCase() === START_BOOKING_PAYLOAD.toUpperCase()) {
+      console.log('[MessageProcessor] Detected START_BOOKING_PAYLOAD, initiating new booking goal.');
+      if (userCurrentGoal) {
+        userCurrentGoal.goalStatus = 'completed'; // End any active goal
+      }
+
+      const bookingGoalResult: LLMProcessingResult = {
+        detectedUserGoalType: 'serviceBooking',
+        detectedGoalAction: 'create',
+      };
+      
+      userCurrentGoal = await this.createNewGoal(bookingGoalResult, currentUser.type, currentContext);
+      activeSession.activeGoals = [userCurrentGoal]; // Set as the only active goal
+      
+      const result = await this.executeFirstStep(userCurrentGoal, currentContext, incomingUserMessage);
+      responseToUser = result.responseToUser;
+      uiButtonsToDisplay = result.uiButtonsToDisplay;
+    } else if (!userCurrentGoal) {
       // No active goal, detect new one
       const llmGoalDetectionResult = await this.llmService.detectIntention(incomingUserMessage, currentContext);
       
-      // Handle simple chitchat gracefully without creating a goal
-      if (llmGoalDetectionResult.detectedUserGoalType === 'generalGreeting') {
-        console.log('[MessageProcessor] Detected general greeting, providing simple response.');
-        responseToUser = "You're welcome! Is there anything else I can help you with today?";
-        await this.persistUpdatedState(sessionId, userContext, activeSession, undefined, incomingUserMessage, responseToUser);
-        return { chatbotResponse: responseToUser };
-      }
-
       if (llmGoalDetectionResult.detectedUserGoalType) {
         userCurrentGoal = await this.createNewGoal(llmGoalDetectionResult, currentUser.type, currentContext);
         activeSession.activeGoals.push(userCurrentGoal);
@@ -689,6 +698,15 @@ class MessageProcessor {
     userCurrentGoal.collectedData = typeof processingResult === 'object' && 'extractedInformation' in processingResult ?
                                     { ...userCurrentGoal.collectedData, ...processingResult.extractedInformation } :
                                     processingResult as Record<string, any>;
+
+    // After processing, check if the goal has been marked as completed by the step
+    if (userCurrentGoal.collectedData.goalStatus === 'completed') {
+        userCurrentGoal.goalStatus = 'completed'; // Update the top-level status
+        console.log(`[MessageProcessor] Goal completed during auto-advance at step: ${stepName}`);
+        
+        const responseToUser = userCurrentGoal.collectedData.confirmationMessage || "Your request has been completed.";
+        return { responseToUser, uiButtonsToDisplay: undefined };
+    }
 
     const shouldConditionallyAdvance = userCurrentGoal.collectedData.shouldAutoAdvance;
 
@@ -1214,7 +1232,7 @@ class MessageProcessor {
               })),
               customerUser
             );
-            responseToUser = contextualResponse.text || specificValidationError;
+            responseToUser = contextualResponse.text;
           } else {
             responseToUser = specificValidationError;
           }
