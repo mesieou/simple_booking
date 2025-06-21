@@ -134,7 +134,6 @@ export async function POST(req: NextRequest) {
         // --- End Language Detection ---
 
         // --- Step 1: Check for Escalation or Admin Command ---
-        // We need a session to exist to check for escalations
         if (chatContext.currentConversationSession) {
             const escalationResult = await handleEscalationOrAdminCommand(
                 parsedMessage.text,
@@ -142,7 +141,8 @@ export async function POST(req: NextRequest) {
                 chatContext,
                 userContext,
                 historyForLLM,
-                customerUser
+                customerUser,
+                parsedMessage.recipientId
             );
 
             if (isEscalationResult(escalationResult)) {
