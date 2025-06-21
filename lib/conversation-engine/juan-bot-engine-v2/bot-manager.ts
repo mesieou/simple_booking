@@ -200,7 +200,8 @@ class MessageProcessor {
       return { text: '' };
     }
 
-    const { context: currentContext, sessionId, userContext, customerUser } = await getOrCreateChatContext(currentUser);
+    // OBTENEMOS TODO, INCLUYENDO EL HISTORIAL, UNA SOLA VEZ
+    const { context: currentContext, sessionId, userContext, customerUser, historyForLLM } = await getOrCreateChatContext(currentUser);
     let activeSession: ChatConversationSession = currentContext.currentConversationSession!;
     if (!activeSession) {
         // This case should ideally not happen if getOrCreateChatContext guarantees a session, but it's a safe guard.
@@ -281,7 +282,8 @@ class MessageProcessor {
       uiButtonsToDisplay = result.uiButtonsToDisplay;
     }
 
-    await this.persistUpdatedState(sessionId, userContext, activeSession, userCurrentGoal, incomingUserMessage, responseToUser);
+    // LA LLAMADA FINAL AHORA USA LA VARIABLE historyForLLM DEL SCOPE SUPERIOR
+    await this.persistUpdatedState(sessionId, userContext, activeSession, userCurrentGoal, incomingUserMessage, responseToUser, historyForLLM, currentContext);
     
     return this.finalizeAndTranslateResponse({
         text: responseToUser,
@@ -1514,49 +1516,28 @@ class MessageProcessor {
     activeSession: ChatConversationSession,
     currentGoal: UserGoal | undefined,
     userMessage: string,
-    botResponse: string
-  ): Promise<void> {
+    botResponse: string,
+    historyForLLM: ChatMessage[],
+    chatContext: ChatContext
+  ) {
     try {
-      let updatedContext: UserContext;
-      
-      if (currentGoal && currentGoal.goalStatus === 'completed') {
-        updatedContext = {
-          ...userContext,
-          currentGoal: null,
-          previousGoal: {
-            goalType: currentGoal.goalType,
-            goalAction: currentGoal.goalAction,
-            goalStatus: currentGoal.goalStatus,
-            currentStepIndex: currentGoal.currentStepIndex,
-            collectedData: currentGoal.collectedData,
-            flowKey: currentGoal.flowKey
-          },
-          // ...
-        };
-      } else {
-        updatedContext = {
-          ...userContext,
-          currentGoal: currentGoal ? {
-            goalType: currentGoal.goalType,
-            goalAction: currentGoal.goalAction,
-            goalStatus: currentGoal.goalStatus,
-            currentStepIndex: currentGoal.currentStepIndex,
-            collectedData: currentGoal.collectedData,
-            flowKey: currentGoal.flowKey
-          } : null,
-          // ...
-        };
-      }
+      const updatedContext = {
+        ...userContext,
+        participantPreferences: chatContext.participantPreferences,
+        currentGoal: currentGoal ? {
+          goalType: currentGoal.goalType,
+          goalAction: currentGoal.goalAction,
+          goalStatus: currentGoal.goalStatus,
+          currentStepIndex: currentGoal.currentStepIndex,
+          collectedData: currentGoal.collectedData,
+          flowKey: currentGoal.flowKey,
+        } : null,
+        frequentlyDiscussedTopics: Array.isArray(chatContext.frequentlyDiscussedTopics) ? chatContext.frequentlyDiscussedTopics.join(', ') : chatContext.frequentlyDiscussedTopics,
+      };
 
-      const chatMessages: ChatMessage[] = [];
-      if (activeSession.activeGoals.length > 0 && activeSession.activeGoals[0].messageHistory) {
-        // ...
-      }
-
-      await persistSessionState(sessionId, updatedContext, activeSession, currentGoal, userMessage, botResponse);
+      await persistSessionState(sessionId, updatedContext, activeSession, currentGoal, userMessage, botResponse, historyForLLM);
     } catch (error) {
       console.error(`[MessageProcessor] Error persisting session state:`, error);
-      // Don't throw - we don't want persistence errors to break the conversation flow
     }
   }
 }
