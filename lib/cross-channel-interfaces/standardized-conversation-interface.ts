@@ -42,10 +42,10 @@ export interface BotResponse {
  */
 export interface IMessageSender {
   /**
-   * Sends a message to the specified recipient on a specific channel.
-   * @param recipientId The unique ID of the user on the channel.
-   * @param response The standardized bot response to send.
-   * @returns A Promise that resolves when the message sending attempt is complete.
+   * Sends a message to a recipient.
+   * @param recipientId The unique identifier of the message recipient.
+   * @param response The bot's response to send.
+   * @param businessPhoneNumberId The unique identifier of the business phone number sending the message.
    */
-  sendMessage(recipientId: string, response: BotResponse): Promise<void>;
+  sendMessage(recipientId: string, response: BotResponse, businessPhoneNumberId: string): Promise<void>;
 } 

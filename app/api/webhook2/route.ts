@@ -254,7 +254,8 @@ export async function POST(req: NextRequest) {
                 chatContext,
                 userContext,
                 historyForLLM,
-                customerUser
+                customerUser,
+                parsedMessage.recipientId
             );
 
             if (isEscalationResult(escalationResult)) {
@@ -262,7 +263,7 @@ export async function POST(req: NextRequest) {
                     console.log(`${LOG_PREFIX} Message handled by escalation system. Reason: ${escalationResult.reason}`);
                     if (escalationResult.response) {
                         const sender = new WhatsappSender();
-                        await sender.sendMessage(parsedMessage.senderId, escalationResult.response);
+                        await sender.sendMessage(parsedMessage.senderId, escalationResult.response, parsedMessage.recipientId);
                         console.log(`${LOG_PREFIX} Sent escalation response to ${parsedMessage.senderId}.`);
                         
                         chatContext.currentConversationSession.sessionStatus = 'escalated';
@@ -282,7 +283,7 @@ export async function POST(req: NextRequest) {
                     console.log(`${LOG_PREFIX} Message handled by admin command system.`);
                     if (escalationResult.response) {
                         const sender = new WhatsappSender();
-                        await sender.sendMessage(parsedMessage.senderId, escalationResult.response);
+                        await sender.sendMessage(parsedMessage.senderId, escalationResult.response, parsedMessage.recipientId);
                         console.log(`${LOG_PREFIX} Sent admin command response to ${parsedMessage.senderId}.`);
                     }
                     return NextResponse.json({ status: "success - handled by admin system" }, { status: 200 });
@@ -333,7 +334,7 @@ export async function POST(req: NextRequest) {
           const sender = new WhatsappSender();
           try {
             console.log(`${LOG_PREFIX} Attempting to send reply to ${parsedMessage.senderId}: "${botManagerResponse.text}"`);
-            await sender.sendMessage(parsedMessage.senderId, botManagerResponse); 
+            await sender.sendMessage(parsedMessage.senderId, botManagerResponse, parsedMessage.recipientId); 
             console.log(`${LOG_PREFIX} Reply successfully sent via WhatsappSender to ${parsedMessage.senderId}.`);
           } catch (sendError) {
             console.error(`${LOG_PREFIX} Error sending reply via WhatsappSender to ${parsedMessage.senderId}:`, sendError);
