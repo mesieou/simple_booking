@@ -4,6 +4,7 @@ import { UserContext } from '@/lib/database/models/user-context';
 import { WhatsappSender } from '@/lib/conversation-engine/whatsapp/whatsapp-message-sender';
 import { Notification } from '@/lib/database/models/notification';
 import { ChatMessage } from '@/lib/database/models/chat-session';
+import { User } from '@/lib/database/models/user';
 
 const LOG_PREFIX = '[EscalationHandler]';
 const ADMIN_ESCALATION_NUMBER = '+61450549485'; // Easy-to-modify admin phone number
@@ -54,24 +55,26 @@ export interface AdminCommandResult {
  * @returns A result object indicating if the message was handled as an escalation/admin command.
  */
 export async function handleEscalationOrAdminCommand(
-  incomingUserMessage: string,
+  messageText: string,
   participant: ConversationalParticipant,
-  context: ChatContext,
+  chatContext: ChatContext,
   userContext: UserContext,
-  history: ChatMessage[],
-  customerUser?: { firstName: string; lastName: string; id: string }
+  historyForLLM: ChatMessage[],
+  customerUser: User | null,
+  businessPhoneNumberId: string
 ): Promise<EscalationResult | AdminCommandResult> {
   // First, check if it's an admin command.
-  const adminResult = await resolveEscalation(incomingUserMessage);
+  const adminResult = await resolveEscalation(messageText);
   if (adminResult.isHandled) {
     return adminResult;
   }
 
   // If not, check if it's a user message that should trigger an escalation.
   const escalationResult = await checkForEscalationTrigger(
-    incomingUserMessage,
-    context,
-    history,
+    messageText,
+    chatContext,
+    historyForLLM,
+    businessPhoneNumberId,
     customerUser
   );
   return escalationResult;
@@ -139,7 +142,8 @@ async function checkForEscalationTrigger(
   incomingUserMessage: string,
   currentContext: ChatContext,
   messageHistory: ChatMessage[],
-  customerUser?: { firstName: string; lastName: string; id: string }
+  businessPhoneNumberId: string,
+  customerUser?: { firstName: string; lastName: string; id: string } | null
 ): Promise<EscalationResult> {
   // --- Layer 1: Immediate Keyword/Regex Detection ---
   const lowerCaseMessage = incomingUserMessage.toLowerCase();
@@ -189,7 +193,7 @@ async function checkForEscalationTrigger(
         throw new Error("Failed to create a notification record in the database.");
       }
       
-      await sendEscalationNotifications(ADMIN_ESCALATION_NUMBER, customerName, customerPhoneUrl, summaryForAdmin, messageHistory, notification.id, language);
+      await sendEscalationNotifications(ADMIN_ESCALATION_NUMBER, customerName, customerPhoneUrl, summaryForAdmin, messageHistory, notification.id, language, businessPhoneNumberId);
       
       return {
         isEscalated: true,
@@ -219,7 +223,8 @@ async function sendEscalationNotifications(
   summary: string,
   messageHistory: ChatMessage[],
   notificationId: string,
-  language: string
+  language: string,
+  businessPhoneNumberId: string
 ) {
   const lang = language === 'es' ? 'es' : 'en';
   const t = i18n[lang];
@@ -233,7 +238,7 @@ async function sendEscalationNotifications(
     ).join('\n');
     
     try {
-      await sender.sendMessage(businessPhoneNumber, { text: historyText });
+      await sender.sendMessage(businessPhoneNumber, { text: historyText }, businessPhoneNumberId);
     } catch (error) {
       console.error(`${LOG_PREFIX} Failed to send message history notification:`, error);
     }
@@ -252,5 +257,5 @@ async function sendEscalationNotifications(
   await sender.sendMessage(businessPhoneNumber, { 
     text: summaryText, 
     buttons: adminButtons 
-  });
+  }, businessPhoneNumberId);
 } 
