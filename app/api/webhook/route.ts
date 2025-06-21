@@ -160,7 +160,8 @@ export async function POST(req: NextRequest) {
                             chatContext.currentConversationSession, 
                             undefined, 
                             parsedMessage.text || '', 
-                            escalationResult.response.text || ''
+                            escalationResult.response.text || '',
+                            historyForLLM
                         );
                     }
                     return NextResponse.json({ status: "success - handled by escalation system" }, { status: 200 });
@@ -215,9 +216,10 @@ export async function POST(req: NextRequest) {
                     sessionId, 
                     userContext, 
                     chatContext.currentConversationSession, 
-                    undefined, // No active goal in FAQ mode
+                    undefined,
                     parsedMessage.text, 
-                    botManagerResponse.text
+                    botManagerResponse.text,
+                    historyForLLM
                 );
             }
         }
