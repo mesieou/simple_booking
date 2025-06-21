@@ -27,9 +27,8 @@ function isEscalationResult(result: EscalationResult | AdminCommandResult): resu
 export const dynamic = "force-dynamic";
 
 // Production Configuration
-const WHATSAPP_WEBHOOK_VERIFY_TOKEN = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN;
+const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN; // For webhook verification
 const WHATSAPP_APP_SECRET = process.env.WHATSAPP_APP_SECRET; // For webhook signature verification
-const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
 const rawUseWabaWebhook = process.env.USE_WABA_WEBHOOK;
 const USE_WABA_WEBHOOK = rawUseWabaWebhook === "true";
 const LOG_PREFIX = "[Juan-Bot Webhook PROD]";
@@ -97,9 +96,15 @@ export async function GET(req: NextRequest) {
   console.log(`${LOG_PREFIX} - hub.verify_token (received): ${hubVerifyToken}`);
   console.log(`${LOG_PREFIX} - hub.challenge (present): ${!!hubChallenge}`);
   
-  // Loguear el token esperado (¡cuidado con exponerlo en producción si es muy sensible!)
-  const expectedToken = WHATSAPP_WEBHOOK_VERIFY_TOKEN;
-  console.log(`${LOG_PREFIX} - Expected token (from env): ${expectedToken ? 'Exists' : 'MISSING!'}`);
+
+  // --- DEBUGGING STEP ---
+  console.log(`${LOG_PREFIX} Debug variable HELLO_WORLD: ${process.env.HELLO_WORLD}`);
+  // --- END DEBUGGING STEP ---
+  
+  // Loguear el token esperado
+  const expectedToken = WHATSAPP_VERIFY_TOKEN;
+  console.log(`${LOG_PREFIX} - Expected token from WHATSAPP_VERIFY_TOKEN (env): ${expectedToken ? 'Exists' : 'MISSING!'}`);
+
 
   // 4. Realizar las validaciones requeridas por Meta
   const isSubscribeMode = hubMode === "subscribe";
@@ -118,7 +123,7 @@ export async function GET(req: NextRequest) {
   if (!isTokenValid) {
     console.error(`${LOG_PREFIX} ❌ Webhook verification FAILED: Invalid verify token.`);
     console.error(`${LOG_PREFIX}    - Received: ${hubVerifyToken}`);
-    console.error(`${LOG_PREFIX}    - Expected: ${expectedToken}`);
+    console.error(`${LOG_PREFIX}    - Expected from WHATSAPP_VERIFY_TOKEN: ${expectedToken}`);
     return NextResponse.json({ message: "Verification failed (token)" }, { status: 403 });
   }
 
