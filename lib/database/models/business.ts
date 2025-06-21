@@ -186,4 +186,27 @@ export class Business {
     get websiteUrl(): string | undefined { return this.data.websiteUrl; }
     get whatsappNumber(): string | undefined { return this.data.whatsappNumber; }
     get businessAddress(): string | undefined { return this.data.businessAddress; }
+
+    static async findByWhatsappNumber(whatsappNumber: string): Promise<Business | null> {
+        console.log(`[Business] Finding business by WhatsApp number: ${whatsappNumber}`);
+        const supabase = await createClient();
+        
+        const { data, error } = await supabase
+            .from('businesses')
+            .select('*')
+            .eq('whatsappNumber', whatsappNumber)
+            .single();
+    
+        if (error) {
+            if (error.code === 'PGRST116') { // PostgREST error for "No rows found"
+                console.log(`[Business] No business found with WhatsApp number: ${whatsappNumber}`);
+                return null;
+            }
+            console.error(`[Business] Error finding business by WhatsApp number:`, error);
+            throw error;
+        }
+    
+        console.log(`[Business] Found business: ${data ? data.name : 'None'}`);
+        return data ? new Business(data) : null;
+    }
 }

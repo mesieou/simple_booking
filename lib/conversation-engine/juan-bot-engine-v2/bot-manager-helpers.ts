@@ -128,7 +128,8 @@ export async function persistSessionState(
     activeSession: ChatConversationSession,
     currentGoal: UserGoal | undefined,
     userMessage: string,
-    botResponse: string
+    botResponse: string,
+    fullHistory: ChatMessage[]
   ): Promise<void> {
     try {
       let updatedContext: UserContext;
@@ -166,18 +167,8 @@ export async function persistSessionState(
         };
       }
 
-      const chatMessages: ChatMessage[] = [];
+      const chatMessages: ChatMessage[] = [...fullHistory];
       
-      if (activeSession.activeGoals.length > 0 && activeSession.activeGoals[0].messageHistory) {
-        for (const msg of activeSession.activeGoals[0].messageHistory) {
-          chatMessages.push({
-            role: msg.speakerRole === 'user' ? 'user' : 'bot',
-            content: msg.content,
-            timestamp: msg.messageTimestamp.toISOString()
-          });
-        }
-      }
-
       const lastMessage = chatMessages[chatMessages.length - 1];
       
       if (!lastMessage || lastMessage.content !== botResponse) {
