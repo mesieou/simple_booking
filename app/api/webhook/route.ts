@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { 
   processIncomingMessage, 
   type ConversationalParticipant, 
+  type ChatContext,
 } from "@/lib/conversation-engine/juan-bot-engine-v2/bot-manager";
 import { parseWhatsappMessage } from "@/lib/conversation-engine/whatsapp/whatsapp-payload-parser";
 import { type WebhookAPIBody } from "@/lib/conversation-engine/whatsapp/whatsapp-message-logger"; 
@@ -26,6 +27,8 @@ import {
 } from "@/lib/conversation-engine/juan-bot-engine-v2/escalation/handler";
 import { getOrCreateChatContext, persistSessionState, START_BOOKING_PAYLOAD } from "@/lib/conversation-engine/juan-bot-engine-v2/bot-manager-helpers";
 import { handleFaqOrChitchat } from "@/lib/conversation-engine/juan-bot-engine-v2/step-handlers/faq-handler";
+import { franc } from 'franc-min';
+import { IntelligentLLMService } from "@/lib/conversation-engine/juan-bot-engine-v2/services/intelligent-llm-service";
 
 // Type guard to check if the result is an EscalationResult
 function isEscalationResult(result: EscalationResult | AdminCommandResult): result is EscalationResult {
@@ -111,6 +114,25 @@ export async function POST(req: NextRequest) {
         
         const { context: chatContext, sessionId, userContext, historyForLLM, customerUser } = await getOrCreateChatContext(participant);
         
+        // --- Language Detection (Centralized) ---
+        // This runs for EVERY message to ensure context is always up-to-date.
+        try {
+          const existingLang = chatContext.participantPreferences.language;
+          // Only detect if not already set to a non-English "sticky" preference.
+          if (!existingLang || existingLang === 'en') {
+            const langCode3 = franc(parsedMessage.text, { minLength: 3 });
+            const langMap: { [key: string]: string } = { 'spa': 'es', 'eng': 'en' };
+            const langCode2 = langMap[langCode3] || 'en';
+            if (existingLang !== langCode2) {
+              console.log(`${LOG_PREFIX} Language preference set to ${langCode2}`);
+              chatContext.participantPreferences.language = langCode2;
+            }
+          }
+        } catch (error) {
+          console.error(`${LOG_PREFIX} Error detecting language:`, error);
+        }
+        // --- End Language Detection ---
+
         // --- Step 1: Check for Escalation or Admin Command ---
         // We need a session to exist to check for escalations
         if (chatContext.currentConversationSession) {
@@ -169,26 +191,24 @@ export async function POST(req: NextRequest) {
                 userCurrentGoal.goalStatus = 'completed';
             }
 
-            const juanBotRawResponse = await processIncomingMessage(parsedMessage.text, participant);
-            
-            // Adapt the response from the legacy bot manager format to the standard BotResponse format
-            if (juanBotRawResponse && typeof juanBotRawResponse.chatbotResponse === 'string') {
-                const convertedButtons = juanBotRawResponse.uiButtons?.map(btn => ({
-                    buttonText: btn.buttonText,
-                    buttonValue: btn.buttonValue,
-                    buttonDescription: btn.buttonDescription,
-                    buttonType: btn.buttonType
-                }));
-                botManagerResponse = { 
-                    text: juanBotRawResponse.chatbotResponse,
-                    buttons: convertedButtons
-                };
-            }
+            // The main engine now returns a complete BotResponse object, already translated.
+            botManagerResponse = await processIncomingMessage(parsedMessage.text, participant);
+
         } else {
             // Otherwise, handle as a general FAQ or chitchat.
             console.log(`${LOG_PREFIX} No active booking goal. Routing to FAQ/Chitchat handler.`);
-            botManagerResponse = await handleFaqOrChitchat(chatContext, parsedMessage.text, historyForLLM);
+            const faqResponse = await handleFaqOrChitchat(chatContext, parsedMessage.text, historyForLLM);
             
+            // --- Post-Processing for FAQ/Chitchat Responses ---
+            const targetLanguage = chatContext.participantPreferences.language;
+            if (targetLanguage && targetLanguage !== 'en') {
+                console.log(`${LOG_PREFIX} Translating FAQ response to ${targetLanguage}`);
+                botManagerResponse = await translateBotResponse(faqResponse, targetLanguage);
+            } else {
+                botManagerResponse = faqResponse;
+            }
+            // --- End Post-Processing ---
+
             // Persist the state after the FAQ handler runs
             if (botManagerResponse.text && chatContext.currentConversationSession) {
                 await persistSessionState(
@@ -240,5 +260,82 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json({ message: "Internal server error in juan-bot webhook" }, { status: 500 });
   }
+}
+
+/**
+ * Helper function to translate a BotResponse object.
+ * This ensures translation logic is consistent for any path.
+ * @param response The BotResponse to translate.
+ * @param targetLanguage The language to translate to.
+ * @returns A translated BotResponse.
+ */
+async function translateBotResponse(response: BotResponse, targetLanguage: string): Promise<BotResponse> {
+    const llmService = new IntelligentLLMService();
+    const textsToTranslate: string[] = [];
+
+    if (response.text) {
+        textsToTranslate.push(response.text);
+    }
+    if (response.listActionText) {
+        textsToTranslate.push(response.listActionText);
+    }
+    if (response.listSectionTitle) {
+        textsToTranslate.push(response.listSectionTitle);
+    }
+    response.buttons?.forEach(btn => {
+        if (btn.buttonText) {
+            textsToTranslate.push(btn.buttonText);
+        }
+        if (btn.buttonDescription) {
+            textsToTranslate.push(btn.buttonDescription);
+        }
+    });
+
+    if (textsToTranslate.length === 0) {
+        return response;
+    }
+
+    try {
+        const translatedTexts = await llmService.translate(textsToTranslate, targetLanguage) as string[];
+        
+        // A mutable copy of the translated texts array
+        const mutableTranslatedTexts = [...translatedTexts];
+
+        let translatedText = response.text;
+        if (response.text) {
+            translatedText = mutableTranslatedTexts.shift() || response.text;
+        }
+
+        let translatedListActionText = response.listActionText;
+        if (response.listActionText) {
+            translatedListActionText = mutableTranslatedTexts.shift() || response.listActionText;
+        }
+
+        let translatedListSectionTitle = response.listSectionTitle;
+        if (response.listSectionTitle) {
+            translatedListSectionTitle = mutableTranslatedTexts.shift() || response.listSectionTitle;
+        }
+
+        const translatedButtons = response.buttons?.map(btn => {
+            const newBtn = { ...btn };
+            if (newBtn.buttonText) {
+                newBtn.buttonText = mutableTranslatedTexts.shift() || newBtn.buttonText;
+            }
+            if (newBtn.buttonDescription) {
+                newBtn.buttonDescription = mutableTranslatedTexts.shift() || newBtn.buttonDescription;
+            }
+            return newBtn;
+        });
+
+        return { 
+            text: translatedText, 
+            buttons: translatedButtons,
+            listActionText: translatedListActionText,
+            listSectionTitle: translatedListSectionTitle
+        };
+    } catch (error) {
+        console.error(`${LOG_PREFIX} Error translating bot response:`, error);
+        return response; // Return original on error
+    }
 }
   
