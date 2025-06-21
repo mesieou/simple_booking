@@ -30,6 +30,8 @@ export interface BotResponse {
     buttonType?: 'postback' | 'link';
     buttonDescription?: string; // Additional description for the button (e.g., price, duration)
   }>;
+  listActionText?: string;      // Text for the main action button in a list (e.g., "Select Option")
+  listSectionTitle?: string;    // Title for the single section in a list (e.g., "Available Options")
   // Future enhancements for rich responses:
   // images?: Array<{ url: string; altText?: string }>;
   // customPayload?: any; // For channel-specific rich content not covered above
