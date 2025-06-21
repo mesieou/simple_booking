@@ -131,6 +131,10 @@
         {
             "folderPath": "simple_booking\\lib\\Juan-bot-engine\\services\\intelligent-llm-service.ts\\",
             "badge": "😀"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\conversation-engine\\juan-bot-engine-v2\\bot-manager-helpers.ts\\",
+            "badge": "🙂"
         }
     ]
 }

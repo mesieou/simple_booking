@@ -234,7 +234,7 @@ Analyze this message and determine the appropriate conversation flow action.`;
    */
   private getCurrentStepName(currentGoal: UserGoal): string {
     try {
-      const { conversationFlowBlueprints } = require('../bot-manager');
+      const { conversationFlowBlueprints } = require('@/lib/conversation-engine/juan-bot-engine-v2/bot-manager');
       const currentSteps = conversationFlowBlueprints[currentGoal.flowKey];
       return currentSteps[currentGoal.currentStepIndex] || 'unknown';
     } catch (error) {
@@ -642,6 +642,65 @@ Analyze this message and determine if an escalation is required. Return ONLY the
     } catch (error) {
       console.error('[IntelligentLLMService] Error in escalation analysis:', error);
       return { escalate: false, reason: 'none', summary_for_agent: '' };
+    }
+  }
+
+  /**
+   * Translates a single text or an array of texts to a target language.
+   * @param texts The text or array of texts to translate.
+   * @param targetLanguage The target language code (e.g., 'es' for Spanish).
+   * @returns A promise that resolves to the translated text or array of texts.
+   */
+  async translate(
+    texts: string | string[],
+    targetLanguage: string
+  ): Promise<string | string[]> {
+    const isSingleString = typeof texts === 'string';
+    const textsToTranslate = isSingleString ? [texts] : texts;
+
+    if (!textsToTranslate || textsToTranslate.length === 0) {
+      return texts;
+    }
+
+    const systemPrompt = `You are a professional translation assistant. Translate the given JSON array of strings into the specified target language.
+
+RULES:
+- Maintain the original meaning and tone.
+- Do NOT change the order of the strings in the array.
+- Return ONLY a valid JSON array of the translated strings. For example: ["Hola", "Adiós"]
+- If a string contains a variable like '{{name}}' or an emoji, keep it in the translated string.
+- The target language is: ${targetLanguage}`;
+
+    const userPrompt = JSON.stringify(textsToTranslate);
+
+    try {
+      const response = await executeChatCompletion(
+        [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
+        ],
+        'gpt-4o',
+        0.1,
+        500 
+      );
+
+      const resultText = response.choices[0]?.message?.content?.trim();
+      if (!resultText) {
+        console.error('[IntelligentLLMService] Translation failed: No response from LLM.');
+        return texts; // Return original texts on failure
+      }
+
+      const translatedArray = JSON.parse(resultText) as string[];
+
+      if (translatedArray.length !== textsToTranslate.length) {
+        console.error('[IntelligentLLMService] Translation failed: Mismatch in array length.');
+        return texts; // Return original texts on failure
+      }
+
+      return isSingleString ? translatedArray[0] : translatedArray;
+    } catch (error) {
+      console.error(`[IntelligentLLMService] Error during translation to ${targetLanguage}:`, error);
+      return texts; // Return original texts on error
     }
   }
 } 

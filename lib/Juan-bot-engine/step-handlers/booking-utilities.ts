@@ -5,7 +5,7 @@
  * and provide consistent behavior across all booking steps.
  */
 
-import { ButtonConfig } from "@/lib/Juan-bot-engine/bot-manager";
+import { ButtonConfig } from "@lib/Juan-bot-engine/bot-manager";
 
 // =====================================
 // DATA CHECKING UTILITIES

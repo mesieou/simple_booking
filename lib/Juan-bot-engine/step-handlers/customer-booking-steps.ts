@@ -285,7 +285,7 @@ class AvailabilityService {
   // Gets the actual user UUID by looking up which business owns this WhatsApp number
   static async findUserIdByBusinessWhatsappNumber(businessWhatsappNumber: string, chatContext: ChatContext): Promise<string | null> {
     try {
-      
+      // --- START MODIFICATION: Find user by hardcoded business ID ---
       const businessId = chatContext.currentParticipant.associatedBusinessId;
       if (!businessId) {
         console.error('[AvailabilityService] No business ID found in context for user lookup.');
@@ -1387,8 +1387,8 @@ export const quoteSummaryHandler: IndividualStepHandler = {
     }
     
     return [
-      { buttonText: '✅ Confirm Quote', buttonValue: 'confirm_quote' },
-      { buttonText: '✏️ Edit Quote', buttonValue: 'edit_quote' }
+      { buttonText: 'Confirm', buttonValue: 'confirm_quote' },
+      { buttonText: 'Edit', buttonValue: 'edit_quote' }
     ];
   }
 };
@@ -1470,8 +1470,8 @@ export const handleQuoteChoiceHandler: IndividualStepHandler = {
   fixedUiButtons: async (currentGoalData) => {
     if (currentGoalData.showEditOptions) {
       return [
-        { buttonText: '💼 Change Service', buttonValue: 'edit_service' },
-        { buttonText: '🕐 Change Date/Time', buttonValue: 'edit_time' }
+        { buttonText: 'Change Service', buttonValue: 'edit_service' },
+        { buttonText: 'Change Date/Time', buttonValue: 'edit_time' }
       ];
     }
     
@@ -1845,14 +1845,18 @@ export const selectServiceHandler: IndividualStepHandler = {
         return { 
           ...currentGoalData, 
           availableServices: services,
-          confirmationMessage: 'Please select a service from the list below:'
+          confirmationMessage: 'Please select a service from the list below:',
+          listActionText: 'Select Option',
+          listSectionTitle: 'Available Options'
         };
       }
       
       // If services are already loaded, just return them for display.
       return {
         ...currentGoalData,
-        confirmationMessage: 'Please select a service from the list below:'
+        confirmationMessage: 'Please select a service from the list below:',
+        listActionText: 'Select Option',
+        listSectionTitle: 'Available Options'
       }
     }
     
