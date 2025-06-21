@@ -116,7 +116,54 @@ export async function GET(req: NextRequest) {
 
 //Handles POST requests which contain WhatsApp webhook events (e.g., incoming messages).
 export async function POST(req: NextRequest) {
-  console.log(`${LOG_PREFIX} Received a POST request.`);
+  console.log(`${LOG_PREFIX} ===== WEBHOOK DEBUG START =====`);
+  console.log(`${LOG_PREFIX} Received a POST request at ${new Date().toISOString()}`);
+  console.log(`${LOG_PREFIX} Request URL: ${req.url}`);
+  console.log(`${LOG_PREFIX} Request method: ${req.method}`);
+  
+  // Log all headers
+  console.log(`${LOG_PREFIX} === REQUEST HEADERS ===`);
+  req.headers.forEach((value, key) => {
+    console.log(`${LOG_PREFIX} ${key}: ${value}`);
+  });
+  
+  // Log user agent specifically
+  const userAgent = req.headers.get('user-agent');
+  console.log(`${LOG_PREFIX} User-Agent: ${userAgent}`);
+  
+  // Check if it's from Meta/WhatsApp
+  const isFromMeta = userAgent?.includes('facebookplatform.com') || userAgent?.includes('WhatsApp');
+  console.log(`${LOG_PREFIX} Is from Meta/WhatsApp: ${isFromMeta}`);
+  
+  // Log client IP
+  const clientIp = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || req.headers.get('x-client-ip') || 'unknown';
+  console.log(`${LOG_PREFIX} Client IP: ${clientIp}`);
+  
+  // Log webhook signature if present
+  const signature = req.headers.get('x-hub-signature-256');
+  console.log(`${LOG_PREFIX} Webhook signature present: ${!!signature}`);
+  
+  // Get and log raw body
+  let rawBody = '';
+  try {
+    rawBody = await req.text();
+    console.log(`${LOG_PREFIX} === REQUEST BODY ===`);
+    console.log(`${LOG_PREFIX} Body length: ${rawBody.length} characters`);
+    console.log(`${LOG_PREFIX} Body preview: ${rawBody.substring(0, 500)}${rawBody.length > 500 ? '...' : ''}`);
+    
+    // Try to parse as JSON and log structure
+    try {
+      const parsedBody = JSON.parse(rawBody);
+      console.log(`${LOG_PREFIX} Body parsed successfully as JSON`);
+      console.log(`${LOG_PREFIX} Body object keys: ${Object.keys(parsedBody).join(', ')}`);
+    } catch (parseError) {
+      console.log(`${LOG_PREFIX} Body is not valid JSON: ${parseError}`);
+    }
+  } catch (bodyError) {
+    console.error(`${LOG_PREFIX} Error reading request body:`, bodyError);
+  }
+  
+  console.log(`${LOG_PREFIX} ===== WEBHOOK DEBUG END =====`);
   
   if (!USE_WABA_WEBHOOK) {
     console.log(`${LOG_PREFIX} WABA Webhook for juan-bot is disabled. Skipping POST request.`);
@@ -124,18 +171,13 @@ export async function POST(req: NextRequest) {
   }
 
   // Production security: Rate limiting
-  const clientIp = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
   if (!checkRateLimit(clientIp)) {
     console.warn(`${LOG_PREFIX} Rate limit exceeded for IP: ${clientIp}`);
     return NextResponse.json({ message: "Rate limit exceeded" }, { status: 429 });
   }
 
   try {
-    // Get raw body for signature verification
-    const rawBody = await req.text();
-    
     // Production security: Webhook signature verification
-    const signature = req.headers.get('x-hub-signature-256');
     if (signature && !verifyWebhookSignature(rawBody, signature)) {
       console.error(`${LOG_PREFIX} Webhook signature verification failed`);
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
