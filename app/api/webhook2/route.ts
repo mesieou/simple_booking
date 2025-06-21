@@ -96,6 +96,7 @@ export async function GET(req: NextRequest) {
   console.log(`${LOG_PREFIX} - hub.verify_token (received): ${hubVerifyToken}`);
   console.log(`${LOG_PREFIX} - hub.challenge (present): ${!!hubChallenge}`);
   
+
   // --- DEBUGGING STEP ---
   console.log(`${LOG_PREFIX} Debug variable HELLO_WORLD: ${process.env.HELLO_WORLD}`);
   // --- END DEBUGGING STEP ---
@@ -103,6 +104,7 @@ export async function GET(req: NextRequest) {
   // Loguear el token esperado
   const expectedToken = WHATSAPP_VERIFY_TOKEN;
   console.log(`${LOG_PREFIX} - Expected token from WHATSAPP_VERIFY_TOKEN (env): ${expectedToken ? 'Exists' : 'MISSING!'}`);
+
 
   // 4. Realizar las validaciones requeridas por Meta
   const isSubscribeMode = hubMode === "subscribe";
