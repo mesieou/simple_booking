@@ -77,40 +77,54 @@ function checkRateLimit(identifier: string): boolean {
 
 //Handles the GET request from Meta/WhatsApp to verify the webhook endpoint.
 export async function GET(req: NextRequest) {
-  console.log(`${LOG_PREFIX} Parsed USE_WABA_WEBHOOK: ${USE_WABA_WEBHOOK}`);
+  console.log(`${LOG_PREFIX} ===== WEBHOOK VERIFICATION START =====`);
 
+  // 1. Verificar que el webhook esté habilitado en la configuración
   if (!USE_WABA_WEBHOOK) {
-    console.log(`${LOG_PREFIX} WABA Webhook for juan-bot is disabled. Skipping GET request.`);
+    console.warn(`${LOG_PREFIX} Webhook verification skipped: USE_WABA_WEBHOOK is not 'true'.`);
     return NextResponse.json({ message: "Webhook for juan-bot disabled" }, { status: 403 });
   }
 
+  // 2. Extraer parámetros de la URL
   const url = new URL(req.url);
   const hubMode = url.searchParams.get("hub.mode");
   const hubChallenge = url.searchParams.get("hub.challenge");
   const hubVerifyToken = url.searchParams.get("hub.verify_token");
 
-  console.log(`${LOG_PREFIX} GET request received for webhook verification.`);
+  // 3. Loguear los valores recibidos para depuración
+  console.log(`${LOG_PREFIX} Received verification params:`);
+  console.log(`${LOG_PREFIX} - hub.mode: ${hubMode}`);
+  console.log(`${LOG_PREFIX} - hub.verify_token (received): ${hubVerifyToken}`);
+  console.log(`${LOG_PREFIX} - hub.challenge (present): ${!!hubChallenge}`);
+  
+  // Loguear el token esperado (¡cuidado con exponerlo en producción si es muy sensible!)
+  const expectedToken = WHATSAPP_WEBHOOK_VERIFY_TOKEN;
+  console.log(`${LOG_PREFIX} - Expected token (from env): ${expectedToken ? 'Exists' : 'MISSING!'}`);
 
+  // 4. Realizar las validaciones requeridas por Meta
   const isSubscribeMode = hubMode === "subscribe";
-  const isTokenValid = hubVerifyToken === WHATSAPP_WEBHOOK_VERIFY_TOKEN;
-  const hasChallenge = !!hubChallenge;
-
   if (!isSubscribeMode) {
-    console.error(`${LOG_PREFIX} Webhook verification failed: Mode is not 'subscribe'. Mode: ${hubMode}`);
+    console.error(`${LOG_PREFIX} ❌ Webhook verification FAILED: hub.mode is not 'subscribe'. Received: ${hubMode}`);
     return NextResponse.json({ message: "Verification failed (mode)" }, { status: 403 });
   }
 
-  if (!isTokenValid) {
-    console.error(`${LOG_PREFIX} Webhook verification failed: Invalid verify token. Received: ${hubVerifyToken}, Expected: ${WHATSAPP_WEBHOOK_VERIFY_TOKEN}`);
-    return NextResponse.json({ message: "Verification failed (token)" }, { status: 403 });
-  }
-
+  const hasChallenge = !!hubChallenge;
   if (!hasChallenge) {
-    console.error(`${LOG_PREFIX} Webhook verification failed: Challenge not present.`);
+    console.error(`${LOG_PREFIX} ❌ Webhook verification FAILED: hub.challenge is missing.`);
     return NextResponse.json({ message: "Verification failed (challenge)" }, { status: 403 });
   }
 
-  console.log(`${LOG_PREFIX} Webhook verified successfully for juan-bot.`);
+  const isTokenValid = hubVerifyToken === expectedToken;
+  if (!isTokenValid) {
+    console.error(`${LOG_PREFIX} ❌ Webhook verification FAILED: Invalid verify token.`);
+    console.error(`${LOG_PREFIX}    - Received: ${hubVerifyToken}`);
+    console.error(`${LOG_PREFIX}    - Expected: ${expectedToken}`);
+    return NextResponse.json({ message: "Verification failed (token)" }, { status: 403 });
+  }
+
+  // 5. Si todo es correcto, devolver el challenge
+  console.log(`${LOG_PREFIX} ✅ Webhook verification PASSED. Returning challenge.`);
+  console.log(`${LOG_PREFIX} ===== WEBHOOK VERIFICATION END =====`);
   return new NextResponse(hubChallenge, { status: 200 });
 }
 
