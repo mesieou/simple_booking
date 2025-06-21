@@ -2,9 +2,9 @@ import { BotResponse, IMessageSender } from "@/lib/cross-channel-interfaces/stan
 
 // Configuration constants - easily customizable without touching core logic
 const WHATSAPP_CONFIG = {
-  API_VERSION: process.env.WHATSAPP_API_VERSION || "v22.0",
+  API_VERSION: process.env.WHATSAPP_API_VERSION || "v23.0",
   PHONE_NUMBER_ID: process.env.WHATSAPP_PHONE_NUMBER_ID,
-  ACCESS_TOKEN: process.env.WHATSAPP_VERIFY_TOKEN,
+  ACCESS_TOKEN: process.env.WHATSAPP_VERIFY_TOKEN, // This should be your System User token
   
   // WhatsApp API limits
   LIMITS: {

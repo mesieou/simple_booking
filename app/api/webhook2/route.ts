@@ -14,6 +14,7 @@ import {
 } from "@/lib/Juan-bot-engine/escalation/handler";
 import { getOrCreateChatContext, persistSessionState, START_BOOKING_PAYLOAD } from "@/lib/Juan-bot-engine/bot-manager-helpers";
 import { handleFaqOrChitchat } from "@/lib/Juan-bot-engine/step-handlers/faq-handler";
+import crypto from 'crypto';
 
 // Type guard to check if the result is an EscalationResult
 function isEscalationResult(result: EscalationResult | AdminCommandResult): result is EscalationResult {
@@ -21,10 +22,55 @@ function isEscalationResult(result: EscalationResult | AdminCommandResult): resu
 }
 
 export const dynamic = "force-dynamic";
-const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || process.env.WHATSAPP_VERIFY_TOKEN;
-const rawUseWabaWebhook = process.env.USE_WABA_WEBHOOK || process.env.USE_WABA_WEBHOOK;
+
+// Production Configuration
+const WHATSAPP_WEBHOOK_VERIFY_TOKEN = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN;
+const WHATSAPP_APP_SECRET = process.env.WHATSAPP_APP_SECRET; // For webhook signature verification
+const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
+const rawUseWabaWebhook = process.env.USE_WABA_WEBHOOK;
 const USE_WABA_WEBHOOK = rawUseWabaWebhook === "true";
-const LOG_PREFIX = "[Juan-Bot Webhook]";
+const LOG_PREFIX = "[Juan-Bot Webhook PROD]";
+
+// Rate limiting storage (in production, use Redis or database)
+const rateLimitStorage = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT_WINDOW = 60 * 60 * 1000; // 1 hour in milliseconds
+const RATE_LIMIT_MAX_REQUESTS = 200; // WhatsApp Business Management API limit
+
+// Production webhook signature verification
+function verifyWebhookSignature(payload: string, signature: string): boolean {
+  if (!WHATSAPP_APP_SECRET) {
+    console.warn(`${LOG_PREFIX} WHATSAPP_APP_SECRET not configured - skipping signature verification`);
+    return true; // Allow in development, but warn
+  }
+
+  const expectedSignature = crypto
+    .createHmac('sha256', WHATSAPP_APP_SECRET)
+    .update(payload)
+    .digest('hex');
+  
+  const providedSignature = signature.replace('sha256=', '');
+  return crypto.timingSafeEqual(Buffer.from(expectedSignature), Buffer.from(providedSignature));
+}
+
+// Rate limiting check
+function checkRateLimit(identifier: string): boolean {
+  const now = Date.now();
+  const key = `rate_limit_${identifier}`;
+  const current = rateLimitStorage.get(key);
+
+  if (!current || now > current.resetTime) {
+    rateLimitStorage.set(key, { count: 1, resetTime: now + RATE_LIMIT_WINDOW });
+    return true;
+  }
+
+  if (current.count >= RATE_LIMIT_MAX_REQUESTS) {
+    console.warn(`${LOG_PREFIX} Rate limit exceeded for ${identifier}: ${current.count}/${RATE_LIMIT_MAX_REQUESTS}`);
+    return false;
+  }
+
+  current.count++;
+  return true;
+}
 
 //Handles the GET request from Meta/WhatsApp to verify the webhook endpoint.
 export async function GET(req: NextRequest) {
@@ -43,7 +89,7 @@ export async function GET(req: NextRequest) {
   console.log(`${LOG_PREFIX} GET request received for webhook verification.`);
 
   const isSubscribeMode = hubMode === "subscribe";
-  const isTokenValid = hubVerifyToken === WHATSAPP_VERIFY_TOKEN;
+  const isTokenValid = hubVerifyToken === WHATSAPP_WEBHOOK_VERIFY_TOKEN;
   const hasChallenge = !!hubChallenge;
 
   if (!isSubscribeMode) {
@@ -52,7 +98,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (!isTokenValid) {
-    console.error(`${LOG_PREFIX} Webhook verification failed: Invalid verify token. Received: ${hubVerifyToken}, Expected: ${WHATSAPP_VERIFY_TOKEN}`);
+    console.error(`${LOG_PREFIX} Webhook verification failed: Invalid verify token. Received: ${hubVerifyToken}, Expected: ${WHATSAPP_WEBHOOK_VERIFY_TOKEN}`);
     return NextResponse.json({ message: "Verification failed (token)" }, { status: 403 });
   }
 
@@ -68,13 +114,31 @@ export async function GET(req: NextRequest) {
 //Handles POST requests which contain WhatsApp webhook events (e.g., incoming messages).
 export async function POST(req: NextRequest) {
   console.log(`${LOG_PREFIX} Received a POST request.`);
+  
   if (!USE_WABA_WEBHOOK) {
     console.log(`${LOG_PREFIX} WABA Webhook for juan-bot is disabled. Skipping POST request.`);
     return NextResponse.json({ message: "Webhook for juan-bot disabled" }, { status: 403 });
   }
 
+  // Production security: Rate limiting
+  const clientIp = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
+  if (!checkRateLimit(clientIp)) {
+    console.warn(`${LOG_PREFIX} Rate limit exceeded for IP: ${clientIp}`);
+    return NextResponse.json({ message: "Rate limit exceeded" }, { status: 429 });
+  }
+
   try {
-    const payload = (await req.json()) as WebhookAPIBody;
+    // Get raw body for signature verification
+    const rawBody = await req.text();
+    
+    // Production security: Webhook signature verification
+    const signature = req.headers.get('x-hub-signature-256');
+    if (signature && !verifyWebhookSignature(rawBody, signature)) {
+      console.error(`${LOG_PREFIX} Webhook signature verification failed`);
+      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    }
+
+    const payload = JSON.parse(rawBody) as WebhookAPIBody;
     console.log(`${LOG_PREFIX} POST request payload successfully parsed:`, JSON.stringify(payload, null, 2));
 
     const parsedEvent = parseWhatsappMessage(payload);
