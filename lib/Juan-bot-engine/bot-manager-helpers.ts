@@ -52,14 +52,19 @@ function convertToInternalSession(historyAndContext: any, participant: Conversat
 
 // Gets or creates chat context for a participant using database persistence
 export async function getOrCreateChatContext(participant: ConversationalParticipant): Promise<{context: ChatContext, sessionId: string, userContext: UserContext, historyForLLM: ChatMessage[], customerUser?: any}> {
-    const business = await Business.getByWhatsappNumber(participant.businessWhatsappNumber as string);
-    const associatedBusinessId = business ? business.id : null;
-
-    if (!associatedBusinessId) {
-        console.error(`[getOrCreateChatContext] Critical: Could not find business associated with WhatsApp number ${participant.businessWhatsappNumber}`);
-        // Handle the case where no business is found. This might involve returning an error or a default context.
-        // For now, we'll proceed with a null ID, but a more robust implementation is needed.
+    
+    // 1. Identificar dinámicamente el negocio a través del número de WhatsApp.
+    if (!participant.businessWhatsappNumber) {
+        throw new Error("[getOrCreateChatContext] Critical: businessWhatsappNumber is missing from participant.");
     }
+    const business = await Business.findByWhatsappNumber(participant.businessWhatsappNumber);
+
+    if (!business || !business.id) {
+        // Si no se encuentra el negocio, no podemos continuar.
+        throw new Error(`[getOrCreateChatContext] Critical: Could not find business associated with WhatsApp number ${participant.businessWhatsappNumber}`);
+    }
+    const associatedBusinessId = business.id;
+    console.log(`[getOrCreateChatContext] Dynamically identified business ID: ${associatedBusinessId}`);
 
     let customerUser: any = undefined;
 
