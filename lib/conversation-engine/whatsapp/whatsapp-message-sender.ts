@@ -125,8 +125,8 @@ export class WhatsappSender implements IMessageSender {
   }
 
   // Creates an interactive list message payload
-  private createListPayload(recipientId: string, text: string, buttons: BotResponse['buttons']): WhatsappListPayload {
-    const limitedButtons = buttons!.slice(0, WHATSAPP_CONFIG.LIMITS.MAX_LIST_ITEMS);
+  private createListPayload(recipientId: string, text: string, response: BotResponse): WhatsappListPayload {
+    const limitedButtons = response.buttons!.slice(0, WHATSAPP_CONFIG.LIMITS.MAX_LIST_ITEMS);
     console.log('[WhatsappSender] Creating list with buttons:', limitedButtons.map(b => ({ text: b.buttonText, desc: b.buttonDescription })));
     
     return {
@@ -137,9 +137,9 @@ export class WhatsappSender implements IMessageSender {
         type: "list",
         body: { text },
         action: {
-          button: "Select Option",
+          button: response.listActionText || "Select Option",
           sections: [{
-            title: "Available Options",
+            title: response.listSectionTitle || "Available Options",
             rows: limitedButtons.map((btn) => this.createListRow(btn))
           }]
         }
@@ -151,35 +151,26 @@ export class WhatsappSender implements IMessageSender {
   private createListRow(button: NonNullable<BotResponse['buttons']>[0]) {
     console.log('[WhatsappSender] Creating list row for button:', { text: button.buttonText, desc: button.buttonDescription });
     
-    // Use buttonDescription if available (contains price and duration info)
-    // Otherwise fall back to parsing buttonText for backward compatibility
-    if (button.buttonDescription) {
-      const row = {
-        id: button.buttonValue,
-        title: this.truncateText(button.buttonText, WHATSAPP_CONFIG.LIMITS.LIST_TITLE_MAX_LENGTH),
-        description: this.truncateText(button.buttonDescription, WHATSAPP_CONFIG.LIMITS.LIST_DESCRIPTION_MAX_LENGTH)
-      };
-      console.log('[WhatsappSender] Created row with description:', row);
-      return row;
-    }
+    const title = button.buttonText;
+    const description = button.buttonDescription || '';
     
-    // Fallback: parse buttonText for older format
-    console.log('[WhatsappSender] Using fallback - no buttonDescription found');
-    const parts = button.buttonText.split(' - ');
-    const serviceName = parts[0];
-    const priceAndDuration = parts.slice(1).join(' - ');
-    
-    const fallbackRow = {
+    const row = {
       id: button.buttonValue,
-      title: this.truncateText(serviceName, WHATSAPP_CONFIG.LIMITS.LIST_TITLE_MAX_LENGTH),
-      description: priceAndDuration || `Select ${serviceName}`
+      title: this.truncateText(title, WHATSAPP_CONFIG.LIMITS.LIST_TITLE_MAX_LENGTH),
+      description: this.truncateText(description, WHATSAPP_CONFIG.LIMITS.LIST_DESCRIPTION_MAX_LENGTH)
     };
-    console.log('[WhatsappSender] Created fallback row:', fallbackRow);
-    return fallbackRow;
+    
+    console.log('[WhatsappSender] Created row:', row);
+    return row;
   }
 
   // Truncates text to specified length if needed
   private truncateText(text: string, maxLength: number): string {
+    // Specific truncation rules for known long service names
+    if (text.toLowerCase() === "manicura con uñas postizas") {
+        return "Manic. Unas postizas";
+    }
+    
     return text.length > maxLength ? text.substring(0, maxLength) : text;
   }
 
@@ -194,7 +185,7 @@ export class WhatsappSender implements IMessageSender {
       case 'buttons':
         return this.createButtonPayload(recipientId, response.text!, response.buttons);
       case 'list':
-        return this.createListPayload(recipientId, response.text!, response.buttons);
+        return this.createListPayload(recipientId, response.text!, response);
     }
   }
 

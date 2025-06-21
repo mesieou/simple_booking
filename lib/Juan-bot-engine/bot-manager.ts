@@ -4,11 +4,13 @@ import { ChatMessage } from "@/lib/database/models/chat-session";
 import { UserContext } from "@/lib/database/models/user-context";
 import { IntelligentLLMService } from '@/lib/Juan-bot-engine/services/intelligent-llm-service';
 import { BotResponse } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
+import { franc } from 'franc-min';
 import { 
   getOrCreateChatContext, 
   persistSessionState,
   START_BOOKING_PAYLOAD 
 } from '@/lib/Juan-bot-engine/bot-manager-helpers';
+
 
 // --- Core Type Definitions ---
 export type ConversationalParticipantType = 'business' | 'customer';
@@ -112,7 +114,7 @@ export const conversationFlowBlueprints: Record<string, string[]> = {
 };
 
 // Import step handlers
-import { getBusinessEmailHandler } from '@/lib/Juan-bot-engine/step-handlers/business-account-steps';
+import { getBusinessEmailHandler } from './step-handlers/business-account-steps';
 import { 
     askAddressHandler,
     validateAddressHandler,
@@ -136,7 +138,7 @@ import {
     // Other handlers
     askEmailHandler,
     createBookingHandler,
-} from '@/lib/Juan-bot-engine/step-handlers/customer-booking-steps';
+} from './step-handlers/customer-booking-steps';
 
 export const botTasks: Record<string, IndividualStepHandler> = {
   getBusinessEmail: getBusinessEmailHandler,
@@ -194,9 +196,9 @@ class MessageProcessor {
   private llmService = new IntelligentLLMService();
 
   // Main processing method
-  async processIncomingMessage(incomingUserMessage: string, currentUser: ConversationalParticipant): Promise<{ chatbotResponse: string; uiButtons?: ButtonConfig[] }> {
+  async processIncomingMessage(incomingUserMessage: string, currentUser: ConversationalParticipant): Promise<BotResponse> {
     if (!incomingUserMessage || incomingUserMessage.trim() === '') {
-      return { chatbotResponse: '' };
+      return { text: '' };
     }
 
     const { context: currentContext, sessionId, userContext, customerUser } = await getOrCreateChatContext(currentUser);
@@ -204,12 +206,44 @@ class MessageProcessor {
     if (!activeSession) {
         // This case should ideally not happen if getOrCreateChatContext guarantees a session, but it's a safe guard.
         console.error("Critical: No active session found for user.");
-        return { chatbotResponse: "I'm sorry, I'm having trouble retrieving our conversation." };
+        return { text: "I'm sorry, I'm having trouble retrieving our conversation." };
     }
     
     let userCurrentGoal: UserGoal | undefined = activeSession.activeGoals.find(g => g.goalStatus === 'inProgress');
     let responseToUser: string;
     let uiButtonsToDisplay: ButtonConfig[] | undefined;
+
+    // --- LANGUAGE DETECTION ---
+    try {
+      const existingLang = currentContext.participantPreferences.language;
+
+      // Only detect language if it's not already set to a non-English language.
+      // This makes the language preference "sticky".
+      if (!existingLang || existingLang === 'en') {
+        // Detect language from user message (ISO 639-3)
+        const langCode3 = franc(incomingUserMessage, { minLength: 3 });
+
+        // Map to ISO 639-1 (2-letter code) if needed
+        const langMap: { [key: string]: string } = {
+          'spa': 'es',
+          'eng': 'en',
+          // Add other mappings as needed
+        };
+
+        const langCode2 = langMap[langCode3] || 'en'; // Default to English
+
+        if (existingLang !== langCode2) {
+          console.log(`[MessageProcessor] Language preference set to ${langCode2}`);
+          currentContext.participantPreferences.language = langCode2;
+        }
+      } else {
+        console.log(`[MessageProcessor] Sticky language preference maintained: ${existingLang}`);
+      }
+    } catch (error) {
+      console.error('[MessageProcessor] Error detecting language:', error);
+      // Proceed with default language
+    }
+    // --- END LANGUAGE DETECTION ---
 
     // Handle explicit request to start booking
     if (incomingUserMessage.trim().toUpperCase() === START_BOOKING_PAYLOAD.toUpperCase()) {
@@ -249,7 +283,63 @@ class MessageProcessor {
     }
 
     await this.persistUpdatedState(sessionId, userContext, activeSession, userCurrentGoal, incomingUserMessage, responseToUser);
-    return { chatbotResponse: responseToUser, uiButtons: uiButtonsToDisplay };
+    
+    return this.finalizeAndTranslateResponse({
+        text: responseToUser,
+        buttons: uiButtonsToDisplay,
+        listActionText: userCurrentGoal?.collectedData.listActionText,
+        listSectionTitle: userCurrentGoal?.collectedData.listSectionTitle
+    }, currentContext);
+  }
+
+  /**
+   * Takes the final response pieces, translates them if necessary, and returns the final object.
+   * This is the single exit point for all user-facing responses from the booking engine.
+   */
+  private async finalizeAndTranslateResponse(response: BotResponse, chatContext: ChatContext): Promise<BotResponse> {
+    const targetLanguage = chatContext.participantPreferences.language;
+
+    if (!targetLanguage || targetLanguage === 'en') {
+      return response;
+    }
+
+    console.log(`[MessageProcessor] Translating booking response to ${targetLanguage}`);
+    const textsToTranslate: string[] = [];
+
+    if (response.text) textsToTranslate.push(response.text);
+    if (response.listActionText) textsToTranslate.push(response.listActionText);
+    if (response.listSectionTitle) textsToTranslate.push(response.listSectionTitle);
+    response.buttons?.forEach(btn => {
+        if (btn.buttonText) textsToTranslate.push(btn.buttonText);
+        if (btn.buttonDescription) textsToTranslate.push(btn.buttonDescription);
+    });
+
+    if (textsToTranslate.length === 0) {
+        return response;
+    }
+
+    try {
+        const translatedTexts = await this.llmService.translate(textsToTranslate, targetLanguage) as string[];
+        const mutableTranslatedTexts = [...translatedTexts];
+
+        const translatedResponse: BotResponse = { ...response };
+
+        if (translatedResponse.text) translatedResponse.text = mutableTranslatedTexts.shift() || translatedResponse.text;
+        if (translatedResponse.listActionText) translatedResponse.listActionText = mutableTranslatedTexts.shift() || translatedResponse.listActionText;
+        if (translatedResponse.listSectionTitle) translatedResponse.listSectionTitle = mutableTranslatedTexts.shift() || translatedResponse.listSectionTitle;
+        
+        translatedResponse.buttons = translatedResponse.buttons?.map(btn => {
+            const newBtn = { ...btn };
+            if (newBtn.buttonText) newBtn.buttonText = mutableTranslatedTexts.shift() || newBtn.buttonText;
+            if (newBtn.buttonDescription) newBtn.buttonDescription = mutableTranslatedTexts.shift() || newBtn.buttonDescription;
+            return newBtn;
+        });
+
+        return translatedResponse;
+    } catch (error) {
+        console.error(`[MessageProcessor] Error translating booking response:`, error);
+        return response; 
+    }
   }
 
   /**
@@ -1475,6 +1565,6 @@ class MessageProcessor {
 // --- Main Export Function ---
 const messageProcessor = new MessageProcessor();
 
-export async function processIncomingMessage(incomingUserMessage: string, currentUser: ConversationalParticipant): Promise<{ chatbotResponse: string; uiButtons?: ButtonConfig[] }> {
+export async function processIncomingMessage(incomingUserMessage: string, currentUser: ConversationalParticipant): Promise<BotResponse> {
   return messageProcessor.processIncomingMessage(incomingUserMessage, currentUser);
 }
