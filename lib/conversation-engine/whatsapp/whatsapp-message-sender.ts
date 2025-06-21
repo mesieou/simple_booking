@@ -1,10 +1,11 @@
 import { BotResponse, IMessageSender } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
+import { getWhatsappHeaders } from "./whatsapp-headers";
 
 // Configuration constants - easily customizable without touching core logic
 const WHATSAPP_CONFIG = {
   API_VERSION: process.env.WHATSAPP_API_VERSION || "v23.0",
   PHONE_NUMBER_ID: process.env.WHATSAPP_PHONE_NUMBER_ID,
-  ACCESS_TOKEN: process.env.WHATSAPP_VERIFY_TOKEN, // This should be your System User token
+  ACCESS_TOKEN: process.env.WHATSAPP_PERMANENT_TOKEN, // Updated to use permanent token
   
   // WhatsApp API limits
   LIMITS: {
@@ -76,7 +77,7 @@ export class WhatsappSender implements IMessageSender {
   // Validates required environment variables are present
   private validateConfiguration(): void {
     if (!WHATSAPP_CONFIG.ACCESS_TOKEN) {
-      throw new Error("WHATSAPP_VERIFY_TOKEN environment variable is required");
+      throw new Error("WHATSAPP_PERMANENT_TOKEN environment variable is required");
     }
     if (!WHATSAPP_CONFIG.PHONE_NUMBER_ID) {
       throw new Error("WHATSAPP_PHONE_NUMBER_ID environment variable is required");
@@ -198,10 +199,7 @@ export class WhatsappSender implements IMessageSender {
   // Sends HTTP request to WhatsApp API
   private async sendToWhatsappApi(payload: WhatsappPayload): Promise<void> {
     const apiUrl = this.getApiUrl();
-    const headers = {
-      "Authorization": `Bearer ${WHATSAPP_CONFIG.ACCESS_TOKEN}`,
-      "Content-Type": "application/json",
-    };
+    const headers = getWhatsappHeaders();
     const body = JSON.stringify(payload);
 
     console.log(`[WhatsappSender] Sending payload to ${apiUrl}:`, body);
