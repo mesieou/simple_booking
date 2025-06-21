@@ -66,22 +66,20 @@ type WhatsappPayload = WhatsappTextPayload | WhatsappButtonPayload | WhatsappLis
 
 export class WhatsappSender implements IMessageSender {
   
-  // Constructs the WhatsApp API endpoint URL
-  private getApiUrl(): string {
-    if (!WHATSAPP_CONFIG.PHONE_NUMBER_ID) {
-      throw new Error("WHATSAPP_PHONE_NUMBER_ID environment variable is required");
+  // AHORA ACEPTA EL ID DEL NÚMERO DE TELÉFONO
+  private getApiUrl(businessPhoneNumberId: string): string {
+    if (!businessPhoneNumberId) {
+      throw new Error("businessPhoneNumberId parameter is required");
     }
-    return `https://graph.facebook.com/${WHATSAPP_CONFIG.API_VERSION}/${WHATSAPP_CONFIG.PHONE_NUMBER_ID}/messages`;
+    return `https://graph.facebook.com/${WHATSAPP_CONFIG.API_VERSION}/${businessPhoneNumberId}/messages`;
   }
 
-  // Validates required environment variables are present
+  // Se mantiene igual, pero ahora valida el token permanente
   private validateConfiguration(): void {
     if (!WHATSAPP_CONFIG.ACCESS_TOKEN) {
       throw new Error("WHATSAPP_PERMANENT_TOKEN environment variable is required");
     }
-    if (!WHATSAPP_CONFIG.PHONE_NUMBER_ID) {
-      throw new Error("WHATSAPP_PHONE_NUMBER_ID environment variable is required");
-    }
+    // Ya no necesitamos validar PHONE_NUMBER_ID aquí
   }
 
   // Determines the optimal message type based on button count
@@ -197,8 +195,9 @@ export class WhatsappSender implements IMessageSender {
   }
 
   // Sends HTTP request to WhatsApp API
-  private async sendToWhatsappApi(payload: WhatsappPayload): Promise<void> {
-    const apiUrl = this.getApiUrl();
+  // AHORA NECESITA EL ID DEL NÚMERO DE TELÉFONO
+  private async sendToWhatsappApi(payload: WhatsappPayload, businessPhoneNumberId: string): Promise<void> {
+    const apiUrl = this.getApiUrl(businessPhoneNumberId); // Se lo pasamos
     const headers = getWhatsappHeaders();
     const body = JSON.stringify(payload);
 
@@ -219,8 +218,8 @@ export class WhatsappSender implements IMessageSender {
     console.log("[WhatsappSender] Message sent successfully. Response:", responseData);
   }
 
-  // Main method: sends message response via WhatsApp Cloud API
-  async sendMessage(recipientId: string, response: BotResponse): Promise<void> {
+  // Main method: AHORA ACEPTA EL ID DEL NÚMERO DE TELÉFONO DEL NEGOCIO
+  async sendMessage(recipientId: string, response: BotResponse, businessPhoneNumberId: string): Promise<void> {
     try {
       // Validate prerequisites
       this.validateConfiguration();
@@ -235,7 +234,8 @@ export class WhatsappSender implements IMessageSender {
       const messageType = this.getMessageType(response.buttons?.length || 0);
       
       this.logOutgoingMessage(recipientId, messageType, response.buttons?.length);
-      await this.sendToWhatsappApi(payload);
+      // LE PASAMOS EL ID DEL NÚMERO DE TELÉFONO A LA FUNCIÓN DE ENVÍO
+      await this.sendToWhatsappApi(payload, businessPhoneNumberId);
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
