@@ -59,7 +59,8 @@ export async function handleEscalationOrAdminCommand(
   context: ChatContext,
   userContext: UserContext,
   history: ChatMessage[],
-  customerUser?: { firstName: string; lastName: string; id: string }
+  customerUser?: { firstName: string; lastName: string; id: string },
+  businessPhoneNumberId?: string
 ): Promise<EscalationResult | AdminCommandResult> {
   // First, check if it's an admin command.
   const adminResult = await resolveEscalation(incomingUserMessage);
@@ -72,7 +73,8 @@ export async function handleEscalationOrAdminCommand(
     incomingUserMessage,
     context,
     history,
-    customerUser
+    customerUser,
+    businessPhoneNumberId
   );
   return escalationResult;
 }
@@ -139,7 +141,8 @@ async function checkForEscalationTrigger(
   incomingUserMessage: string,
   currentContext: ChatContext,
   messageHistory: ChatMessage[],
-  customerUser?: { firstName: string; lastName: string; id: string }
+  customerUser?: { firstName: string; lastName: string; id: string },
+  businessPhoneNumberId?: string
 ): Promise<EscalationResult> {
   // --- Layer 1: Immediate Keyword/Regex Detection ---
   const lowerCaseMessage = incomingUserMessage.toLowerCase();
@@ -190,12 +193,18 @@ async function checkForEscalationTrigger(
             console.error(`${LOG_PREFIX} Critical: No fallback phone number available either.`);
             return { isEscalated: false };
         }
-        await sendEscalationNotifications(fallbackPhone, customerName, customerPhoneUrl, summaryForAdmin, messageHistory, "fallback_notification", language);
+        await sendEscalationNotifications(fallbackPhone, customerName, customerPhoneUrl, summaryForAdmin, messageHistory, "fallback_notification", language, fallbackPhone);
         return { isEscalated: true, reason: keywordReason, response: { text: t.userResponse }};
       }
       
       const escalationPhoneNumber = business.phone;
 
+      const finalBusinessPhoneNumberId = businessPhoneNumberId || currentContext.currentParticipant.businessWhatsappNumber;
+      if (!finalBusinessPhoneNumberId) {
+        console.error(`${LOG_PREFIX} Critical: Could not determine business phone number ID for sending notification.`);
+        return { isEscalated: false };
+      }
+      
       let notification;
       if (currentContext.currentParticipant.associatedBusinessId && currentContext.currentConversationSession?.id) {
         notification = await Notification.create({
@@ -209,7 +218,7 @@ async function checkForEscalationTrigger(
         throw new Error("Failed to create a notification record in the database.");
       }
       
-      await sendEscalationNotifications(escalationPhoneNumber, customerName, customerPhoneUrl, summaryForAdmin, messageHistory, notification.id, language);
+      await sendEscalationNotifications(escalationPhoneNumber, customerName, customerPhoneUrl, summaryForAdmin, messageHistory, notification.id, language, finalBusinessPhoneNumberId);
       
       return {
         isEscalated: true,
@@ -239,7 +248,8 @@ async function sendEscalationNotifications(
   summary: string,
   messageHistory: ChatMessage[],
   notificationId: string,
-  language: string
+  language: string,
+  businessPhoneNumberId: string
 ) {
   const lang = language === 'es' ? 'es' : 'en';
   const t = i18n[lang];
@@ -253,7 +263,7 @@ async function sendEscalationNotifications(
     ).join('\n');
     
     try {
-      await sender.sendMessage(businessPhoneNumber, { text: historyText });
+      await sender.sendMessage(businessPhoneNumber, { text: historyText }, businessPhoneNumberId);
     } catch (error) {
       console.error(`${LOG_PREFIX} Failed to send message history notification:`, error);
     }
@@ -272,5 +282,5 @@ async function sendEscalationNotifications(
   await sender.sendMessage(businessPhoneNumber, { 
     text: summaryText, 
     buttons: adminButtons 
-  });
+  }, businessPhoneNumberId);
 } 

@@ -254,7 +254,8 @@ export async function POST(req: NextRequest) {
                 chatContext,
                 userContext,
                 historyForLLM,
-                customerUser
+                customerUser,
+                parsedMessage.recipientId
             );
 
             if (isEscalationResult(escalationResult)) {
