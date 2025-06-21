@@ -1,9 +1,9 @@
 import { type BotResponse } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
 import { type ChatContext } from "../bot-manager";
-import { type ChatMessage } from "@/lib/database/models/chat-session";
-import { RAGfunction, type VectorSearchResult } from "@/lib/conversation-engine/llm-actions/chat-interactions/functions/embeddings";
+import { type ChatMessage } from "@lib/database/models/chat-session";
+import { RAGfunction } from "@/lib/conversation-engine/llm-actions/chat-interactions/functions/embeddings";
 import { executeChatCompletion, type OpenAIChatMessage } from "@/lib/conversation-engine/llm-actions/chat-interactions/openai-config/openai-core";
-import { START_BOOKING_PAYLOAD } from "@/lib/Juan-bot-engine/bot-manager-helpers";
+import { START_BOOKING_PAYLOAD } from "../bot-manager-helpers";
 
 /**
  * Handles FAQ and chitchat messages.
@@ -34,7 +34,7 @@ export async function handleFaqOrChitchat(
     const ragResults = await RAGfunction(businessId, userMessage);
     
     console.log('[handleFaqOrChitchat] Top 3 RAG results:', JSON.stringify(
-      ragResults.map((r: VectorSearchResult) => ({
+      ragResults.map(r => ({
         documentId: r.documentId,
         source: r.source,
         type: r.type,
@@ -52,8 +52,18 @@ export async function handleFaqOrChitchat(
 
     if (ragResults && ragResults.length > 0) {
       console.log(`[handleFaqOrChitchat] Found ${ragResults.length} relevant document(s). Using them to generate response.`);
-      const context = ragResults.map((r: VectorSearchResult) => r.content).join('\n---\n');
-      systemPrompt = `You are a helpful assistant. A user is asking a question. Use the conversation history for context to understand the question fully. Formulate your answer based ONLY on the provided "Information" section. Be conversational and friendly. If the information doesn't seem to contain the answer, say that you don't have that specific information but you can try to help with something else.
+      const context = ragResults.map(r => r.content).join('\n---\n');
+      systemPrompt = `You are a helpful assistant for a booking system. A user is asking a question. Use the conversation history for context to understand the question fully. 
+      Formulate your answer based ONLY on the provided "Information" section. Be conversational and friendly.
+      If the information doesn't seem to contain the answer, say that you don't have that specific information but you can try to help with something else.
+      
+      **IMPORTANT**: After answering the question, ALWAYS offer to help the user book an appointment, as this is your main function.
+      
+      **FORMATTING RULES FOR WHATSAPP**:
+      - To make text bold, wrap it in single asterisks: *your bold text*.
+      - To make text italic, wrap it in single underscores: _your italic text_.
+      - For lists, use a hyphen or an asterisk followed by a space.
+      - Do NOT use other markdown like headers (#), or combine asterisks and spaces. The formatting should be clean and simple for WhatsApp.
 
       CONVERSATION HISTORY:
       ---
@@ -66,12 +76,16 @@ export async function handleFaqOrChitchat(
       ---`;
     } else {
       console.log(`[handleFaqOrChitchat] No relevant document found. Treating as chitchat.`);
-      systemPrompt = `You are a friendly and helpful assistant. The user is making small talk or asking a general question. Use the conversation history for context and respond conversationally and naturally.
+      systemPrompt = `You are a friendly and helpful assistant for a booking system. The user is making small talk or asking a general question. 
+      Use the conversation history for context and respond conversationally and naturally.
+      
+      **IMPORTANT**: After your response, ALWAYS offer to help the user book an appointment, as this is your main function.
 
-      CONVERSATION HISTORY:
-      ---
-      ${historyText}
-      ---`;
+      **FORMATTING RULES FOR WHATSAPP**:
+      - To make text bold, wrap it in single asterisks: *your bold text*.
+      - To make text italic, wrap it in single underscores: _your italic text_.
+      - Do NOT use other markdown like headers (#).
+      `;
     }
 
     const messages: OpenAIChatMessage[] = [
@@ -87,13 +101,11 @@ export async function handleFaqOrChitchat(
     chatbotResponseText = "I'm sorry, I had a little trouble understanding that. Could you try asking in a different way?";
   }
   
-  const finalResponseText = `${chatbotResponseText}\n\nI can also help you book an appointment. Just let me know!`;
-
   return {
-    text: finalResponseText,
+    text: chatbotResponseText,
     buttons: [
       {
-        buttonText: "Book with us",
+        buttonText: "Book an Appointment",
         buttonValue: START_BOOKING_PAYLOAD,
         buttonType: "postback",
         buttonDescription: "Start the booking process",

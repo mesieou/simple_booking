@@ -1387,8 +1387,8 @@ export const quoteSummaryHandler: IndividualStepHandler = {
     }
     
     return [
-      { buttonText: '✅ Confirm Quote', buttonValue: 'confirm_quote' },
-      { buttonText: '✏️ Edit Quote', buttonValue: 'edit_quote' }
+      { buttonText: 'Confirm', buttonValue: 'confirm_quote' },
+      { buttonText: 'Edit', buttonValue: 'edit_quote' }
     ];
   }
 };
@@ -1470,8 +1470,8 @@ export const handleQuoteChoiceHandler: IndividualStepHandler = {
   fixedUiButtons: async (currentGoalData) => {
     if (currentGoalData.showEditOptions) {
       return [
-        { buttonText: '💼 Change Service', buttonValue: 'edit_service' },
-        { buttonText: '🕐 Change Date/Time', buttonValue: 'edit_time' }
+        { buttonText: 'Change Service', buttonValue: 'edit_service' },
+        { buttonText: 'Change Date/Time', buttonValue: 'edit_time' }
       ];
     }
     
@@ -1845,14 +1845,18 @@ export const selectServiceHandler: IndividualStepHandler = {
         return { 
           ...currentGoalData, 
           availableServices: services,
-          confirmationMessage: 'Please select a service from the list below:'
+          confirmationMessage: 'Please select a service from the list below:',
+          listActionText: 'Select Option',
+          listSectionTitle: 'Available Options'
         };
       }
       
       // If services are already loaded, just return them for display.
       return {
         ...currentGoalData,
-        confirmationMessage: 'Please select a service from the list below:'
+        confirmationMessage: 'Please select a service from the list below:',
+        listActionText: 'Select Option',
+        listSectionTitle: 'Available Options'
       }
     }
     

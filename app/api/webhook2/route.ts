@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { 
   processIncomingMessage, 
   type ConversationalParticipant, 
+  type ChatContext,
 } from "@/lib/Juan-bot-engine/bot-manager";
 import { parseWhatsappMessage } from "@/lib/conversation-engine/whatsapp/whatsapp-payload-parser";
 import { type WebhookAPIBody } from "@/lib/conversation-engine/whatsapp/whatsapp-message-logger"; 
@@ -15,6 +16,8 @@ import {
 import { getOrCreateChatContext, persistSessionState, START_BOOKING_PAYLOAD } from "@/lib/Juan-bot-engine/bot-manager-helpers";
 import { handleFaqOrChitchat } from "@/lib/Juan-bot-engine/step-handlers/faq-handler";
 import crypto from 'crypto';
+import { franc } from 'franc-min';
+import { IntelligentLLMService } from "@/lib/Juan-bot-engine/services/intelligent-llm-service";
 
 // Type guard to check if the result is an EscalationResult
 function isEscalationResult(result: EscalationResult | AdminCommandResult): result is EscalationResult {
@@ -165,6 +168,23 @@ export async function POST(req: NextRequest) {
         
         const { context: chatContext, sessionId, userContext, historyForLLM, customerUser } = await getOrCreateChatContext(participant);
         
+        // --- Language Detection (Centralized) ---
+        try {
+          const existingLang = chatContext.participantPreferences.language;
+          if (!existingLang || existingLang === 'en') {
+            const langCode3 = franc(parsedMessage.text, { minLength: 3 });
+            const langMap: { [key: string]: string } = { 'spa': 'es', 'eng': 'en' };
+            const langCode2 = langMap[langCode3] || 'en';
+            if (existingLang !== langCode2) {
+              console.log(`${LOG_PREFIX} Language preference set to ${langCode2}`);
+              chatContext.participantPreferences.language = langCode2;
+            }
+          }
+        } catch (error) {
+          console.error(`${LOG_PREFIX} Error detecting language:`, error);
+        }
+        // --- End Language Detection ---
+
         // --- Step 1: Check for Escalation or Admin Command ---
         if (chatContext.currentConversationSession) {
             const escalationResult = await handleEscalationOrAdminCommand(
@@ -220,23 +240,19 @@ export async function POST(req: NextRequest) {
                 userCurrentGoal.goalStatus = 'completed';
             }
 
-            const juanBotRawResponse = await processIncomingMessage(parsedMessage.text, participant);
+            botManagerResponse = await processIncomingMessage(parsedMessage.text, participant);
             
-            if (juanBotRawResponse && typeof juanBotRawResponse.chatbotResponse === 'string') {
-                const convertedButtons = juanBotRawResponse.uiButtons?.map(btn => ({
-                    buttonText: btn.buttonText,
-                    buttonValue: btn.buttonValue,
-                    buttonDescription: btn.buttonDescription,
-                    buttonType: btn.buttonType
-                }));
-                botManagerResponse = { 
-                    text: juanBotRawResponse.chatbotResponse,
-                    buttons: convertedButtons
-                };
-            }
         } else {
             console.log(`${LOG_PREFIX} No active booking goal. Routing to FAQ/Chitchat handler.`);
-            botManagerResponse = await handleFaqOrChitchat(chatContext, parsedMessage.text, historyForLLM);
+            const faqResponse = await handleFaqOrChitchat(chatContext, parsedMessage.text, historyForLLM);
+            
+            const targetLanguage = chatContext.participantPreferences.language;
+            if (targetLanguage && targetLanguage !== 'en') {
+                console.log(`${LOG_PREFIX} Translating FAQ response to ${targetLanguage}`);
+                botManagerResponse = await translateBotResponse(faqResponse, targetLanguage);
+            } else {
+                botManagerResponse = faqResponse;
+            }
             
             if (botManagerResponse.text && chatContext.currentConversationSession) {
                 await persistSessionState(
@@ -288,4 +304,73 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json({ message: "Internal server error in juan-bot webhook" }, { status: 500 });
   }
+} 
+
+async function translateBotResponse(response: BotResponse, targetLanguage: string): Promise<BotResponse> {
+    const llmService = new IntelligentLLMService();
+    const textsToTranslate: string[] = [];
+
+    if (response.text) {
+        textsToTranslate.push(response.text);
+    }
+    if (response.listActionText) {
+        textsToTranslate.push(response.listActionText);
+    }
+    if (response.listSectionTitle) {
+        textsToTranslate.push(response.listSectionTitle);
+    }
+    response.buttons?.forEach(btn => {
+        if (btn.buttonText) {
+            textsToTranslate.push(btn.buttonText);
+        }
+        if (btn.buttonDescription) {
+            textsToTranslate.push(btn.buttonDescription);
+        }
+    });
+
+    if (textsToTranslate.length === 0) {
+        return response;
+    }
+
+    try {
+        const translatedTexts = await llmService.translate(textsToTranslate, targetLanguage) as string[];
+        
+        const mutableTranslatedTexts = [...translatedTexts];
+
+        let translatedText = response.text;
+        if (response.text) {
+            translatedText = mutableTranslatedTexts.shift() || response.text;
+        }
+
+        let translatedListActionText = response.listActionText;
+        if (response.listActionText) {
+            translatedListActionText = mutableTranslatedTexts.shift() || response.listActionText;
+        }
+
+        let translatedListSectionTitle = response.listSectionTitle;
+        if (response.listSectionTitle) {
+            translatedListSectionTitle = mutableTranslatedTexts.shift() || response.listSectionTitle;
+        }
+
+        const translatedButtons = response.buttons?.map(btn => {
+            const newBtn = { ...btn };
+            if (newBtn.buttonText) {
+                newBtn.buttonText = mutableTranslatedTexts.shift() || newBtn.buttonText;
+            }
+            if (newBtn.buttonDescription) {
+                newBtn.buttonDescription = mutableTranslatedTexts.shift() || newBtn.buttonDescription;
+            }
+            return newBtn;
+        });
+
+        return { 
+            text: translatedText, 
+            buttons: translatedButtons,
+            listActionText: translatedListActionText,
+            listSectionTitle: translatedListSectionTitle
+        };
+    } catch (error) {
+        console.error(`${LOG_PREFIX} Error translating bot response:`, error);
+        return response; // Return original on error
+    }
 } 
