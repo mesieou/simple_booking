@@ -57,10 +57,22 @@ export async function getOrCreateChatContext(participant: ConversationalParticip
     if (!participant.businessWhatsappNumber) {
         throw new Error("[getOrCreateChatContext] Critical: businessWhatsappNumber is missing from participant.");
     }
-    const business = await Business.findByWhatsappNumber(participant.businessWhatsappNumber);
+
+    // Normalize the WhatsApp number to ensure it has a '+' prefix for DB lookup.
+    let numberToSearch = participant.businessWhatsappNumber;
+    if (!numberToSearch.startsWith('+')) {
+        numberToSearch = `+${numberToSearch}`;
+    }
+
+    // Diagnostic log to confirm the number being searched.
+    console.log(`[getOrCreateChatContext] Attempting to find business with normalized number: ${numberToSearch}`);
+
+    const business = await Business.findByWhatsappNumber(numberToSearch);
 
     if (!business || !business.id) {
         // Si no se encuentra el negocio, no podemos continuar.
+        // Log the exact number that was searched for to make debugging easier.
+        console.error(`[getOrCreateChatContext] Critical: Could not find business associated with WhatsApp number ${numberToSearch}. Please ensure the number is registered correctly in the database.`);
         throw new Error(`[getOrCreateChatContext] Critical: Could not find business associated with WhatsApp number ${participant.businessWhatsappNumber}`);
     }
     const associatedBusinessId = business.id;
