@@ -64,6 +64,9 @@ export async function getOrCreateChatContext(participant: ConversationalParticip
         numberToSearch = `+${numberToSearch}`;
     }
 
+    // Diagnostic log to confirm the number being searched.
+    console.log(`[getOrCreateChatContext] Attempting to find business with normalized number: ${numberToSearch}`);
+
     const business = await Business.findByWhatsappNumber(numberToSearch);
 
     if (!business || !business.id) {
