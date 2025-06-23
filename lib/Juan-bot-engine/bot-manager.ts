@@ -225,17 +225,18 @@ class MessageProcessor {
 
         // Map to ISO 639-1 (2-letter code) if needed
         const langMap: { [key: string]: string } = {
-          'spa': 'es',
-          'eng': 'en',
-          // Add other mappings as needed
+          'spa': 'es'
         };
+        const detectedLang = langMap[langCode3];
 
-        const langCode2 = langMap[langCode3] || 'en'; // Default to English
-
-        if (existingLang !== langCode2) {
-          console.log(`[MessageProcessor] Language preference set to ${langCode2}`);
-          currentContext.participantPreferences.language = langCode2;
+        // To prevent accidental language switches on short or ambiguous
+        // messages (e.g., "si"), only switch to Spanish if the message
+        // is longer than 4 characters.
+        if (detectedLang === 'es' && incomingUserMessage.trim().length > 4) {
+            console.log(`[MessageProcessor] Language preference set to 'es'`);
+            currentContext.participantPreferences.language = 'es';
         }
+        // Otherwise, we keep the existing preference (which defaults to 'en').
       } else {
         console.log(`[MessageProcessor] Sticky language preference maintained: ${existingLang}`);
       }
@@ -295,6 +296,9 @@ class MessageProcessor {
   /**
    * Takes the final response pieces, translates them if necessary, and returns the final object.
    * This is the single exit point for all user-facing responses from the booking engine.
+   * 
+   * NOTE: listActionText and listSectionTitle are now pre-localized by step handlers,
+   * so they don't need LLM translation.
    */
   private async finalizeAndTranslateResponse(response: BotResponse, chatContext: ChatContext): Promise<BotResponse> {
     const targetLanguage = chatContext.participantPreferences.language;
@@ -306,9 +310,13 @@ class MessageProcessor {
     console.log(`[MessageProcessor] Translating booking response to ${targetLanguage}`);
     const textsToTranslate: string[] = [];
 
+    // Only translate main text content - listActionText and listSectionTitle are now pre-localized
     if (response.text) textsToTranslate.push(response.text);
-    if (response.listActionText) textsToTranslate.push(response.listActionText);
-    if (response.listSectionTitle) textsToTranslate.push(response.listSectionTitle);
+    
+    // Skip listActionText and listSectionTitle - they're already localized by step handlers
+    // if (response.listActionText) textsToTranslate.push(response.listActionText);
+    // if (response.listSectionTitle) textsToTranslate.push(response.listSectionTitle);
+    
     response.buttons?.forEach(btn => {
         if (btn.buttonText) textsToTranslate.push(btn.buttonText);
         if (btn.buttonDescription) textsToTranslate.push(btn.buttonDescription);
@@ -322,11 +330,18 @@ class MessageProcessor {
         const translatedTexts = await this.llmService.translate(textsToTranslate, targetLanguage) as string[];
         const mutableTranslatedTexts = [...translatedTexts];
 
-        const translatedResponse: BotResponse = { ...response };
+        const translatedResponse: BotResponse = { 
+            ...response,
+            // Keep listActionText and listSectionTitle as-is (already localized)
+            listActionText: response.listActionText,
+            listSectionTitle: response.listSectionTitle
+        };
 
         if (translatedResponse.text) translatedResponse.text = mutableTranslatedTexts.shift() || translatedResponse.text;
-        if (translatedResponse.listActionText) translatedResponse.listActionText = mutableTranslatedTexts.shift() || translatedResponse.listActionText;
-        if (translatedResponse.listSectionTitle) translatedResponse.listSectionTitle = mutableTranslatedTexts.shift() || translatedResponse.listSectionTitle;
+        
+        // Skip translation for listActionText and listSectionTitle
+        // if (translatedResponse.listActionText) translatedResponse.listActionText = mutableTranslatedTexts.shift() || translatedResponse.listActionText;
+        // if (translatedResponse.listSectionTitle) translatedResponse.listSectionTitle = mutableTranslatedTexts.shift() || translatedResponse.listSectionTitle;
         
         translatedResponse.buttons = translatedResponse.buttons?.map(btn => {
             const newBtn = { ...btn };
@@ -1329,6 +1344,17 @@ class MessageProcessor {
         } catch (error) {
           console.error(`[MessageProcessor] LLM error response generation failed:`, error);
           responseToUser = specificValidationError || "I didn't understand that. Could you please try again?";
+        }
+        
+        // Before getting buttons, refresh step UI data (like list titles) to prevent stale data on re-prompt
+        try {
+            console.log(`[MessageProcessor] Refreshing step UI data for: ${stepName} after validation failure`);
+            const stepUIDataResult = await currentStepHandler.processAndExtractData("", userCurrentGoal.collectedData, currentContext);
+            userCurrentGoal.collectedData = typeof stepUIDataResult === 'object' && 'extractedInformation' in stepUIDataResult ?
+                                           { ...userCurrentGoal.collectedData, ...stepUIDataResult.extractedInformation } :
+                                           stepUIDataResult as Record<string, any>;
+        } catch(e) {
+            console.error(`[MessageProcessor] Failed to refresh UI data for step ${stepName}`, e)
         }
         
         // === ALWAYS USE ORIGINAL BUTTONS ===
