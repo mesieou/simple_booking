@@ -1,4 +1,4 @@
-import type { IndividualStepHandler, LLMProcessingResult, ChatContext, ButtonConfig } from '../bot-manager';
+import type { IndividualStepHandler, LLMProcessingResult, ChatContext, ButtonConfig } from '@/lib/Juan-bot-engine/bot-manager';
 
 // Configuration constants for business account management
 const BUSINESS_ACCOUNT_CONFIG = {

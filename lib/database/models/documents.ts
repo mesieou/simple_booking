@@ -23,6 +23,7 @@ export interface DocumentData {
     error?: string;
     stack?: string;
   };
+  serviceId?: string;
 }
 
 export class DocumentError extends Error {
@@ -148,5 +149,16 @@ export class Document {
     const supabase = await createClient();
     const { error } = await supabase.from("documents").delete().eq("sessionId", sessionId);
     if (error) handleModelError("Failed to delete documents by sessionId", error);
+  }
+
+  static async findByServiceId(serviceId: string): Promise<DocumentData | null> {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("documents")
+      .select("*")
+      .eq("serviceId", serviceId)
+      .maybeSingle();
+    if (error) handleModelError("Failed to fetch document by serviceId", error);
+    return data || null;
   }
 } 

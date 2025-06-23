@@ -1,0 +1,260 @@
+import Stripe from 'stripe';
+import { Business } from '@/lib/database/models/business';
+import { Quote } from '@/lib/database/models/quote';
+import { User } from '@/lib/database/models/user';
+import { Service } from '@/lib/database/models/service';
+
+if (!process.env.STRIPE_SECRET_KEY) {
+  throw new Error('STRIPE_SECRET_KEY is required');
+}
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: '2025-02-24.acacia',
+});
+
+export interface PaymentLinkData {
+  quoteId: string;
+  customerId: string;
+  businessId: string;
+  serviceDescription: string;
+  businessName: string;
+  customerName: string;
+  depositAmount: number;
+  totalAmount: number; // depositAmount + 4 AUD Skedy fee
+}
+
+export interface CreatePaymentLinkResult {
+  success: boolean;
+  paymentLink?: string;
+  error?: string;
+}
+
+export class StripePaymentService {
+  // Skedy AI booking fee in cents
+  static readonly SKEDY_BOOKING_FEE = 400; // 4.00 AUD
+
+  /**
+   * Creates a Stripe Payment Link for a quote with split payment
+   * 4 AUD goes to Skedy, remainder goes to business via Stripe Connect
+   */
+  private static async _createStripePaymentLink(data: PaymentLinkData): Promise<CreatePaymentLinkResult> {
+    try {
+      // Validate business has Stripe Connect account
+      const business = await Business.getById(data.businessId);
+      if (!business.stripeConnectAccountId || business.stripeAccountStatus !== 'active') {
+        return {
+          success: false,
+          error: 'Business payment account not configured'
+        };
+      }
+
+      const depositAmountCents = Math.round(data.depositAmount * 100);
+      const totalAmountCents = depositAmountCents + this.SKEDY_BOOKING_FEE;
+
+      // Create a price first, then use it in the payment link
+      const price = await stripe.prices.create({
+        currency: 'aud',
+        product_data: {
+          name: `${data.serviceDescription} - Booking Deposit`,
+          metadata: {
+            quoteId: data.quoteId,
+            businessId: data.businessId,
+            customerId: data.customerId,
+            businessName: data.businessName,
+            serviceDescription: data.serviceDescription,
+            depositAmount: data.depositAmount.toString(),
+            totalAmount: data.totalAmount.toString(),
+          },
+        },
+        unit_amount: totalAmountCents,
+      });
+
+      // Create payment link with application fee (split payment)
+      const paymentLink = await stripe.paymentLinks.create({
+        line_items: [
+          {
+            price: price.id,
+            quantity: 1,
+          },
+        ],
+        application_fee_amount: this.SKEDY_BOOKING_FEE, // 4 AUD goes to Skedy
+        on_behalf_of: business.stripeConnectAccountId, // Business gets the rest
+        transfer_data: {
+          destination: business.stripeConnectAccountId,
+        },
+        metadata: {
+          quoteId: data.quoteId,
+          businessId: data.businessId,
+          customerId: data.customerId,
+          businessName: data.businessName,
+          customerName: data.customerName,
+          serviceDescription: data.serviceDescription,
+          depositAmount: data.depositAmount.toString(),
+          totalAmount: data.totalAmount.toString(),
+          type: 'booking_deposit',
+        },
+        after_completion: {
+          type: 'redirect',
+          redirect: {
+            url: `https://wa.me/${business.whatsappNumber}?text=PAYMENT_COMPLETED_${data.quoteId}`,
+          },
+        },
+      });
+
+      return {
+        success: true,
+        paymentLink: paymentLink.url,
+      };
+    } catch (error) {
+      console.error('Error creating Stripe payment link:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to create payment link',
+      };
+    }
+  }
+
+  /**
+   * Creates a payment link for a specific quote ID
+   * Fetches all necessary data and generates the payment link
+   */
+  static async createPaymentLinkForQuote(quoteId: string): Promise<CreatePaymentLinkResult> {
+    try {
+      // Fetch quote with all related data
+      const quote = await Quote.getById(quoteId);
+      const business = await Business.getById(quote.businessId);
+      const user = await User.getById(quote.userId);
+      const service = await Service.getById(quote.serviceId);
+
+      // Calculate deposit amount if not already calculated
+      const depositAmount = await quote.calculateDepositAmount();
+      
+      // If no deposit amount (business doesn't require deposits), don't create payment link
+      if (depositAmount === null || depositAmount === 0) {
+        return {
+          success: false,
+          error: 'This business does not require deposit payments'
+        };
+      }
+      
+      const totalAmount = depositAmount + 4; // Add 4 AUD Skedy fee
+
+      const paymentData: PaymentLinkData = {
+        quoteId: quote.id!,
+        customerId: user.id!,
+        businessId: business.id!,
+        serviceDescription: service.name,
+        businessName: business.name,
+        customerName: `${user.firstName} ${user.lastName || ''}`.trim(),
+        depositAmount,
+        totalAmount,
+      };
+
+      return await this._createStripePaymentLink(paymentData);
+    } catch (error) {
+      console.error('Error creating payment link for quote:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to create payment link',
+      };
+    }
+  }
+
+  /**
+   * Handles Stripe webhook events
+   */
+  static async handleStripeWebhook(event: Stripe.Event): Promise<void> {
+    try {
+      switch (event.type) {
+        case 'checkout.session.completed':
+          await this._handlePaymentCompleted(event.data.object as Stripe.Checkout.Session);
+          break;
+        case 'payment_intent.payment_failed':
+          await this._handlePaymentFailed(event.data.object as Stripe.PaymentIntent);
+          break;
+        case 'checkout.session.expired':
+          await this._handlePaymentFailed(event.data.object as Stripe.Checkout.Session);
+          break;
+        default:
+          console.log(`Unhandled Stripe event type: ${event.type}`);
+      }
+    } catch (error) {
+      console.error('Error handling Stripe webhook event:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Handles successful payment completion
+   */
+  private static async _handlePaymentCompleted(session: Stripe.Checkout.Session): Promise<void> {
+    try {
+      const quoteId = session.metadata?.quoteId;
+      if (!quoteId) {
+        console.error('No quote ID found in payment session metadata');
+        return;
+      }
+
+      // Update quote status to indicate payment completed
+      const quote = await Quote.getById(quoteId);
+      await Quote.update(quoteId, {
+        id: quote.id,
+        userId: quote.userId,
+        pickUp: quote.pickUp,
+        dropOff: quote.dropOff,
+        businessId: quote.businessId,
+        serviceId: quote.serviceId,
+        travelTimeEstimate: quote.travelTimeEstimate,
+        totalJobDurationEstimation: quote.totalJobDurationEstimation,
+        travelCostEstimate: quote.travelCostEstimate,
+        totalJobCostEstimation: quote.totalJobCostEstimation,
+        depositAmount: quote.depositAmount,
+        status: 'payment_completed',
+      });
+
+      console.log(`Payment completed for quote: ${quoteId}`);
+    } catch (error) {
+      console.error('Error handling payment completion:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Handles failed payment
+   */
+  private static async _handlePaymentFailed(paymentObject: Stripe.PaymentIntent | Stripe.Checkout.Session): Promise<void> {
+    try {
+      const quoteId = paymentObject.metadata?.quoteId;
+      if (!quoteId) {
+        console.error('No quote ID found in payment object metadata');
+        return;
+      }
+
+      console.log(`Payment failed for quote: ${quoteId}`);
+      // You might want to update the quote status or send a notification
+    } catch (error) {
+      console.error('Error handling payment failure:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Verifies webhook signature from Stripe
+   */
+  static verifyStripeWebhookSignature(payload: string | Buffer, signature: string): Stripe.Event | null {
+    try {
+      const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+      if (!webhookSecret) {
+        console.error('STRIPE_WEBHOOK_SECRET is not configured');
+        return null;
+      }
+
+      return stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+    } catch (error) {
+      console.error('Error verifying Stripe webhook signature:', error);
+      return null;
+    }
+  }
+}
+
+export default StripePaymentService; 

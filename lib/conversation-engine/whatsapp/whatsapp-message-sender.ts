@@ -1,10 +1,11 @@
 import { BotResponse, IMessageSender } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
+import { getWhatsappHeaders } from "./whatsapp-headers";
 
 // Configuration constants - easily customizable without touching core logic
 const WHATSAPP_CONFIG = {
-  API_VERSION: process.env.WHATSAPP_API_VERSION || "v22.0",
+  API_VERSION: process.env.WHATSAPP_API_VERSION || "v23.0",
   PHONE_NUMBER_ID: process.env.WHATSAPP_PHONE_NUMBER_ID,
-  ACCESS_TOKEN: process.env.WHATSAPP_VERIFY_TOKEN,
+  ACCESS_TOKEN: process.env.WHATSAPP_VERIFY_TOKEN, // Updated to use permanent token
   
   // WhatsApp API limits
   LIMITS: {
@@ -65,19 +66,20 @@ type WhatsappPayload = WhatsappTextPayload | WhatsappButtonPayload | WhatsappLis
 
 export class WhatsappSender implements IMessageSender {
   
-  // Constructs the WhatsApp API endpoint URL
-  private getApiUrl(): string {
-    if (!WHATSAPP_CONFIG.PHONE_NUMBER_ID) {
-      throw new Error("WHATSAPP_PHONE_NUMBER_ID environment variable is required");
+  // AHORA ACEPTA EL ID DEL NÚMERO DE TELÉFONO
+  private getApiUrl(businessPhoneNumberId: string): string {
+    if (!businessPhoneNumberId) {
+      throw new Error("businessPhoneNumberId parameter is required");
     }
-    return `https://graph.facebook.com/${WHATSAPP_CONFIG.API_VERSION}/${WHATSAPP_CONFIG.PHONE_NUMBER_ID}/messages`;
+    return `https://graph.facebook.com/${WHATSAPP_CONFIG.API_VERSION}/${businessPhoneNumberId}/messages`;
   }
 
-  // Validates required environment variables are present
+  // Se mantiene igual, pero ahora valida el token permanente
   private validateConfiguration(): void {
     if (!WHATSAPP_CONFIG.ACCESS_TOKEN) {
-      throw new Error("WHATSAPP_VERIFY_TOKEN environment variable is required");
+      throw new Error("WHATSAPP_ACCESS_TOKEN environment variable is required");
     }
+    // Ya no necesitamos validar PHONE_NUMBER_ID aquí
   }
 
   // Determines the optimal message type based on button count
@@ -112,8 +114,8 @@ export class WhatsappSender implements IMessageSender {
           buttons: limitedButtons.map((btn) => ({
             type: "reply",
             reply: {
-              id: btn.payload,
-              title: this.truncateText(btn.title, WHATSAPP_CONFIG.LIMITS.BUTTON_TITLE_MAX_LENGTH)
+              id: btn.buttonValue,
+              title: this.truncateText(btn.buttonText, WHATSAPP_CONFIG.LIMITS.BUTTON_TITLE_MAX_LENGTH)
             }
           }))
         }
@@ -122,8 +124,9 @@ export class WhatsappSender implements IMessageSender {
   }
 
   // Creates an interactive list message payload
-  private createListPayload(recipientId: string, text: string, buttons: BotResponse['buttons']): WhatsappListPayload {
-    const limitedButtons = buttons!.slice(0, WHATSAPP_CONFIG.LIMITS.MAX_LIST_ITEMS);
+  private createListPayload(recipientId: string, text: string, response: BotResponse): WhatsappListPayload {
+    const limitedButtons = response.buttons!.slice(0, WHATSAPP_CONFIG.LIMITS.MAX_LIST_ITEMS);
+    console.log('[WhatsappSender] Creating list with buttons:', limitedButtons.map(b => ({ text: b.buttonText, desc: b.buttonDescription })));
     
     return {
       messaging_product: "whatsapp",
@@ -133,9 +136,9 @@ export class WhatsappSender implements IMessageSender {
         type: "list",
         body: { text },
         action: {
-          button: "Select Option",
+          button: response.listActionText || "Select Option",
           sections: [{
-            title: "Available Options",
+            title: this.truncateText(response.listSectionTitle || "Available Options", WHATSAPP_CONFIG.LIMITS.LIST_TITLE_MAX_LENGTH),
             rows: limitedButtons.map((btn) => this.createListRow(btn))
           }]
         }
@@ -145,19 +148,28 @@ export class WhatsappSender implements IMessageSender {
 
   // Creates a list row with optimized title and description
   private createListRow(button: NonNullable<BotResponse['buttons']>[0]) {
-    const parts = button.title.split(' - ');
-    const serviceName = parts[0];
-    const priceAndDuration = parts.slice(1).join(' - ');
+    console.log('[WhatsappSender] Creating list row for button:', { text: button.buttonText, desc: button.buttonDescription });
     
-    return {
-      id: button.payload,
-      title: this.truncateText(serviceName, WHATSAPP_CONFIG.LIMITS.LIST_TITLE_MAX_LENGTH),
-      description: priceAndDuration || `Select ${serviceName}`
+    const title = button.buttonText;
+    const description = button.buttonDescription || '';
+    
+    const row = {
+      id: button.buttonValue,
+      title: this.truncateText(title, WHATSAPP_CONFIG.LIMITS.LIST_TITLE_MAX_LENGTH),
+      description: this.truncateText(description, WHATSAPP_CONFIG.LIMITS.LIST_DESCRIPTION_MAX_LENGTH)
     };
+    
+    console.log('[WhatsappSender] Created row:', row);
+    return row;
   }
 
   // Truncates text to specified length if needed
   private truncateText(text: string, maxLength: number): string {
+    // Specific truncation rules for known long service names
+    if (text.toLowerCase() === "manicura con uñas postizas") {
+        return "Manic. Unas postizas";
+    }
+    
     return text.length > maxLength ? text.substring(0, maxLength) : text;
   }
 
@@ -172,7 +184,7 @@ export class WhatsappSender implements IMessageSender {
       case 'buttons':
         return this.createButtonPayload(recipientId, response.text!, response.buttons);
       case 'list':
-        return this.createListPayload(recipientId, response.text!, response.buttons);
+        return this.createListPayload(recipientId, response.text!, response);
     }
   }
 
@@ -183,14 +195,18 @@ export class WhatsappSender implements IMessageSender {
   }
 
   // Sends HTTP request to WhatsApp API
-  private async sendToWhatsappApi(payload: WhatsappPayload): Promise<void> {
-    const response = await fetch(this.getApiUrl(), {
+  // AHORA NECESITA EL ID DEL NÚMERO DE TELÉFONO
+  private async sendToWhatsappApi(payload: WhatsappPayload, businessPhoneNumberId: string): Promise<void> {
+    const apiUrl = this.getApiUrl(businessPhoneNumberId); // Se lo pasamos
+    const headers = getWhatsappHeaders();
+    const body = JSON.stringify(payload);
+
+    console.log(`[WhatsappSender] Sending payload to ${apiUrl}:`, body);
+
+    const response = await fetch(apiUrl, {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${WHATSAPP_CONFIG.ACCESS_TOKEN}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
+      headers,
+      body,
     });
 
     if (!response.ok) {
@@ -202,8 +218,8 @@ export class WhatsappSender implements IMessageSender {
     console.log("[WhatsappSender] Message sent successfully. Response:", responseData);
   }
 
-  // Main method: sends message response via WhatsApp Cloud API
-  async sendMessage(recipientId: string, response: BotResponse): Promise<void> {
+  // Main method: AHORA ACEPTA EL ID DEL NÚMERO DE TELÉFONO DEL NEGOCIO
+  async sendMessage(recipientId: string, response: BotResponse, businessPhoneNumberId: string): Promise<void> {
     try {
       // Validate prerequisites
       this.validateConfiguration();
@@ -218,7 +234,8 @@ export class WhatsappSender implements IMessageSender {
       const messageType = this.getMessageType(response.buttons?.length || 0);
       
       this.logOutgoingMessage(recipientId, messageType, response.buttons?.length);
-      await this.sendToWhatsappApi(payload);
+      // LE PASAMOS EL ID DEL NÚMERO DE TELÉFONO A LA FUNCIÓN DE ENVÍO
+      await this.sendToWhatsappApi(payload, businessPhoneNumberId);
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";

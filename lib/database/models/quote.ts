@@ -21,6 +21,7 @@ export interface QuoteData {
     travelTimeEstimate: number;
     totalJobDurationEstimation: number;
     serviceId: string;
+    depositAmount?: number;
 }
 
 export class Quote {
@@ -40,11 +41,40 @@ export class Quote {
         if (!data.serviceId) handleModelError("Service ID is required", new Error("Missing serviceId"));
         if (data.totalJobCostEstimation < 0) handleModelError("Total job cost estimation cannot be negative", new Error("Invalid totalJobCostEstimation"));
         if (data.totalJobDurationEstimation < 0) handleModelError("Total job duration estimation cannot be negative", new Error("Invalid totalJobDurationEstimation"));
+        if (data.depositAmount !== undefined && data.depositAmount < 0) handleModelError("Deposit amount cannot be negative", new Error("Invalid depositAmount"));
         this.data = data;
+    }
+
+    // Calculate deposit amount based on business deposit percentage (only if percentage is set)
+    async calculateDepositAmount(): Promise<number | null> {
+        if (this.data.depositAmount !== undefined) {
+            return this.data.depositAmount;
+        }
+
+        try {
+            const { Business } = await import('./business');
+            const business = await Business.getById(this.data.businessId);
+            
+            // Only calculate if business has a deposit percentage set
+            if (business.depositPercentage !== undefined && business.depositPercentage > 0) {
+                const depositAmount = Math.round((this.data.totalJobCostEstimation * business.depositPercentage) / 100);
+                this.data.depositAmount = depositAmount;
+                return depositAmount;
+            } else {
+                // No deposit percentage set, return null
+                return null;
+            }
+        } catch (error) {
+            console.error('Error calculating deposit amount:', error);
+            return null;
+        }
     }
 
     //creates a Quote in supa
     async add(): Promise<QuoteData> {
+        // Calculate deposit amount before saving
+        await this.calculateDepositAmount();
+
         const supa = await createClient();
         const quote = {
             "id": this.data.id || uuidv4(),
@@ -58,6 +88,7 @@ export class Quote {
             "travelTimeEstimate": this.data.travelTimeEstimate,
             "totalJobDurationEstimation": this.data.totalJobDurationEstimation,
             "serviceId": this.data.serviceId,
+            "depositAmount": this.data.depositAmount,
             "createdAt": new Date().toISOString(),
             "updatedAt": new Date().toISOString()
         }
@@ -142,6 +173,7 @@ export class Quote {
             "travelTimeEstimate": quoteData.travelTimeEstimate,
             "totalJobDurationEstimation": quoteData.totalJobDurationEstimation,
             "serviceId": quoteData.serviceId,
+            "depositAmount": quoteData.depositAmount,
             "updatedAt": new Date().toISOString()
         }
         const { data, error } = await supa.from("quotes").update(quote).eq("id", id).select().single();
@@ -186,4 +218,5 @@ export class Quote {
     get serviceId(): string { return this.data.serviceId; }
     get createdAt(): string | undefined { return this.data.createdAt; }
     get updatedAt(): string | undefined { return this.data.updatedAt; }
+    get depositAmount(): number | undefined { return this.data.depositAmount; }
 }

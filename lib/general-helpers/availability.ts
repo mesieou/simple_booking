@@ -22,7 +22,7 @@ const generateDaySlots = (
 
     while (slotStart.plus({ minutes: duration }).toMillis() <= workEnd.toMillis()) {
       times.push(slotStart.toFormat("HH:mm"));
-      slotStart = slotStart.plus({ minutes: 30 });
+      slotStart = slotStart.plus({ minutes: 60 });
     }
 
     if (times.length > 0) {
@@ -131,7 +131,7 @@ export async function computeInitialAvailability(
         }
 
         // Move to next slot
-        slotStart = slotStart.plus({ minutes: 30 });
+        slotStart = slotStart.plus({ minutes: 60 });
       }
 
       // Only add duration if there are available slots
@@ -252,7 +252,7 @@ export async function updateDayAvailability(
         times.push(slotStart.toFormat("HH:mm"));
       }
 
-      slotStart = slotStart.plus({ minutes: 30 });
+      slotStart = slotStart.plus({ minutes: 60 });
     }
 
     // Only add duration if there are available slots

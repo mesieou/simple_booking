@@ -24,7 +24,14 @@ export interface ParsedMessage {
  */
 export interface BotResponse {
   text?: string;                // Primary text response
-  buttons?: Array<{ title: string; payload: string; type?: 'postback' | 'url' }>; // Interactive buttons
+  buttons?: Array<{ 
+    buttonText: string;   // The text displayed on the button
+    buttonValue: string;  // The value sent back to the bot when pressed
+    buttonType?: 'postback' | 'link';
+    buttonDescription?: string; // Additional description for the button (e.g., price, duration)
+  }>;
+  listActionText?: string;      // Text for the main action button in a list (e.g., "Select Option")
+  listSectionTitle?: string;    // Title for the single section in a list (e.g., "Available Options")
   // Future enhancements for rich responses:
   // images?: Array<{ url: string; altText?: string }>;
   // customPayload?: any; // For channel-specific rich content not covered above
@@ -35,10 +42,10 @@ export interface BotResponse {
  */
 export interface IMessageSender {
   /**
-   * Sends a message to the specified recipient on a specific channel.
-   * @param recipientId The unique ID of the user on the channel.
-   * @param response The standardized bot response to send.
-   * @returns A Promise that resolves when the message sending attempt is complete.
+   * Sends a message to a recipient.
+   * @param recipientId The unique identifier of the message recipient.
+   * @param response The bot's response to send.
+   * @param businessPhoneNumberId The unique identifier of the business phone number sending the message.
    */
-  sendMessage(recipientId: string, response: BotResponse): Promise<void>;
+  sendMessage(recipientId: string, response: BotResponse, businessPhoneNumberId: string): Promise<void>;
 } 

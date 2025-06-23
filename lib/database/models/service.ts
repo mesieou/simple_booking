@@ -88,6 +88,7 @@ export class Service {
             handleModelError("Failed to create service: No data returned", new Error("No data returned from insert"));
         }
         this.data = data;
+
         return data;
     }
 
@@ -112,6 +113,15 @@ export class Service {
         return data.map((serviceData: ServiceData) => new Service(serviceData));
     }
 
+    static async getAllServices(): Promise<Service[]> {
+        const supa = await createClient();
+        const { data, error } = await supa.from("services").select("*");
+        if (error) {
+            handleModelError("Failed to fetch all services", error);
+        }
+        return data ? data.map((serviceData: ServiceData) => new Service(serviceData)) : [];
+    }
+
     static async update(id: string, serviceData: ServiceData): Promise<Service> {
         const supa = await createClient();
         const service = {
@@ -134,6 +144,7 @@ export class Service {
         if (!data) {
             handleModelError("Failed to update service: No data returned", new Error("No data returned from update"));
         }
+
         return new Service(data);
     }
 
