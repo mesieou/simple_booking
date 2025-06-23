@@ -15,6 +15,9 @@ export interface BusinessData {
     businessAddress?: string;
     createdAt?: string;
     updatedAt?: string;
+    depositPercentage?: number;
+    stripeConnectAccountId?: string;
+    stripeAccountStatus?: 'pending' | 'active' | 'disabled';
 }
 
 export class Business {
@@ -27,6 +30,7 @@ export class Business {
         if (!data.timeZone) handleModelError("Time zone is required", new Error("Missing timeZone"));
         if (!['whatsapp', 'website'].includes(data.interfaceType)) handleModelError("Interface type must be 'whatsapp' or 'website'", new Error("Invalid interfaceType"));
         if (data.interfaceType === 'whatsapp' && !data.whatsappNumber) handleModelError("Whatsapp number is required if interface type is 'whatsapp'", new Error("Missing whatsappNumber"));
+        if (data.depositPercentage !== undefined && (data.depositPercentage < 0 || data.depositPercentage > 100)) handleModelError("Deposit percentage must be between 0 and 100", new Error("Invalid depositPercentage"));
         this.data = data;
     }
 
@@ -43,6 +47,9 @@ export class Business {
             "websiteUrl": this.data.websiteUrl,
             "whatsappNumber": this.data.whatsappNumber,
             "businessAddress": this.data.businessAddress,
+            "depositPercentage": this.data.depositPercentage,
+            "stripeConnectAccountId": this.data.stripeConnectAccountId,
+            "stripeAccountStatus": this.data.stripeAccountStatus,
             "createdAt": new Date().toISOString(),
             "updatedAt": new Date().toISOString()
         }
@@ -135,6 +142,9 @@ export class Business {
             "websiteUrl": businessData.websiteUrl,
             "whatsappNumber": businessData.whatsappNumber,
             "businessAddress": businessData.businessAddress,
+            "depositPercentage": businessData.depositPercentage,
+            "stripeConnectAccountId": businessData.stripeConnectAccountId,
+            "stripeAccountStatus": businessData.stripeAccountStatus,
             "updatedAt": new Date().toISOString()
         }
         
@@ -186,6 +196,9 @@ export class Business {
     get websiteUrl(): string | undefined { return this.data.websiteUrl; }
     get whatsappNumber(): string | undefined { return this.data.whatsappNumber; }
     get businessAddress(): string | undefined { return this.data.businessAddress; }
+    get depositPercentage(): number | undefined { return this.data.depositPercentage; }
+    get stripeConnectAccountId(): string | undefined { return this.data.stripeConnectAccountId; }
+    get stripeAccountStatus(): 'pending' | 'active' | 'disabled' | undefined { return this.data.stripeAccountStatus; }
 
     static async findByWhatsappNumber(whatsappNumber: string): Promise<Business | null> {
         console.log(`[Business] Finding business by WhatsApp number: ${whatsappNumber}`);

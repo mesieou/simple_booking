@@ -138,6 +138,7 @@ import {
     // Other handlers
     askEmailHandler,
     createBookingHandler,
+    bookingConfirmationHandler,
 } from './step-handlers/customer-booking-steps';
 
 export const botTasks: Record<string, IndividualStepHandler> = {
@@ -164,6 +165,7 @@ export const botTasks: Record<string, IndividualStepHandler> = {
   // Other handlers
   askEmail: askEmailHandler,
   createBooking: createBookingHandler,
+  bookingConfirmationHandler: bookingConfirmationHandler,
 };
 
 // --- Helper function for step skipping ---
@@ -1592,5 +1594,70 @@ class MessageProcessor {
 const messageProcessor = new MessageProcessor();
 
 export async function processIncomingMessage(incomingUserMessage: string, currentUser: ConversationalParticipant): Promise<BotResponse> {
-  return messageProcessor.processIncomingMessage(incomingUserMessage, currentUser);
+    // =================================================================
+    // SPECIAL ROUTING FOR PAYMENT COMPLETION
+    // =================================================================
+    if (incomingUserMessage.startsWith('PAYMENT_COMPLETED_')) {
+        console.log('[BotManager] Detected payment completion message. Routing to booking creation.');
+        
+        // Extract quote ID from the message
+        const quoteId = incomingUserMessage.replace('PAYMENT_COMPLETED_', '');
+        console.log(`[BotManager] Payment completed for quote: ${quoteId}`);
+        
+        // Get or create chat context
+        const { context: currentContext } = await getOrCreateChatContext(currentUser);
+        let activeSession = currentContext.currentConversationSession!;
+        
+        // Find existing booking goal or create one if needed
+        let bookingGoal = activeSession.activeGoals.find(g => 
+            g.goalType === 'serviceBooking' && g.goalStatus === 'inProgress'
+        );
+        
+        if (!bookingGoal) {
+            // Create minimal booking goal for payment completion
+            console.log('[BotManager] No active booking goal found, creating one for payment completion');
+            
+            // Determine flow key
+            let flowKey = 'bookingCreatingForMobileService'; // Default
+            const businessId = currentContext.currentParticipant.associatedBusinessId;
+            if (businessId) {
+                try {
+                    const { Service } = await import('@/lib/database/models/service');
+                    const services = await Service.getByBusiness(businessId);
+                    const servicesData = services.map(s => s.getData());
+                    const hasMobileServices = servicesData.some((service: any) => service.mobile === true);
+                    flowKey = hasMobileServices ? 'bookingCreatingForMobileService' : 'bookingCreatingForNoneMobileService';
+                } catch (error) {
+                    console.error('[BotManager] Error determining flow key:', error);
+                }
+            }
+            
+            bookingGoal = {
+                goalType: 'serviceBooking',
+                goalAction: 'create',
+                goalStatus: 'inProgress',
+                currentStepIndex: conversationFlowBlueprints[flowKey].indexOf('createBooking'),
+                collectedData: {
+                    paymentCompleted: true,
+                    quoteId: quoteId
+                },
+                messageHistory: [],
+                flowKey
+            };
+            
+            activeSession.activeGoals = [bookingGoal];
+        } else {
+            // Update existing goal to go to createBooking step
+            console.log('[BotManager] Found existing booking goal, updating for payment completion');
+            const createBookingIndex = conversationFlowBlueprints[bookingGoal.flowKey].indexOf('createBooking');
+            if (createBookingIndex !== -1) {
+                bookingGoal.currentStepIndex = createBookingIndex;
+                bookingGoal.collectedData.paymentCompleted = true;
+                bookingGoal.collectedData.quoteId = quoteId;
+            }
+        }
+    }
+    // =================================================================
+
+    return messageProcessor.processIncomingMessage(incomingUserMessage, currentUser);
 }
