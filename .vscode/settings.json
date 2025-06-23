@@ -1,4 +1,15 @@
 {
+    "deno.enable": true,
+    "deno.lint": true,
+    "deno.unstable": true,
+    "deno.enablePaths": [
+        "supabase/functions"
+    ],
+    "[typescript]": {
+        "editor.defaultFormatter": "denoland.vscode-deno"
+    },
+    "typescript.validate.enable": false,
+    "javascript.validate.enable": false,
     "folder-color.pathColors": [
         {
             "folderPath": "simple_booking\\app\\debug-chat\\",
@@ -136,5 +147,5 @@
             "folderPath": "simple_booking\\lib\\conversation-engine\\juan-bot-engine-v2\\bot-manager-helpers.ts\\",
             "badge": "🙂"
         }
-    ]
+    ],
 }
