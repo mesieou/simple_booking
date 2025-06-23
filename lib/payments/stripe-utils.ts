@@ -5,6 +5,7 @@ import { User } from '@/lib/database/models/user';
 import { Service } from '@/lib/database/models/service';
 
 if (!process.env.STRIPE_SECRET_KEY) {
+  console.error('Available env vars:', Object.keys(process.env).filter(key => key.includes('STRIPE')));
   throw new Error('STRIPE_SECRET_KEY is required');
 }
 
