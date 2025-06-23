@@ -239,6 +239,200 @@ export class StripePaymentService {
   }
 
   /**
+   * Creates a Stripe Express account for a business
+   */
+  static async createExpressAccount(businessId: string): Promise<{success: boolean, accountId?: string, error?: string}> {
+    try {
+      const business = await Business.getById(businessId);
+      
+      // Check if account already exists
+      if (business.stripeConnectAccountId) {
+        return {
+          success: true,
+          accountId: business.stripeConnectAccountId
+        };
+      }
+
+      // Create Express account
+      const account = await stripe.accounts.create({
+        type: 'express',
+        country: 'AU',
+        email: business.email,
+        business_profile: {
+          name: business.name,
+          url: business.websiteUrl,
+        },
+        metadata: {
+          businessId: businessId,
+          businessName: business.name,
+        },
+      });
+
+      // Update business with account ID
+      await Business.update(businessId, {
+        ...business.data,
+        stripeConnectAccountId: account.id,
+        stripeAccountStatus: 'pending',
+      });
+
+      return {
+        success: true,
+        accountId: account.id
+      };
+    } catch (error) {
+      console.error('Error creating Stripe Express account:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to create Express account'
+      };
+    }
+  }
+
+  /**
+   * Creates an onboarding link for Express account setup
+   */
+  static async createOnboardingLink(businessId: string): Promise<{success: boolean, url?: string, error?: string}> {
+    try {
+      const business = await Business.getById(businessId);
+      
+      let accountId = business.stripeConnectAccountId;
+      
+      // Create account if it doesn't exist
+      if (!accountId) {
+        const accountResult = await this.createExpressAccount(businessId);
+        if (!accountResult.success) {
+          return accountResult;
+        }
+        accountId = accountResult.accountId!;
+      }
+
+             // Create onboarding link
+       const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+       const accountLink = await stripe.accountLinks.create({
+         account: accountId,
+         refresh_url: `${baseUrl}/onboarding?refresh=true&businessId=${businessId}`,
+         return_url: `${baseUrl}/onboarding?success=true&businessId=${businessId}`,
+         type: 'account_onboarding',
+       });
+
+      return {
+        success: true,
+        url: accountLink.url
+      };
+    } catch (error) {
+      console.error('Error creating onboarding link:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to create onboarding link'
+      };
+    }
+  }
+
+  /**
+   * Checks and updates account status
+   */
+  static async updateAccountStatus(businessId: string): Promise<{success: boolean, status?: string, error?: string}> {
+    try {
+      const business = await Business.getById(businessId);
+      
+      if (!business.stripeConnectAccountId) {
+        return {
+          success: false,
+          error: 'No Stripe account found for business'
+        };
+      }
+
+      // Retrieve account details from Stripe
+      const account = await stripe.accounts.retrieve(business.stripeConnectAccountId);
+      
+      let status: 'pending' | 'active' | 'disabled' = 'pending';
+      
+      if (account.details_submitted && account.charges_enabled && account.payouts_enabled) {
+        status = 'active';
+      } else if (account.requirements?.disabled_reason) {
+        status = 'disabled';
+      }
+
+      // Update business with new status
+      await Business.update(businessId, {
+        ...business.data,
+        stripeAccountStatus: status,
+      });
+
+      return {
+        success: true,
+        status: status
+      };
+    } catch (error) {
+      console.error('Error updating account status:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to update account status'
+      };
+    }
+  }
+
+  /**
+   * Handles Stripe webhook events
+   */
+  static async handleStripeWebhook(event: Stripe.Event): Promise<void> {
+    try {
+      switch (event.type) {
+        case 'checkout.session.completed':
+          await this._handlePaymentCompleted(event.data.object as Stripe.Checkout.Session);
+          break;
+        case 'payment_intent.payment_failed':
+          await this._handlePaymentFailed(event.data.object as Stripe.PaymentIntent);
+          break;
+        case 'checkout.session.expired':
+          await this._handlePaymentFailed(event.data.object as Stripe.Checkout.Session);
+          break;
+        case 'account.updated':
+          await this._handleAccountUpdated(event.data.object as Stripe.Account);
+          break;
+        default:
+          console.log(`Unhandled Stripe event type: ${event.type}`);
+      }
+    } catch (error) {
+      console.error('Error handling Stripe webhook event:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Handles account status updates from webhooks
+   */
+  private static async _handleAccountUpdated(account: Stripe.Account): Promise<void> {
+    try {
+      const businessId = account.metadata?.businessId;
+      if (!businessId) {
+        console.error('No business ID found in account metadata');
+        return;
+      }
+
+      let status: 'pending' | 'active' | 'disabled' = 'pending';
+      
+      if (account.details_submitted && account.charges_enabled && account.payouts_enabled) {
+        status = 'active';
+      } else if (account.requirements?.disabled_reason) {
+        status = 'disabled';
+      }
+
+      // Update business status
+      const business = await Business.getById(businessId);
+      await Business.update(businessId, {
+        ...business.data,
+        stripeAccountStatus: status,
+      });
+
+      console.log(`Updated business ${businessId} Stripe account status to: ${status}`);
+    } catch (error) {
+      console.error('Error handling account update:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Verifies webhook signature from Stripe
    */
   static verifyStripeWebhookSignature(payload: string | Buffer, signature: string): Stripe.Event | null {
