@@ -14,6 +14,8 @@ export default function SignUp() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [loading, setLoading] = useState(false);
   const { refreshSession } = useAuth();
   const router = useRouter();
@@ -39,6 +41,11 @@ export default function SignUp() {
         email,
         password,
         options: {
+          data: {
+            firstName,
+            lastName,
+            role: 'customer',
+          },
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
@@ -82,6 +89,30 @@ export default function SignUp() {
         </div>
 
         <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="firstName">First Name</Label>
+            <Input
+              id="firstName"
+              placeholder="John"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              required
+              autoComplete="given-name"
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="lastName">Last Name</Label>
+            <Input
+              id="lastName"
+              placeholder="Doe"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              required
+              autoComplete="family-name"
+            />
+          </div>
+
           <div className="flex flex-col gap-2">
             <Label htmlFor="email">Email</Label>
             <Input

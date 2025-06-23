@@ -59,6 +59,9 @@ export const CATEGORY_DISPLAY_NAMES: Record<Category, string> = {
 // List of valid categories for runtime validation (keeping for backward compatibility)
 export const VALID_CATEGORIES: string[] = Object.values(CATEGORY_DISPLAY_NAMES);
 
+export const VALID_INTENTS = ['idle', 'booking', 'faq', 'account', 'escalation'] as const;
+export type ValidIntent = typeof VALID_INTENTS[number];
+
 export type DocumentCategory = Category;
 
 // Confidence Score Configuration

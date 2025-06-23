@@ -1,4 +1,15 @@
 {
+    "deno.enable": true,
+    "deno.lint": true,
+    "deno.unstable": true,
+    "deno.enablePaths": [
+        "supabase/functions"
+    ],
+    "[typescript]": {
+        "editor.defaultFormatter": "denoland.vscode-deno"
+    },
+    "typescript.validate.enable": false,
+    "javascript.validate.enable": false,
     "folder-color.pathColors": [
         {
             "folderPath": "simple_booking\\app\\debug-chat\\",
@@ -38,7 +49,7 @@
         },
         {
             "folderPath": "simple_booking\\lib\\general-config\\",
-            "color": "foldercolorizer.color_99cc00"
+            "color": "foldercolorizer.color_33ccff"
         },
         {
             "folderPath": "simple_booking\\lib\\general-helpers\\",
@@ -59,6 +70,82 @@
         {
             "folderPath": "simple_booking\\lib\\conversation-engine\\modes\\",
             "color": "foldercolorizer.color_66cc33"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\conversation-engine\\",
+            "color": "foldercolorizer.color_00ccff"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\conversation-engine\\whatsapp\\",
+            "color": "foldercolorizer.color_00cc00"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\database\\",
+            "color": "foldercolorizer.color_99cc00"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\Juan-bot-engine\\",
+            "color": "foldercolorizer.color_cc66cc"
+        },
+        {
+            "folderPath": "simple_booking\\.env.local\\",
+            "color": "foldercolorizer.color_ccff33"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\conversation-engine\\flows\\",
+            "color": "foldercolorizer.color_66cc00"
+        },
+        {
+            "folderPath": "simple_booking\\app\\api\\webhook2\\",
+            "color": "foldercolorizer.color_ffccff"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\conversation-engine\\v3\\",
+            "color": "foldercolorizer.color_cc3399"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\conversation-engine\\juan-bot-engine-copy\\",
+            "color": "foldercolorizer.color_ffccff"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\conversation-engine\\juan-bot-engine-v2\\",
+            "color": "foldercolorizer.color_9999ff"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\conversation-engine\\escalation\\",
+            "color": "foldercolorizer.color_6666ff"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\Juan-bot-engine\\bot-manager.ts\\",
+            "badge": "😀"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\Juan-bot-engine\\bot-manager-helpers.ts\\",
+            "badge": "😀"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\Juan-bot-engine\\step-handlers\\faq-handler.ts\\",
+            "badge": "😀"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\Juan-bot-engine\\step-handlers\\business-account-steps.ts\\",
+            "badge": "😀"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\Juan-bot-engine\\step-handlers\\customer-booking-steps.ts\\",
+            "badge": "😀"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\Juan-bot-engine\\step-handlers\\booking-utilities.ts\\",
+            "badge": "😀"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\Juan-bot-engine\\services\\intelligent-llm-service.ts\\",
+            "badge": "😀"
+        },
+        {
+            "folderPath": "simple_booking\\lib\\conversation-engine\\juan-bot-engine-v2\\bot-manager-helpers.ts\\",
+            "badge": "🙂"
         }
-    ]
+    ],
 }
