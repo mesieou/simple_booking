@@ -20,7 +20,7 @@
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 248 30% 40%;
+    --border: 0 0% 100%;
     --input: 248 30% 40%;
     --ring: 330 80% 70%; /* Pink ring */
     --radius: 0.5rem;
@@ -30,34 +30,44 @@
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --chart-6: 154% 50% 1%; /* #023047 converted to HSL */
+    --sidebar-background: 252 53% 45%; /* Transparent background */
+    --sidebar-foreground: 0 0% 100%; /* White text */
+    --sidebar-primary: 330 80% 70%; /* Same as primary */
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 248 40% 60% 0.1; /* Very subtle accent */
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 0 0% 100% 0.1; /* Subtle white border */
+    --sidebar-ring: 330 80% 70%; /* Same as primary */
   }
-
+  
   .dark {
-    --background: 252 53% 25%; /* Darker background for dark mode */
-    --foreground: 0 0% 100%;
-    --card: 252 53% 30%;
-    --card-foreground: 0 0% 100%;
-    --popover: 252 53% 30%;
-    --popover-foreground: 0 0% 100%;
-    --primary: 330 80% 70%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 248 40% 60%;
-    --secondary-foreground: 0 0% 100%;
-    --muted: 248 30% 50%;
-    --muted-foreground: 0 0% 90%;
-    --accent: 248 40% 55%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 62% 40%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 248 30% 30%;
-    --input: 248 30% 30%;
-    --ring: 330 80% 70%;
-    --chart-1: 330 80% 70%;
-    --chart-2: 248 40% 60%;
-    --chart-3: 252 53% 45%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --chart-6: 154% 50% 1%; /* #023047 converted to HSL */
+    --background: oklch(0.4383 0.183 285) /* Mismo color para modo oscuro */
+    --foreground: oklch(1 0 0); /* Pure white text */
+    --card: oklch(0.12 0.08 295);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.12 0.08 295);
+    --popover-foreground: oklch(0.985 0 0);
+    
+    --primary: oklch(0.75 0.2 295); /* púrpura claro para modo oscuro */
+    --primary-foreground: oklch(0.08 0.05 295);
+    --secondary: oklch(0.18 0.1 295);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.18 0.1 295);
+    --muted-foreground: oklch(0.708 0.05 295);
+    --accent: oklch(0.25 0.15 295);
+    --accent-foreground: oklch(0.985 0 0);
+    
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.556 0.15 295);
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
   }
 }
 
@@ -95,3 +105,5 @@
     color: var(--secondary-foreground);
   }
 }
+
+
