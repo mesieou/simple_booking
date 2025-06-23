@@ -160,29 +160,7 @@ export class StripePaymentService {
     }
   }
 
-  /**
-   * Handles Stripe webhook events
-   */
-  static async handleStripeWebhook(event: Stripe.Event): Promise<void> {
-    try {
-      switch (event.type) {
-        case 'checkout.session.completed':
-          await this._handlePaymentCompleted(event.data.object as Stripe.Checkout.Session);
-          break;
-        case 'payment_intent.payment_failed':
-          await this._handlePaymentFailed(event.data.object as Stripe.PaymentIntent);
-          break;
-        case 'checkout.session.expired':
-          await this._handlePaymentFailed(event.data.object as Stripe.Checkout.Session);
-          break;
-        default:
-          console.log(`Unhandled Stripe event type: ${event.type}`);
-      }
-    } catch (error) {
-      console.error('Error handling Stripe webhook event:', error);
-      throw error;
-    }
-  }
+
 
   /**
    * Handles successful payment completion
@@ -270,7 +248,16 @@ export class StripePaymentService {
 
       // Update business with account ID
       await Business.update(businessId, {
-        ...business.data,
+        id: business.id,
+        name: business.name,
+        email: business.email,
+        phone: business.phone,
+        timeZone: business.timeZone,
+        interfaceType: business.interfaceType,
+        websiteUrl: business.websiteUrl,
+        whatsappNumber: business.whatsappNumber,
+        businessAddress: business.businessAddress,
+        depositPercentage: business.depositPercentage,
         stripeConnectAccountId: account.id,
         stripeAccountStatus: 'pending',
       });
@@ -355,7 +342,17 @@ export class StripePaymentService {
 
       // Update business with new status
       await Business.update(businessId, {
-        ...business.data,
+        id: business.id,
+        name: business.name,
+        email: business.email,
+        phone: business.phone,
+        timeZone: business.timeZone,
+        interfaceType: business.interfaceType,
+        websiteUrl: business.websiteUrl,
+        whatsappNumber: business.whatsappNumber,
+        businessAddress: business.businessAddress,
+        depositPercentage: business.depositPercentage,
+        stripeConnectAccountId: business.stripeConnectAccountId,
         stripeAccountStatus: status,
       });
 
@@ -421,7 +418,17 @@ export class StripePaymentService {
       // Update business status
       const business = await Business.getById(businessId);
       await Business.update(businessId, {
-        ...business.data,
+        id: business.id,
+        name: business.name,
+        email: business.email,
+        phone: business.phone,
+        timeZone: business.timeZone,
+        interfaceType: business.interfaceType,
+        websiteUrl: business.websiteUrl,
+        whatsappNumber: business.whatsappNumber,
+        businessAddress: business.businessAddress,
+        depositPercentage: business.depositPercentage,
+        stripeConnectAccountId: business.stripeConnectAccountId,
         stripeAccountStatus: status,
       });
 
