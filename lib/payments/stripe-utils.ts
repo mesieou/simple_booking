@@ -4,14 +4,19 @@ import { Quote } from '@/lib/database/models/quote';
 import { User } from '@/lib/database/models/user';
 import { Service } from '@/lib/database/models/service';
 
-if (!process.env.STRIPE_SECRET_KEY) {
-  console.error('Available env vars:', Object.keys(process.env).filter(key => key.includes('STRIPE')));
-  throw new Error('STRIPE_SECRET_KEY is required');
-}
+let stripe: Stripe;
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2025-02-24.acacia',
-});
+function getStripe(): Stripe {
+  if (!stripe) {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error('STRIPE_SECRET_KEY is required');
+    }
+    stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2025-02-24.acacia',
+    });
+  }
+  return stripe;
+}
 
 export interface PaymentLinkData {
   quoteId: string;
@@ -53,7 +58,7 @@ export class StripePaymentService {
       const totalAmountCents = depositAmountCents + this.SKEDY_BOOKING_FEE;
 
       // Create a price first, then use it in the payment link
-      const price = await stripe.prices.create({
+      const price = await getStripe().prices.create({
         currency: 'aud',
         product_data: {
           name: `${data.serviceDescription} - Booking Deposit`,
@@ -71,7 +76,7 @@ export class StripePaymentService {
       });
 
       // Create payment link with application fee (split payment)
-      const paymentLink = await stripe.paymentLinks.create({
+      const paymentLink = await getStripe().paymentLinks.create({
         line_items: [
           {
             price: price.id,
@@ -233,7 +238,7 @@ export class StripePaymentService {
       }
 
       // Create Express account
-      const account = await stripe.accounts.create({
+      const account = await getStripe().accounts.create({
         type: 'express',
         country: 'AU',
         email: business.email,
@@ -296,7 +301,7 @@ export class StripePaymentService {
 
              // Create onboarding link
        const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-       const accountLink = await stripe.accountLinks.create({
+       const accountLink = await getStripe().accountLinks.create({
          account: accountId,
          refresh_url: `${baseUrl}/onboarding?refresh=true&businessId=${businessId}`,
          return_url: `${baseUrl}/onboarding?success=true&businessId=${businessId}`,
@@ -331,7 +336,7 @@ export class StripePaymentService {
       }
 
       // Retrieve account details from Stripe
-      const account = await stripe.accounts.retrieve(business.stripeConnectAccountId);
+      const account = await getStripe().accounts.retrieve(business.stripeConnectAccountId);
       
       let status: 'pending' | 'active' | 'disabled' = 'pending';
       
@@ -451,7 +456,7 @@ export class StripePaymentService {
         return null;
       }
 
-      return stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+      return getStripe().webhooks.constructEvent(payload, signature, webhookSecret);
     } catch (error) {
       console.error('Error verifying Stripe webhook signature:', error);
       return null;
