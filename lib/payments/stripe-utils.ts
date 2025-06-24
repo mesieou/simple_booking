@@ -8,6 +8,10 @@ let stripe: Stripe;
 
 function getStripe(): Stripe {
   if (!stripe) {
+    console.log('[DEBUG] Available env vars starting with STRIPE:', Object.keys(process.env).filter(key => key.startsWith('STRIPE')));
+    console.log('[DEBUG] STRIPE_SECRET_KEY exists:', !!process.env.STRIPE_SECRET_KEY);
+    console.log('[DEBUG] STRIPE_SECRET_KEY length:', process.env.STRIPE_SECRET_KEY?.length || 0);
+    
     if (!process.env.STRIPE_SECRET_KEY) {
       throw new Error('STRIPE_SECRET_KEY is required');
     }
