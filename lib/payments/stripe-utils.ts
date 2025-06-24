@@ -16,9 +16,11 @@ function getStripe(): Stripe {
     console.log('[DEBUG] STRIPE_SECRET_KEY length:', process.env.STRIPE_SECRET_KEY?.length || 0);
     console.log('[DEBUG] STRIPE_SECRET_KEY value preview:', process.env.STRIPE_SECRET_KEY?.substring(0, 10) + '...');
     
-    const stripeKey = process.env.STRIPE_SECRET_KEY;
+    const stripeKey = process.env.SECRET_STRIPE_KEY || process.env.STRIPE_SECRET_KEY;
     if (!stripeKey) {
-      console.error('[ERROR] STRIPE_SECRET_KEY is missing from environment');
+      console.error('[ERROR] SECRET_STRIPE_KEY/STRIPE_SECRET_KEY is missing from environment');
+      console.log('[DEBUG] Checking SECRET_STRIPE_KEY:', !!process.env.SECRET_STRIPE_KEY);
+      console.log('[DEBUG] Available vars with SECRET:', Object.keys(process.env).filter(key => key.includes('SECRET')));
       throw new Error('STRIPE_SECRET_KEY is required');
     }
     console.log('[DEBUG] Creating Stripe instance with key length:', stripeKey.length);
@@ -479,9 +481,9 @@ export class StripePaymentService {
    */
   static verifyStripeWebhookSignature(payload: string | Buffer, signature: string): Stripe.Event | null {
     try {
-      const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+      const webhookSecret = process.env.SECRET_STRIPE_WEBHOOK || process.env.STRIPE_WEBHOOK_SECRET;
       if (!webhookSecret) {
-        console.error('STRIPE_WEBHOOK_SECRET is not configured');
+        console.error('SECRET_STRIPE_WEBHOOK/STRIPE_WEBHOOK_SECRET is not configured');
         return null;
       }
 
