@@ -1,5 +1,7 @@
 import { createClient } from "../../lib/database/supabase/server";
 import { redirect } from "next/navigation";
+import ChatInterface from "./components/chat-interface";
+import { Conversation } from "./components/chat-interface";
 
 // This is a simple placeholder type.
 type ChatSession = {
@@ -30,26 +32,28 @@ export default async function ProtectedPage() {
     console.error("Error fetching chat sessions:", error);
     return <p className="p-4 text-red-500">Error loading chats.</p>;
   }
+  
+  // This is the list of active chats for the user
+  const conversationsMap = new Map<string, Conversation>();
+  if (chatSessions) {
+    for (const session of chatSessions) {
+        if (!conversationsMap.has(session.channelUserId)) {
+            conversationsMap.set(session.channelUserId, {
+                channelUserId: session.channelUserId,
+                updatedAt: session.updatedAt,
+            });
+        }
+    }
+  }
+
+  const initialConversations = Array.from(conversationsMap.values());
 
   return (
-    <div className="flex-1 flex flex-col w-full max-w-4xl mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Your Conversations</h1>
-      <div className="border rounded-lg">
-        {chatSessions && chatSessions.length > 0 ? (
-          <ul>
-            {chatSessions.map((session: any) => (
-              <li key={session.id} className="p-4 border-b last:border-b-0">
-                <p className="font-semibold">Chat with: {session.channelUserId}</p>
-                <p className="text-sm text-gray-500">Session ID: {session.id}</p>
-                 <p className="text-xs text-gray-400">Last updated: {new Date(session.updatedAt).toLocaleString()}</p>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <div className="p-8 text-center text-gray-500">
-            <p>No active conversations yet.</p>
-          </div>
-        )}
+    <div className="w-full max-w-7xl mx-auto p-4 flex flex-col">
+      <h1 className="text-2xl font-bold mb-4 text-white">Your Conversations</h1>
+      {/* This container gives the chat component a fixed height relative to the viewport */}
+      <div className="h-[70vh]">
+        <ChatInterface initialConversations={initialConversations} />
       </div>
     </div>
   );

@@ -99,4 +99,109 @@ export async function resetPasswordAction(formData: FormData) {
   }
 
   redirect("/sign-in?message=Password updated successfully");
+}
+
+// Define the shape of a chat message that the UI components expect
+export type ChatMessage = {
+  id: string; // For React key
+  content: string;
+  createdAt: string;
+  senderRole: 'customer' | 'agent' | 'bot';
+};
+
+// This represents the shape of a message as it's stored in the DB's JSONB column
+type StoredChatMessage = {
+  role: 'user' | 'bot' | 'agent';
+  content: string;
+  timestamp?: string;
+}
+
+/**
+ * @deprecated Use getMessagesForUser instead. This function fetches messages from a single session only.
+ */
+export async function getMessagesForSession(sessionId: string): Promise<ChatMessage[]> {
+  const supabase = createClient();
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session) {
+    throw new Error("Not authenticated");
+  }
+
+  // RLS is handled on the chatSessions table, so this query is secure.
+  const { data, error } = await supabase
+    .from("chatSessions")
+    .select("allMessages")
+    .eq("id", sessionId)
+    .single();
+
+  if (error) {
+    console.error("Error fetching session:", error);
+    // If no row is found, it's not a fatal error, just an empty session.
+    if (error.code === 'PGRST116') {
+        return [];
+    }
+    throw new Error("Failed to fetch messages.");
+  }
+
+  if (!data || !data.allMessages) {
+    return [];
+  }
+
+  // Cast the fetched messages to our stored type
+  const storedMessages = data.allMessages as StoredChatMessage[];
+
+  // Transform the stored messages into the format the UI component expects
+  return storedMessages.map((msg, index) => ({
+    id: `${sessionId}-${index}`, // Create a stable key for React
+    content: msg.content,
+    createdAt: msg.timestamp || new Date().toISOString(), // Provide a fallback for the timestamp
+    // Map the 'role' from the DB to the 'senderRole' the UI expects
+    senderRole: msg.role === 'user' ? 'customer' : msg.role, 
+  }));
+}
+
+export async function getMessagesForUser(channelUserId: string): Promise<ChatMessage[]> {
+    const supabase = createClient();
+
+    const { data: authData } = await supabase.auth.getSession();
+    if (!authData.session) {
+      throw new Error("Not authenticated");
+    }
+
+    // RLS on chatSessions table ensures we only get sessions for the user's business.
+    const { data: sessions, error } = await supabase
+        .from("chatSessions")
+        .select("allMessages, createdAt")
+        .eq("channelUserId", channelUserId)
+        .order("createdAt", { ascending: true });
+    
+    if (error) {
+        console.error("Error fetching sessions for user:", error);
+        throw new Error("Failed to fetch conversations for user.");
+    }
+
+    if (!sessions) {
+        return [];
+    }
+
+    // Flatten all message arrays from all sessions into one array
+    const allMessages: StoredChatMessage[] = sessions.flatMap(s => s.allMessages || []);
+
+    // Sort the combined messages by timestamp to ensure chronological order
+    allMessages.sort((a, b) => {
+        const dateA = new Date(a.timestamp || 0).getTime();
+        const dateB = new Date(b.timestamp || 0).getTime();
+        return dateA - dateB;
+    });
+
+    // Transform the stored messages into the format the UI component expects
+    return allMessages.map((msg, index) => ({
+        id: `msg-${channelUserId}-${index}`, // Create a stable key
+        content: msg.content,
+        createdAt: msg.timestamp || new Date().toISOString(),
+        senderRole: msg.role === 'user' ? 'customer' : msg.role,
+    }));
 } 
