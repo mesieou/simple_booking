@@ -9,6 +9,7 @@ export default function OnboardingPage() {
   const searchParams = useSearchParams();
   const [stripeStatus, setStripeStatus] = useState<'checking' | 'success' | 'refresh' | 'error' | null>(null);
   const [businessId, setBusinessId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const success = searchParams.get('success');
@@ -49,6 +50,8 @@ export default function OnboardingPage() {
   const handleCreateOnboardingLink = async () => {
     if (!businessId) return;
     
+    setIsLoading(true);
+    
     try {
       const response = await fetch('/api/onboarding/stripe-connect', {
         method: 'POST',
@@ -64,10 +67,12 @@ export default function OnboardingPage() {
         window.location.href = data.onboardingUrl;
       } else {
         setStripeStatus('error');
+        setIsLoading(false);
       }
     } catch (error) {
       console.error('Error creating onboarding link:', error);
       setStripeStatus('error');
+      setIsLoading(false);
     }
   };
 
@@ -102,8 +107,19 @@ export default function OnboardingPage() {
           Your payment setup needs to be completed. Please continue with the Stripe onboarding process.
         </p>
         <div className="flex flex-col gap-4">
-          <Button onClick={handleCreateOnboardingLink} disabled={!businessId}>
-            Continue Setup
+          <Button 
+            onClick={handleCreateOnboardingLink} 
+            disabled={!businessId || isLoading}
+            className="relative"
+          >
+            {isLoading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Redirecting...
+              </>
+            ) : (
+              'Continue Setup'
+            )}
           </Button>
           <p className="text-sm text-muted-foreground">
             This will redirect you to Stripe to complete your account setup.
@@ -123,8 +139,19 @@ export default function OnboardingPage() {
           There was an error with your payment setup. Please try again or contact support.
         </p>
         <div className="flex flex-col gap-4">
-          <Button onClick={handleCreateOnboardingLink} disabled={!businessId}>
-            Try Again
+          <Button 
+            onClick={handleCreateOnboardingLink} 
+            disabled={!businessId || isLoading}
+            className="relative"
+          >
+            {isLoading ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Redirecting...
+              </>
+            ) : (
+              'Try Again'
+            )}
           </Button>
           <Button variant="outline" asChild>
             <Link href="/protected">Go to Dashboard</Link>
@@ -139,9 +166,9 @@ export default function OnboardingPage() {
     return (
       <div className="flex-1 flex flex-col w-full px-8 sm:max-w-md justify-center gap-6 text-center">
         <div className="text-blue-500 text-6xl mb-4 animate-spin">⏳</div>
-        <h1 className="text-2xl font-bold">Checking Setup Status...</h1>
+        <h1 className="text-2xl font-bold">Redirecting to Stripe...</h1>
         <p className="text-muted-foreground">
-          Please wait while we verify your payment setup.
+          Please wait while we redirect you to complete your payment setup.
         </p>
       </div>
     );
