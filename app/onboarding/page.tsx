@@ -102,7 +102,7 @@ export default function OnboardingPage() {
     return (
       <div className="flex-1 flex flex-col w-full px-8 sm:max-w-md justify-center gap-6 text-center">
         <div className="text-orange-500 text-6xl mb-4">⚠️</div>
-        <h1 className="text-2xl font-bold text-orange-600">Complete Your Setup</h1>
+        <h1 className="text-2xl font-bold text-purple-600">Complete Your Setup</h1>
         <p className="text-muted-foreground">
           Your payment setup needs to be completed. Please continue with the Stripe onboarding process.
         </p>
