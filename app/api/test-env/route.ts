@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const runtime = 'nodejs';
+
 export async function GET(request: NextRequest) {
   try {
     console.log('[TEST-ENV] NODE_ENV:', process.env.NODE_ENV);
