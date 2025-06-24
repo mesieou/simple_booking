@@ -19,7 +19,12 @@ export async function updateSession(request: NextRequest) {
       // return NextResponse.redirect(new URL("/sign-in", request.url));
     }
 
-    const { pathname } = request.nextUrl;
+    const { pathname, searchParams } = request.nextUrl;
+
+    // Check if this is a Stripe Connect callback (allow unauthenticated access)
+    const isStripeCallback = pathname.startsWith("/onboarding") && 
+      (searchParams.get('success') === 'true' || searchParams.get('refresh') === 'true') &&
+      searchParams.get('businessId');
 
     // If there is a session, we need to check if the user is onboarded
     if (session) {
@@ -44,8 +49,14 @@ export async function updateSession(request: NextRequest) {
     }
 
     // If there is no session and the user tries to access a protected route
+    // BUT allow Stripe Connect callbacks to pass through
     if (!session && pathname.startsWith("/protected")) {
       return NextResponse.redirect(new URL("/sign-in", request.url));
+    }
+
+    // Allow Stripe Connect callbacks to bypass authentication
+    if (isStripeCallback) {
+      return response;
     }
 
     return response;
