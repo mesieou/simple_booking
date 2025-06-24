@@ -52,9 +52,22 @@ export async function POST(request: NextRequest) {
           accountId: accountResult.accountId
         });
 
+      case 'create_fresh_account':
+        const freshAccountResult = await StripePaymentService.createExpressAccount(businessId, true);
+        if (!freshAccountResult.success) {
+          return NextResponse.json(
+            { error: freshAccountResult.error },
+            { status: 400 }
+          );
+        }
+        return NextResponse.json({
+          success: true,
+          accountId: freshAccountResult.accountId
+        });
+
       default:
         return NextResponse.json(
-          { error: 'Invalid action. Use: create_onboarding_link, check_status, or create_account' },
+          { error: 'Invalid action. Use: create_onboarding_link, check_status, create_account, or create_fresh_account' },
           { status: 400 }
         );
     }

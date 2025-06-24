@@ -225,12 +225,12 @@ export class StripePaymentService {
   /**
    * Creates a Stripe Express account for a business
    */
-  static async createExpressAccount(businessId: string): Promise<{success: boolean, accountId?: string, error?: string}> {
+  static async createExpressAccount(businessId: string, forceNew: boolean = false): Promise<{success: boolean, accountId?: string, error?: string}> {
     try {
       const business = await Business.getById(businessId);
       
-      // Check if account already exists
-      if (business.stripeConnectAccountId) {
+      // Check if account already exists (unless forcing new)
+      if (business.stripeConnectAccountId && !forceNew) {
         return {
           success: true,
           accountId: business.stripeConnectAccountId
@@ -283,24 +283,41 @@ export class StripePaymentService {
 
   /**
    * Creates an onboarding link for Express account setup
+   * Automatically creates a fresh account if current one is disabled
    */
   static async createOnboardingLink(businessId: string): Promise<{success: boolean, url?: string, error?: string}> {
     try {
       const business = await Business.getById(businessId);
       
       let accountId = business.stripeConnectAccountId;
+      let needsFreshAccount = false;
       
-      // Create account if it doesn't exist
-      if (!accountId) {
-        const accountResult = await this.createExpressAccount(businessId);
+      // Check if existing account is disabled
+      if (accountId) {
+        try {
+          const account = await getStripe().accounts.retrieve(accountId);
+          if (account.requirements?.disabled_reason) {
+            console.log(`Account ${accountId} is disabled: ${account.requirements.disabled_reason}. Creating fresh account.`);
+            needsFreshAccount = true;
+          }
+        } catch (error) {
+          console.log(`Account ${accountId} not found or error retrieving. Creating fresh account.`);
+          needsFreshAccount = true;
+        }
+      }
+      
+      // Create account if it doesn't exist or if current one is disabled
+      if (!accountId || needsFreshAccount) {
+        const accountResult = await this.createExpressAccount(businessId, true); // Force new account
         if (!accountResult.success) {
           return accountResult;
         }
         accountId = accountResult.accountId!;
+        console.log(`Created fresh Stripe account: ${accountId}`);
       }
 
              // Create onboarding link
-       const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+       const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://simple-booking-git-main-skedys-projects.vercel.app';
        const accountLink = await getStripe().accountLinks.create({
          account: accountId,
          refresh_url: `${baseUrl}/onboarding?refresh=true&businessId=${businessId}`,
