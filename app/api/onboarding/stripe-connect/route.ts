@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { StripePaymentService } from '@/lib/payments/stripe-utils';
 
+export const runtime = 'nodejs';
+
 export async function POST(request: NextRequest) {
   try {
     const { businessId, action } = await request.json();
