@@ -15,16 +15,20 @@ function getStripe(): Stripe {
     console.log('[DEBUG] STRIPE_SECRET_KEY exists:', !!process.env.STRIPE_SECRET_KEY);
     console.log('[DEBUG] STRIPE_SECRET_KEY length:', process.env.STRIPE_SECRET_KEY?.length || 0);
     console.log('[DEBUG] STRIPE_SECRET_KEY value preview:', process.env.STRIPE_SECRET_KEY?.substring(0, 10) + '...');
+    console.log('[DEBUG] STRIPE_SECRET_KEY typeof:', typeof process.env.STRIPE_SECRET_KEY);
+    console.log('[DEBUG] STRIPE_SECRET_KEY raw value check:', JSON.stringify(process.env.STRIPE_SECRET_KEY?.substring(0, 20)));
     
-    const stripeKey = process.env.SECRET_STRIPE_KEY || process.env.STRIPE_SECRET_KEY;
-    if (!stripeKey) {
-      console.error('[ERROR] SECRET_STRIPE_KEY/STRIPE_SECRET_KEY is missing from environment');
-      console.log('[DEBUG] Checking SECRET_STRIPE_KEY:', !!process.env.SECRET_STRIPE_KEY);
+    const stripeKey = process.env.STRIPE_SECRET_KEY;
+    if (!stripeKey || stripeKey.trim() === '') {
+      console.error('[ERROR] STRIPE_SECRET_KEY is missing or empty from environment');
       console.log('[DEBUG] Available vars with SECRET:', Object.keys(process.env).filter(key => key.includes('SECRET')));
+      console.log('[DEBUG] Available vars with STRIPE:', Object.keys(process.env).filter(key => key.includes('STRIPE')));
+      console.log('[DEBUG] All environment variables:', Object.keys(process.env).sort());
       throw new Error('STRIPE_SECRET_KEY is required');
     }
     console.log('[DEBUG] Creating Stripe instance with key length:', stripeKey.length);
-    stripe = new Stripe(stripeKey, {
+    console.log('[DEBUG] Key starts with sk_:', stripeKey.startsWith('sk_'));
+    stripe = new Stripe(stripeKey.trim(), {
       apiVersion: '2025-02-24.acacia',
     });
     console.log('[DEBUG] Stripe instance created successfully');
@@ -481,9 +485,9 @@ export class StripePaymentService {
    */
   static verifyStripeWebhookSignature(payload: string | Buffer, signature: string): Stripe.Event | null {
     try {
-      const webhookSecret = process.env.SECRET_STRIPE_WEBHOOK || process.env.STRIPE_WEBHOOK_SECRET;
+      const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
       if (!webhookSecret) {
-        console.error('SECRET_STRIPE_WEBHOOK/STRIPE_WEBHOOK_SECRET is not configured');
+        console.error('STRIPE_WEBHOOK_SECRET is not configured');
         return null;
       }
 
