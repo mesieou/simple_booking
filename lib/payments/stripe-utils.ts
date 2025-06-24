@@ -8,16 +8,24 @@ let stripe: Stripe;
 
 function getStripe(): Stripe {
   if (!stripe) {
+    console.log('[DEBUG] NODE_ENV:', process.env.NODE_ENV);
+    console.log('[DEBUG] All env keys count:', Object.keys(process.env).length);
     console.log('[DEBUG] Available env vars starting with STRIPE:', Object.keys(process.env).filter(key => key.startsWith('STRIPE')));
+    console.log('[DEBUG] Available env vars starting with NEXT:', Object.keys(process.env).filter(key => key.startsWith('NEXT')));
     console.log('[DEBUG] STRIPE_SECRET_KEY exists:', !!process.env.STRIPE_SECRET_KEY);
     console.log('[DEBUG] STRIPE_SECRET_KEY length:', process.env.STRIPE_SECRET_KEY?.length || 0);
+    console.log('[DEBUG] STRIPE_SECRET_KEY value preview:', process.env.STRIPE_SECRET_KEY?.substring(0, 10) + '...');
     
-    if (!process.env.STRIPE_SECRET_KEY) {
+    const stripeKey = process.env.STRIPE_SECRET_KEY;
+    if (!stripeKey) {
+      console.error('[ERROR] STRIPE_SECRET_KEY is missing from environment');
       throw new Error('STRIPE_SECRET_KEY is required');
     }
-    stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+    console.log('[DEBUG] Creating Stripe instance with key length:', stripeKey.length);
+    stripe = new Stripe(stripeKey, {
       apiVersion: '2025-02-24.acacia',
     });
+    console.log('[DEBUG] Stripe instance created successfully');
   }
   return stripe;
 }
