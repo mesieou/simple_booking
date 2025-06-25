@@ -3,25 +3,272 @@ import { Service, type ServiceData } from '@/lib/database/models/service';
 import { Business } from '@/lib/database/models/business';
 import { AvailabilitySlots } from '@/lib/database/models/availability-slots';
 import { User } from '@/lib/database/models/user';
-import { Quote } from '@/lib/database/models/quote';
+import { Quote, type QuoteData } from '@/lib/database/models/quote';
 import { Booking, type BookingData, BookingStatus } from '@/lib/database/models/booking';
 import { computeQuoteEstimation, type QuoteEstimation } from '@/lib/general-helpers/quote-cost-calculator';
 import { v4 as uuidv4 } from 'uuid';
 import { CalendarSettings } from '@/lib/database/models/calendar-settings';
 import { DateTime } from 'luxon';
 
-// Configuration constants for booking steps
-const BOOKING_CONFIG = {
-  ADDRESS_REQUEST_MESSAGE: '📍 To show you accurate pricing and availability, I need your address first.',
-  ERROR_MESSAGES: {
-    BUSINESS_CONFIG_ERROR: 'Business configuration error',
-    NO_SERVICES_AVAILABLE: 'No services available', 
-    SERVICES_LOAD_ERROR: 'Unable to load services at the moment',
-    SERVICE_SELECTION_ERROR: 'Could not process service selection.',
-    INVALID_SERVICE_SELECTION: 'Please select a valid service from the options provided or type the name of the service you\'d like.',
-    NO_SERVICES_TO_CHOOSE: 'No services are currently available to choose from.',
-    INVALID_ADDRESS: 'Please provide a valid address with street, suburb, and postcode.'
+// Translation constants for booking steps
+const BOOKING_TRANSLATIONS = {
+  en: {
+    ADDRESS_REQUEST_MESSAGE: '📍 To show you accurate pricing and availability, I need your address first.',
+    ERROR_MESSAGES: {
+      BUSINESS_CONFIG_ERROR: 'Business configuration error',
+      NO_SERVICES_AVAILABLE: 'No services available', 
+      SERVICES_LOAD_ERROR: 'Unable to load services at the moment',
+      SERVICE_SELECTION_ERROR: 'Could not process service selection.',
+      INVALID_SERVICE_SELECTION: 'Please select a valid service from the options provided or type the name of the service you\'d like.',
+      NO_SERVICES_TO_CHOOSE: 'No services are currently available to choose from.',
+      INVALID_ADDRESS: 'Please provide a valid address with street, suburb, and postcode.'
+    },
+    BUTTONS: {
+      SYSTEM_ERROR: '❌ System Error',
+      CONTACT_SERVICES: '📞 Contact us',
+      SERVICES_UNAVAILABLE: '⚠️ Service Error',
+      ADDRESS_CORRECT: '✅ Yes, that\'s correct',
+      ADDRESS_EDIT: '✏️ No, let me edit it',
+      CONTACT_DIRECTLY: '📞 Contact us directly',
+      OTHER_DAYS: '📅 Other days',
+      CHOOSE_ANOTHER_DAY: '📅 Other days',
+      NO_AVAILABILITY: '📞 No availability - Contact us',
+      CONTACT_US: '📞 Contact us',
+      CHOOSE_DATE_FIRST: '📅 Choose a date first',
+      TRY_AGAIN: '🔄 Try again',
+      CONFIRM: 'Confirm',
+      EDIT: 'Edit',
+      CHANGE_SERVICE: 'Change Service',
+      CHANGE_TIME: 'Change Date/Time',
+      SELECT: 'Select'
+    },
+    MESSAGES: {
+      AVAILABLE_TIMES: 'Next available times:',
+      CONFIGURATION_ERROR: 'Sorry, there was a configuration error. Please contact us directly.',
+      CONFIGURATION_ERROR_SUPPORT: 'Sorry, there was a configuration error. Please try again or contact support.',
+      NO_AVAILABILITY_10_DAYS: 'Sorry, no availability found in the next 10 days. Please contact us directly to check for other options.',
+      AVAILABLE_DAYS: 'Available days:',
+      GETTING_TIMES: 'Got it. Let me get available times...',
+      ERROR_LOADING_TIMES: 'Sorry, there was an error loading times. Please try again.',
+      NO_APPOINTMENTS_DATE: 'Sorry, no appointments are available on this date. Please choose another day.',
+      SELECT_TIME: 'Please select a time:',
+      ERROR_LOADING_AVAILABLE_TIMES: 'Sorry, there was an error loading available times. Please try selecting a date again.',
+      SELECT_DATE_FIRST: 'Please select a date first to see available times.',
+      SELECTED_TIME_CONFIRM: 'Great! You\'ve selected {time}. Let\'s confirm your details.',
+      BOOK_SERVICE: 'Great! Let\'s book a {service} appointment.',
+      SERVICE_NOT_AVAILABLE: 'Sorry, that service is not available. Please use the buttons below.',
+      ISSUE_PREPARING_QUOTE: 'Sorry, there was an issue preparing your quote. Let me try again.',
+      QUOTE_CONFIRMED: 'Perfect! Your quote is confirmed. Let\'s create your booking.',
+      WHAT_TO_CHANGE: 'What would you like to change?',
+      CHOOSE_DIFFERENT_SERVICE: 'Let\'s choose a different service...',
+      PICK_DIFFERENT_TIME: 'Let\'s pick a different time...',
+      WELCOME_BACK: 'Welcome back, {name}! I found your account.',
+      NOT_IN_SYSTEM: 'I don\'t see you in our system yet.',
+      CREATE_ACCOUNT: 'Let me create your account.',
+      FIRST_NAME_PROMPT: 'What\'s your first name so I can create your account?',
+      FIRST_NAME_VALIDATION: 'Please provide your first name (at least 2 characters).',
+      THANKS_CREATING: 'Thanks {name}! Creating your account...',
+      ACCOUNT_CREATED: 'Perfect! I\'ve created your account, {name}. Let\'s continue with your booking.',
+      ACCOUNT_EXISTS: 'This WhatsApp number may already have an account. Please contact support.',
+      ACCOUNT_CREATION_FAILED: 'Failed to create user account. Please try again.',
+      SELECT_SERVICE: 'Please select a service from the list below:',
+      MOBILE_SERVICE_LOCATION: '🚗 Excellent! We\'ll come to you at:\n📍 {address}',
+      BOOKING_PROBLEM: 'Sorry, there was a problem confirming your booking. Please contact us.',
+      PROVIDE_ADDRESS: 'Please provide the correct address:',
+      EMAIL_PROMPT: 'Please provide your email address for booking confirmation:',
+      EMAIL_VALIDATION: 'Please provide a valid email address.',
+      VALIDATING_ADDRESS: 'Let me validate your address...',
+      CREATING_BOOKING: 'Creating your booking...',
+      CHECKING_SYSTEM: 'Let me check if you\'re in our system...',
+      CHECKING_STATUS: 'Checking your account status...',
+      CREATING_ACCOUNT: 'Creating your account...',
+      PROCESSING_CHOICE: 'Processing your choice...',
+      CONFIRMING_DETAILS: 'Perfect! Let me confirm your service details...'
+    },
+    LIST_SECTIONS: {
+      SERVICES: 'Services', // Short title for WhatsApp list (24 char limit)
+      AVAILABLE_OPTIONS: 'Available Options'
+    },
+    QUOTE_SUMMARY: {
+      TITLE: '📋 *Booking Quote Summary*',
+      SERVICE: '💼 *Service:*',
+      DATE: '📅 *Date:*',
+      TIME: '⏰ *Time:*',
+      DURATION: '⏱️ *Duration:*',
+      ESTIMATED_COMPLETION: '🏁 *Estimated completion:*',
+      LOCATION: '📍 *Location:*',
+      PRICING: '💰 *Pricing:*',
+      SERVICE_COST: '• Service:',
+      TRAVEL_COST: '• Travel:',
+      TOTAL_COST: '• *Total:*',
+      QUOTE_ID: 'Quote ID:',
+      CONFIRM_QUESTION: 'Would you like to confirm this quote?',
+      MINUTES: 'minutes'
+    },
+    BOOKING_CONFIRMATION: {
+      TITLE: '🎉 Your booking is confirmed!',
+      SERVICE: '📅 Service:',
+      DATE: '🗓️ Date:',
+      TIME: '⏰ Time:',
+      LOCATION: '📍 Location:',
+      PRICING: '💰 *Pricing:*',
+      SERVICE_COST: '• Service:',
+      TRAVEL_COST: '• Travel:',
+      TOTAL_COST: '• *Total Cost:*',
+      BOOKING_ID: 'Booking ID:',
+      LOOKING_FORWARD: 'We look forward to seeing you! You can ask me anything else if you have more questions.'
+    }
   },
+  es: {
+    ADDRESS_REQUEST_MESSAGE: '📍 Para mostrarte precios y disponibilidad precisos, necesito tu dirección primero.',
+    ERROR_MESSAGES: {
+      BUSINESS_CONFIG_ERROR: 'Error de configuración del negocio',
+      NO_SERVICES_AVAILABLE: 'No hay servicios disponibles', 
+      SERVICES_LOAD_ERROR: 'No se pueden cargar los servicios en este momento',
+      SERVICE_SELECTION_ERROR: 'No se pudo procesar la selección del servicio.',
+      INVALID_SERVICE_SELECTION: 'Por favor selecciona un servicio válido de las opciones proporcionadas o escribe el nombre del servicio que te gustaría.',
+      NO_SERVICES_TO_CHOOSE: 'No hay servicios disponibles para elegir en este momento.',
+      INVALID_ADDRESS: 'Por favor proporciona una dirección válida con calle, barrio y código postal.'
+    },
+    BUTTONS: {
+      SYSTEM_ERROR: '❌ Error del Sistema',
+      CONTACT_SERVICES: '📞 Contáctanos',
+      SERVICES_UNAVAILABLE: '⚠️ Error de Servicios',
+      ADDRESS_CORRECT: '✅ Sí, es correcto',
+      ADDRESS_EDIT: '✏️ No, déjame editarlo',
+      CONTACT_DIRECTLY: '📞 Contáctanos directamente',
+      OTHER_DAYS: '📅 Otros días',
+      CHOOSE_ANOTHER_DAY: '📅 Otros días',
+      NO_AVAILABILITY: '📞 Sin disponibilidad - Contáctanos',
+      CONTACT_US: '📞 Contáctanos',
+      CHOOSE_DATE_FIRST: '📅 Elige una fecha primero',
+      TRY_AGAIN: '🔄 Intentar de nuevo',
+      CONFIRM: 'Confirmar',
+      EDIT: 'Editar',
+      CHANGE_SERVICE: 'Cambiar Servicio',
+      CHANGE_TIME: 'Cambiar Fecha/Hora',
+      SELECT: 'Seleccionar'
+    },
+    MESSAGES: {
+      AVAILABLE_TIMES: 'Próximos horarios:',
+      CONFIGURATION_ERROR: 'Lo siento, hubo un error de configuración. Por favor contáctanos directamente.',
+      CONFIGURATION_ERROR_SUPPORT: 'Lo siento, hubo un error de configuración. Por favor intenta de nuevo o contacta soporte.',
+      NO_AVAILABILITY_10_DAYS: 'Lo siento, no se encontró disponibilidad en los próximos 10 días. Por favor contáctanos directamente para verificar otras opciones.',
+      AVAILABLE_DAYS: 'Días disponibles:',
+      GETTING_TIMES: 'Entendido. Déjame obtener los horarios disponibles...',
+      ERROR_LOADING_TIMES: 'Lo siento, hubo un error cargando los horarios. Por favor intenta de nuevo.',
+      NO_APPOINTMENTS_DATE: 'Lo siento, no hay citas disponibles en esta fecha. Por favor elige otro día.',
+      SELECT_TIME: 'Por favor selecciona un horario:',
+      ERROR_LOADING_AVAILABLE_TIMES: 'Lo siento, hubo un error cargando los horarios disponibles. Por favor intenta seleccionar otra fecha.',
+      SELECT_DATE_FIRST: 'Por favor selecciona una fecha primero para ver los horarios disponibles.',
+      SELECTED_TIME_CONFIRM: '¡Excelente! Has seleccionado {time}. Confirmemos tus detalles.',
+      BOOK_SERVICE: '¡Excelente! Reservemos una cita de {service}.',
+      SERVICE_NOT_AVAILABLE: 'Lo siento, ese servicio no está disponible. Por favor usa los botones de abajo.',
+      ISSUE_PREPARING_QUOTE: 'Lo siento, hubo un problema preparando tu cotización. Déjame intentar de nuevo.',
+      QUOTE_CONFIRMED: '¡Perfecto! Tu cotización está confirmada. Creemos tu reserva.',
+      WHAT_TO_CHANGE: '¿Qué te gustaría cambiar?',
+      CHOOSE_DIFFERENT_SERVICE: 'Elijamos un servicio diferente...',
+      PICK_DIFFERENT_TIME: 'Elijamos un horario diferente...',
+      WELCOME_BACK: '¡Bienvenido de vuelta, {name}! Encontré tu cuenta.',
+      NOT_IN_SYSTEM: 'No te veo en nuestro sistema aún.',
+      CREATE_ACCOUNT: 'Déjame crear tu cuenta.',
+      FIRST_NAME_PROMPT: '¿Cuál es tu nombre para crear tu cuenta?',
+      FIRST_NAME_VALIDATION: 'Por favor proporciona tu nombre (al menos 2 caracteres).',
+      THANKS_CREATING: '¡Gracias {name}! Creando tu cuenta...',
+      ACCOUNT_CREATED: '¡Perfecto! He creado tu cuenta, {name}. Continuemos con tu reserva.',
+      ACCOUNT_EXISTS: 'Este número de WhatsApp ya puede tener una cuenta. Por favor contacta soporte.',
+      ACCOUNT_CREATION_FAILED: 'Falló la creación de la cuenta de usuario. Por favor intenta de nuevo.',
+      SELECT_SERVICE: 'Por favor selecciona un servicio de la lista de abajo:',
+      MOBILE_SERVICE_LOCATION: '🚗 ¡Excelente! Iremos a ti a:\n📍 {address}',
+      BOOKING_PROBLEM: 'Lo siento, hubo un problema confirmando tu reserva. Por favor contáctanos.',
+      PROVIDE_ADDRESS: 'Por favor proporciona la dirección correcta:',
+      EMAIL_PROMPT: 'Por favor proporciona tu dirección de correo electrónico para confirmación de la reserva:',
+      EMAIL_VALIDATION: 'Por favor proporciona una dirección de correo electrónico válida.',
+      VALIDATING_ADDRESS: 'Déjame validar tu dirección...',
+      CREATING_BOOKING: 'Creando tu reserva...',
+      CHECKING_SYSTEM: 'Déjame verificar si estás en nuestro sistema...',
+      CHECKING_STATUS: 'Verificando el estado de tu cuenta...',
+      CREATING_ACCOUNT: 'Creando tu cuenta...',
+      PROCESSING_CHOICE: 'Procesando tu elección...',
+      CONFIRMING_DETAILS: '¡Perfecto! Déjame confirmar los detalles de tu servicio...'
+    },
+    LIST_SECTIONS: {
+      SERVICES: 'Servicios', // Short title for WhatsApp list (24 char limit)
+      AVAILABLE_OPTIONS: 'Opciones Disponibles'
+    },
+    QUOTE_SUMMARY: {
+      TITLE: '📋 *Resumen de Cotización de Reserva*',
+      SERVICE: '💼 *Servicio:*',
+      DATE: '📅 *Fecha:*',
+      TIME: '⏰ *Hora:*',
+      DURATION: '⏱️ *Duración:*',
+      ESTIMATED_COMPLETION: '🏁 *Finalización estimada:*',
+      LOCATION: '📍 *Ubicación:*',
+      PRICING: '💰 *Precios:*',
+      SERVICE_COST: '• Servicio:',
+      TRAVEL_COST: '• Viaje:',
+      TOTAL_COST: '• *Total:*',
+      QUOTE_ID: 'ID de Cotización:',
+      CONFIRM_QUESTION: '¿Te gustaría confirmar esta cotización?',
+      MINUTES: 'minutos'
+    },
+    BOOKING_CONFIRMATION: {
+      TITLE: '🎉 ¡Tu reserva está confirmada!',
+      SERVICE: '📅 Servicio:',
+      DATE: '🗓️ Fecha:',
+      TIME: '⏰ Hora:',
+      LOCATION: '📍 Ubicación:',
+      PRICING: '💰 *Precios:*',
+      SERVICE_COST: '• Servicio:',
+      TRAVEL_COST: '• Viaje:',
+      TOTAL_COST: '• *Costo Total:*',
+      BOOKING_ID: 'ID de Reserva:',
+      LOOKING_FORWARD: '¡Esperamos verte! Puedes preguntarme cualquier otra cosa si tienes más preguntas.'
+    }
+  }
+} as const;
+
+// Utility function to get user's language from chat context
+const getUserLanguage = (chatContext: ChatContext): 'en' | 'es' => {
+  const userLang = chatContext?.participantPreferences?.language;
+  return userLang === 'es' ? 'es' : 'en'; // Default to English
+};
+
+// Utility function to get localized text
+const getLocalizedText = (chatContext: ChatContext, key: string): string => {
+  const language = getUserLanguage(chatContext);
+  const translations = BOOKING_TRANSLATIONS[language];
+  
+  // Navigate through nested keys (e.g., "ERROR_MESSAGES.INVALID_ADDRESS")
+  const keys = key.split('.');
+  let value: any = translations;
+  
+  for (const k of keys) {
+    if (value && typeof value === 'object' && k in value) {
+      value = value[k];
+    } else {
+      console.warn(`[Localization] Key not found: ${key} for language: ${language}`);
+      return key; // Return the key as fallback
+    }
+  }
+  
+  return typeof value === 'string' ? value : key;
+};
+
+// Utility function to get localized text with variable substitution
+const getLocalizedTextWithVars = (chatContext: ChatContext, key: string, variables: Record<string, string> = {}): string => {
+  let text = getLocalizedText(chatContext, key);
+  
+  // Replace variables in the format {variable}
+  Object.entries(variables).forEach(([varName, varValue]) => {
+    text = text.replace(new RegExp(`\\{${varName}\\}`, 'g'), varValue);
+  });
+  
+  return text;
+};
+
+// Configuration constants for booking steps (now using localized text)
+const BOOKING_CONFIG = {
   VALIDATION: {
     MIN_ADDRESS_LENGTH: 10
   }
@@ -31,11 +278,11 @@ const BOOKING_CONFIG = {
 class AddressValidator {
   
   // Validates address format and completeness
-  static validateAddress(address: string): LLMProcessingResult {
+  static validateAddress(address: string, chatContext: ChatContext): LLMProcessingResult {
     if (address.length < BOOKING_CONFIG.VALIDATION.MIN_ADDRESS_LENGTH) {
       return {
         isValidInput: false,
-        validationErrorMessage: BOOKING_CONFIG.ERROR_MESSAGES.INVALID_ADDRESS
+        validationErrorMessage: getLocalizedText(chatContext, 'ERROR_MESSAGES.INVALID_ADDRESS')
       };
     }
     
@@ -49,12 +296,12 @@ class AddressValidator {
     
     return {
       isValidInput: false,
-      validationErrorMessage: BOOKING_CONFIG.ERROR_MESSAGES.INVALID_ADDRESS
+      validationErrorMessage: getLocalizedText(chatContext, 'ERROR_MESSAGES.INVALID_ADDRESS')
     };
   }
 
   // Simulates Google Address validation (placeholder for actual API integration)
-  static async validateWithGoogleAPI(address: string): Promise<{
+  static async validateWithGoogleAPI(address: string, chatContext: ChatContext): Promise<{
     isValid: boolean;
     formattedAddress?: string;
     errorMessage?: string;
@@ -63,7 +310,7 @@ class AddressValidator {
     // For now, return mock validation
     await new Promise(resolve => setTimeout(resolve, 500)); // Simulate API delay
     
-    const basicValidation = AddressValidator.validateAddress(address);
+    const basicValidation = AddressValidator.validateAddress(address, chatContext);
     if (!basicValidation.isValidInput) {
       return {
         isValid: false,
@@ -83,10 +330,10 @@ class AddressValidator {
 class ServiceDataProcessor {
   
   // Fetches services for a business with proper error handling
-  static async fetchServicesForBusiness(businessId: string): Promise<{ services: ServiceData[]; error?: string }> {
+  static async fetchServicesForBusiness(businessId: string, chatContext: ChatContext): Promise<{ services: ServiceData[]; error?: string }> {
     if (!businessId) {
       console.error('[ServiceProcessor] Business ID not found in chat context.');
-      return { services: [], error: BOOKING_CONFIG.ERROR_MESSAGES.BUSINESS_CONFIG_ERROR };
+      return { services: [], error: getLocalizedText(chatContext, 'ERROR_MESSAGES.BUSINESS_CONFIG_ERROR') };
     }
 
     try {
@@ -96,7 +343,7 @@ class ServiceDataProcessor {
       
       if (services.length === 0) {
         console.log(`[ServiceProcessor] No services found for business ${businessId}`);
-        return { services: [], error: BOOKING_CONFIG.ERROR_MESSAGES.NO_SERVICES_AVAILABLE };
+        return { services: [], error: getLocalizedText(chatContext, 'ERROR_MESSAGES.NO_SERVICES_AVAILABLE') };
       }
 
       const serviceData = services.map(s => s.getData());
@@ -110,7 +357,7 @@ class ServiceDataProcessor {
       return { services: serviceData };
     } catch (error) {
       console.error(`[ServiceProcessor] Error fetching services for business ${businessId}:`, error);
-      return { services: [], error: BOOKING_CONFIG.ERROR_MESSAGES.SERVICES_LOAD_ERROR };
+      return { services: [], error: getLocalizedText(chatContext, 'ERROR_MESSAGES.SERVICES_LOAD_ERROR') };
     }
   }
 
@@ -196,20 +443,23 @@ class ServiceDataProcessor {
 export class BookingButtonGenerator {
   
   // Creates error buttons based on error type
-  static createErrorButtons(errorType: string): ButtonConfig[] {
+  static createErrorButtons(errorType: string, chatContext: ChatContext): ButtonConfig[] {
+    const businessConfigError = getLocalizedText(chatContext, 'ERROR_MESSAGES.BUSINESS_CONFIG_ERROR');
+    const noServicesError = getLocalizedText(chatContext, 'ERROR_MESSAGES.NO_SERVICES_AVAILABLE');
+    
     const errorButtonMap: Record<string, ButtonConfig> = {
-      [BOOKING_CONFIG.ERROR_MESSAGES.BUSINESS_CONFIG_ERROR]: {
-        buttonText: '❌ System Error - Please contact support',
+      [businessConfigError]: {
+        buttonText: getLocalizedText(chatContext, 'BUTTONS.SYSTEM_ERROR'),
         buttonValue: 'system_error'
       },
-      [BOOKING_CONFIG.ERROR_MESSAGES.NO_SERVICES_AVAILABLE]: {
-        buttonText: '📞 Contact us for available services',
+      [noServicesError]: {
+        buttonText: getLocalizedText(chatContext, 'BUTTONS.CONTACT_SERVICES'),
         buttonValue: 'contact_support'
       }
     };
 
     return [errorButtonMap[errorType] || {
-      buttonText: '⚠️ Services temporarily unavailable',
+      buttonText: getLocalizedText(chatContext, 'BUTTONS.SERVICES_UNAVAILABLE'),
       buttonValue: 'services_unavailable'
     }];
   }
@@ -217,24 +467,31 @@ export class BookingButtonGenerator {
   // Creates service selection buttons with pricing and duration
   static createServiceButtons(services: ServiceData[]): ButtonConfig[] {
     return services.map(service => {
-      const priceDisplay = service.fixedPrice ? ` - $${service.fixedPrice}` : '';
-      const durationDisplay = service.durationEstimate ? ` (${service.durationEstimate}min)` : '';
       const mobileIcon = service.mobile ? '🚗 ' : '🏪 ';
-      const description = service.description || ''; // Fallback for services without a description
+      const description = service.description || '';
+      
+      // Build description parts
+      const parts = [];
+      if (description) parts.push(description);
+      if (service.fixedPrice) parts.push(`$${service.fixedPrice}`);
+      if (service.durationEstimate) parts.push(`${service.durationEstimate}min`);
+      
+      // Join with proper separators
+      const buttonDescription = parts.join(' • ');
 
       return {
         buttonText: `${mobileIcon}${service.name}`,
-        buttonDescription: `${description}${priceDisplay}${durationDisplay}`,
+        buttonDescription: buttonDescription,
         buttonValue: service.id || 'error_service_id_missing'
       };
     });
   }
 
   // Creates address confirmation buttons
-  static createAddressConfirmationButtons(): ButtonConfig[] {
+  static createAddressConfirmationButtons(chatContext: ChatContext): ButtonConfig[] {
     return [
-      { buttonText: '✅ Yes, that\'s correct', buttonValue: 'address_confirmed' },
-      { buttonText: '✏️ No, let me edit it', buttonValue: 'address_edit' }
+      { buttonText: getLocalizedText(chatContext, 'BUTTONS.ADDRESS_CORRECT'), buttonValue: 'address_confirmed' },
+      { buttonText: getLocalizedText(chatContext, 'BUTTONS.ADDRESS_EDIT'), buttonValue: 'address_edit' }
     ];
   }
 }
@@ -243,7 +500,7 @@ export class BookingButtonGenerator {
 class BookingValidator {
   
   // Enhanced service selection validation with intelligent matching
-  static validateServiceSelection(userInput: string, availableServices: ServiceData[]): LLMProcessingResult {
+  static validateServiceSelection(userInput: string, availableServices: ServiceData[], chatContext: ChatContext): LLMProcessingResult {
     console.log('[BookingValidator] Validating service selection:');
     console.log('[BookingValidator] User input:', userInput);
     console.log('[BookingValidator] Available services:', availableServices?.map(s => ({ id: s.id, name: s.name })));
@@ -252,7 +509,7 @@ class BookingValidator {
       console.log('[BookingValidator] No available services found');
       return {
         isValidInput: false,
-        validationErrorMessage: BOOKING_CONFIG.ERROR_MESSAGES.NO_SERVICES_TO_CHOOSE
+        validationErrorMessage: getLocalizedText(chatContext, 'ERROR_MESSAGES.NO_SERVICES_TO_CHOOSE')
       };
     }
 
@@ -272,9 +529,12 @@ class BookingValidator {
     
     // Provide helpful error message with available options
     const serviceNames = availableServices.map(s => s.name).join(', ');
+    const language = getUserLanguage(chatContext);
+    const errorPrefix = language === 'es' ? 'No pude encontrar ese servicio. Por favor selecciona una de estas opciones:' : 'I couldn\'t find that service. Please select one of these options:';
+    
     return {
       isValidInput: false,
-      validationErrorMessage: `I couldn't find that service. Please select one of these options: ${serviceNames}`
+      validationErrorMessage: `${errorPrefix} ${serviceNames}`
     };
   }
 }
@@ -350,6 +610,38 @@ class AvailabilityService {
       );
       
       console.log(`[AvailabilityService] Found ${availabilityData.length} days of availability data`);
+      
+      if (availabilityData.length === 0) {
+        console.log(`[AvailabilityService] No availability data found for provider ${userOwningThisBusinessId}`);
+        console.log(`[AvailabilityService] Checking if provider has calendar settings...`);
+        
+        try {
+          const calendarSettings = await CalendarSettings.getByUserAndBusiness(userOwningThisBusinessId, businessId);
+          if (!calendarSettings) {
+            console.error(`[AvailabilityService] Provider ${userOwningThisBusinessId} has NO calendar settings`);
+          } else {
+            console.log(`[AvailabilityService] Provider has calendar settings, timezone: ${calendarSettings.settings?.timezone}`);
+          }
+        } catch (error) {
+          console.error(`[AvailabilityService] Error checking calendar settings:`, error);
+        }
+        
+        // Check what availability data exists for this provider (any date range)
+        try {
+          const allAvailability = await AvailabilitySlots.getByProviderAndDateRange(
+            userOwningThisBusinessId,
+            '2020-01-01', // Very wide date range
+            '2030-12-31'
+          );
+          console.log(`[AvailabilityService] Provider has ${allAvailability.length} total availability records in database`);
+          if (allAvailability.length > 0) {
+            console.log(`[AvailabilityService] Date range of existing availability:`, 
+              allAvailability.map(slot => slot.date).sort());
+          }
+        } catch (error) {
+          console.error(`[AvailabilityService] Error checking all availability:`, error);
+        }
+      }
       
       // Find the suitable duration for the service
       const availableDurations = [60, 90, 120, 150, 180, 240, 300, 360];
@@ -503,7 +795,7 @@ import {
 // Step 1: Show next 2 available times + "choose another day" button
 // Job: ONLY display times, no input processing
 export const showAvailableTimesHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: 'Here are the next available appointment times:',
+  defaultChatbotPrompt: 'Here are the next available appointment times:', // This will be overridden by confirmationMessage
   
   // Only accept empty input (first display), reject button clicks so they go to next step
   validateUserInput: async (userInput) => {
@@ -551,7 +843,7 @@ export const showAvailableTimesHandler: IndividualStepHandler = {
       return {
         ...currentGoalData,
         availabilityError: 'Configuration error - missing business or service information',
-        confirmationMessage: 'Sorry, there was a configuration error. Please contact us directly.'
+        confirmationMessage: getLocalizedText(chatContext, 'MESSAGES.CONFIGURATION_ERROR')
       };
     }
     
@@ -566,21 +858,22 @@ export const showAvailableTimesHandler: IndividualStepHandler = {
     return {
       ...currentGoalData,
       next2WholeHourSlots: next2WholeHourSlots,
-      confirmationMessage: 'Here are the next available appointment times:'
+      confirmationMessage: getLocalizedText(chatContext, 'MESSAGES.AVAILABLE_TIMES'),
+      listSectionTitle: getLocalizedText(chatContext, 'LIST_SECTIONS.AVAILABLE_OPTIONS')
     };
   },
   
   // Show exactly 2 whole hour time slots + "Choose another day" button
-  fixedUiButtons: async (currentGoalData) => {
+  fixedUiButtons: async (currentGoalData, chatContext) => {
     const availabilityError = currentGoalData.availabilityError as string | undefined;
     if (availabilityError) {
-      return [{ buttonText: '📞 Contact us directly', buttonValue: 'contact_support' }];
+      return [{ buttonText: getLocalizedText(chatContext, 'BUTTONS.CONTACT_DIRECTLY'), buttonValue: 'contact_support' }];
     }
     
     const next2WholeHourSlots = currentGoalData.next2WholeHourSlots as Array<{ date: string; time: string; displayText: string }> | undefined;
     
     if (!next2WholeHourSlots || next2WholeHourSlots.length === 0) {
-      return [{ buttonText: '📅 Other days', buttonValue: 'choose_another_day' }];
+      return [{ buttonText: getLocalizedText(chatContext, 'BUTTONS.OTHER_DAYS'), buttonValue: 'choose_another_day' }];
     }
     
     const timeSlotButtons = next2WholeHourSlots.map((slot, index) => ({
@@ -590,7 +883,7 @@ export const showAvailableTimesHandler: IndividualStepHandler = {
     
     return [
       ...timeSlotButtons,
-      { buttonText: '📅 Other days', buttonValue: 'choose_another_day' }
+      { buttonText: getLocalizedText(chatContext, 'BUTTONS.OTHER_DAYS'), buttonValue: 'choose_another_day' }
     ];
   }
 };
@@ -1292,18 +1585,20 @@ export const quoteSummaryHandler: IndividualStepHandler = {
       }
 
       // Step 3: Create and persist the quote
-      const quote = new Quote({
+      const quoteData: QuoteData = {
+        userId,
         pickUp,
         dropOff,
-        userId,
         businessId,
         serviceId: selectedService.id,
         travelTimeEstimate,
         totalJobDurationEstimation: quoteEstimation.totalJobDuration,
         travelCostEstimate: quoteEstimation.travelCost,
         totalJobCostEstimation: quoteEstimation.totalJobCost,
-        status: 'pending'
-      }, selectedService.mobile); // Pass mobile flag for validation
+        status: 'pending',
+      };
+
+      const quote = new Quote(quoteData, selectedService.mobile); // Pass mobile flag for validation
 
       // Persist to database
       const savedQuoteData = await quote.add();
@@ -1333,39 +1628,79 @@ export const quoteSummaryHandler: IndividualStepHandler = {
       const ampm = parseInt(hour24) >= 12 ? 'PM' : 'AM';
       const formattedTime = `${hour12}:${selectedTime.split(':')[1]} ${ampm}`;
       
-      // Create detailed summary message
-      const summaryMessage = `📋 *Booking Quote Summary*\n\n` +
-        `💼 *Service:* ${selectedService.name}\n` +
-        `📅 *Date:* ${formattedDate}\n` +
-        `⏰ *Time:* ${formattedTime}\n` +
-        `⏱️ *Duration:* ${duration} minutes\n` +
-        `🏁 *Estimated completion:* ${estimatedEndTime}\n` +
-        `📍 *Location:* ${finalServiceAddress}\n\n` +
-        `💰 *Pricing:*\n` +
-        `   • Service: $${quoteEstimation.serviceCost.toFixed(2)}\n` +
-        `${quoteEstimation.travelCost > 0 ? `   • Travel: $${quoteEstimation.travelCost.toFixed(2)}\n` : ''}` +
-        `   • *Total: $${quoteEstimation.totalJobCost.toFixed(2)}*\n\n` +
-        `Quote ID: ${savedQuoteData.id}\n\n` +
-        `Would you like to confirm this quote?`;
+      // Calculate deposit amount based on business percentage (only if business requires deposits)
+      let depositAmount = savedQuoteData.depositAmount;
+      let requiresDeposit = false;
       
-      return {
-        ...currentGoalData,
-        persistedQuote: savedQuoteData,
-        quoteId: savedQuoteData.id,
-        quoteEstimation,
-        travelTimeEstimate,
-        bookingSummary: {
-          serviceCost: quoteEstimation.serviceCost,
-          travelCost: quoteEstimation.travelCost,
-          totalCost: quoteEstimation.totalJobCost,
-          duration,
-          estimatedEndTime,
-          formattedDate,
-          formattedTime
-        },
-        shouldAutoAdvance: false, // Don't auto-advance, show buttons for user choice
-        confirmationMessage: summaryMessage
-      };
+      if (!depositAmount) {
+        try {
+          const business = await Business.getById(businessId);
+          if (business.depositPercentage !== undefined && business.depositPercentage > 0) {
+            depositAmount = Math.round((quoteEstimation.totalJobCost * business.depositPercentage) / 100);
+            requiresDeposit = true;
+          }
+        } catch (error) {
+          console.warn('[QuoteSummary] Could not fetch business deposit information');
+        }
+      } else {
+        requiresDeposit = true;
+      }
+      
+      // Create detailed summary message using localized text
+      const t = BOOKING_TRANSLATIONS[getUserLanguage(chatContext)];
+      
+      let summaryMessage = `${t.QUOTE_SUMMARY.TITLE}\n\n` +
+        `${t.QUOTE_SUMMARY.SERVICE} ${selectedService.name}\n` +
+        `${t.QUOTE_SUMMARY.DATE} ${formattedDate}\n` +
+        `${t.QUOTE_SUMMARY.TIME} ${formattedTime}\n` +
+        `${t.QUOTE_SUMMARY.DURATION} ${duration} ${t.QUOTE_SUMMARY.MINUTES}\n` +
+        `${t.QUOTE_SUMMARY.ESTIMATED_COMPLETION} ${estimatedEndTime}\n` +
+        `${t.QUOTE_SUMMARY.LOCATION} ${finalServiceAddress}\n\n` +
+        `${t.QUOTE_SUMMARY.PRICING}\n` +
+        `   ${t.QUOTE_SUMMARY.SERVICE_COST} $${quoteEstimation.serviceCost.toFixed(2)}\n` +
+        `${quoteEstimation.travelCost > 0 ? `   ${t.QUOTE_SUMMARY.TRAVEL_COST} $${quoteEstimation.travelCost.toFixed(2)}\n` : ''}` +
+        `   ${t.QUOTE_SUMMARY.TOTAL_COST} $${quoteEstimation.totalJobCost.toFixed(2)}*\n\n`;
+      
+      // Only show deposit/payment info if business requires deposits
+      if (requiresDeposit && depositAmount) {
+        summaryMessage += `💳 *To Book:*\n` +
+          `   • Deposit Required: $${depositAmount.toFixed(2)}\n` +
+          `   • Skedy Booking Fee: $4.00\n` +
+          `   • *Total to Pay Now: $${(depositAmount + 4).toFixed(2)}*\n\n`;
+      }
+      
+      summaryMessage += `${t.QUOTE_SUMMARY.QUOTE_ID} ${savedQuoteData.id}\n\n`;
+      
+      if (requiresDeposit) {
+        summaryMessage += `Ready to secure your booking?`;
+      } else {
+        summaryMessage += `${t.QUOTE_SUMMARY.CONFIRM_QUESTION}`;
+      }
+      
+              return {
+          ...currentGoalData,
+          persistedQuote: savedQuoteData,
+          quoteId: savedQuoteData.id,
+          quoteEstimation,
+          travelTimeEstimate,
+          requiresDeposit,
+          depositAmount: requiresDeposit ? depositAmount : undefined,
+          totalPaymentAmount: requiresDeposit && depositAmount ? depositAmount + 4 : undefined,
+          bookingSummary: {
+            serviceCost: quoteEstimation.serviceCost,
+            travelCost: quoteEstimation.travelCost,
+            totalCost: quoteEstimation.totalJobCost,
+            requiresDeposit,
+            depositAmount: requiresDeposit ? depositAmount : undefined,
+            totalPaymentAmount: requiresDeposit && depositAmount ? depositAmount + 4 : undefined,
+            duration,
+            estimatedEndTime,
+            formattedDate,
+            formattedTime
+          },
+          shouldAutoAdvance: false, // Don't auto-advance, show buttons for user choice
+          confirmationMessage: summaryMessage
+        };
 
     } catch (error) {
       console.error('[QuoteSummary] Error creating quote:', error);
@@ -1373,28 +1708,47 @@ export const quoteSummaryHandler: IndividualStepHandler = {
       return {
         ...currentGoalData,
         summaryError: 'Failed to create quote and summary. Please try again.',
-        confirmationMessage: 'Sorry, there was an issue preparing your quote. Let me try again.'
+        confirmationMessage: getLocalizedText(chatContext, 'MESSAGES.ISSUE_PREPARING_QUOTE')
       };
     }
   },
   
-  // Show confirmation and edit buttons
-  fixedUiButtons: async (currentGoalData) => {
+  // Show payment or confirmation buttons based on deposit requirements
+  fixedUiButtons: async (currentGoalData, chatContext) => {
     const summaryError = currentGoalData.summaryError;
     
     if (summaryError) {
-      return [{ buttonText: '🔄 Try again', buttonValue: 'restart_booking' }];
+      return [{ buttonText: getLocalizedText(chatContext, 'BUTTONS.TRY_AGAIN'), buttonValue: 'restart_booking' }];
     }
     
+    const requiresDeposit = currentGoalData.requiresDeposit || currentGoalData.bookingSummary?.requiresDeposit;
+    
+    if (requiresDeposit) {
+      const depositAmount = currentGoalData.depositAmount || currentGoalData.bookingSummary?.depositAmount;
+      const totalPaymentAmount = currentGoalData.totalPaymentAmount || currentGoalData.bookingSummary?.totalPaymentAmount;
+      
+      if (totalPaymentAmount) {
+        const payDepositText = getUserLanguage(chatContext) === 'es' 
+          ? `💳 Pagar Depósito ($${totalPaymentAmount.toFixed(2)})`
+          : `💳 Pay Deposit ($${totalPaymentAmount.toFixed(2)})`;
+        
+        return [
+          { buttonText: payDepositText, buttonValue: 'confirm_quote' },
+          { buttonText: getLocalizedText(chatContext, 'BUTTONS.EDIT'), buttonValue: 'edit_quote' }
+        ];
+      }
+    }
+    
+    // No deposit required - show regular confirm button
     return [
-      { buttonText: 'Confirm', buttonValue: 'confirm_quote' },
-      { buttonText: 'Edit', buttonValue: 'edit_quote' }
+      { buttonText: getLocalizedText(chatContext, 'BUTTONS.CONFIRM'), buttonValue: 'confirm_quote' },
+      { buttonText: getLocalizedText(chatContext, 'BUTTONS.EDIT'), buttonValue: 'edit_quote' }
     ];
   }
 };
 
 // Step: Handle user's choice from quote summary
-// Job: Process confirmation or show edit options
+// Job: Process confirmation (trigger payment) or show edit options
 export const handleQuoteChoiceHandler: IndividualStepHandler = {
   defaultChatbotPrompt: 'Processing your choice...',
   // Conditionally auto-advance: only when quote is confirmed, not when showing edit options
@@ -1418,17 +1772,125 @@ export const handleQuoteChoiceHandler: IndividualStepHandler = {
   },
   
   // Process user choice and set flags for subsequent steps
-  processAndExtractData: async (validatedInput, currentGoalData) => {
+  processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
     console.log('[HandleQuoteChoice] Processing input:', validatedInput);
     
     if (validatedInput === 'confirm_quote') {
-      console.log('[HandleQuoteChoice] Quote confirmed - proceeding to booking creation');
-      return {
-        ...currentGoalData,
-        quoteConfirmedFromSummary: true,
-        shouldAutoAdvance: true, // Flag to trigger auto-advance only for confirmation
-        confirmationMessage: 'Perfect! Your quote is confirmed. Let\'s create your booking.'
-      };
+      const requiresDeposit = currentGoalData.requiresDeposit || currentGoalData.bookingSummary?.requiresDeposit;
+      
+      if (requiresDeposit) {
+        console.log('[HandleQuoteChoice] Quote confirmed - creating payment link for deposit');
+        
+        try {
+          // Import the payment service
+          const { StripePaymentService } = await import('@/lib/payments/stripe-utils');
+          
+          const quoteId = currentGoalData.quoteId || currentGoalData.persistedQuote?.id;
+          if (!quoteId) {
+            console.error('[HandleQuoteChoice] No quote ID found for payment');
+            const errorMessage = getUserLanguage(chatContext) === 'es'
+              ? 'Lo siento, hubo un problema procesando tu reserva. Por favor intenta de nuevo.'
+              : 'Sorry, there was an issue processing your booking. Please try again.';
+            return {
+              ...currentGoalData,
+              paymentError: true,
+              confirmationMessage: errorMessage
+            };
+          }
+
+          // Get payment details
+          const depositAmount = currentGoalData.depositAmount || currentGoalData.bookingSummary?.depositAmount;
+          const totalChargeAmount = currentGoalData.totalPaymentAmount || currentGoalData.bookingSummary?.totalPaymentAmount;
+
+          if (!depositAmount || !totalChargeAmount) {
+            console.error('[HandleQuoteChoice] No deposit amount found');
+            const errorMessage = getUserLanguage(chatContext) === 'es'
+              ? 'Lo siento, hubo un problema calculando el monto del pago. Por favor intenta de nuevo.'
+              : 'Sorry, there was an issue calculating payment amount. Please try again.';
+            return {
+              ...currentGoalData,
+              paymentError: true,
+              confirmationMessage: errorMessage
+            };
+          }
+
+          // Create payment link
+          console.log(`[HandleQuoteChoice] Creating payment link for quote ${quoteId}`);
+          const paymentResult = await StripePaymentService.createPaymentLinkForQuote(quoteId);
+          
+          if (!paymentResult.success) {
+            console.error('[HandleQuoteChoice] Failed to create payment link:', paymentResult.error);
+            return {
+              ...currentGoalData,
+              paymentError: true,
+              confirmationMessage: 'Sorry, there was an issue setting up payment. Please contact us directly to complete your booking.'
+            };
+          }
+
+          console.log('[HandleQuoteChoice] Payment link created successfully');
+          
+          // Get business info for personalization
+          const businessId = chatContext.currentParticipant.associatedBusinessId;
+          let businessName = 'the business';
+          if (businessId) {
+            try {
+              const { Business } = await import('@/lib/database/models/business');
+              const business = await Business.getById(businessId);
+              businessName = business.name;
+            } catch (error) {
+              console.warn('[HandleQuoteChoice] Could not fetch business name');
+            }
+          }
+
+          const language = getUserLanguage(chatContext);
+          const paymentMessage = language === 'es' 
+            ? `💳 *¡Listo para Reservar!*\n\n` +
+              `Para asegurar tu cita, por favor completa el pago del depósito de reserva:\n\n` +
+              `💰 *Detalles del Pago:*\n` +
+              `   • Depósito: $${depositAmount.toFixed(2)}\n` +
+              `   • Tarifa de reserva: $4.00\n` +
+              `   • *Total: $${totalChargeAmount.toFixed(2)}*\n\n` +
+              `🔗 *Enlace de Pago:*\n${paymentResult.paymentLink}\n\n` +
+              `¡Después del pago, serás redirigido de vuelta a WhatsApp y tu reserva será confirmada automáticamente!\n\n` +
+              `✅ Pago seguro y protegido por Stripe\n` +
+              `🔒 Tu pago va directamente a ${businessName}`
+            : `💳 *Ready to Book!*\n\n` +
+              `To secure your appointment, please complete your booking deposit payment:\n\n` +
+              `💰 *Payment Details:*\n` +
+              `   • Deposit: $${depositAmount.toFixed(2)}\n` +
+              `   • Booking fee: $4.00\n` +
+              `   • *Total: $${totalChargeAmount.toFixed(2)}*\n\n` +
+              `🔗 *Payment Link:*\n${paymentResult.paymentLink}\n\n` +
+              `After payment, you'll be redirected back to WhatsApp and your booking will be confirmed automatically!\n\n` +
+              `✅ Safe & secure payment powered by Stripe\n` +
+              `🔒 Your payment goes directly to ${businessName}`;
+
+          return {
+            ...currentGoalData,
+            paymentLinkGenerated: true,
+            paymentLink: paymentResult.paymentLink,
+            shouldAutoAdvance: false, // Don't auto-advance, wait for payment
+            confirmationMessage: paymentMessage
+          };
+
+        } catch (error) {
+          console.error('[HandleQuoteChoice] Error creating payment link:', error);
+          return {
+            ...currentGoalData,
+            paymentError: true,
+            confirmationMessage: 'Sorry, there was an issue setting up payment. Please contact us directly to complete your booking.'
+          };
+        }
+      } else {
+        // No deposit required - proceed directly to booking creation
+        console.log('[HandleQuoteChoice] Quote confirmed - no deposit required, proceeding to booking creation');
+        return {
+          ...currentGoalData,
+          quoteConfirmedFromSummary: true,
+          shouldAutoAdvance: true, // Auto-advance to createBooking step
+          confirmationMessage: 'Perfect! Your quote is confirmed. Creating your booking...'
+        };
+      }
     }
     
     if (validatedInput === 'edit_quote') {
@@ -1466,8 +1928,20 @@ export const handleQuoteChoiceHandler: IndividualStepHandler = {
     return currentGoalData;
   },
   
-  // Show edit options if user chose to edit
-  fixedUiButtons: async (currentGoalData) => {
+  // Show edit options if user chose to edit, or no buttons if payment link was generated
+  fixedUiButtons: async (currentGoalData, chatContext) => {
+    if (currentGoalData.paymentError) {
+      return [
+        { buttonText: getLocalizedText(chatContext, 'BUTTONS.TRY_AGAIN'), buttonValue: 'confirm_quote' },
+        { buttonText: getLocalizedText(chatContext, 'BUTTONS.EDIT'), buttonValue: 'edit_quote' }
+      ];
+    }
+
+    if (currentGoalData.paymentLinkGenerated) {
+      // No buttons needed - user should click the payment link
+      return [];
+    }
+
     if (currentGoalData.showEditOptions) {
       return [
         { buttonText: 'Change Service', buttonValue: 'edit_service' },
@@ -1487,7 +1961,7 @@ export const handleQuoteChoiceHandler: IndividualStepHandler = {
 // Step 1: Check if user exists in system
 // Job: ONLY check user existence, no input processing
 export const checkExistingUserHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: 'Let me check if you\'re in our system...',
+  defaultChatbotPrompt: 'Checking system...', // This will be overridden by confirmationMessage
   autoAdvance: true, // Auto-advance to next step after checking user existence
   
   // Only accept empty input (first check), reject any other input
@@ -1518,6 +1992,12 @@ export const checkExistingUserHandler: IndividualStepHandler = {
       return currentGoalData;
     }
     
+    // Show initial checking message
+    if (!currentGoalData.userExistenceChecked) {
+      // Set the checking message first
+      console.log('[CheckExistingUser] Setting initial checking message');
+    }
+    
     const customerWhatsappNumber = chatContext.currentParticipant.customerWhatsappNumber;
     
     if (!customerWhatsappNumber) {
@@ -1540,7 +2020,7 @@ export const checkExistingUserHandler: IndividualStepHandler = {
           existingUserFound: true,
           userId: existingUser.id,
           userName: existingUser.firstName,
-          confirmationMessage: `Welcome back, ${existingUser.firstName}! I found your account.`
+          confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.WELCOME_BACK', { name: existingUser.firstName })
         };
       } else {
         console.log('[CheckExistingUser] No existing user found');
@@ -1548,7 +2028,7 @@ export const checkExistingUserHandler: IndividualStepHandler = {
           ...currentGoalData,
           userExistenceChecked: true,
           needsUserCreation: true,
-          confirmationMessage: 'I don\'t see you in our system yet.'
+          confirmationMessage: getLocalizedText(chatContext, 'MESSAGES.NOT_IN_SYSTEM')
         };
       }
     } catch (error) {
@@ -1557,7 +2037,7 @@ export const checkExistingUserHandler: IndividualStepHandler = {
         ...currentGoalData,
         userExistenceChecked: true,
         needsUserCreation: true,
-        confirmationMessage: 'Let me create your account.'
+        confirmationMessage: getLocalizedText(chatContext, 'MESSAGES.CREATE_ACCOUNT')
       };
     }
   }
@@ -1705,9 +2185,9 @@ export const createNewUserHandler: IndividualStepHandler = {
   },
   
   // Show error button if creation failed
-  fixedUiButtons: async (currentGoalData) => {
+  fixedUiButtons: async (currentGoalData, chatContext) => {
     if (currentGoalData.userCreationError) {
-      return [{ buttonText: '🔄 Try again', buttonValue: 'retry_user_creation' }];
+      return [{ buttonText: getLocalizedText(chatContext, 'BUTTONS.TRY_AGAIN'), buttonValue: 'retry_user_creation' }];
     }
     
     return [];
@@ -1720,25 +2200,31 @@ export const createNewUserHandler: IndividualStepHandler = {
 
 // Asks for customer address - single responsibility
 export const askAddressHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: BOOKING_CONFIG.ADDRESS_REQUEST_MESSAGE,
+  defaultChatbotPrompt: 'Address required', // This will be overridden by dynamic prompt
   
   // Validates address input meets requirements
-  validateUserInput: async (userInput) => {
-    return AddressValidator.validateAddress(userInput);
+  validateUserInput: async (userInput, currentGoalData, chatContext) => {
+    return AddressValidator.validateAddress(userInput, chatContext);
   },
   
-  // Simply stores the address
-  processAndExtractData: async (validatedInput, currentGoalData) => {
+  // Simply stores the address and sets localized prompt
+  processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
+    if (!validatedInput || validatedInput === "") {
+      return { 
+        ...currentGoalData, 
+        confirmationMessage: getLocalizedText(chatContext, 'ADDRESS_REQUEST_MESSAGE')
+      };
+    }
     return { ...currentGoalData, customerAddress: validatedInput };
   }
 };
 
 // Validates customer address with Google API - single responsibility
 export const validateAddressHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: 'Let me validate your address...',
+  defaultChatbotPrompt: 'Validating address...', // This will be overridden by confirmationMessage
   
   // Handle address confirmation or re-entry
-  validateUserInput: async (userInput, currentGoalData) => {
+  validateUserInput: async (userInput, currentGoalData, chatContext) => {
     // If we haven't validated yet, always accept to trigger validation
     if (!currentGoalData.addressValidated && !currentGoalData.addressValidationError) {
       return { isValidInput: true };
@@ -1750,7 +2236,7 @@ export const validateAddressHandler: IndividualStepHandler = {
     } else if (userInput === 'address_edit' || userInput === 'retry_address') {
       return { 
         isValidInput: false, 
-        validationErrorMessage: 'Please provide the correct address:' 
+        validationErrorMessage: getLocalizedText(chatContext, 'MESSAGES.PROVIDE_ADDRESS')
       };
     }
     
@@ -1758,7 +2244,7 @@ export const validateAddressHandler: IndividualStepHandler = {
   },
   
   // Validates address through Google API
-  processAndExtractData: async (validatedInput, currentGoalData) => {
+  processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
     // If user wants to edit, reset validation
     if (validatedInput === 'address_edit' || validatedInput === 'retry_address') {
       return { 
@@ -1777,13 +2263,14 @@ export const validateAddressHandler: IndividualStepHandler = {
     // If we haven't validated yet, validate the address
     if (!currentGoalData.addressValidated && !currentGoalData.addressValidationError) {
       const addressToValidate = currentGoalData.customerAddress as string;
-      const validationResult = await AddressValidator.validateWithGoogleAPI(addressToValidate);
+      const validationResult = await AddressValidator.validateWithGoogleAPI(addressToValidate, chatContext);
       
       if (validationResult.isValid) {
         return {
           ...currentGoalData,
           validatedCustomerAddress: validationResult.formattedAddress,
-          addressValidated: true
+          addressValidated: true,
+          confirmationMessage: getLocalizedText(chatContext, 'MESSAGES.VALIDATING_ADDRESS')
         };
       } else {
         return {
@@ -1798,15 +2285,15 @@ export const validateAddressHandler: IndividualStepHandler = {
   },
   
   // Show appropriate buttons based on validation state
-  fixedUiButtons: async (currentGoalData) => {
+  fixedUiButtons: async (currentGoalData, chatContext) => {
     // If address validation succeeded, show confirmation buttons
     if (currentGoalData.addressValidated && !currentGoalData.addressConfirmed) {
-      return BookingButtonGenerator.createAddressConfirmationButtons();
+      return BookingButtonGenerator.createAddressConfirmationButtons(chatContext);
     }
     
     // If address validation failed, show retry button
     if (currentGoalData.addressValidated === false) {
-      return [{ buttonText: '🔄 Try again', buttonValue: 'retry_address' }];
+      return [{ buttonText: getLocalizedText(chatContext, 'BUTTONS.TRY_AGAIN'), buttonValue: 'retry_address' }];
     }
     
     // No buttons needed (either validating or confirmed)
@@ -1816,12 +2303,12 @@ export const validateAddressHandler: IndividualStepHandler = {
 
 // Combined service display and selection - single responsibility
 export const selectServiceHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: BOOKING_CONFIG.ERROR_MESSAGES.INVALID_SERVICE_SELECTION,
+  defaultChatbotPrompt: 'Service selection', // This will be overridden by confirmationMessage
   
   // Use booking validator for intelligent matching
-  validateUserInput: async (userInput, currentGoalData) => {
+  validateUserInput: async (userInput, currentGoalData, chatContext) => {
     console.log('[SelectService] Validating input:', userInput);
-    return BookingValidator.validateServiceSelection(userInput, currentGoalData.availableServices);
+    return BookingValidator.validateServiceSelection(userInput, currentGoalData.availableServices, chatContext);
   },
   
   // Fetch services on first display, or process selection
@@ -1836,7 +2323,7 @@ export const selectServiceHandler: IndividualStepHandler = {
       // If services aren't loaded yet, fetch them.
       if (availableServices.length === 0) {
         console.log('[SelectService] First time display - fetching services');
-        const { services, error } = await ServiceDataProcessor.fetchServicesForBusiness(businessId as string);
+        const { services, error } = await ServiceDataProcessor.fetchServicesForBusiness(businessId as string, chatContext);
         
         if (error) {
           return { ...currentGoalData, serviceError: error };
@@ -1845,18 +2332,18 @@ export const selectServiceHandler: IndividualStepHandler = {
         return { 
           ...currentGoalData, 
           availableServices: services,
-          confirmationMessage: 'Please select a service from the list below:',
-          listActionText: 'Select Option',
-          listSectionTitle: 'Available Options'
+          confirmationMessage: getLocalizedText(chatContext, 'MESSAGES.SELECT_SERVICE'),
+          listActionText: getLocalizedText(chatContext, 'BUTTONS.SELECT'),
+          listSectionTitle: getLocalizedText(chatContext, 'LIST_SECTIONS.SERVICES')
         };
       }
       
       // If services are already loaded, just return them for display.
       return {
         ...currentGoalData,
-        confirmationMessage: 'Please select a service from the list below:',
-        listActionText: 'Select Option',
-        listSectionTitle: 'Available Options'
+        confirmationMessage: getLocalizedText(chatContext, 'MESSAGES.SELECT_SERVICE'),
+        listActionText: getLocalizedText(chatContext, 'BUTTONS.SELECT'),
+        listSectionTitle: getLocalizedText(chatContext, 'LIST_SECTIONS.SERVICES')
       }
     }
     
@@ -1878,14 +2365,14 @@ export const selectServiceHandler: IndividualStepHandler = {
     console.log('[SelectService] Service not found after validation, should not happen');
     return { 
       ...currentGoalData, 
-      serviceError: BOOKING_CONFIG.ERROR_MESSAGES.SERVICE_SELECTION_ERROR 
+      serviceError: getLocalizedText(chatContext, 'ERROR_MESSAGES.SERVICE_SELECTION_ERROR')
     };
   },
   
   // Generate service buttons from fetched data
-  fixedUiButtons: async (currentGoalData) => {
+  fixedUiButtons: async (currentGoalData, chatContext) => {
     if (currentGoalData.serviceError) {
-      return BookingButtonGenerator.createErrorButtons(currentGoalData.serviceError);
+      return BookingButtonGenerator.createErrorButtons(currentGoalData.serviceError, chatContext);
     }
     
     if (!currentGoalData.availableServices) {
@@ -1972,70 +2459,114 @@ export const askEmailHandler: IndividualStepHandler = {
   }
 };
 
-// Creates the actual booking - single responsibility
+// =====================================
+// BOOKING CREATION & CONFIRMATION
+// =====================================
+
+// Step: Creates the actual booking - single responsibility
 export const createBookingHandler: IndividualStepHandler = {
   defaultChatbotPrompt: 'Creating your booking...',
+  autoAdvance: true, // Always advance to confirmation screen
   
-  // Accept only empty input (triggered by auto-advance from previous step)
+  // Accept empty input (auto-advanced) or payment confirmation message
   validateUserInput: async (userInput) => {
-    if (!userInput || userInput === "") {
+    if (!userInput || userInput === "" || userInput.startsWith('PAYMENT_COMPLETED_')) {
       return { isValidInput: true };
     }
     return { isValidInput: false, validationErrorMessage: '' };
   },
   
-  // Create booking, format final confirmation, and complete the goal in one step
+  // Create booking from quote data and complete the goal
   processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
-    console.log('[CreateBooking] Creating booking from quote...');
-    const quoteId = currentGoalData.quoteId as string;
-    const userId = currentGoalData.userId as string;
-    const businessId = chatContext.currentParticipant.associatedBusinessId as string;
-    const selectedDate = currentGoalData.selectedDate as string;
-    const selectedTime = currentGoalData.selectedTime as string;
+    console.log('[CreateBooking] Starting booking creation...');
+    let quoteId = '';
+    let isPaymentCompletion = false;
+
+    if (validatedInput && validatedInput.startsWith('PAYMENT_COMPLETED_')) {
+        isPaymentCompletion = true;
+        quoteId = validatedInput.replace('PAYMENT_COMPLETED_', '');
+        console.log(`[CreateBooking] Creating booking from payment completion for quote ID: ${quoteId}`);
+    } else {
+        quoteId = currentGoalData.quoteId as string;
+        console.log(`[CreateBooking] Creating booking from standard flow for quote ID: ${quoteId}`);
+    }
     
-    if (!quoteId || !userId || !businessId || !selectedDate || !selectedTime) {
+    if (!quoteId) {
+      console.error('[CreateBooking] No Quote ID found.');
       return {
         ...currentGoalData,
-        bookingError: 'Missing information to create booking'
+        bookingError: 'Missing quote information to create booking.'
       };
     }
 
     try {
-      // Get the provider ID (business owner) from the business WhatsApp number
+      // Regardless of the path, we fetch the definitive quote from the DB
+      const quote = await Quote.getById(quoteId);
+      if (!quote) {
+        console.error(`[CreateBooking] Quote with ID ${quoteId} not found.`);
+        return {
+          ...currentGoalData,
+          bookingError: `Booking data not found (quote ${quoteId}).`
+        };
+      }
+      
+      const { 
+        userId, 
+        businessId, 
+        serviceId, 
+        pickUp, 
+        dropOff, 
+        totalJobCostEstimation,
+        travelCostEstimate,
+        totalJobDurationEstimation 
+      } = quote;
+
+      if (!userId || !businessId || !serviceId) {
+        console.error('[CreateBooking] Quote is missing essential data:', { userId, businessId, serviceId });
+        return {
+          ...currentGoalData,
+          bookingError: 'Quote data is incomplete.'
+        };
+      }
+
+      // Get the provider ID (business owner)
       const businessWhatsappNumber = chatContext.currentParticipant.businessWhatsappNumber as string;
       const providerId = await AvailabilityService.findUserIdByBusinessWhatsappNumber(businessWhatsappNumber, chatContext);
 
       if (!providerId) {
-        console.error('[CreateBooking] Cannot create booking without a provider ID');
+        console.error('[CreateBooking] Cannot find provider for booking.');
         return {
           ...currentGoalData,
-          bookingError: 'Unable to find business provider for booking creation'
+          bookingError: 'Unable to find business provider for booking creation.'
         };
       }
 
-      // Get provider's timezone for accurate booking creation
+      // Get provider's timezone
       const calendarSettings = await CalendarSettings.getByUserAndBusiness(providerId, businessId);
       const providerTimezone = calendarSettings?.settings?.timezone || 'UTC';
 
-      // Create dateTime in ISO format from selected date and time IN THE PROVIDER'S TIMEZONE
-      const [hour, minute] = selectedTime.split(':').map(Number);
-      const bookingDateTime = DateTime.fromObject(
-          {
-              year: new Date(selectedDate).getFullYear(),
-              month: new Date(selectedDate).getMonth() + 1,
-              day: new Date(selectedDate).getDate(),
-              hour: hour,
-              minute: minute,
-          },
-          { zone: providerTimezone }
-      );
+      // Create booking dateTime from selectedDate and selectedTime in goal data
+      const selectedDate = currentGoalData.selectedDate as string;
+      const selectedTime = currentGoalData.selectedTime as string;
+      
+      if (!selectedDate || !selectedTime) {
+        console.error('[CreateBooking] Missing booking date/time in goal data');
+        return {
+          ...currentGoalData,
+          bookingError: 'Missing booking date or time information.'
+        };
+      }
+
+      // Create booking dateTime object in the correct timezone
+      const bookingDateTimeString = `${selectedDate}T${selectedTime}`;
+      const bookingDTObject = DateTime.fromISO(bookingDateTimeString, { zone: providerTimezone });
       
       const bookingData = {
         quoteId,
         userId,
         businessId,
         providerId,
-        dateTime: bookingDateTime.toISO() as string,
+        dateTime: bookingDTObject.toISO() as string,
         status: 'confirmed' as BookingStatus
       };
       
@@ -2043,66 +2574,145 @@ export const createBookingHandler: IndividualStepHandler = {
       const savedBooking = await newBooking.add() as BookingData & { id: string };
       console.log('[CreateBooking] Booking successfully created:', savedBooking.id);
 
-      // Prepare details for final confirmation message using data from previous steps
-      const { bookingSummary, selectedService } = currentGoalData;
+      // We need service and other details for the confirmation message
+      const service = await Service.getById(serviceId);
+      if (!service) {
+         console.error(`[CreateBooking] Could not find service with ID ${serviceId}`);
+         return {
+            ...currentGoalData,
+            bookingError: 'Could not retrieve service details for confirmation.'
+         }
+      }
 
-      const confirmationMessage = `🎉 Your booking is confirmed!\n\n` +
-        `📅 Service: ${selectedService.name}\n` +
-        `🗓️ Date: ${bookingSummary.formattedDate}\n` +
-        `⏰ Time: ${bookingSummary.formattedTime}\n` +
-        `📍 Location: ${currentGoalData.finalServiceAddress}\n\n` +
-        `💰 *Pricing:*\n` +
-        `   • Service: $${bookingSummary.serviceCost.toFixed(2)}\n` +
-        `${bookingSummary.travelCost > 0 ? `   • Travel: $${bookingSummary.travelCost.toFixed(2)}\n` : ''}` +
-        `   • *Total Cost:* $${bookingSummary.totalCost.toFixed(2)}\n\n` +
-        `Booking ID: ${savedBooking.id}\n\n` +
-        `We look forward to seeing you! You can ask me anything else if you have more questions.`;
-        
-      console.log(`[BookingFlow] Booking ${savedBooking.id} completed. Bot is now in FAQ/Chitchat mode.`);
-      
-      return {
-        ...currentGoalData,
-        persistedBooking: savedBooking,
-        goalStatus: 'completed', // Mark goal as completed here
-        confirmationMessage: confirmationMessage
+      // Prepare details for final confirmation message
+      const bookingConfirmationDetails = {
+          bookingId: savedBooking.id,
+          serviceName: service.name,
+          formattedDate: bookingDTObject.toLocaleString(DateTime.DATE_FULL),
+          formattedTime: bookingDTObject.toLocaleString(DateTime.TIME_SIMPLE),
+          location: service.mobile ? dropOff : pickUp,
+          totalCost: totalJobCostEstimation,
+          serviceCost: totalJobCostEstimation - (travelCostEstimate || 0),
+          travelCost: travelCostEstimate || 0,
       };
+      
+              const confirmationMessage = isPaymentCompletion 
+          ? (getUserLanguage(chatContext) === 'es' 
+              ? '¡Gracias por tu pago! Tu reserva está confirmada.' 
+              : 'Thank you for your payment! Your booking is confirmed.')
+          : (getUserLanguage(chatContext) === 'es' 
+              ? 'Reserva creada.' 
+              : 'Booking created.');
+        
+        return {
+          ...currentGoalData,
+          persistedBooking: savedBooking,
+          bookingConfirmationDetails: bookingConfirmationDetails, // Pass details to the next step
+          goalStatus: isPaymentCompletion ? 'completed' : currentGoalData.goalStatus, // Complete goal if from payment
+          confirmationMessage
+        };
 
     } catch (error) {
-      console.error('[CreateBooking] Error creating booking:', error);
+      console.error('[CreateBooking] Error during booking creation process:', error);
       return {
         ...currentGoalData,
         bookingError: 'Failed to save booking. Please try again.',
-        confirmationMessage: 'Sorry, there was a problem confirming your booking. Please contact us.'
+        confirmationMessage: getLocalizedText(chatContext, 'MESSAGES.BOOKING_PROBLEM')
       };
     }
   },
 };
 
-// This handler is now redundant and will be removed.
-/*
-export const displayConfirmedBookingHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: 'Displaying your confirmed booking...',
-  
-  // This step is now triggered by auto-advance from createBooking
-  validateUserInput: async (userInput) => {
-    if (!userInput || userInput === "") {
-      return { isValidInput: true };
+// Step: Displays the final booking confirmation details
+// Job: ONLY formats and displays the confirmation message
+export const bookingConfirmationHandler: IndividualStepHandler = {
+    defaultChatbotPrompt: 'Here are your booking details:',
+    
+    validateUserInput: async (userInput) => {
+        // This step is for display only, triggered by auto-advance
+        if (!userInput || userInput === "") {
+            return { isValidInput: true };
+        }
+        return { isValidInput: false, validationErrorMessage: '' };
+    },
+
+    processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
+        const { bookingConfirmationDetails } = currentGoalData;
+
+        if (!bookingConfirmationDetails) {
+            console.error('[BookingConfirmation] Missing booking details to display.');
+            return {
+                ...currentGoalData,
+                goalStatus: 'completed',
+                confirmationMessage: 'Your booking is confirmed. Please contact us if you need the details.'
+            };
+        }
+
+        const t = BOOKING_TRANSLATIONS[getUserLanguage(chatContext)];
+        const confirmationMessage = `${t.BOOKING_CONFIRMATION.TITLE}\n\n` +
+            `${t.BOOKING_CONFIRMATION.SERVICE} ${bookingConfirmationDetails.serviceName}\n` +
+            `${t.BOOKING_CONFIRMATION.DATE} ${bookingConfirmationDetails.formattedDate}\n` +
+            `${t.BOOKING_CONFIRMATION.TIME} ${bookingConfirmationDetails.formattedTime}\n` +
+            `${t.BOOKING_CONFIRMATION.LOCATION} ${bookingConfirmationDetails.location}\n\n` +
+            `${t.BOOKING_CONFIRMATION.PRICING}\n` +
+            `   ${t.BOOKING_CONFIRMATION.SERVICE_COST} $${bookingConfirmationDetails.serviceCost.toFixed(2)}\n` +
+            `${bookingConfirmationDetails.travelCost > 0 ? `   ${t.BOOKING_CONFIRMATION.TRAVEL_COST} $${bookingConfirmationDetails.travelCost.toFixed(2)}\n` : ''}` +
+            `   ${t.BOOKING_CONFIRMATION.TOTAL_COST} $${bookingConfirmationDetails.totalCost.toFixed(2)}\n\n` +
+            `${t.BOOKING_CONFIRMATION.BOOKING_ID} ${bookingConfirmationDetails.bookingId}\n\n` +
+            `${t.BOOKING_CONFIRMATION.LOOKING_FORWARD}`;
+        
+        console.log(`[BookingConfirmation] Displaying confirmation for booking ${bookingConfirmationDetails.bookingId}. Goal completed.`);
+
+        return {
+            ...currentGoalData,
+            goalStatus: 'completed',
+            confirmationMessage: confirmationMessage
+        };
     }
-    return { isValidInput: false, validationErrorMessage: '' };
+};
+
+// =====================================
+// FAQ STEP HANDLER
+// =====================================
+
+// Step: Handle FAQ question
+// Job: Answer user's question using RAG and context, then allow booking to continue
+export const handleFaqQuestionHandler: IndividualStepHandler = {
+  defaultChatbotPrompt: 'Let me help you with that question.',
+  
+  // Accept any user input as an FAQ question
+  validateUserInput: async (userInput) => {
+    return { isValidInput: true };
   },
   
-  // Show booking confirmation and mark goal as completed
-  processAndExtractData: async (validatedInput, currentGoalData) => {
-    const booking = currentGoalData.bookingDetails;
-     
-     console.log(`[BookingFlow] Booking ${booking.id} completed. Bot is now in FAQ/Chitchat mode.`);
-     
-     return {
-       ...currentGoalData,
-       goalStatus: 'completed', // Mark the goal as completed when booking is displayed
-       confirmationMessage: `🎉 Your booking is confirmed!\n\n📅 Service: ${booking?.service}\n🗓️ Date: ${booking?.date}\n⏰ Time: ${booking?.time}\n📍 Location: ${booking?.location}\n\nBooking ID: ${booking?.id}\n\nWe look forward to seeing you!`
-     };
-   }
+  // Use the existing FAQ handler to answer the question
+  processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
+    try {
+      const { handleFaqOrChitchat } = await import('../step-handlers/faq-handler');
+      
+      // Create message history from current goal
+      const messageHistory = currentGoalData.messageHistory?.map((msg: any) => ({
+        role: msg.speakerRole === 'user' ? 'user' : 'assistant',
+        content: msg.content,
+        timestamp: msg.messageTimestamp
+      })) || [];
+      
+      // Get FAQ response
+      const faqResponse = await handleFaqOrChitchat(chatContext, validatedInput, messageHistory);
+      
+      return {
+        ...currentGoalData,
+        goalStatus: 'completed', // FAQ goal completes after answering
+        confirmationMessage: faqResponse.text
+      };
+    } catch (error) {
+      console.error('[HandleFaqQuestion] Error processing FAQ:', error);
+      return {
+        ...currentGoalData,
+        goalStatus: 'completed',
+        confirmationMessage: "I'm here to help! Is there anything specific you'd like to know? Or would you like to book an appointment?"
+      };
+    }
+  }
 };
-*/
   

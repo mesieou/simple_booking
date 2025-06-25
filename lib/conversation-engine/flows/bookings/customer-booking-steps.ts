@@ -214,15 +214,21 @@ export class BookingButtonGenerator {
   // Creates service selection buttons with pricing and duration
   static createServiceButtons(services: ServiceData[]): ButtonConfig[] {
     return services.map(service => {
-      const details = [];
-      if (service.fixedPrice) details.push(`$${service.fixedPrice}`);
-      if (service.durationEstimate) details.push(`${service.durationEstimate}min`);
-      
-      const detailsDisplay = details.length > 0 ? ` (${details.join(', ')})` : '';
       const mobileIcon = service.mobile ? '🚗 ' : '🏪 ';
+      const description = service.description || '';
+      
+      // Build description parts
+      const parts = [];
+      if (description) parts.push(description);
+      if (service.fixedPrice) parts.push(`$${service.fixedPrice}`);
+      if (service.durationEstimate) parts.push(`${service.durationEstimate}min`);
+      
+      // Join with proper separators
+      const buttonDescription = parts.join(' • ');
       
       return {
-        buttonText: `${mobileIcon}${service.name}${detailsDisplay}`,
+        buttonText: `${mobileIcon}${service.name}`,
+        buttonDescription: buttonDescription,
         buttonValue: service.id || 'error_service_id_missing'
       };
     });

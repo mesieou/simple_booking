@@ -61,7 +61,7 @@
     "robots-parser": "^3.0.1",
     "sharp": "^0.34.1",
     "sitemap": "^8.0.0",
-    "tailwind": "^4.0.0",
+    "stripe": "^17.7.0",
     "ts-luxon": "^6.0.0",
     "ts-retry-promise": "^0.8.1"
   },

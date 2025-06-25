@@ -34,28 +34,35 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    // 2. Check if the user is already in a business
-    const { data: existingProfile, error: profileError } = await adminSupabaseClient
-      .from('users')
-      .select('businessId')
-      .eq('id', user.id)
+    // 2. Verify the business exists and fetch required info
+    const { data: business, error: businessError } = await adminSupabaseClient
+      .from('businesses')
+      .select('id, name')
+      .eq('id', businessId)
       .single();
 
-    if (profileError || !existingProfile) {
-      return new Response(JSON.stringify({ error: 'User profile not found.' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 404,
-      });
+    if (businessError || !business) {
+      throw new Error('Business not found');
     }
 
-    if (existingProfile.businessId) {
-      return new Response(JSON.stringify({ error: 'User is already linked to a business.' }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
-      });
+    // 3. Check if business already has a provider (prevent multiple providers)
+    const { data: existingProviders, error: providerCheckError } = await adminSupabaseClient
+      .from('users')
+      .select('id, firstName, lastName, role')
+      .eq('businessId', businessId)
+      .in('role', ['provider', 'admin/provider'])
+      .limit(1);
+
+    if (providerCheckError) {
+      throw new Error('Failed to check existing providers');
     }
 
-    // 3. Update the user's profile with the new businessId and set their role
+    if (existingProviders && existingProviders.length > 0) {
+      const existingProvider = existingProviders[0];
+      throw new Error(`Business "${business.name}" already has a provider: ${existingProvider.firstName} ${existingProvider.lastName} (${existingProvider.role}). Only one provider per business is allowed.`);
+    }
+
+    // 4. Update the user's profile with the new businessId and set their role
     const { error: updateError } = await adminSupabaseClient
       .from('users')
       .update({ businessId: businessId, role: 'provider' })
