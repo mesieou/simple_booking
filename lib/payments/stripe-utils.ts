@@ -255,7 +255,7 @@ export class StripePaymentService {
         };
       }
 
-      // Create Express account
+      // Create Express account with required capabilities for payment links with on_behalf_of
       const account = await getStripe().accounts.create({
         type: 'express',
         country: 'AU',
@@ -263,6 +263,10 @@ export class StripePaymentService {
         business_profile: {
           name: business.name,
           url: business.websiteUrl,
+        },
+        capabilities: {
+          card_payments: { requested: true },
+          transfers: { requested: true },
         },
         metadata: {
           businessId: businessId,
