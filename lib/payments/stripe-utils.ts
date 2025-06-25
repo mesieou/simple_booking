@@ -154,7 +154,7 @@ export class StripePaymentService {
       const depositAmount = await quote.calculateDepositAmount();
       
       // If no deposit amount (business doesn't require deposits), don't create payment link
-      if (depositAmount === null || depositAmount === 0) {
+      if (depositAmount === undefined || depositAmount === null || depositAmount === 0) {
         return {
           success: false,
           error: 'This business does not require deposit payments'
