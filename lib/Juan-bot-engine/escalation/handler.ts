@@ -169,6 +169,7 @@ async function checkForEscalationTrigger(
 
   if (keywordReason) {
     console.log(`${LOG_PREFIX} Escalation triggered by keyword. Reason: ${keywordReason}`);
+    console.log(`${LOG_PREFIX} Bot entering escalation mode for session ${currentContext.currentConversationSession?.id}.`);
     const customerName = customerUser ? `${customerUser.firstName} ${customerUser.lastName}` : 'A customer';
     const customerPhone = currentContext.currentParticipant.customerWhatsappNumber;
     const customerPhoneUrl = customerPhone ? `https://wa.me/${customerPhone.replace('+', '')}` : 'Not available';
@@ -198,6 +199,7 @@ async function checkForEscalationTrigger(
       }
       
       const escalationPhoneNumber = business.phone;
+      const chatSessionId = currentContext.currentConversationSession?.id;
 
       const finalBusinessPhoneNumberId = businessPhoneNumberId || currentContext.currentParticipant.businessWhatsappNumber;
       if (!finalBusinessPhoneNumberId) {
@@ -218,7 +220,7 @@ async function checkForEscalationTrigger(
         throw new Error("Failed to create a notification record in the database.");
       }
       
-      await sendEscalationNotifications(escalationPhoneNumber, customerName, customerPhoneUrl, summaryForAdmin, messageHistory, notification.id, language, finalBusinessPhoneNumberId);
+      await sendEscalationNotifications(escalationPhoneNumber, customerName, customerPhoneUrl, summaryForAdmin, messageHistory, notification.id, language, finalBusinessPhoneNumberId, chatSessionId);
       
       return {
         isEscalated: true,
@@ -249,11 +251,14 @@ async function sendEscalationNotifications(
   messageHistory: ChatMessage[],
   notificationId: string,
   language: string,
-  businessPhoneNumberId: string
+  businessPhoneNumberId: string,
+  chatSessionId?: string
 ) {
   const lang = language === 'es' ? 'es' : 'en';
   const t = i18n[lang];
   const sender = new WhatsappSender();
+  const baseUrl = 'https://skedy.io'; 
+  const chatLink = chatSessionId ? `${baseUrl}/protected?sessionId=${chatSessionId}` : customerPhoneUrl;
 
   // 1. Send conversation history
   const lastNMessages = messageHistory.slice(-5);
@@ -270,7 +275,7 @@ async function sendEscalationNotifications(
   }
 
   // 2. Send the main summary notification with buttons
-  const summaryText = `${t.notificationTitle}\n\n*${t.customerLabel}:* ${customerName}\n*${t.contactLabel}:* ${customerPhoneUrl}\n\n*${t.summaryLabel}:* ${summary}`;
+  const summaryText = `${t.notificationTitle}\n\n*${t.customerLabel}:* ${customerName}\n*${t.contactLabel}:* ${chatLink}\n\n*${t.summaryLabel}:* ${summary}`;
   
   const adminButtons = [
     { buttonText: t.btnProvidedHelp, buttonValue: `resolve_provided_help_${notificationId}` },

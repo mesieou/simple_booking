@@ -4,10 +4,10 @@ import { v4 as uuidv4 } from 'uuid';
 import { handleModelError } from '@/lib/general-helpers/error';
 import { getServiceRoleClient } from "../supabase/service-role";
 
-export type UserRole = "admin" | "provider" | "customer" | "admin/provider";
+export type UserRole = "admin" | "provider" | "customer" | "admin/provider" | "staff";
 
 // Provider roles that can have availability
-export const PROVIDER_ROLES: UserRole[] = ["provider", "admin/provider"];
+export const PROVIDER_ROLES: UserRole[] = ["provider", "admin/provider", "admin", "staff"];
 
 /**
  * Phone number normalization utility

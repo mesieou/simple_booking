@@ -21,7 +21,8 @@ const i18n = {
         btnWrongActivation: "Wrong Activation",
         summaryHumanRequest: "User explicitly asked to speak to a human.",
         summaryAggression: "User is expressing aggression or frustration with the bot.",
-        userResponse: "Your request has been sent to our team. Someone will contact you shortly via WhatsApp."
+        userResponse: "Your request has been sent to our team. Someone will contact you shortly via WhatsApp.",
+        dashboardLinkText: "Open Chat in Dashboard"
     },
     es: {
         historyTitle: "*Historial de Conversación Reciente:*\n",
@@ -34,7 +35,8 @@ const i18n = {
         btnWrongActivation: "Activación Errónea",
         summaryHumanRequest: "El usuario pidió explícitamente hablar con un humano.",
         summaryAggression: "El usuario está expresando agresión o frustración con el bot.",
-        userResponse: "Tu solicitud ha sido enviada a nuestro equipo. Alguien se pondrá en contacto contigo en breve a través de WhatsApp."
+        userResponse: "Tu solicitud ha sido enviada a nuestro equipo. Alguien se pondrá en contacto contigo en breve a través de WhatsApp.",
+        dashboardLinkText: "Abrir Chat en el Dashboard"
     }
 };
 
@@ -170,6 +172,7 @@ async function checkForEscalationTrigger(
 
   if (keywordReason) {
     console.log(`${LOG_PREFIX} Escalation triggered by keyword. Reason: ${keywordReason}`);
+    console.log(`${LOG_PREFIX} Bot entering escalation mode for session ${currentContext.currentConversationSession?.id}.`);
     const customerName = customerUser ? `${customerUser.firstName} ${customerUser.lastName}` : 'A customer';
     const customerPhone = currentContext.currentParticipant.customerWhatsappNumber;
     const customerPhoneUrl = customerPhone ? `https://wa.me/${customerPhone.replace('+', '')}` : 'Not available';
@@ -180,20 +183,35 @@ async function checkForEscalationTrigger(
     const summaryForAdmin = keywordReason === 'human_request' ? t.summaryHumanRequest : t.summaryAggression;
     
     try {
-      let notification;
       if (currentContext.currentParticipant.associatedBusinessId && currentContext.currentConversationSession?.id) {
-        notification = await Notification.create({
+        const chatSessionId = currentContext.currentConversationSession.id;
+        
+        const notification = await Notification.create({
             businessId: currentContext.currentParticipant.associatedBusinessId,
-            chatSessionId: currentContext.currentConversationSession.id,
+            chatSessionId: chatSessionId,
             message: summaryForAdmin,
             status: 'pending'
         });
-      }
-      if (!notification) {
-        throw new Error("Failed to create a notification record in the database.");
-      }
       
-      await sendEscalationNotifications(ADMIN_ESCALATION_NUMBER, customerName, customerPhoneUrl, summaryForAdmin, messageHistory, notification.id, language, businessPhoneNumberId);
+        if (!notification) {
+          throw new Error("Failed to create a notification record in the database.");
+        }
+      
+        await sendEscalationNotifications(
+            ADMIN_ESCALATION_NUMBER, 
+            customerName, 
+            customerPhoneUrl, 
+            summaryForAdmin, 
+            messageHistory, 
+            notification.id, 
+            language, 
+            businessPhoneNumberId,
+            chatSessionId
+        );
+      } else {
+        console.error(`${LOG_PREFIX} Cannot escalate: missing businessId or chatSessionId in context.`);
+        throw new Error("Cannot process escalation due to missing context.");
+      }
       
       return {
         isEscalated: true,
@@ -202,7 +220,6 @@ async function checkForEscalationTrigger(
       };
     } catch (error) {
       console.error(`${LOG_PREFIX} Failed to process keyword-based escalation due to an internal error:`, error);
-
     }
   }
   
@@ -224,11 +241,13 @@ async function sendEscalationNotifications(
   messageHistory: ChatMessage[],
   notificationId: string,
   language: string,
-  businessPhoneNumberId: string
+  businessPhoneNumberId: string,
+  chatSessionId: string
 ) {
   const lang = language === 'es' ? 'es' : 'en';
   const t = i18n[lang];
   const sender = new WhatsappSender();
+  const dashboardLink = `https://skedy.io/protected?sessionId=${chatSessionId}`;
 
   // 1. Send conversation history
   const lastNMessages = messageHistory.slice(-5);
@@ -245,7 +264,7 @@ async function sendEscalationNotifications(
   }
 
   // 2. Send the main summary notification with buttons
-  const summaryText = `${t.notificationTitle}\n\n*${t.customerLabel}:* ${customerName}\n*${t.contactLabel}:* ${customerPhoneUrl}\n\n*${t.summaryLabel}:* ${summary}`;
+  const summaryText = `${t.notificationTitle}\n\n*${t.customerLabel}:* ${customerName}\n*${t.contactLabel}:* ${customerPhoneUrl}\n\n*${t.summaryLabel}:* ${summary}\n\n*${t.dashboardLinkText}:* ${dashboardLink}`;
   
   const adminButtons = [
     { buttonText: t.btnProvidedHelp, buttonValue: `resolve_provided_help_${notificationId}` },

@@ -29,6 +29,10 @@ import { getOrCreateChatContext, persistSessionState, START_BOOKING_PAYLOAD } fr
 import { handleFaqOrChitchat } from "@/lib/conversation-engine/juan-bot-engine-v2/step-handlers/faq-handler";
 import { franc } from 'franc-min';
 import { IntelligentLLMService } from "@/lib/conversation-engine/juan-bot-engine-v2/services/intelligent-llm-service";
+import { Notification } from '@/lib/database/models/notification';
+import { ChatMessage, ChatSession } from '@/lib/database/models/chat-session';
+import { Business } from '@/lib/database/models/business';
+import { UserContext } from "@/lib/database/models/user-context";
 
 // Type guard to check if the result is an EscalationResult
 function isEscalationResult(result: EscalationResult | AdminCommandResult): result is EscalationResult {
@@ -112,7 +116,52 @@ export async function POST(req: NextRequest) {
           return NextResponse.json({ status: "success - no text content" }, { status: 200 });
         }
         
+        // --- Auto-map WhatsApp Phone Number ID for multi-tenant support ---
+        if (parsedMessage.businessWhatsappNumber && parsedMessage.recipientId) {
+          await Business.autoMapWhatsappPhoneNumberId(
+            parsedMessage.businessWhatsappNumber, 
+            parsedMessage.recipientId
+          );
+        }
+        
         const { context: chatContext, sessionId, userContext, historyForLLM, customerUser } = await getOrCreateChatContext(participant);
+        
+        // --- Bot Escalation Check (FIRST PRIORITY) ---
+        const escalationStatus = await Notification.getEscalationStatus(sessionId);
+        if (escalationStatus) {
+            console.log(`${LOG_PREFIX} Bot is in escalation mode for session ${sessionId}. Status: ${escalationStatus}`);
+
+            // Save the user's message to history (always do this)
+            if (chatContext.currentConversationSession) {
+                await persistSessionState(
+                    sessionId, 
+                    userContext, 
+                    chatContext.currentConversationSession, 
+                    undefined, // No active goal
+                    parsedMessage.text || '', 
+                    '', // No bot response during escalation
+                    historyForLLM
+                );
+            }
+
+            // Different behavior based on escalation status
+            if (escalationStatus === 'pending') {
+                // Staff hasn't taken control yet - send waiting message
+                const language = chatContext.participantPreferences.language === 'es' ? 'es' : 'en';
+                const waitingMessage = language === 'es' 
+                  ? "Un agente ya ha sido notificado y te atenderá en breve. Por favor, espera un momento."
+                  : "An agent has been notified and will assist you shortly. Please wait a moment.";
+
+                const sender = new WhatsappSender();
+                await sender.sendMessage(parsedMessage.senderId, { text: waitingMessage }, parsedMessage.recipientId);
+
+                return NextResponse.json({ status: 'ok', message: 'Message received and saved during pending escalation.' });
+            } else if (escalationStatus === 'attending') {
+                // Staff has taken control - bot stays completely silent
+                console.log(`${LOG_PREFIX} Staff is attending session ${sessionId}. Bot remains silent.`);
+                return NextResponse.json({ status: 'ok', message: 'Message received and saved during staff assistance.' });
+            }
+        }
         
         // --- Language Detection (Centralized) ---
         // This runs for EVERY message to ensure context is always up-to-date.
@@ -133,8 +182,8 @@ export async function POST(req: NextRequest) {
         }
         // --- End Language Detection ---
 
-        // --- Step 1: Check for Escalation or Admin Command ---
-        if (chatContext.currentConversationSession) {
+        // --- Step 1: Check for Escalation or Admin Command (only if no active escalation) ---
+        if (chatContext.currentConversationSession && !escalationStatus) {
             const escalationResult = await handleEscalationOrAdminCommand(
                 parsedMessage.text,
                 participant,

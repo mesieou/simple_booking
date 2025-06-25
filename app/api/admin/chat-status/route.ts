@@ -1,0 +1,102 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/database/supabase/server";
+
+export async function GET(req: NextRequest) {
+  try {
+    const supabase = createClient();
+    
+    // Verify user authentication
+    const { data: { session }, error: authError } = await supabase.auth.getSession();
+    if (authError || !session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const url = new URL(req.url);
+    const sessionId = url.searchParams.get('sessionId');
+    
+    console.log("[ChatStatus] Checking status for sessionId:", sessionId);
+    
+    if (!sessionId) {
+      return NextResponse.json({ error: "Session ID is required" }, { status: 400 });
+    }
+
+    // Get user's business ID
+    console.log("[ChatStatus] Getting business ID for user:", session.user.id);
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("businessId")
+      .eq("id", session.user.id)
+      .single();
+
+    if (userError) {
+      console.error("[ChatStatus] Error fetching user data:", userError);
+      return NextResponse.json({ error: "Could not identify your business" }, { status: 403 });
+    }
+    
+    if (!userData?.businessId) {
+      console.error("[ChatStatus] User has no businessId:", userData);
+      return NextResponse.json({ error: "Could not identify your business" }, { status: 403 });
+    }
+
+    console.log("[ChatStatus] User businessId:", userData.businessId);
+
+    // Verify the chat session belongs to the staff's business
+    console.log("[ChatStatus] Verifying session ownership for sessionId:", sessionId);
+    const { data: sessionData, error: sessionError } = await supabase
+      .from("chatSessions")
+      .select("businessId")
+      .eq("id", sessionId)
+      .single();
+
+    if (sessionError) {
+      console.error("[ChatStatus] Error fetching session data:", sessionError);
+      return NextResponse.json({ error: "Chat session not found" }, { status: 404 });
+    }
+    
+    if (!sessionData) {
+      console.error("[ChatStatus] No session data returned for sessionId:", sessionId);
+      return NextResponse.json({ error: "Chat session not found" }, { status: 404 });
+    }
+
+    console.log("[ChatStatus] Session businessId:", sessionData.businessId);
+
+    if (sessionData.businessId !== userData.businessId) {
+      console.error("[ChatStatus] Business ID mismatch. User:", userData.businessId, "Session:", sessionData.businessId);
+      return NextResponse.json({ error: "You can only view chats from your business" }, { status: 403 });
+    }
+
+    // Check for any notification for this session
+    console.log("[ChatStatus] Checking notifications for sessionId:", sessionId);
+    const { data: notificationData, error: notificationError } = await supabase
+      .from("notifications")
+      .select("*")
+      .eq("chatSessionId", sessionId)
+      .in("status", ["pending", "attending"])
+      .order("createdAt", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (notificationError) {
+      console.error("[ChatStatus] Error checking notifications:", notificationError);
+      return NextResponse.json({ error: "Error checking notifications: " + notificationError.message }, { status: 500 });
+    }
+
+    console.log("[ChatStatus] Notification data:", notificationData);
+
+    const status = {
+      hasEscalation: !!notificationData,
+      escalationStatus: notificationData?.status || null,
+      canTakeControl: notificationData?.status === "pending",
+      isAttending: notificationData?.status === "attending",
+      canSendMessages: notificationData?.status === "attending",
+      notificationId: notificationData?.id || null
+    };
+
+    console.log("[ChatStatus] Returning status:", status);
+    return NextResponse.json({ status });
+
+  } catch (error) {
+    console.error("[ChatStatus] Unexpected error:", error);
+    return NextResponse.json({ error: "Internal server error: " + error.message }, { status: 500 });
+  }
+} 
