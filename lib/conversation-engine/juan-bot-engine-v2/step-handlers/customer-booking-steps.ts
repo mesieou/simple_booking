@@ -358,6 +358,38 @@ class AvailabilityService {
       
       console.log(`[AvailabilityService] Found ${availabilityData.length} days of availability data`);
       
+      if (availabilityData.length === 0) {
+        console.log(`[AvailabilityService] No availability data found for provider ${userOwningThisBusinessId}`);
+        console.log(`[AvailabilityService] Checking if provider has calendar settings...`);
+        
+        try {
+          const calendarSettings = await CalendarSettings.getByUserAndBusiness(userOwningThisBusinessId, businessId);
+          if (!calendarSettings) {
+            console.error(`[AvailabilityService] Provider ${userOwningThisBusinessId} has NO calendar settings`);
+          } else {
+            console.log(`[AvailabilityService] Provider has calendar settings, timezone: ${calendarSettings.settings?.timezone}`);
+          }
+        } catch (error) {
+          console.error(`[AvailabilityService] Error checking calendar settings:`, error);
+        }
+        
+        // Check what availability data exists for this provider (any date range)
+        try {
+          const allAvailability = await AvailabilitySlots.getByProviderAndDateRange(
+            userOwningThisBusinessId,
+            '2020-01-01', // Very wide date range
+            '2030-12-31'
+          );
+          console.log(`[AvailabilityService] Provider has ${allAvailability.length} total availability records in database`);
+          if (allAvailability.length > 0) {
+            console.log(`[AvailabilityService] Date range of existing availability:`, 
+              allAvailability.map(slot => slot.date).sort());
+          }
+        } catch (error) {
+          console.error(`[AvailabilityService] Error checking all availability:`, error);
+        }
+      }
+      
       // Find the suitable duration for the service
       const availableDurations = [60, 90, 120, 150, 180, 240, 300, 360];
       const suitableDuration = availableDurations.find(duration => duration >= serviceDuration);
@@ -2112,4 +2144,49 @@ export const displayConfirmedBookingHandler: IndividualStepHandler = {
    }
 };
 */
+  
+// =====================================
+// FAQ STEP HANDLER
+// =====================================
+
+// Step: Handle FAQ question
+// Job: Answer user's question using RAG and context, then allow booking to continue
+export const handleFaqQuestionHandler: IndividualStepHandler = {
+  defaultChatbotPrompt: 'Let me help you with that question.',
+  
+  // Accept any user input as an FAQ question
+  validateUserInput: async (userInput) => {
+    return { isValidInput: true };
+  },
+  
+  // Use the existing FAQ handler to answer the question
+  processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
+    try {
+      const { handleFaqOrChitchat } = await import('./faq-handler');
+      
+      // Create message history from current goal
+      const messageHistory = currentGoalData.messageHistory?.map((msg: any) => ({
+        role: msg.speakerRole === 'user' ? 'user' : 'assistant',
+        content: msg.content,
+        timestamp: msg.messageTimestamp
+      })) || [];
+      
+      // Get FAQ response
+      const faqResponse = await handleFaqOrChitchat(chatContext, validatedInput, messageHistory);
+      
+      return {
+        ...currentGoalData,
+        goalStatus: 'completed', // FAQ goal completes after answering
+        confirmationMessage: faqResponse.text
+      };
+    } catch (error) {
+      console.error('[HandleFaqQuestion] Error processing FAQ:', error);
+      return {
+        ...currentGoalData,
+        goalStatus: 'completed',
+        confirmationMessage: "I'm here to help! Is there anything specific you'd like to know? Or would you like to book an appointment?"
+      };
+    }
+  }
+};
   
