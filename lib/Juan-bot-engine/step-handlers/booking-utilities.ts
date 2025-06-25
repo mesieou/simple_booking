@@ -78,28 +78,51 @@ export class DateTimeFormatter {
   /**
    * Convert a date string to display text (Today, Tomorrow, or formatted date)
    */
-  static formatDateDisplay(dateString: string, format: 'short' | 'long' = 'short'): string {
+  static formatDateDisplay(dateString: string, chatContext: any, format: 'short' | 'long' = 'short'): string {
     const selectedDate = new Date(dateString);
     const today = new Date();
     const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
+    // Import localization functions (assumed to be available in the same module)
+    const getUserLanguage = (ctx: any): 'en' | 'es' => {
+      const userLang = ctx?.participantPreferences?.language;
+      return userLang === 'es' ? 'es' : 'en';
+    };
+
+    const getLocalizedText = (ctx: any, key: string): string => {
+      const language = getUserLanguage(ctx);
+      // Note: This assumes BOOKING_TRANSLATIONS is available in scope
+      // If not available, we'll provide fallback values
+      if (key === 'TIME_LABELS.TODAY') {
+        return language === 'es' ? 'Hoy' : 'Today';
+      }
+      if (key === 'TIME_LABELS.TOMORROW') {
+        return language === 'es' ? 'Mañana' : 'Tomorrow';
+      }
+      return key; // fallback
+    };
+
     if (selectedDate.toDateString() === today.toDateString()) {
-      return 'Today';
+      return getLocalizedText(chatContext, 'TIME_LABELS.TODAY');
     }
     
     if (selectedDate.toDateString() === tomorrow.toDateString()) {
-      return 'Tomorrow';
+      return getLocalizedText(chatContext, 'TIME_LABELS.TOMORROW');
     }
 
+    // Use appropriate locale for date formatting
+    const language = getUserLanguage(chatContext);
+    const locale = language === 'es' ? 'es-ES' : 'en-GB';
+
     if (format === 'long') {
-      return selectedDate.toLocaleDateString('en-GB', { 
+      return selectedDate.toLocaleDateString(locale, { 
         weekday: 'long', 
         day: 'numeric', 
         month: 'long' 
       });
     }
 
-    return selectedDate.toLocaleDateString('en-GB', { 
+    return selectedDate.toLocaleDateString(locale, { 
       weekday: 'short', 
       day: 'numeric', 
       month: 'short' 
@@ -120,8 +143,8 @@ export class DateTimeFormatter {
   /**
    * Combine date and time into a user-friendly display
    */
-  static formatDateTimeDisplay(dateString: string, timeString: string, format: 'short' | 'long' = 'short'): string {
-    const dateDisplay = this.formatDateDisplay(dateString, format);
+  static formatDateTimeDisplay(dateString: string, timeString: string, chatContext: any, format: 'short' | 'long' = 'short'): string {
+    const dateDisplay = this.formatDateDisplay(dateString, chatContext, format);
     const timeDisplay = this.formatTimeDisplay(timeString);
     return `${dateDisplay} at ${timeDisplay}`;
   }
@@ -202,17 +225,17 @@ export class BookingButtonGenerator {
   /**
    * Generate time selection buttons when user has existing time data
    */
-  static createExistingTimeButtons(goalData: Record<string, any>): ButtonConfig[] {
+  static createExistingTimeButtons(goalData: Record<string, any>, chatContext: any): ButtonConfig[] {
     if (!BookingDataChecker.hasTimeData(goalData)) {
       return [];
     }
 
-    const dateText = DateTimeFormatter.formatDateDisplay(goalData.selectedDate);
+    const dateText = DateTimeFormatter.formatDateDisplay(goalData.selectedDate, chatContext);
     const timeText = DateTimeFormatter.formatTimeDisplay(goalData.selectedTime);
 
     const buttons = [
       { 
-        buttonText: `✅ Keep ${dateText} ${timeText}`, 
+        buttonText: `✅ ${dateText} ${timeText}`, 
         buttonValue: 'keep_existing_time' 
       },
       { 
@@ -353,11 +376,12 @@ export class BookingMessageGenerator {
   /**
    * Generate contextual messages based on booking state
    */
-  static generateTimeSelectionMessage(goalData: Record<string, any>): string {
+  static generateTimeSelectionMessage(goalData: Record<string, any>, chatContext: any): string {
     if (BookingDataChecker.hasTimeData(goalData)) {
       const dateTimeText = DateTimeFormatter.formatDateTimeDisplay(
         goalData.selectedDate, 
         goalData.selectedTime, 
+        chatContext,
         'long'
       );
       return `You currently have ${dateTimeText} selected. Would you like to keep this time or choose a different one?`;

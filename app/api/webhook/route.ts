@@ -27,8 +27,8 @@ import {
 } from "@/lib/conversation-engine/juan-bot-engine-v2/escalation/handler";
 import { getOrCreateChatContext, persistSessionState, START_BOOKING_PAYLOAD } from "@/lib/conversation-engine/juan-bot-engine-v2/bot-manager-helpers";
 import { handleFaqOrChitchat } from "@/lib/conversation-engine/juan-bot-engine-v2/step-handlers/faq-handler";
-import { franc } from 'franc-min';
 import { IntelligentLLMService } from "@/lib/conversation-engine/juan-bot-engine-v2/services/intelligent-llm-service";
+import { LanguageDetectionService } from "@/lib/Juan-bot-engine/services/language-detection";
 import { Notification } from '@/lib/database/models/notification';
 import { ChatMessage, ChatSession } from '@/lib/database/models/chat-session';
 import { Business } from '@/lib/database/models/business';
@@ -163,22 +163,15 @@ export async function POST(req: NextRequest) {
             }
         }
         
-        // --- Language Detection (Centralized) ---
-        // This runs for EVERY message to ensure context is always up-to-date.
-        try {
-          const existingLang = chatContext.participantPreferences.language;
-          // Only detect if not already set to a non-English "sticky" preference.
-          if (!existingLang || existingLang === 'en') {
-            const langCode3 = franc(parsedMessage.text, { minLength: 3 });
-            const langMap: { [key: string]: string } = { 'spa': 'es', 'eng': 'en' };
-            const langCode2 = langMap[langCode3] || 'en';
-            if (existingLang !== langCode2) {
-              console.log(`${LOG_PREFIX} Language preference set to ${langCode2}`);
-              chatContext.participantPreferences.language = langCode2;
-            }
-          }
-        } catch (error) {
-          console.error(`${LOG_PREFIX} Error detecting language:`, error);
+        // --- Centralized Language Detection ---
+        const languageResult = await LanguageDetectionService.detectAndUpdateLanguage(
+          parsedMessage.text, 
+          chatContext, 
+          LOG_PREFIX
+        );
+        
+        if (languageResult.wasChanged) {
+          console.log(`${LOG_PREFIX} Language detection: ${languageResult.reason}`);
         }
         // --- End Language Detection ---
 
