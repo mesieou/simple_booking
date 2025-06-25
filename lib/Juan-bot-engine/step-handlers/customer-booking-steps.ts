@@ -1694,12 +1694,15 @@ export const quoteSummaryHandler: IndividualStepHandler = {
       if (!depositAmount || !remainingBalance) {
         try {
           const { Quote } = await import('@/lib/database/models/quote');
+          if (!savedQuoteData.id) {
+            throw new Error('No quote ID available');
+          }
           const quote = await Quote.getById(savedQuoteData.id);
           const paymentDetails = await quote.calculatePaymentDetails();
           
           depositAmount = paymentDetails.depositAmount;
           remainingBalance = paymentDetails.remainingBalance;
-          requiresDeposit = depositAmount !== null && depositAmount > 0;
+          requiresDeposit = depositAmount !== undefined && depositAmount !== null && depositAmount > 0;
           
           console.log('[QuoteSummary] Calculated payment details:', { depositAmount, remainingBalance, requiresDeposit });
         } catch (error) {
