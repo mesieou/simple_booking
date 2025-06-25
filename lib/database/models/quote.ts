@@ -49,13 +49,13 @@ export class Quote {
     }
 
     // Calculate deposit amount and remaining balance
-    async calculatePaymentDetails(): Promise<{ depositAmount: number | null; remainingBalance: number }> {
+    async calculatePaymentDetails(): Promise<{ depositAmount: number | undefined; remainingBalance: number }> {
         try {
             const { Business } = await import('./business');
             const business = await Business.getById(this.data.businessId);
             
             // Calculate deposit and remaining balance
-            let depositAmount: number | null = null;
+            let depositAmount: number | undefined = undefined;
             let remainingBalance = this.data.totalJobCostEstimation;
             
             // Only calculate deposit if business has a deposit percentage set
@@ -67,7 +67,7 @@ export class Quote {
                 this.data.remainingBalance = remainingBalance;
             } else {
                 // No deposit required - full amount is remaining balance
-                this.data.depositAmount = null;
+                this.data.depositAmount = undefined;
                 this.data.remainingBalance = remainingBalance;
             }
             
@@ -77,14 +77,14 @@ export class Quote {
             // Fallback values
             this.data.remainingBalance = this.data.totalJobCostEstimation;
             return { 
-                depositAmount: null, 
+                depositAmount: undefined, 
                 remainingBalance: this.data.totalJobCostEstimation
             };
         }
     }
 
     // Backward compatibility method
-    async calculateDepositAmount(): Promise<number | null> {
+    async calculateDepositAmount(): Promise<number | undefined> {
         const { depositAmount } = await this.calculatePaymentDetails();
         return depositAmount;
     }

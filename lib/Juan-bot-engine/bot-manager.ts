@@ -1633,7 +1633,7 @@ export async function processIncomingMessage(incomingUserMessage: string, curren
             console.log('[BotManager] No active booking goal found, creating one for payment completion');
             
             // Try to retrieve booking data from the quote
-            let collectedDataFromQuote = {
+            let collectedDataFromQuote: Record<string, any> = {
                 paymentCompleted: true,
                 quoteId: quoteId
             };
@@ -1645,7 +1645,13 @@ export async function processIncomingMessage(incomingUserMessage: string, curren
                 if (quote) {
                     console.log('[BotManager] Retrieved quote data for session restoration');
                     // Extract booking details from quote if available
-                    const quoteData = quote.getData();
+                    const quoteData = {
+                        proposedDateTime: quote.proposedDateTime,
+                        serviceId: quote.serviceId,
+                        dropOff: quote.dropOff,
+                        pickUp: quote.pickUp,
+                        userId: quote.userId
+                    };
                     
                     // Map quote data to session data format
                     if (quoteData.proposedDateTime) {
@@ -1677,8 +1683,8 @@ export async function processIncomingMessage(incomingUserMessage: string, curren
                                 id: serviceData.id,
                                 name: serviceData.name,
                                 mobile: serviceData.mobile,
-                                price: serviceData.price,
-                                duration: serviceData.duration
+                                price: serviceData.fixedPrice,
+                                duration: serviceData.durationEstimate
                             };
                         }
                     }
