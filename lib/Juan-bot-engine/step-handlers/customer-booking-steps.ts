@@ -6,6 +6,7 @@ import { User } from '@/lib/database/models/user';
 import { Quote, type QuoteData } from '@/lib/database/models/quote';
 import { Booking, type BookingData, BookingStatus } from '@/lib/database/models/booking';
 import { computeQuoteEstimation, type QuoteEstimation } from '@/lib/general-helpers/quote-cost-calculator';
+import { StripePaymentService } from '@/lib/payments/stripe-utils';
 import { v4 as uuidv4 } from 'uuid';
 import { CalendarSettings } from '@/lib/database/models/calendar-settings';
 import { DateTime } from 'luxon';
@@ -1782,9 +1783,6 @@ export const handleQuoteChoiceHandler: IndividualStepHandler = {
         console.log('[HandleQuoteChoice] Quote confirmed - creating payment link for deposit');
         
         try {
-          // Import the payment service
-          const { StripePaymentService } = await import('@/lib/payments/stripe-utils');
-          
           const quoteId = currentGoalData.quoteId || currentGoalData.persistedQuote?.id;
           if (!quoteId) {
             console.error('[HandleQuoteChoice] No quote ID found for payment');
@@ -1834,7 +1832,6 @@ export const handleQuoteChoiceHandler: IndividualStepHandler = {
           let businessName = 'the business';
           if (businessId) {
             try {
-              const { Business } = await import('@/lib/database/models/business');
               const business = await Business.getById(businessId);
               businessName = business.name;
             } catch (error) {
