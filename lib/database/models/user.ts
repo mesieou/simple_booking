@@ -64,8 +64,20 @@ export class User {
         email?: string; 
         password?: string; 
         whatsappNumber?: string; 
+        skipProviderValidation?: boolean; // Allow skipping for seed scripts
     }) {
         const supa = await createClient();
+
+        // Validate: prevent multiple providers per business (unless explicitly skipped)
+        if (!options?.skipProviderValidation && PROVIDER_ROLES.includes(this.role)) {
+            const hasExistingProvider = await User.businessHasProvider(this.businessId);
+            if (hasExistingProvider) {
+                handleModelError(
+                    `Business ${this.businessId} already has a provider. Only one provider per business is allowed.`, 
+                    new Error("Multiple providers not allowed")
+                );
+            }
+        }
 
         // Use provided email or generate default
         const email = options?.email || `${this.firstName.toLowerCase()}.${this.lastName.toLowerCase()}@example.com`;
@@ -238,8 +250,19 @@ export class User {
                 return null;
             }
 
-            // Return the first owner/provider found
-            const ownerData = users[0];
+            // Log if multiple providers found (this should not happen in production)
+            if (users.length > 1) {
+                console.warn(`[User] MULTIPLE PROVIDERS FOUND for business ${businessId}:`, 
+                    users.map(u => `${u.id} (${u.firstName} ${u.lastName}, role: ${u.role})`));
+                console.warn(`[User] This business has ${users.length} providers. Only one provider per business is recommended.`);
+            }
+
+            // Prioritize admin/provider over regular provider for deterministic selection
+            const adminProvider = users.find(u => u.role === 'admin/provider');
+            const ownerData = adminProvider || users[0];
+            
+            console.log(`[User] Selected provider: ${ownerData.id} (${ownerData.firstName} ${ownerData.lastName}, role: ${ownerData.role})`);
+            
             const user = new User(ownerData.firstName, ownerData.lastName, ownerData.role, ownerData.businessId);
             user.id = ownerData.id;
             return user;
@@ -442,5 +465,32 @@ export class User {
     // Getters for the user data
     get createdAt(): string | undefined { return undefined; }
     get updatedAt(): string | undefined { return undefined; }
+
+    // Check if a business already has a provider
+    static async businessHasProvider(businessId: string): Promise<boolean> {
+        if (!User.isValidUUID(businessId)) {
+            return false;
+        }
+        
+        try {
+            const supa = await createClient();
+            const { data: users, error } = await supa
+                .from('users')
+                .select('id')
+                .eq('businessId', businessId)
+                .in('role', PROVIDER_ROLES)
+                .limit(1);
+
+            if (error) {
+                console.error(`[User] Error checking for existing providers in business ${businessId}:`, error);
+                return false;
+            }
+
+            return (users && users.length > 0);
+        } catch (error) {
+            console.error(`[User] Exception checking for existing providers:`, error);
+            return false;
+        }
+    }
 }
 

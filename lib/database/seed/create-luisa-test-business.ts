@@ -69,7 +69,8 @@ export async function createLuisaTestBusiness(supabase?: SupabaseClient): Promis
 
   const { data: createdUser, error: userError } = await ownerProvider.add({
     email: businessData.email,
-    password: 'password123'
+    password: 'password123',
+    skipProviderValidation: true // Allow for seed scripts
   });
   if (userError || !createdUser?.id) {
     throw new Error(`[SEED] Failed to create user: ${userError ? String(userError) : 'No user data returned'}`);

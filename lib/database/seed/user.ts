@@ -21,7 +21,8 @@ export async function createUser(
   );
 
   try {
-    const { data, error } = await user.add();
+    // Skip provider validation for seed scripts to allow multiple providers for testing
+    const { data, error } = await user.add({ skipProviderValidation: true });
     if (error) {
       throw error;
     }
