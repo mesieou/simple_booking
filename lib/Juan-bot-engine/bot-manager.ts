@@ -4,7 +4,7 @@ import { ChatMessage } from "@/lib/database/models/chat-session";
 import { UserContext } from "@/lib/database/models/user-context";
 import { IntelligentLLMService } from '@/lib/Juan-bot-engine/services/intelligent-llm-service';
 import { BotResponse } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
-import { franc } from 'franc-min';
+import { LanguageDetectionService } from './services/language-detection';
 import { 
   getOrCreateChatContext, 
   persistSessionState,
@@ -219,36 +219,15 @@ class MessageProcessor {
     let responseToUser: string;
     let uiButtonsToDisplay: ButtonConfig[] | undefined;
 
-    // --- LANGUAGE DETECTION ---
-    try {
-      const existingLang = currentContext.participantPreferences.language;
-
-      // Only detect language if it's not already set to a non-English language.
-      // This makes the language preference "sticky".
-      if (!existingLang || existingLang === 'en') {
-        // Detect language from user message (ISO 639-3)
-        const langCode3 = franc(incomingUserMessage, { minLength: 3 });
-
-        // Map to ISO 639-1 (2-letter code) if needed
-        const langMap: { [key: string]: string } = {
-          'spa': 'es'
-        };
-        const detectedLang = langMap[langCode3];
-
-        // To prevent accidental language switches on short or ambiguous
-        // messages (e.g., "si"), only switch to Spanish if the message
-        // is longer than 4 characters.
-        if (detectedLang === 'es' && incomingUserMessage.trim().length > 4) {
-            console.log(`[MessageProcessor] Language preference set to 'es'`);
-            currentContext.participantPreferences.language = 'es';
-        }
-        // Otherwise, we keep the existing preference (which defaults to 'en').
-      } else {
-        console.log(`[MessageProcessor] Sticky language preference maintained: ${existingLang}`);
-      }
-    } catch (error) {
-      console.error('[MessageProcessor] Error detecting language:', error);
-      // Proceed with default language
+    // --- CENTRALIZED LANGUAGE DETECTION ---
+    const languageResult = await LanguageDetectionService.detectAndUpdateLanguage(
+      incomingUserMessage, 
+      currentContext, 
+      '[MessageProcessor]'
+    );
+    
+    if (languageResult.wasChanged) {
+      console.log(`[MessageProcessor] Language detection: ${languageResult.reason}`);
     }
     // --- END LANGUAGE DETECTION ---
 
@@ -428,6 +407,12 @@ class MessageProcessor {
       }
     }
     
+    // PAYMENT BLOCKING LOGIC: Don't advance to booking creation if payment is pending
+    if (goalData.paymentLinkGenerated && !goalData.paymentCompleted) {
+      console.log('[NavigateToAppropriateStep] Payment pending - staying on current step to wait for payment');
+      return currentSteps[currentStepIndex]; // Stay on current step
+    }
+    
     // Standard navigation - find next step that needs data
     for (let i = currentStepIndex + 1; i < currentSteps.length; i++) {
       const stepName = currentSteps[i];
@@ -484,6 +469,15 @@ class MessageProcessor {
         (!collectedData.selectedService || !collectedData.selectedDate || 
          !collectedData.selectedTime || !collectedData.finalServiceAddress)) {
       return true;
+    }
+    
+    // Booking creation steps should NOT run if payment is required but not completed
+    if (stepLower.includes('createbooking') || stepLower.includes('booking')) {
+      // If payment was required and generated, don't advance to booking until payment is completed
+      if (collectedData.paymentLinkGenerated && !collectedData.paymentCompleted) {
+        console.log('[StepNeedsData] Booking creation blocked - payment required but not completed');
+        return false; // This step doesn't need data, but shouldn't run yet
+      }
     }
     
     // If we can't determine, assume the step needs data (safer approach)
@@ -919,13 +913,30 @@ class MessageProcessor {
       if (conversationDecision.action === 'switch_topic' && conversationDecision.confidence >= 0.8) {
         const topicSwitchResult = await this.handleTopicSwitch(currentContext, conversationDecision, incomingUserMessage, userCurrentGoal);
         
-        // If a new goal was created, update the session
+        // If a new goal was created, update the session AND persist immediately
         if (topicSwitchResult.newGoal) {
           // Replace the current goal with the new goal
           if (currentContext.currentConversationSession) {
             currentContext.currentConversationSession.activeGoals = [topicSwitchResult.newGoal];
           }
           console.log(`[MessageProcessor] Updated session with new goal for topic switch`);
+          
+          // CRITICAL FIX: Persist the new goal immediately to prevent race conditions
+          try {
+            // Get the current session and user context for persistence
+            const { sessionId, userContext } = await getOrCreateChatContext(currentContext.currentParticipant);
+            await this.persistUpdatedState(
+              sessionId,
+              userContext,
+              currentContext.currentConversationSession!,
+              topicSwitchResult.newGoal,
+              incomingUserMessage,
+              topicSwitchResult.responseToUser
+            );
+            console.log(`[MessageProcessor] Immediately persisted new goal to prevent race condition`);
+          } catch (persistError) {
+            console.error(`[MessageProcessor] Failed to persist new goal immediately:`, persistError);
+          }
         }
         
         return {
@@ -1618,8 +1629,77 @@ export async function processIncomingMessage(incomingUserMessage: string, curren
         );
         
         if (!bookingGoal) {
-            // Create minimal booking goal for payment completion
+            // Create booking goal for payment completion with data from quote
             console.log('[BotManager] No active booking goal found, creating one for payment completion');
+            
+            // Try to retrieve booking data from the quote
+            let collectedDataFromQuote = {
+                paymentCompleted: true,
+                quoteId: quoteId
+            };
+            
+            try {
+                const { Quote } = await import('@/lib/database/models/quote');
+                const quote = await Quote.getById(quoteId);
+                
+                if (quote) {
+                    console.log('[BotManager] Retrieved quote data for session restoration');
+                    // Extract booking details from quote if available
+                    const quoteData = quote.getData();
+                    
+                    // Map quote data to session data format
+                    if (quoteData.proposedDateTime) {
+                        try {
+                            const { DateTime } = await import('luxon');
+                            const dateTimeObj = DateTime.fromISO(quoteData.proposedDateTime);
+                            
+                            if (dateTimeObj.isValid) {
+                                collectedDataFromQuote.selectedDate = dateTimeObj.toISODate(); // Returns YYYY-MM-DD
+                                collectedDataFromQuote.selectedTime = dateTimeObj.toFormat('HH:mm'); // Returns HH:mm
+                                console.log('[BotManager] Parsed date/time from quote:', {
+                                    selectedDate: collectedDataFromQuote.selectedDate,
+                                    selectedTime: collectedDataFromQuote.selectedTime
+                                });
+                            } else {
+                                console.warn('[BotManager] Invalid proposedDateTime in quote, skipping date/time extraction');
+                            }
+                        } catch (error) {
+                            console.error('[BotManager] Error parsing proposedDateTime from quote:', error);
+                        }
+                    }
+                    
+                    if (quoteData.serviceId) {
+                        const { Service } = await import('@/lib/database/models/service');
+                        const service = await Service.getById(quoteData.serviceId);
+                        if (service) {
+                            const serviceData = service.getData();
+                            collectedDataFromQuote.selectedService = {
+                                id: serviceData.id,
+                                name: serviceData.name,
+                                mobile: serviceData.mobile,
+                                price: serviceData.price,
+                                duration: serviceData.duration
+                            };
+                        }
+                    }
+                    
+                    if (quoteData.dropOff) {
+                        collectedDataFromQuote.finalServiceAddress = quoteData.dropOff;
+                        collectedDataFromQuote.serviceLocation = quoteData.pickUp === quoteData.dropOff ? 'business_location' : 'customer_address';
+                    }
+                    
+                    if (quoteData.userId) {
+                        collectedDataFromQuote.userId = quoteData.userId;
+                        collectedDataFromQuote.existingUserFound = true;
+                    }
+                    
+                    console.log('[BotManager] Restored session data from quote:', Object.keys(collectedDataFromQuote));
+                } else {
+                    console.warn('[BotManager] Quote not found, proceeding with minimal data');
+                }
+            } catch (error) {
+                console.error('[BotManager] Error retrieving quote data for session restoration:', error);
+            }
             
             // Determine flow key
             let flowKey = 'bookingCreatingForMobileService'; // Default
@@ -1641,10 +1721,7 @@ export async function processIncomingMessage(incomingUserMessage: string, curren
                 goalAction: 'create',
                 goalStatus: 'inProgress',
                 currentStepIndex: conversationFlowBlueprints[flowKey].indexOf('createBooking'),
-                collectedData: {
-                    paymentCompleted: true,
-                    quoteId: quoteId
-                },
+                collectedData: collectedDataFromQuote,
                 messageHistory: [],
                 flowKey
             };
@@ -1656,8 +1733,15 @@ export async function processIncomingMessage(incomingUserMessage: string, curren
             const createBookingIndex = conversationFlowBlueprints[bookingGoal.flowKey].indexOf('createBooking');
             if (createBookingIndex !== -1) {
                 bookingGoal.currentStepIndex = createBookingIndex;
-                bookingGoal.collectedData.paymentCompleted = true;
-                bookingGoal.collectedData.quoteId = quoteId;
+                
+                // PRESERVE EXISTING SESSION DATA - this is critical for booking creation
+                bookingGoal.collectedData = {
+                    ...bookingGoal.collectedData, // Keep all existing data like selectedDate, selectedTime, etc.
+                    paymentCompleted: true,
+                    quoteId: quoteId
+                };
+                
+                console.log('[BotManager] Preserved existing session data:', Object.keys(bookingGoal.collectedData));
             }
         }
     }

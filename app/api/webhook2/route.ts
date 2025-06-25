@@ -16,8 +16,8 @@ import {
 import { getOrCreateChatContext, persistSessionState, START_BOOKING_PAYLOAD } from "@/lib/Juan-bot-engine/bot-manager-helpers";
 import { handleFaqOrChitchat } from "@/lib/Juan-bot-engine/step-handlers/faq-handler";
 import crypto from 'crypto';
-import { franc } from 'franc-min';
 import { IntelligentLLMService } from "@/lib/Juan-bot-engine/services/intelligent-llm-service";
+import { LanguageDetectionService } from "@/lib/Juan-bot-engine/services/language-detection";
 
 // Type guard to check if the result is an EscalationResult
 function isEscalationResult(result: EscalationResult | AdminCommandResult): result is EscalationResult {
@@ -76,113 +76,48 @@ function checkRateLimit(identifier: string): boolean {
 
 //Handles the GET request from Meta/WhatsApp to verify the webhook endpoint.
 export async function GET(req: NextRequest) {
-  console.log(`${LOG_PREFIX} ===== WEBHOOK VERIFICATION START =====`);
-
-  // 1. Verificar que el webhook esté habilitado en la configuración
   if (!USE_WABA_WEBHOOK) {
     console.warn(`${LOG_PREFIX} Webhook verification skipped: USE_WABA_WEBHOOK is not 'true'.`);
     return NextResponse.json({ message: "Webhook for juan-bot disabled" }, { status: 403 });
   }
 
-  // 2. Extraer parámetros de la URL
   const url = new URL(req.url);
   const hubMode = url.searchParams.get("hub.mode");
   const hubChallenge = url.searchParams.get("hub.challenge");
   const hubVerifyToken = url.searchParams.get("hub.verify_token");
-
-  // 3. Loguear los valores recibidos para depuración
-  console.log(`${LOG_PREFIX} Received verification params:`);
-  console.log(`${LOG_PREFIX} - hub.mode: ${hubMode}`);
-  console.log(`${LOG_PREFIX} - hub.verify_token (received): ${hubVerifyToken}`);
-  console.log(`${LOG_PREFIX} - hub.challenge (present): ${!!hubChallenge}`);
-  
-
-  // --- DEBUGGING STEP ---
-  console.log(`${LOG_PREFIX} Debug variable HELLO_WORLD: ${process.env.HELLO_WORLD}`);
-  // --- END DEBUGGING STEP ---
-  
-  // Loguear el token esperado
   const expectedToken = WHATSAPP_VERIFY_TOKEN;
-  console.log(`${LOG_PREFIX} - Expected token from WHATSAPP_VERIFY_TOKEN (env): ${expectedToken ? 'Exists' : 'MISSING!'}`);
 
-
-  // 4. Realizar las validaciones requeridas por Meta
-  const isSubscribeMode = hubMode === "subscribe";
-  if (!isSubscribeMode) {
-    console.error(`${LOG_PREFIX} ❌ Webhook verification FAILED: hub.mode is not 'subscribe'. Received: ${hubMode}`);
+  if (hubMode !== "subscribe") {
+    console.error(`${LOG_PREFIX} Webhook verification FAILED: Invalid hub.mode: ${hubMode}`);
     return NextResponse.json({ message: "Verification failed (mode)" }, { status: 403 });
   }
 
-  const hasChallenge = !!hubChallenge;
-  if (!hasChallenge) {
-    console.error(`${LOG_PREFIX} ❌ Webhook verification FAILED: hub.challenge is missing.`);
+  if (!hubChallenge) {
+    console.error(`${LOG_PREFIX} Webhook verification FAILED: Missing hub.challenge`);
     return NextResponse.json({ message: "Verification failed (challenge)" }, { status: 403 });
   }
 
-  const isTokenValid = hubVerifyToken === expectedToken;
-  if (!isTokenValid) {
-    console.error(`${LOG_PREFIX} ❌ Webhook verification FAILED: Invalid verify token.`);
-    console.error(`${LOG_PREFIX}    - Received: ${hubVerifyToken}`);
-    console.error(`${LOG_PREFIX}    - Expected from WHATSAPP_VERIFY_TOKEN: ${expectedToken}`);
+  if (hubVerifyToken !== expectedToken) {
+    console.error(`${LOG_PREFIX} Webhook verification FAILED: Invalid verify token`);
     return NextResponse.json({ message: "Verification failed (token)" }, { status: 403 });
   }
 
-  // 5. Si todo es correcto, devolver el challenge
-  console.log(`${LOG_PREFIX} ✅ Webhook verification PASSED. Returning challenge.`);
-  console.log(`${LOG_PREFIX} ===== WEBHOOK VERIFICATION END =====`);
+  console.log(`${LOG_PREFIX} Webhook verification PASSED`);
   return new NextResponse(hubChallenge, { status: 200 });
 }
 
 //Handles POST requests which contain WhatsApp webhook events (e.g., incoming messages).
 export async function POST(req: NextRequest) {
-  console.log(`${LOG_PREFIX} ===== WEBHOOK DEBUG START =====`);
-  console.log(`${LOG_PREFIX} Received a POST request at ${new Date().toISOString()}`);
-  console.log(`${LOG_PREFIX} Request URL: ${req.url}`);
-  console.log(`${LOG_PREFIX} Request method: ${req.method}`);
-  
-  // Log all headers
-  console.log(`${LOG_PREFIX} === REQUEST HEADERS ===`);
-  req.headers.forEach((value, key) => {
-    console.log(`${LOG_PREFIX} ${key}: ${value}`);
-  });
-  
-  // Log user agent specifically
-  const userAgent = req.headers.get('user-agent');
-  console.log(`${LOG_PREFIX} User-Agent: ${userAgent}`);
-  
-  // Check if it's from Meta/WhatsApp
-  const isFromMeta = userAgent?.includes('facebookplatform.com') || userAgent?.includes('WhatsApp');
-  console.log(`${LOG_PREFIX} Is from Meta/WhatsApp: ${isFromMeta}`);
-  
-  // Log client IP
   const clientIp = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || req.headers.get('x-client-ip') || 'unknown';
-  console.log(`${LOG_PREFIX} Client IP: ${clientIp}`);
-  
-  // Log webhook signature if present
   const signature = req.headers.get('x-hub-signature-256');
-  console.log(`${LOG_PREFIX} Webhook signature present: ${!!signature}`);
   
-  // Get and log raw body
   let rawBody = '';
   try {
     rawBody = await req.text();
-    console.log(`${LOG_PREFIX} === REQUEST BODY ===`);
-    console.log(`${LOG_PREFIX} Body length: ${rawBody.length} characters`);
-    console.log(`${LOG_PREFIX} Body preview: ${rawBody.substring(0, 500)}${rawBody.length > 500 ? '...' : ''}`);
-    
-    // Try to parse as JSON and log structure
-    try {
-      const parsedBody = JSON.parse(rawBody);
-      console.log(`${LOG_PREFIX} Body parsed successfully as JSON`);
-      console.log(`${LOG_PREFIX} Body object keys: ${Object.keys(parsedBody).join(', ')}`);
-    } catch (parseError) {
-      console.log(`${LOG_PREFIX} Body is not valid JSON: ${parseError}`);
-    }
   } catch (bodyError) {
     console.error(`${LOG_PREFIX} Error reading request body:`, bodyError);
+    return NextResponse.json({ message: "Error reading request body" }, { status: 400 });
   }
-  
-  console.log(`${LOG_PREFIX} ===== WEBHOOK DEBUG END =====`);
   
   if (!USE_WABA_WEBHOOK) {
     console.log(`${LOG_PREFIX} WABA Webhook for juan-bot is disabled. Skipping POST request.`);
@@ -203,10 +138,7 @@ export async function POST(req: NextRequest) {
     }
 
     const payload = JSON.parse(rawBody) as WebhookAPIBody;
-    console.log(`${LOG_PREFIX} POST request payload successfully parsed:`, JSON.stringify(payload, null, 2));
-
     const parsedEvent = parseWhatsappMessage(payload);
-    console.log(`${LOG_PREFIX} WhatsApp message parsed. Event:`, parsedEvent ? JSON.stringify(parsedEvent, null, 2) : "null");
 
     if (parsedEvent && "text" in parsedEvent && parsedEvent.senderId && parsedEvent.text && parsedEvent.text.trim()) {
       const parsedMessage = parsedEvent;
@@ -229,20 +161,15 @@ export async function POST(req: NextRequest) {
         
         const { context: chatContext, sessionId, userContext, historyForLLM, customerUser } = await getOrCreateChatContext(participant);
         
-        // --- Language Detection (Centralized) ---
-        try {
-          const existingLang = chatContext.participantPreferences.language;
-          if (!existingLang || existingLang === 'en') {
-            const langCode3 = franc(parsedMessage.text, { minLength: 3 });
-            const langMap: { [key: string]: string } = { 'spa': 'es', 'eng': 'en' };
-            const langCode2 = langMap[langCode3] || 'en';
-            if (existingLang !== langCode2) {
-              console.log(`${LOG_PREFIX} Language preference set to ${langCode2}`);
-              chatContext.participantPreferences.language = langCode2;
-            }
-          }
-        } catch (error) {
-          console.error(`${LOG_PREFIX} Error detecting language:`, error);
+        // --- Centralized Language Detection ---
+        const languageResult = await LanguageDetectionService.detectAndUpdateLanguage(
+          parsedMessage.text, 
+          chatContext, 
+          LOG_PREFIX
+        );
+        
+        if (languageResult.wasChanged) {
+          console.log(`${LOG_PREFIX} Language detection: ${languageResult.reason}`);
         }
         // --- End Language Detection ---
 
@@ -350,11 +277,12 @@ export async function POST(req: NextRequest) {
         console.error(`${LOG_PREFIX} Error processing message with Bot Manager for ${parsedMessage.senderId}:`, botError);
       }
     } else {
-      let reason = "Payload could not be parsed into an actionable message.";
-      if (parsedEvent && "id" in parsedEvent) {
-        reason = `Received a status update for message ${parsedEvent.id}, not an incoming message.`;
+      // Skip status updates and non-actionable messages (sent/delivered/read receipts)
+      if (parsedEvent && "type" in parsedEvent && parsedEvent.type === "status_update") {
+        // Silently skip status updates
+      } else {
+        console.log(`${LOG_PREFIX} Skipping processing: Payload could not be parsed into an actionable message.`);
       }
-      console.log(`${LOG_PREFIX} Skipping processing: ${reason}. Full parsed event:`, parsedEvent ? JSON.stringify(parsedEvent, null, 2) : "null");
     }
     
     return NextResponse.json({ status: "success - acknowledged by juan-bot v2" }, { status: 200 });
