@@ -18,6 +18,7 @@ export interface BusinessData {
     depositPercentage?: number;
     stripeConnectAccountId?: string;
     stripeAccountStatus?: 'pending' | 'active' | 'disabled';
+    preferredPaymentMethod?: string;
 }
 
 export class Business {
@@ -50,6 +51,7 @@ export class Business {
             "depositPercentage": this.data.depositPercentage,
             "stripeConnectAccountId": this.data.stripeConnectAccountId,
             "stripeAccountStatus": this.data.stripeAccountStatus,
+            "preferredPaymentMethod": this.data.preferredPaymentMethod,
             "createdAt": new Date().toISOString(),
             "updatedAt": new Date().toISOString()
         }
@@ -145,6 +147,7 @@ export class Business {
             "depositPercentage": businessData.depositPercentage,
             "stripeConnectAccountId": businessData.stripeConnectAccountId,
             "stripeAccountStatus": businessData.stripeAccountStatus,
+            "preferredPaymentMethod": businessData.preferredPaymentMethod,
             "updatedAt": new Date().toISOString()
         }
         
@@ -199,6 +202,7 @@ export class Business {
     get depositPercentage(): number | undefined { return this.data.depositPercentage; }
     get stripeConnectAccountId(): string | undefined { return this.data.stripeConnectAccountId; }
     get stripeAccountStatus(): 'pending' | 'active' | 'disabled' | undefined { return this.data.stripeAccountStatus; }
+    get preferredPaymentMethod(): string | undefined { return this.data.preferredPaymentMethod; }
 
     static async findByWhatsappNumber(whatsappNumber: string): Promise<Business | null> {
         console.log(`[Business] Finding business by WhatsApp number: ${whatsappNumber}`);

@@ -86,6 +86,12 @@ const BOOKING_TRANSLATIONS = {
       PROCESSING_CHOICE: 'Processing your choice...',
       CONFIRMING_DETAILS: 'Perfect! Let me confirm your service details...'
     },
+    TIME_LABELS: {
+      TODAY: 'Today',
+      TOMORROW: 'Tomorrow',
+      AM: 'am',
+      PM: 'pm'
+    },
     LIST_SECTIONS: {
       SERVICES: 'Services', // Short title for WhatsApp list (24 char limit)
       AVAILABLE_OPTIONS: 'Available Options'
@@ -192,6 +198,12 @@ const BOOKING_TRANSLATIONS = {
       CREATING_ACCOUNT: 'Creando tu cuenta...',
       PROCESSING_CHOICE: 'Procesando tu elección...',
       CONFIRMING_DETAILS: '¡Perfecto! Déjame confirmar los detalles de tu servicio...'
+    },
+    TIME_LABELS: {
+      TODAY: 'Hoy',
+      TOMORROW: 'Mañana',
+      AM: 'am',
+      PM: 'pm'
     },
     LIST_SECTIONS: {
       SERVICES: 'Servicios', // Short title for WhatsApp list (24 char limit)
@@ -471,21 +483,53 @@ export class BookingButtonGenerator {
       const mobileIcon = service.mobile ? '🚗 ' : '🏪 ';
       const description = service.description || '';
       
-      // Build description parts
-      const parts = [];
-      if (description) parts.push(description);
-      if (service.fixedPrice) parts.push(`$${service.fixedPrice}`);
-      if (service.durationEstimate) parts.push(`${service.durationEstimate}min`);
+      // Essential parts that must always show
+      const priceText = service.fixedPrice ? `$${service.fixedPrice}` : '';
+      const durationText = service.durationEstimate ? `${service.durationEstimate}min` : '';
+      const essentials = [priceText, durationText].filter(Boolean);
+      const essentialsText = essentials.join(' • ');
       
-      // Join with proper separators
-      const buttonDescription = parts.join(' • ');
+      // Calculate available space for description (WhatsApp limit ~72 chars, reserve space for essentials)
+      const maxDescriptionLength = 72 - essentialsText.length - (essentialsText ? 3 : 0); // 3 for ' • '
+      
+      let finalDescription = '';
+      if (description && maxDescriptionLength > 10) { // Only include description if we have meaningful space
+        const abbreviatedDesc = this.abbreviateServiceDescription(description, maxDescriptionLength);
+        finalDescription = essentialsText ? `${abbreviatedDesc} • ${essentialsText}` : abbreviatedDesc;
+      } else {
+        // If no space for description, just show essentials
+        finalDescription = essentialsText;
+      }
 
       return {
         buttonText: `${mobileIcon}${service.name}`,
-        buttonDescription: buttonDescription,
+        buttonDescription: finalDescription,
         buttonValue: service.id || 'error_service_id_missing'
       };
     });
+  }
+
+  // Intelligently truncate service descriptions while preserving essential info
+  static abbreviateServiceDescription(description: string, maxLength: number): string {
+    if (description.length <= maxLength) {
+      return description;
+    }
+
+    // Truncate at word boundaries to preserve readability
+    const words = description.split(' ');
+    let truncated = '';
+    
+    for (const word of words) {
+      const testLength = truncated + (truncated ? ' ' : '') + word + '...';
+      if (testLength.length <= maxLength) {
+        truncated += (truncated ? ' ' : '') + word;
+      } else {
+        break;
+      }
+    }
+    
+    // Only add ellipsis if we actually truncated
+    return truncated + (truncated.length < description.length ? '...' : '');
   }
 
   // Creates address confirmation buttons
@@ -706,7 +750,7 @@ class AvailabilityService {
       // Use all the whole hour slots we found (up to 2)
       const selectedSlots = wholeHourSlots;
       
-             // Format for display
+             // Format for display with localized text
        return selectedSlots.map((slot: { date: string; time: string }) => {
         const date = new Date(slot.date);
         const today = new Date();
@@ -715,23 +759,34 @@ class AvailabilityService {
         
         let dateText = '';
         if (date.toDateString() === today.toDateString()) {
-          dateText = 'Today';
+          dateText = getLocalizedText(chatContext, 'TIME_LABELS.TODAY');
         } else if (date.toDateString() === tomorrow.toDateString()) {
-          dateText = 'Tomorrow';
+          dateText = getLocalizedText(chatContext, 'TIME_LABELS.TOMORROW');
         } else {
-          dateText = date.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
+          // Use appropriate locale for date formatting
+          const language = getUserLanguage(chatContext);
+          const locale = language === 'es' ? 'es-ES' : 'en-GB';
+          dateText = date.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'short' });
         }
         
-        // Simple time formatting for whole hours
+        // Simple time formatting for whole hours with localized AM/PM
         const [hours] = slot.time.split(':');
         const hour24 = parseInt(hours);
         const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
-        const ampm = hour24 >= 12 ? 'pm' : 'am';
-        const timeText = `${hour12} ${ampm}`;
+        const ampm = hour24 >= 12 ? getLocalizedText(chatContext, 'TIME_LABELS.PM') : getLocalizedText(chatContext, 'TIME_LABELS.AM');
+        
+        // Format time text based on language
+        const language = getUserLanguage(chatContext);
+        let displayText = '';
+        if (language === 'es') {
+          displayText = `${dateText} a las ${hour12} ${ampm}`;
+        } else {
+          displayText = `${dateText} ${hour12} ${ampm}`;
+        }
         
         return {
           ...slot,
-          displayText: `${dateText} ${timeText}`
+          displayText: displayText
         };
       });
       
@@ -1033,14 +1088,16 @@ export const showDayBrowserHandler: IndividualStepHandler = {
           chatContext
         );
         
-        // Calculate display text for all days (for debugging)
+        // Calculate display text for all days with localization
         let displayText = '';
         if (i === 0) {
-          displayText = `Today`;
+          displayText = getLocalizedText(chatContext, 'TIME_LABELS.TODAY');
         } else if (i === 1) {
-          displayText = `Tomorrow`;
+          displayText = getLocalizedText(chatContext, 'TIME_LABELS.TOMORROW');
         } else {
-          displayText = date.toLocaleDateString('en-GB', { 
+          const language = getUserLanguage(chatContext);
+          const locale = language === 'es' ? 'es-ES' : 'en-GB';
+          displayText = date.toLocaleDateString(locale, { 
             weekday: 'short', day: 'numeric', month: 'short'
           });
         }
@@ -1629,22 +1686,29 @@ export const quoteSummaryHandler: IndividualStepHandler = {
       const ampm = parseInt(hour24) >= 12 ? 'PM' : 'AM';
       const formattedTime = `${hour12}:${selectedTime.split(':')[1]} ${ampm}`;
       
-      // Calculate deposit amount based on business percentage (only if business requires deposits)
+      // Calculate payment details using Quote model
       let depositAmount = savedQuoteData.depositAmount;
+      let remainingBalance = savedQuoteData.remainingBalance;
       let requiresDeposit = false;
       
-      if (!depositAmount) {
+      if (!depositAmount || !remainingBalance) {
         try {
-          const business = await Business.getById(businessId);
-          if (business.depositPercentage !== undefined && business.depositPercentage > 0) {
-            depositAmount = Math.round((quoteEstimation.totalJobCost * business.depositPercentage) / 100);
-            requiresDeposit = true;
-          }
+          const { Quote } = await import('@/lib/database/models/quote');
+          const quote = await Quote.getById(savedQuoteData.id);
+          const paymentDetails = await quote.calculatePaymentDetails();
+          
+          depositAmount = paymentDetails.depositAmount;
+          remainingBalance = paymentDetails.remainingBalance;
+          requiresDeposit = depositAmount !== null && depositAmount > 0;
+          
+          console.log('[QuoteSummary] Calculated payment details:', { depositAmount, remainingBalance, requiresDeposit });
         } catch (error) {
-          console.warn('[QuoteSummary] Could not fetch business deposit information');
+          console.warn('[QuoteSummary] Could not calculate payment details from Quote model:', error);
+          // Fallback to no deposit required
+          requiresDeposit = false;
         }
       } else {
-        requiresDeposit = true;
+        requiresDeposit = depositAmount > 0;
       }
       
       // Create detailed summary message using localized text
@@ -1686,6 +1750,7 @@ export const quoteSummaryHandler: IndividualStepHandler = {
           travelTimeEstimate,
           requiresDeposit,
           depositAmount: requiresDeposit ? depositAmount : undefined,
+          remainingBalance: remainingBalance,
           totalPaymentAmount: requiresDeposit && depositAmount ? depositAmount + 4 : undefined,
           bookingSummary: {
             serviceCost: quoteEstimation.serviceCost,
@@ -1693,6 +1758,7 @@ export const quoteSummaryHandler: IndividualStepHandler = {
             totalCost: quoteEstimation.totalJobCost,
             requiresDeposit,
             depositAmount: requiresDeposit ? depositAmount : undefined,
+            remainingBalance: remainingBalance,
             totalPaymentAmount: requiresDeposit && depositAmount ? depositAmount + 4 : undefined,
             duration,
             estimatedEndTime,
@@ -1730,8 +1796,8 @@ export const quoteSummaryHandler: IndividualStepHandler = {
       
       if (totalPaymentAmount) {
         const payDepositText = getUserLanguage(chatContext) === 'es' 
-          ? `💳 Pagar Depósito ($${totalPaymentAmount.toFixed(2)})`
-          : `💳 Pay Deposit ($${totalPaymentAmount.toFixed(2)})`;
+          ? `💳 Pagar $${totalPaymentAmount.toFixed(2)}`
+          : `💳 Pay $${totalPaymentAmount.toFixed(2)}`;
         
         return [
           { buttonText: payDepositText, buttonValue: 'confirm_quote' },
@@ -1754,7 +1820,7 @@ export const handleQuoteChoiceHandler: IndividualStepHandler = {
   defaultChatbotPrompt: 'Processing your choice...',
   // Conditionally auto-advance: only when quote is confirmed, not when showing edit options
   
-  // Accept confirmation or edit choice
+  // Accept confirmation, edit choice, or payment completion
   validateUserInput: async (userInput) => {
     console.log('[HandleQuoteChoice] Validating input:', userInput);
     if (userInput === 'confirm_quote' || userInput === 'edit_quote') {
@@ -1763,6 +1829,12 @@ export const handleQuoteChoiceHandler: IndividualStepHandler = {
     
     // Handle edit sub-choices (service, time)
     if (userInput === 'edit_service' || userInput === 'edit_time') {
+      return { isValidInput: true };
+    }
+    
+    // Handle payment completion messages
+    if (userInput && userInput.startsWith('PAYMENT_COMPLETED_')) {
+      console.log('[HandleQuoteChoice] Payment completion message detected - accepting for processing');
       return { isValidInput: true };
     }
     
@@ -1777,6 +1849,12 @@ export const handleQuoteChoiceHandler: IndividualStepHandler = {
     console.log('[HandleQuoteChoice] Processing input:', validatedInput);
     
     if (validatedInput === 'confirm_quote') {
+      // Clear any previous payment errors when retrying
+      const isRetry = currentGoalData.paymentError;
+      if (isRetry) {
+        console.log('[HandleQuoteChoice] Clearing previous payment error for retry');
+      }
+      
       const requiresDeposit = currentGoalData.requiresDeposit || currentGoalData.bookingSummary?.requiresDeposit;
       
       if (requiresDeposit) {
@@ -1840,23 +1918,48 @@ export const handleQuoteChoiceHandler: IndividualStepHandler = {
           }
 
           const language = getUserLanguage(chatContext);
+          
+          // Get balance breakdown from Quote model or goal data
+          const serviceTotal = currentGoalData.selectedService?.fixedPrice || 0;
+          const remainingBalance = currentGoalData.remainingBalance || currentGoalData.bookingSummary?.remainingBalance || (serviceTotal - depositAmount);
+          
+          // Get business preferred payment method
+          let preferredPaymentMethod = language === 'es' ? 'efectivo o tarjeta' : 'cash or card';
+          
+          if (businessId) {
+            try {
+              const business = await Business.getById(businessId);
+              if (business.preferredPaymentMethod) {
+                preferredPaymentMethod = business.preferredPaymentMethod;
+              }
+            } catch (error) {
+              console.warn('[HandleQuoteChoice] Could not fetch business payment method');
+            }
+          }
+          
           const paymentMessage = language === 'es' 
             ? `💳 *¡Listo para Reservar!*\n\n` +
               `Para asegurar tu cita, por favor completa el pago del depósito de reserva:\n\n` +
-              `💰 *Detalles del Pago:*\n` +
-              `   • Depósito: $${depositAmount.toFixed(2)}\n` +
+              `💰 *Desglose del Pago:*\n` +
+              `   • Servicio total: $${serviceTotal.toFixed(2)}\n` +
+              `   • Depósito (ahora): $${depositAmount.toFixed(2)}\n` +
               `   • Tarifa de reserva: $4.00\n` +
-              `   • *Total: $${totalChargeAmount.toFixed(2)}*\n\n` +
+              `   • *Total a pagar ahora: $${totalChargeAmount.toFixed(2)}*\n\n` +
+              `📍 *Balance restante: $${remainingBalance.toFixed(2)}*\n` +
+              `   💳 A pagar en la cita (${preferredPaymentMethod})\n\n` +
               `🔗 *Enlace de Pago:*\n${paymentResult.paymentLink}\n\n` +
               `¡Después del pago, serás redirigido de vuelta a WhatsApp y tu reserva será confirmada automáticamente!\n\n` +
               `✅ Pago seguro y protegido por Stripe\n` +
               `🔒 Tu pago va directamente a ${businessName}`
             : `💳 *Ready to Book!*\n\n` +
               `To secure your appointment, please complete your booking deposit payment:\n\n` +
-              `💰 *Payment Details:*\n` +
-              `   • Deposit: $${depositAmount.toFixed(2)}\n` +
+              `💰 *Payment Breakdown:*\n` +
+              `   • Service total: $${serviceTotal.toFixed(2)}\n` +
+              `   • Deposit (now): $${depositAmount.toFixed(2)}\n` +
               `   • Booking fee: $4.00\n` +
-              `   • *Total: $${totalChargeAmount.toFixed(2)}*\n\n` +
+              `   • *Total to pay now: $${totalChargeAmount.toFixed(2)}*\n\n` +
+              `📍 *Remaining balance: $${remainingBalance.toFixed(2)}*\n` +
+              `   💳 Pay at appointment (${preferredPaymentMethod})\n\n` +
               `🔗 *Payment Link:*\n${paymentResult.paymentLink}\n\n` +
               `After payment, you'll be redirected back to WhatsApp and your booking will be confirmed automatically!\n\n` +
               `✅ Safe & secure payment powered by Stripe\n` +
@@ -1866,6 +1969,7 @@ export const handleQuoteChoiceHandler: IndividualStepHandler = {
             ...currentGoalData,
             paymentLinkGenerated: true,
             paymentLink: paymentResult.paymentLink,
+            paymentError: false, // Clear any previous payment errors
             shouldAutoAdvance: false, // Don't auto-advance, wait for payment
             confirmationMessage: paymentMessage
           };
@@ -1918,6 +2022,21 @@ export const handleQuoteChoiceHandler: IndividualStepHandler = {
         navigateBackTo: 'showAvailableTimes',
         shouldAutoAdvance: true, // Auto-advance to navigate back
         confirmationMessage: 'Let\'s pick a different time...'
+      };
+    }
+    
+    // Handle payment completion
+    if (validatedInput && validatedInput.startsWith('PAYMENT_COMPLETED_')) {
+      console.log('[HandleQuoteChoice] Payment completion detected - advancing to booking creation');
+      const quoteId = validatedInput.replace('PAYMENT_COMPLETED_', '');
+      console.log(`[HandleQuoteChoice] Payment completed for quote: ${quoteId}`);
+      
+      return {
+        ...currentGoalData,
+        paymentCompleted: true,
+        paymentLinkGenerated: false, // Clear payment link state
+        shouldAutoAdvance: true, // Auto-advance to createBooking step
+        confirmationMessage: 'Payment received! Creating your booking...'
       };
     }
     
@@ -2463,7 +2582,7 @@ export const askEmailHandler: IndividualStepHandler = {
 // Step: Creates the actual booking - single responsibility
 export const createBookingHandler: IndividualStepHandler = {
   defaultChatbotPrompt: 'Creating your booking...',
-  autoAdvance: true, // Always advance to confirmation screen
+  // No autoAdvance - this is the final step that shows full confirmation
   
   // Accept empty input (auto-advanced) or payment confirmation message
   validateUserInput: async (userInput) => {
@@ -2542,21 +2661,57 @@ export const createBookingHandler: IndividualStepHandler = {
       const calendarSettings = await CalendarSettings.getByUserAndBusiness(providerId, businessId);
       const providerTimezone = calendarSettings?.settings?.timezone || 'UTC';
 
-      // Create booking dateTime from selectedDate and selectedTime in goal data
-      const selectedDate = currentGoalData.selectedDate as string;
-      const selectedTime = currentGoalData.selectedTime as string;
+      // Create booking dateTime from selectedDate and selectedTime in goal data or fallback to quote
+      let selectedDate = currentGoalData.selectedDate as string;
+      let selectedTime = currentGoalData.selectedTime as string;
+      let bookingDTObject: DateTime;
       
       if (!selectedDate || !selectedTime) {
-        console.error('[CreateBooking] Missing booking date/time in goal data');
-        return {
-          ...currentGoalData,
-          bookingError: 'Missing booking date or time information.'
-        };
+        console.warn('[CreateBooking] Missing booking date/time in session data, falling back to quote proposedDateTime');
+        
+        // Fallback to quote's proposedDateTime
+        if (quote.proposedDateTime) {
+          bookingDTObject = DateTime.fromISO(quote.proposedDateTime, { zone: providerTimezone });
+          console.log(`[CreateBooking] Using quote proposedDateTime: ${quote.proposedDateTime}`);
+        } else {
+          console.error('[CreateBooking] No booking date/time available in session data or quote');
+          return {
+            ...currentGoalData,
+            bookingError: 'Missing booking date or time information.'
+          };
+        }
+      } else {
+        // Create booking dateTime object from session data in the correct timezone
+        // Ensure date is in YYYY-MM-DD format and time is in HH:mm format
+        let cleanSelectedDate = selectedDate;
+        let cleanSelectedTime = selectedTime;
+        
+        // Fix malformed date (if it contains timestamp info, extract just the date)
+        if (selectedDate.includes('T')) {
+          cleanSelectedDate = selectedDate.split('T')[0];
+          console.log(`[CreateBooking] Fixed malformed selectedDate from "${selectedDate}" to "${cleanSelectedDate}"`);
+        }
+        
+        // Fix malformed time (if it starts with T, remove it)
+        if (selectedTime.startsWith('T')) {
+          cleanSelectedTime = selectedTime.substring(1);
+          console.log(`[CreateBooking] Fixed malformed selectedTime from "${selectedTime}" to "${cleanSelectedTime}"`);
+        }
+        
+        const bookingDateTimeString = `${cleanSelectedDate}T${cleanSelectedTime}`;
+        bookingDTObject = DateTime.fromISO(bookingDateTimeString, { zone: providerTimezone });
+        console.log(`[CreateBooking] Using session dateTime: ${bookingDateTimeString}`);
+        
+        // Validate the resulting DateTime object
+        if (!bookingDTObject.isValid) {
+          console.error(`[CreateBooking] Invalid dateTime created from session data: ${bookingDateTimeString}`);
+          console.error(`[CreateBooking] DateTime parse error: ${bookingDTObject.invalidReason}`);
+          return {
+            ...currentGoalData,
+            bookingError: 'Invalid booking date or time format. Please try booking again.'
+          };
+        }
       }
-
-      // Create booking dateTime object in the correct timezone
-      const bookingDateTimeString = `${selectedDate}T${selectedTime}`;
-      const bookingDTObject = DateTime.fromISO(bookingDateTimeString, { zone: providerTimezone });
       
       const bookingData = {
         quoteId,
@@ -2593,21 +2748,38 @@ export const createBookingHandler: IndividualStepHandler = {
           travelCost: travelCostEstimate || 0,
       };
       
-              const confirmationMessage = isPaymentCompletion 
-          ? (getUserLanguage(chatContext) === 'es' 
-              ? '¡Gracias por tu pago! Tu reserva está confirmada.' 
-              : 'Thank you for your payment! Your booking is confirmed.')
-          : (getUserLanguage(chatContext) === 'es' 
-              ? 'Reserva creada.' 
-              : 'Booking created.');
-        
-        return {
-          ...currentGoalData,
-          persistedBooking: savedBooking,
-          bookingConfirmationDetails: bookingConfirmationDetails, // Pass details to the next step
-          goalStatus: isPaymentCompletion ? 'completed' : currentGoalData.goalStatus, // Complete goal if from payment
-          confirmationMessage
-        };
+      // Generate the full booking confirmation message
+      const t = BOOKING_TRANSLATIONS[getUserLanguage(chatContext)];
+      
+      // Include payment completion message if this was from payment
+      const paymentMessage = isPaymentCompletion 
+        ? (getUserLanguage(chatContext) === 'es' 
+            ? '💳 ¡Gracias por tu pago!\n\n' 
+            : '💳 Thank you for your payment!\n\n')
+        : '';
+      
+      const confirmationMessage = `${paymentMessage}${t.BOOKING_CONFIRMATION.TITLE}\n\n` +
+          `${t.BOOKING_CONFIRMATION.SERVICE} ${bookingConfirmationDetails.serviceName}\n` +
+          `${t.BOOKING_CONFIRMATION.DATE} ${bookingConfirmationDetails.formattedDate}\n` +
+          `${t.BOOKING_CONFIRMATION.TIME} ${bookingConfirmationDetails.formattedTime}\n` +
+          `${t.BOOKING_CONFIRMATION.LOCATION} ${bookingConfirmationDetails.location}\n\n` +
+          `${t.BOOKING_CONFIRMATION.PRICING}\n` +
+          `   ${t.BOOKING_CONFIRMATION.SERVICE_COST} $${bookingConfirmationDetails.serviceCost.toFixed(2)}\n` +
+          `${bookingConfirmationDetails.travelCost > 0 ? `   ${t.BOOKING_CONFIRMATION.TRAVEL_COST} $${bookingConfirmationDetails.travelCost.toFixed(2)}\n` : ''}` +
+          `   ${t.BOOKING_CONFIRMATION.TOTAL_COST} $${bookingConfirmationDetails.totalCost.toFixed(2)}\n\n` +
+          `${t.BOOKING_CONFIRMATION.BOOKING_ID} ${bookingConfirmationDetails.bookingId}\n\n` +
+          `${t.BOOKING_CONFIRMATION.LOOKING_FORWARD}`;
+      
+      console.log(`[CreateBooking] Generated full confirmation for booking ${bookingConfirmationDetails.bookingId}. Goal completed.`);
+      
+      return {
+        ...currentGoalData,
+        goalStatus: 'completed', // Complete the goal since this is the final step
+        persistedBooking: savedBooking,
+        bookingConfirmationDetails: bookingConfirmationDetails,
+        paymentCompleted: isPaymentCompletion,
+        confirmationMessage
+      };
 
     } catch (error) {
       console.error('[CreateBooking] Error during booking creation process:', error);
@@ -2634,7 +2806,7 @@ export const bookingConfirmationHandler: IndividualStepHandler = {
     },
 
     processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
-        const { bookingConfirmationDetails } = currentGoalData;
+        const { bookingConfirmationDetails, paymentCompleted } = currentGoalData;
 
         if (!bookingConfirmationDetails) {
             console.error('[BookingConfirmation] Missing booking details to display.');
@@ -2646,7 +2818,15 @@ export const bookingConfirmationHandler: IndividualStepHandler = {
         }
 
         const t = BOOKING_TRANSLATIONS[getUserLanguage(chatContext)];
-        const confirmationMessage = `${t.BOOKING_CONFIRMATION.TITLE}\n\n` +
+        
+        // Include payment completion message if this was from payment
+        const paymentMessage = paymentCompleted 
+          ? (getUserLanguage(chatContext) === 'es' 
+              ? '💳 ¡Gracias por tu pago!\n\n' 
+              : '💳 Thank you for your payment!\n\n')
+          : '';
+        
+        const confirmationMessage = `${paymentMessage}${t.BOOKING_CONFIRMATION.TITLE}\n\n` +
             `${t.BOOKING_CONFIRMATION.SERVICE} ${bookingConfirmationDetails.serviceName}\n` +
             `${t.BOOKING_CONFIRMATION.DATE} ${bookingConfirmationDetails.formattedDate}\n` +
             `${t.BOOKING_CONFIRMATION.TIME} ${bookingConfirmationDetails.formattedTime}\n` +
