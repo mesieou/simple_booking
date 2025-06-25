@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import BookingSummary from '@components/sections/BookingSummary';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import ProviderTitle from '@/app/context/ProviderTitle';
 import { useFormContext } from '@/lib/rename-categorise-better/utils/FormContext';
 import ViewForm from '@/app/context/viewform';
@@ -14,7 +14,8 @@ const SIZE_OPTIONS = [
   { key: 'house', label: 'House', tarifa: 120, luggers: 3, vehiculo: 'Truck' },
 ];
 
-export default function BookingMovingStep({ params }: { params: Promise<{ providerId: string }> }) {
+export default function BookingMovingStep(props: { params: Promise<{ providerId: string }> }) {
+  const params = use(props.params);
   const router = useRouter();
   const { data, setData } = useFormContext();
   const [moving, setMoving] = useState('');
@@ -25,10 +26,8 @@ export default function BookingMovingStep({ params }: { params: Promise<{ provid
   useEffect(() => {
     // If there is no businessid in the context, get it from params and save it in the context
     if (!data.businessid) {
-      params.then(p => {
-        setProviderId(p.providerId);
-        setData(prev => ({ ...prev, businessid: p.providerId }));
-      });
+      setProviderId(params.providerId);
+      setData(prev => ({ ...prev, businessid: params.providerId }));
     } else {
       setProviderId(data.businessid);
     }

@@ -2,6 +2,7 @@ import { createClient } from "../supabase/server"
 import { Business } from "./business";
 import { v4 as uuidv4 } from 'uuid';
 import { handleModelError } from '@/lib/general-helpers/error';
+import { getServiceRoleClient } from "../supabase/service-role";
 
 export type UserRole = "admin" | "provider" | "customer" | "admin/provider";
 
@@ -348,51 +349,29 @@ export class User {
         try {
             console.log(`[User] Finding customer user by WhatsApp number: ${customerWhatsappNumber}`);
             
-            const supa = await createClient();
+            // Use the service role client to bypass RLS for this global search
+            const supa = getServiceRoleClient();
             
             // Normalize the input WhatsApp number for comparison
             const normalizedInputWhatsappNumber = PhoneNumberUtils.normalize(customerWhatsappNumber);
             console.log(`[User] Normalized input customer WhatsApp number: ${normalizedInputWhatsappNumber}`);
             
-            // Query users through auth.users to access user_metadata
-            const { data: authUsers, error: authError } = await supa.auth.admin.listUsers();
-            
-            if (authError) {
-                console.error('[User] Error fetching auth users to find customer by WhatsApp number:', authError);
-                return null;
-            }
-            
-            if (!authUsers || authUsers.users.length === 0) {
-                console.log('[User] No auth users found in database');
-                return null;
-            }
-            
-            // Find matching user by normalized WhatsApp number in user_metadata
-            const matchedAuthUser = authUsers.users.find(authUser => {
-                const userWhatsappNumber = authUser.user_metadata?.whatsappNumber;
-                if (!userWhatsappNumber) return false;
-                
-                const normalizedUserWhatsappNumber = PhoneNumberUtils.normalize(userWhatsappNumber);
-                console.log(`[User] Comparing customer's WhatsApp ${normalizedInputWhatsappNumber} with user ${authUser.id} WhatsApp: ${normalizedUserWhatsappNumber}`);
-                return normalizedUserWhatsappNumber === normalizedInputWhatsappNumber;
-            });
-            
-            if (!matchedAuthUser) {
-                console.log('[User] No customer user found with this WhatsApp number:', normalizedInputWhatsappNumber);
-                return null;
-            }
-            
-            console.log(`[User] Found customer user with this WhatsApp number, auth user ID: ${matchedAuthUser.id}`);
-            
-            // Now get the corresponding user record from the users table
+            // Query the public.users table directly on the normalized number
+
             const { data: userData, error: userError } = await supa
                 .from('users')
                 .select('*')
-                .eq('id', matchedAuthUser.id)
-                .single();
-                
+                .eq('whatsAppNumberNormalized', normalizedInputWhatsappNumber)
+                .maybeSingle(); // Use maybeSingle() as it's possible no user is found
+            
+            if (userError) {
+                console.error('[User] Error finding customer user by WhatsApp number:', userError);
+                // Don't throw, just return null as the user might be new.
+                return null;
+            }
+
             if (!userData) {
-                console.log('[User] No user record found for auth user:', matchedAuthUser.id);
+                console.log('[User] No customer user found with this WhatsApp number:', normalizedInputWhatsappNumber);
                 return null;
             }
             
@@ -401,8 +380,9 @@ export class User {
             const user = new User(userData.firstName, userData.lastName, userData.role, userData.businessId);
             user.id = userData.id; // Set the actual database ID
             return user;
+
         } catch (error) {
-            console.error('[User] Error finding customer user by WhatsApp number:', error);
+            console.error('[User] Exception in findUserByCustomerWhatsappNumber:', error);
             return null;
         }
     }
