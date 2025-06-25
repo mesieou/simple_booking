@@ -1,6 +1,7 @@
 import { createClient } from "../supabase/server";
 import { v4 as uuidv4 } from 'uuid';
 import { handleModelError } from '@/lib/general-helpers/error';
+import { getServiceRoleClient } from "../supabase/service-role";
 
 // Represents a single message within the allMessages array
 export interface ChatMessage {
@@ -81,7 +82,7 @@ export class ChatSession {
   }
 
   static async create(input: ChatSessionCreateInput): Promise<ChatSession> {
-    const supa = await createClient();
+    const supa = getServiceRoleClient(); // Use service role client to bypass RLS for creation
     const newId = uuidv4();
     const now = new Date().toISOString();
 
@@ -121,7 +122,7 @@ export class ChatSession {
       console.warn(`[ChatSessionModel] Attempted to fetch with invalid UUID: ${id}`);
       return null;
     }
-    const supa = await createClient();
+    const supa = getServiceRoleClient(); // Use service role client for all backend operations
     const { data, error } = await supa
       .from('chatSessions')
       .select('*')
@@ -148,7 +149,7 @@ export class ChatSession {
         // For a getter, returning null might be more expected by callers if parameters are invalid.
         return null; 
     }
-    const supa = await createClient();
+    const supa = getServiceRoleClient(); // Use service role client for all backend operations
     const threshold = new Date(Date.now() - sessionTimeoutHours * 60 * 60 * 1000).toISOString();
 
     const { data, error } = await supa
@@ -173,7 +174,7 @@ export class ChatSession {
       console.warn(`[ChatSessionModel] Attempted to update with invalid UUID: ${id}`);
       return null;
     }
-    const supa = await createClient();
+    const supa = getServiceRoleClient(); // Use service role client for all backend operations
     const dataToUpdate: ChatSessionUpdateInput & { updatedAt: string } = {
       ...input,
       updatedAt: new Date().toISOString(), // Always update the timestamp
@@ -214,7 +215,7 @@ export class ChatSession {
       console.warn("[ChatSessionModel] Channel, channelUserId, and currentSessionCreatedAt are required to get previous session.");
       return null;
     }
-    const supa = await createClient();
+    const supa = getServiceRoleClient(); // Use service role client for all backend operations
     try {
       const { data, error } = await supa
         .from('chatSessions')
@@ -247,7 +248,7 @@ export class ChatSession {
       console.warn("[ChatSessionModel] Channel and channelUserId are required to end inactive sessions.");
       return;
     }
-    const supa = await createClient();
+    const supa = getServiceRoleClient(); // Use service role client for all backend operations
     const threshold = new Date(Date.now() - sessionTimeoutHours * 60 * 60 * 1000).toISOString();
 
     // Fire-and-forget query to close any lingering sessions for this user that have expired
@@ -271,7 +272,7 @@ export class ChatSession {
       handleModelError('Invalid UUID for delete ChatSession', new Error('Invalid UUID for delete'));
       return; 
     }
-    const supa = await createClient();
+    const supa = getServiceRoleClient(); // Use service role client for all backend operations
     const { error } = await supa.from('chatSessions').delete().eq('id', id);
 
     if (error) {
@@ -283,7 +284,7 @@ export class ChatSession {
     sessionId: string,
     status: 'active' | 'completed' | 'expired' | 'escalated'
   ): Promise<ChatSession> {
-    const supa = await createClient();
+    const supa = getServiceRoleClient(); // Use service role client for all backend operations
     const { data, error } = await supa
       .from('chatSessions')
       .update({ status: status, updated_at: new Date().toISOString() })
@@ -303,7 +304,7 @@ export class ChatSession {
   }
 
   static async getAll(): Promise<ChatSession[]> {
-    const supa = await createClient();
+    const supa = getServiceRoleClient(); // Use service role client for all backend operations
     const { data, error } = await supa
       .from('chatSessions')
       .select('*');
@@ -314,4 +315,4 @@ export class ChatSession {
 
     return data.map((row: ChatSessionDBSchema) => new ChatSession(row));
   }
-} 
+}
