@@ -139,6 +139,8 @@ import {
     askEmailHandler,
     createBookingHandler,
     bookingConfirmationHandler,
+    // FAQ handler
+    handleFaqQuestionHandler,
 } from './step-handlers/customer-booking-steps';
 
 export const botTasks: Record<string, IndividualStepHandler> = {
@@ -166,6 +168,8 @@ export const botTasks: Record<string, IndividualStepHandler> = {
   askEmail: askEmailHandler,
   createBooking: createBookingHandler,
   bookingConfirmationHandler: bookingConfirmationHandler,
+  // FAQ handler
+  handleFaqQuestion: handleFaqQuestionHandler,
 };
 
 // --- Helper function for step skipping ---

@@ -95,14 +95,15 @@ AVAILABLE FLOW ACTIONS:
 1. "continue" - User is providing expected input for current step
 2. "advance" - User provided valid input, ready to move to next step  
 3. "go_back" - User wants to change/modify previous choices
-4. "switch_topic" - User wants to start a completely different conversation
+4. "switch_topic" - User wants to start a completely different conversation or booking
 5. "restart" - User wants to restart the current booking process
 
 ANALYSIS RULES:
 - If user provides direct answer to current step question → "continue" or "advance"
 - If user says "change", "go back", "modify", "different" about previous choices → "go_back"
-- If user mentions different service, completely new topic → "switch_topic"
 - If user says "start over", "restart", "begin again" → "restart"
+- **FAQ QUESTIONS should be "continue"**: Questions like "what services?", "what are your prices?", "what hours?", "how much does it cost?" are informational questions WITHIN the current booking flow, not topic switches
+- **ONLY use "switch_topic" for actual new bookings**: "I want to book something else", "let's make another appointment", "different booking entirely"
 - Consider conversation context and what was previously discussed
 
 Return ONLY a JSON object with this structure:
