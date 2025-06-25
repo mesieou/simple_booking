@@ -1,10 +1,11 @@
 import { createClient } from '../supabase/server';
+import { getServiceRoleClient } from '../supabase/service-role';
 import { type Business } from './business';
 import { type ChatSession } from './chat-session';
 
 const NOTIFICATIONS_TABLE_NAME = 'notifications';
 
-export type NotificationStatus = 'pending' | 'provided_help' | 'ignored' | 'wrong_activation';
+export type NotificationStatus = 'pending' | 'attending' | 'provided_help' | 'ignored' | 'wrong_activation';
 
 export interface NotificationData {
   id: string;
@@ -51,7 +52,7 @@ export class Notification {
     message: string;
     status: NotificationStatus;
   }): Promise<Notification> {
-    const supabase = await createClient();
+    const supabase = getServiceRoleClient();
     const { data: row, error } = await supabase
       .from(this._tableName)
       .insert({
@@ -126,5 +127,67 @@ export class Notification {
     }
 
     return this.fromRow(updatedRow);
+  }
+
+  /**
+   * Checks if there is at least one pending escalation for a given chat session.
+   * This is used to determine if the bot should be blocked from responding.
+   * @param chatSessionId The ID of the chat session to check
+   * @returns Promise<boolean> - true if there's a pending escalation, false otherwise
+   */
+  static async hasPendingEscalation(chatSessionId: string): Promise<boolean> {
+    try {
+      const supabase = getServiceRoleClient();
+      const { data, error } = await supabase
+        .from(this._tableName)
+        .select('id')
+        .eq('chatSessionId', chatSessionId)
+        .in('status', ['pending', 'attending']) // Bot should be blocked for both states
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error(`[NotificationDB] Error checking for pending escalation:`, error);
+        // In case of error, we'll assume no pending escalation to avoid blocking the bot unnecessarily
+        return false;
+      }
+
+      // If data exists, there's at least one pending or attending escalation
+      return !!data;
+    } catch (error) {
+      console.error(`[NotificationDB] Exception checking for pending escalation:`, error);
+      // In case of exception, we'll assume no pending escalation to avoid blocking the bot unnecessarily
+      return false;
+    }
+  }
+
+  /**
+   * Gets the specific escalation status for a given chat session.
+   * This allows for different bot behaviors based on the escalation state.
+   * @param chatSessionId The ID of the chat session to check
+   * @returns Promise<NotificationStatus | null> - the status if escalation exists, null otherwise
+   */
+  static async getEscalationStatus(chatSessionId: string): Promise<NotificationStatus | null> {
+    try {
+      const supabase = getServiceRoleClient();
+      const { data, error } = await supabase
+        .from(this._tableName)
+        .select('status')
+        .eq('chatSessionId', chatSessionId)
+        .in('status', ['pending', 'attending']) // Only active escalations
+        .order('createdAt', { ascending: false }) // Get the most recent
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error(`[NotificationDB] Error checking escalation status:`, error);
+        return null;
+      }
+
+      return data?.status || null;
+    } catch (error) {
+      console.error(`[NotificationDB] Exception checking escalation status:`, error);
+      return null;
+    }
   }
 } 

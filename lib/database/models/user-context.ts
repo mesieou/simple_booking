@@ -128,6 +128,29 @@ export class UserContext {
   }
 
   /**
+   * Retrieves a user context by their unique channel identifier AND business identifier.
+   * This is the preferred method for multi-tenant environments to ensure context isolation.
+   */
+  static async getByChannelUserIdAndBusinessId(channelUserId: string, businessId: string): Promise<UserContext | null> {
+    if (!channelUserId || !businessId) {
+      console.warn('[UserContextModel] channelUserId and businessId are required for getByChannelUserIdAndBusinessId');
+      return null;
+    }
+    const supa = getServiceRoleClient();
+    const { data, error } = await supa
+      .from('userContexts')
+      .select('*')
+      .eq('channelUserId', channelUserId)
+      .eq('businessId', businessId)
+      .maybeSingle();
+
+    if (error) {
+      handleModelError(`Failed to fetch user context for channelUserId ${channelUserId} and businessId ${businessId}`, error);
+    }
+    return data ? new UserContext(data as UserContextDBSchema) : null;
+  }
+
+  /**
    * Updates an existing user context record based on its unique channel identifier.
    * This will be called after every turn to persist the new state.
    */

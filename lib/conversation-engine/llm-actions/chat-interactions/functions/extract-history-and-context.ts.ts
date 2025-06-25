@@ -83,9 +83,9 @@ export async function extractSessionHistoryAndContext(
   const { session: sessionToUse, isNew } = sessionResolution;
 
   // Step 2: Get or create the user's stateful context.
-  let userContext = await UserContext.getByChannelUserId(channelUserId);
+  let userContext = await UserContext.getByChannelUserIdAndBusinessId(channelUserId, businessId);
   if (!userContext) {
-    console.log(`[HistoryExtractor] No UserContext found for ${channelUserId}, creating one.`);
+    console.log(`[HistoryExtractor] No UserContext found for ${channelUserId} and business ${businessId}, creating one.`);
     userContext = await UserContext.create({
       channelUserId: channelUserId,
       businessId: businessId,

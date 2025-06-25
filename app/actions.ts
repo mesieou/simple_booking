@@ -204,4 +204,63 @@ export async function getMessagesForUser(channelUserId: string): Promise<ChatMes
         createdAt: msg.timestamp || new Date().toISOString(),
         senderRole: msg.role === 'user' ? 'customer' : msg.role,
     }));
+}
+
+export async function getUserBusinessId(): Promise<string | null> {
+    const supabase = createClient();
+
+    const { data: authData } = await supabase.auth.getSession();
+    if (!authData.session) {
+        return null;
+    }
+
+    const { data: userData, error } = await supabase
+        .from("users")
+        .select("businessId")
+        .eq("id", authData.session.user.id)
+        .single();
+
+    if (error || !userData?.businessId) {
+        console.error("Error fetching user's businessId:", error);
+        return null;
+    }
+
+    return userData.businessId;
+}
+
+export async function getBusinessConversations(): Promise<Array<{ channelUserId: string; updatedAt: string }>> {
+    const supabase = createClient();
+    const businessId = await getUserBusinessId();
+    
+    if (!businessId) {
+        return [];
+    }
+
+    const { data: chatSessions, error } = await supabase
+        .from("chatSessions")
+        .select("channelUserId, updatedAt")
+        .eq("businessId", businessId)
+        .order("updatedAt", { ascending: false });
+
+    if (error) {
+        console.error("Error fetching chat sessions:", error);
+        return [];
+    }
+
+    if (!chatSessions) {
+        return [];
+    }
+
+    // Group sessions by channelUserId to create unique conversations
+    const conversationsMap = new Map<string, { channelUserId: string; updatedAt: string }>();
+    for (const session of chatSessions) {
+        if (!conversationsMap.has(session.channelUserId)) {
+            conversationsMap.set(session.channelUserId, {
+                channelUserId: session.channelUserId,
+                updatedAt: session.updatedAt,
+            });
+        }
+    }
+
+    return Array.from(conversationsMap.values());
 } 

@@ -315,4 +315,173 @@ export class ChatSession {
 
     return data.map((row: ChatSessionDBSchema) => new ChatSession(row));
   }
+
+  /**
+   * Get all chat sessions for a specific business
+   */
+  static async getByBusinessId(businessId: string): Promise<ChatSession[]> {
+    if (!this.isValidUUID(businessId)) {
+      console.warn(`[ChatSessionModel] Attempted to fetch with invalid businessId UUID: ${businessId}`);
+      return [];
+    }
+    
+    const supa = getServiceRoleClient();
+    const { data, error } = await supa
+      .from('chatSessions')
+      .select('*')
+      .eq('businessId', businessId)
+      .order('updatedAt', { ascending: false });
+
+    if (error) {
+      handleModelError(`Failed to fetch chat sessions for business ${businessId}`, error);
+    }
+
+    return data.map((row: ChatSessionDBSchema) => new ChatSession(row));
+  }
+
+  /**
+   * Get unique conversations for a business (deduplicated by channelUserId)
+   */
+  static async getConversationsForBusiness(businessId: string): Promise<Array<{
+    channelUserId: string;
+    updatedAt: string;
+  }>> {
+    if (!this.isValidUUID(businessId)) {
+      console.warn(`[ChatSessionModel] Attempted to fetch conversations with invalid businessId UUID: ${businessId}`);
+      return [];
+    }
+    
+    const supa = getServiceRoleClient();
+    const { data, error } = await supa
+      .from('chatSessions')
+      .select('channelUserId, updatedAt')
+      .eq('businessId', businessId)
+      .order('updatedAt', { ascending: false });
+
+    if (error) {
+      handleModelError(`Failed to fetch conversations for business ${businessId}`, error);
+    }
+
+    // Create conversations map to deduplicate by channelUserId
+    const conversationsMap = new Map<string, { channelUserId: string; updatedAt: string }>();
+    
+    if (data) {
+      for (const session of data) {
+        if (!conversationsMap.has(session.channelUserId)) {
+          conversationsMap.set(session.channelUserId, {
+            channelUserId: session.channelUserId,
+            updatedAt: session.updatedAt,
+          });
+        }
+      }
+    }
+
+    return Array.from(conversationsMap.values());
+  }
+
+  /**
+   * Get channelUserId from sessionId with business security check
+   */
+  static async getChannelUserIdBySessionId(sessionId: string, businessId: string): Promise<string | null> {
+    if (!this.isValidUUID(sessionId)) {
+      console.warn(`[ChatSessionModel] Attempted to fetch with invalid sessionId UUID: ${sessionId}`);
+      return null;
+    }
+    
+    if (!this.isValidUUID(businessId)) {
+      console.warn(`[ChatSessionModel] Attempted to fetch with invalid businessId UUID: ${businessId}`);
+      return null;
+    }
+
+    const supa = getServiceRoleClient();
+    const { data, error } = await supa
+      .from('chatSessions')
+      .select('channelUserId')
+      .eq('id', sessionId)
+      .eq('businessId', businessId) // Security check to ensure session belongs to the business
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return null; // No rows returned
+      console.error(`[ChatSessionModel] Error fetching session for preselection: ${error.message}`);
+      return null;
+    }
+
+    return data?.channelUserId || null;
+  }
+
+  /**
+   * High-level method to get all conversation data needed for the chat interface
+   * Combines user business lookup, conversations fetching, and session preselection
+   */
+  static async getBusinessConversationsData(
+    userId: string,
+    preselectedSessionId?: string
+  ): Promise<{
+    conversations: Array<{ channelUserId: string; updatedAt: string }>;
+    preselectedChannelUserId?: string;
+  } | null> {
+    try {
+      const supa = getServiceRoleClient();
+
+      // First, get the businessId of the logged-in user
+      const { data: userData, error: userError } = await supa
+        .from("users")
+        .select("businessId")
+        .eq("id", userId)
+        .single();
+
+      if (userError || !userData?.businessId) {
+        console.error("Error fetching user's businessId:", userError);
+        return null;
+      }
+
+      const businessId = userData.businessId;
+
+      // Get all chat sessions for this business
+      const { data: chatSessions, error: sessionsError } = await supa
+        .from("chatSessions")
+        .select("id, channelUserId, updatedAt")
+        .eq("businessId", businessId)
+        .order("updatedAt", { ascending: false });
+
+      if (sessionsError) {
+        console.error("Error fetching chat sessions:", sessionsError);
+        return null;
+      }
+
+      // Group sessions by channelUserId to create unique conversations
+      const conversationsMap = new Map<string, { channelUserId: string; updatedAt: string }>();
+      if (chatSessions) {
+        for (const session of chatSessions) {
+          if (!conversationsMap.has(session.channelUserId)) {
+            conversationsMap.set(session.channelUserId, {
+              channelUserId: session.channelUserId,
+              updatedAt: session.updatedAt,
+            });
+          }
+        }
+      }
+
+      const conversations = Array.from(conversationsMap.values());
+      let preselectedChannelUserId: string | undefined = undefined;
+
+      // If a session ID is specified, find its corresponding channelUserId
+      if (preselectedSessionId && chatSessions) {
+        const targetSession = chatSessions.find(session => session.id === preselectedSessionId);
+        if (targetSession) {
+          preselectedChannelUserId = targetSession.channelUserId;
+        }
+      }
+
+      return {
+        conversations,
+        preselectedChannelUserId,
+      };
+
+    } catch (error) {
+      console.error("Error in getBusinessConversationsData:", error);
+      return null;
+    }
+  }
 }
