@@ -1,6 +1,7 @@
 import { Business } from "./business";
 import { User } from "./user";
 import { createClient } from "../supabase/server"
+import { getServiceRoleClient } from "../supabase/service-role";
 import { v4 as uuidv4 } from 'uuid';
 import { handleModelError } from '@/lib/general-helpers/error';
 
@@ -90,11 +91,14 @@ export class Quote {
     }
 
     //creates a Quote in supa
-    async add(): Promise<QuoteData> {
+    async add(options?: { useServiceRole?: boolean }): Promise<QuoteData> {
         // Calculate all payment details before saving
         await this.calculatePaymentDetails();
 
-        const supa = await createClient();
+        // Use service role client for bot operations or when explicitly requested
+        // This bypasses RLS for scenarios like bot-created quotes where no user auth context exists
+        const supa = options?.useServiceRole ? getServiceRoleClient() : await createClient();
+        
         const quote = {
             "id": this.data.id || uuidv4(),
             "pickUp": this.data.pickUp,
@@ -113,6 +117,11 @@ export class Quote {
             "createdAt": new Date().toISOString(),
             "updatedAt": new Date().toISOString()
         }
+        
+        if (options?.useServiceRole) {
+            console.log('[Quote.add] Using service role client (bypasses RLS for quote creation)');
+        }
+        
         const { data, error } = await supa.from("quotes").insert(quote).select().single();
         if(error) {
             handleModelError("Failed to create quote", error);

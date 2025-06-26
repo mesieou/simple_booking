@@ -66,7 +66,9 @@ export class User {
         whatsappNumber?: string; 
         skipProviderValidation?: boolean; // Allow skipping for seed scripts
     }) {
-        const supa = await createClient();
+        // Use service role for ALL operations in user creation
+        // This avoids RLS context mismatch between auth and database operations
+        const adminSupa = getServiceRoleClient();
 
         // Validate: prevent multiple providers per business (unless explicitly skipped)
         if (!options?.skipProviderValidation && PROVIDER_ROLES.includes(this.role)) {
@@ -95,7 +97,7 @@ export class User {
 
         // --- Find or Create Auth User ---
         let authUser;
-        const { data: { users }, error: listError } = await supa.auth.admin.listUsers();
+        const { data: { users }, error: listError } = await adminSupa.auth.admin.listUsers();
         if(listError) handleModelError("Failed to list auth users", listError);
         
         const existingAuthUser = users.find(u => u.email === email);
@@ -105,7 +107,7 @@ export class User {
             authUser = existingAuthUser;
         } else {
             console.log(`[User.add] No existing auth user found. Creating new one.`);
-            const { data: newAuthData, error: createError } = await supa.auth.admin.createUser({
+            const { data: newAuthData, error: createError } = await adminSupa.auth.admin.createUser({
                 email: email,
                 password: password,
                 email_confirm: true,
@@ -127,15 +129,26 @@ export class User {
             businessId: this.businessId,
         };
 
-        const { data, error } = await supa
+        // Debug logging for bot operations
+        console.log('[User.add] About to upsert user profile:', userProfile);
+        console.log('[User.add] Using adminSupa client (bypasses RLS for user creation)');
+        
+        const { data, error } = await adminSupa
             .from("users")
             .upsert(userProfile)
             .select()
             .single();
 
         if (error) {
-            // If profile upsert fails, we don't necessarily need to delete the auth user anymore,
-            // but we should still report the error.
+            // Enhanced error logging for debugging
+            console.error('[User.add] Upsert failed with error:', error);
+            console.error('[User.add] Error details:', {
+                message: error.message,
+                code: error.code,
+                details: error.details,
+                hint: error.hint
+            });
+            console.error('[User.add] Failed userProfile:', userProfile);
             handleModelError("Failed to upsert user profile", error);
         }
 
