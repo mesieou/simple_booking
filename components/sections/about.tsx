@@ -2,37 +2,73 @@
 
 "use client";
 
-import { motion } from "framer-motion";
-import React from "react";
-import { useLanguage } from "@/lib/rename-categorise-better/utils/translations/language-context";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@components/ui/card';
 
-const About = () => {
-  const { t } = useLanguage();
-  
+export default function About() {
+  const features = [
+    { 
+      key: 'feature_booking', 
+      title: 'RESERVA EN LÍNEA',
+      description: 'Sistema de reservas en línea fácil de usar para tus clientes' 
+    },
+    { 
+      key: 'feature_schedule', 
+      title: 'GESTIÓN DE HORARIOS',
+      description: 'Administra tu disponibilidad y horarios de trabajo' 
+    },
+    { 
+      key: 'feature_chatbot', 
+      title: 'CHATBOT INTELIGENTE',
+      description: 'Asistente virtual que ayuda a tus clientes con reservas' 
+    },
+    { 
+      key: 'feature_roles', 
+      title: 'GESTIÓN DE ROLES',
+      description: 'Control de acceso y permisos para diferentes usuarios' 
+    },
+    { 
+      key: 'feature_interface', 
+      title: 'INTERFAZ INTUITIVA',
+      description: 'Diseño moderno y fácil de navegar para todos los usuarios' 
+    },
+  ];
+
   return (
-    <motion.section
-      className="max-w-2xl mx-auto my-12 p-8 bg-card rounded-lg shadow-md"
-      initial={{ scale: 0.5, opacity: 0 }}
-      whileInView={{ scale: 1, opacity: 1 }}
-      transition={{ duration: 1.2, type: "spring" }}
-      viewport={{ once: false, amount: 0.2 }}
-    >
-      <h2 className="text-3xl font-bold mb-4 text-primary">Skedy</h2>
-      <p className="mb-4 text-lg text-foreground/90">
-        {t('description')}
-      </p>
-      <ul className="list-disc pl-6 text-foreground/80 mb-4">
-        <li>{t('feature_booking')}</li>
-        <li>{t('feature_schedule')}</li>
-        <li>{t('feature_chatbot')}</li>
-        <li>{t('feature_roles')}</li>
-        <li>{t('feature_interface')}</li>
-      </ul>
-      <p className="text-foreground/80">
-        {t('mission')}
-      </p>
-    </motion.section>
-  );
-};
+    <section className="py-16">
+      <div className="container mx-auto px-4">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold mb-4">Sobre Nosotros</h2>
+          <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+            Somos una plataforma innovadora que simplifica la gestión de reservas y citas para empresas de todos los tamaños. Nuestro objetivo es conectar a profesionales con sus clientes de manera eficiente y sin complicaciones.
+          </p>
+        </div>
 
-export default About; 
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+          {features.map((feature, index) => (
+            <Card key={index} className="text-center">
+              <CardHeader>
+                <CardTitle className="text-lg">{feature.title}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CardDescription>{feature.description}</CardDescription>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        <div className="text-center">
+          <Card className="max-w-4xl mx-auto">
+            <CardHeader>
+              <CardTitle className="text-2xl">Nuestra Misión</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CardDescription className="text-lg">
+                Transformar la forma en que las empresas gestionan sus citas y reservas, proporcionando herramientas intuitivas que ahorran tiempo y mejoran la experiencia del cliente.
+              </CardDescription>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </section>
+  );
+} 

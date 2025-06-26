@@ -1,14 +1,10 @@
 'use client';
 
-
 import Video from 'next-video';
 import botDemo from '/videos/bot-demo.mp4';
 import JoinWaitlist from "@components/sections/waitlist-form";
-import { useLanguage } from "@/lib/rename-categorise-better/utils/translations/language-context";
 
 export default function Header() {
-  const { t } = useLanguage();
-
   return (
     <div className="flex flex-col gap-16 items-center">
       <div className="flex flex-col md:flex-row gap-8 justify-center w-full items-center">
@@ -22,9 +18,9 @@ export default function Header() {
 
         <div className="flex flex-col justify-evenly">
           <p className="text-3xl lg:text-4xl !leading-tight mx-auto max-w-xl text-center">
-            {t('title')}{" "}
-            <span className="bg-primary px-1 rounded-md">{t('bookings')}</span> {t('and')}{" "}
-            <span className="bg-secondary px-1 rounded-md">{t('calendars')}</span> {t('with_ai')}
+            Streamline your{" "}
+            <span className="bg-primary px-1 rounded-md">bookings</span> and{" "}
+            <span className="bg-secondary px-1 rounded-md">calendars</span> with AI
           </p>
 
           <div className="md:mt-20">
