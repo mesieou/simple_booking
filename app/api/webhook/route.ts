@@ -22,8 +22,7 @@ import { WhatsappSender } from "@/lib/conversation-engine/whatsapp/whatsapp-mess
 import { type ParsedMessage, type BotResponse } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
 import { 
     handleEscalationOrAdminCommand, 
-    EscalationResult, 
-    AdminCommandResult 
+    EscalationResult
 } from "@/lib/conversation-engine/juan-bot-engine-v2/escalation/handler";
 import { getOrCreateChatContext, persistSessionState, START_BOOKING_PAYLOAD } from "@/lib/conversation-engine/juan-bot-engine-v2/bot-manager-helpers";
 import { handleFaqOrChitchat } from "@/lib/conversation-engine/juan-bot-engine-v2/step-handlers/faq-handler";
@@ -34,10 +33,7 @@ import { ChatMessage, ChatSession } from '@/lib/database/models/chat-session';
 import { Business } from '@/lib/database/models/business';
 import { UserContext } from "@/lib/database/models/user-context";
 
-// Type guard to check if the result is an EscalationResult
-function isEscalationResult(result: EscalationResult | AdminCommandResult): result is EscalationResult {
-    return 'isEscalated' in result;
-}
+// No type guard needed anymore - handleEscalationOrAdminCommand only returns EscalationResult
 
 export const dynamic = "force-dynamic";
 const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN;
@@ -131,35 +127,50 @@ export async function POST(req: NextRequest) {
         if (escalationStatus) {
             console.log(`${LOG_PREFIX} Bot is in escalation mode for session ${sessionId}. Status: ${escalationStatus}`);
 
-            // Save the user's message to history (always do this)
-            if (chatContext.currentConversationSession) {
-                await persistSessionState(
-                    sessionId, 
-                    userContext, 
-                    chatContext.currentConversationSession, 
-                    undefined, // No active goal
-                    parsedMessage.text || '', 
-                    '', // No bot response during escalation
-                    historyForLLM
-                );
-            }
-
             // Different behavior based on escalation status
             if (escalationStatus === 'pending') {
-                // Staff hasn't taken control yet - send waiting message
+                // Staff hasn't taken control yet - send waiting message and save to history
                 const language = chatContext.participantPreferences.language === 'es' ? 'es' : 'en';
                 const waitingMessage = language === 'es' 
                   ? "Un agente ya ha sido notificado y te atenderá en breve. Por favor, espera un momento."
                   : "An agent has been notified and will assist you shortly. Please wait a moment.";
 
+                console.log(`${LOG_PREFIX} Sending waiting message and saving to history: "${waitingMessage}"`);
                 const sender = new WhatsappSender();
                 await sender.sendMessage(parsedMessage.senderId, { text: waitingMessage }, parsedMessage.recipientId);
 
+                // Save BOTH user's message AND bot's waiting response to history
+                if (chatContext.currentConversationSession) {
+                    await persistSessionState(
+                        sessionId, 
+                        userContext, 
+                        chatContext.currentConversationSession, 
+                        undefined, // No active goal
+                        parsedMessage.text || '', 
+                        waitingMessage, // Save the waiting message to history
+                        historyForLLM
+                    );
+                }
+
                 return NextResponse.json({ status: 'ok', message: 'Message received and saved during pending escalation.' });
             } else if (escalationStatus === 'attending') {
-                // Staff has taken control - bot stays completely silent
-                console.log(`${LOG_PREFIX} Staff is attending session ${sessionId}. Bot remains silent.`);
-                return NextResponse.json({ status: 'ok', message: 'Message received and saved during staff assistance.' });
+                // Staff has taken control - save user message but don't respond
+                console.log(`${LOG_PREFIX} Staff is attending session ${sessionId}. Saving user message but bot stays silent.`);
+                
+                // Save ONLY the user's message to history (no bot response when staff is attending)
+                if (chatContext.currentConversationSession) {
+                    await persistSessionState(
+                        sessionId, 
+                        userContext, 
+                        chatContext.currentConversationSession, 
+                        undefined, // No active goal
+                        parsedMessage.text || '', 
+                        '', // No bot response during staff assistance
+                        historyForLLM
+                    );
+                }
+
+                return NextResponse.json({ status: 'ok', message: 'User message saved during staff assistance.' });
             }
         }
         
@@ -175,7 +186,7 @@ export async function POST(req: NextRequest) {
         }
         // --- End Language Detection ---
 
-        // --- Step 1: Check for Escalation or Admin Command (only if no active escalation) ---
+        // --- Step 1: Check for Escalation (only if no active escalation) ---
         if (chatContext.currentConversationSession && !escalationStatus) {
             const escalationResult = await handleEscalationOrAdminCommand(
                 parsedMessage.text,
@@ -184,40 +195,29 @@ export async function POST(req: NextRequest) {
                 userContext,
                 historyForLLM,
                 customerUser,
-                parsedMessage.recipientId
+                parsedMessage.recipientId,
+                parsedMessage.userName
             );
 
-            if (isEscalationResult(escalationResult)) {
-                if (escalationResult.isEscalated) {
-                    console.log(`${LOG_PREFIX} Message handled by escalation system. Reason: ${escalationResult.reason}`);
-                    if (escalationResult.response) {
-                        const sender = new WhatsappSender();
-                        await sender.sendMessage(parsedMessage.senderId, escalationResult.response, parsedMessage.recipientId);
-                        console.log(`${LOG_PREFIX} Sent escalation response to ${parsedMessage.senderId}.`);
-                        
-                        chatContext.currentConversationSession.sessionStatus = 'escalated';
-                        await persistSessionState(
-                            sessionId, 
-                            userContext, 
-                            chatContext.currentConversationSession, 
-                            undefined, 
-                            parsedMessage.text || '', 
-                            escalationResult.response.text || '',
-                            historyForLLM
-                        );
-                    }
-                    return NextResponse.json({ status: "success - handled by escalation system" }, { status: 200 });
+            if (escalationResult.isEscalated) {
+                console.log(`${LOG_PREFIX} Message handled by escalation system. Reason: ${escalationResult.reason}`);
+                if (escalationResult.response) {
+                    const sender = new WhatsappSender();
+                    await sender.sendMessage(parsedMessage.senderId, escalationResult.response, parsedMessage.recipientId);
+                    console.log(`${LOG_PREFIX} Sent escalation response to ${parsedMessage.senderId}.`);
+                    
+                    chatContext.currentConversationSession.sessionStatus = 'escalated';
+                    await persistSessionState(
+                        sessionId, 
+                        userContext, 
+                        chatContext.currentConversationSession, 
+                        undefined, 
+                        parsedMessage.text || '', 
+                        escalationResult.response.text || '',
+                        historyForLLM
+                    );
                 }
-            } else { // It's an AdminCommandResult
-                if (escalationResult.isHandled) {
-                    console.log(`${LOG_PREFIX} Message handled by admin command system.`);
-                    if (escalationResult.response) {
-                        const sender = new WhatsappSender();
-                        await sender.sendMessage(parsedMessage.senderId, escalationResult.response, parsedMessage.recipientId);
-                        console.log(`${LOG_PREFIX} Sent admin command response to ${parsedMessage.senderId}.`);
-                    }
-                    return NextResponse.json({ status: "success - handled by admin system" }, { status: 200 });
-                }
+                return NextResponse.json({ status: "success - handled by escalation system" }, { status: 200 });
             }
         }
         

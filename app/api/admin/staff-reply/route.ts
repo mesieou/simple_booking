@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Get businessPhoneNumberId using intelligent multi-approach strategy
-    let businessPhoneNumberId: string | undefined;
+    let businessPhoneNumberId: string | null | undefined;
 
     // Approach 1: Get from business data (most reliable for multi-tenant)
     const business = await Business.getById(sessionData.businessId);

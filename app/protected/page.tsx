@@ -39,13 +39,16 @@ export default async function ProtectedPage({
   const initialConversations: Conversation[] = conversationData.conversations.map(conv => ({
     channelUserId: conv.channelUserId,
     updatedAt: conv.updatedAt,
+    hasEscalation: conv.hasEscalation,
+    escalationStatus: conv.escalationStatus,
+    sessionId: conv.sessionId,
   }));
 
   return (
     <div className="w-full max-w-7xl mx-auto p-4 flex flex-col">
       <h1 className="text-2xl font-bold mb-4 text-white">Your Conversations</h1>
-      {/* This container gives the chat component a fixed height relative to the viewport */}
-      <div className="h-[70vh]">
+      {/* Container with proper height calculation to avoid footer overlap */}
+      <div className="h-[calc(100vh-200px)] min-h-[500px]">
         <ChatInterface
           initialConversations={initialConversations}
           preselectedChannelUserId={conversationData.preselectedChannelUserId}
