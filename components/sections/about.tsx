@@ -2,37 +2,54 @@
 
 "use client";
 
-import { motion } from "framer-motion";
-import React from "react";
-import { useLanguage } from "@/lib/rename-categorise-better/utils/translations/language-context";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@components/ui/card';
+import { t } from "@/lib/rename-categorise-better/utils/translations";
 
-const About = () => {
-  const { t } = useLanguage();
-  
+export default function About() {
+  const features = [
+    { key: 'feature_booking', description: t('about.feature_booking') },
+    { key: 'feature_schedule', description: t('about.feature_schedule') },
+    { key: 'feature_chatbot', description: t('about.feature_chatbot') },
+    { key: 'feature_roles', description: t('about.feature_roles') },
+    { key: 'feature_interface', description: t('about.feature_interface') },
+  ];
+
   return (
-    <motion.section
-      className="max-w-2xl mx-auto my-12 p-8 bg-card rounded-lg shadow-md"
-      initial={{ scale: 0.5, opacity: 0 }}
-      whileInView={{ scale: 1, opacity: 1 }}
-      transition={{ duration: 1.2, type: "spring" }}
-      viewport={{ once: false, amount: 0.2 }}
-    >
-      <h2 className="text-3xl font-bold mb-4 text-primary">Skedy</h2>
-      <p className="mb-4 text-lg text-foreground/90">
-        {t('description')}
-      </p>
-      <ul className="list-disc pl-6 text-foreground/80 mb-4">
-        <li>{t('feature_booking')}</li>
-        <li>{t('feature_schedule')}</li>
-        <li>{t('feature_chatbot')}</li>
-        <li>{t('feature_roles')}</li>
-        <li>{t('feature_interface')}</li>
-      </ul>
-      <p className="text-foreground/80">
-        {t('mission')}
-      </p>
-    </motion.section>
-  );
-};
+    <section className="py-16">
+      <div className="container mx-auto px-4">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold mb-4">{t('about')}</h2>
+          <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+            {t('about.description')}
+          </p>
+        </div>
 
-export default About; 
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+          {features.map((feature, index) => (
+            <Card key={index} className="text-center">
+              <CardHeader>
+                <CardTitle className="text-lg">{feature.key.replace('feature_', '').replace(/_/g, ' ').toUpperCase()}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CardDescription>{feature.description}</CardDescription>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        <div className="text-center">
+          <Card className="max-w-4xl mx-auto">
+            <CardHeader>
+              <CardTitle className="text-2xl">Our Mission</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CardDescription className="text-lg">
+                {t('about.mission')}
+              </CardDescription>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </section>
+  );
+} 

@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { MessageCircle, TrendingUp, Calendar, Users } from 'lucide-react';
-import { useLanguage } from '@/lib/rename-categorise-better/utils/translations/language-context';
 
 const features_app = [
   {
@@ -44,7 +43,7 @@ const features_app = [
 ] as const;
 
 export default function Features_App() {
-  const { t } = useLanguage();
+  
 
   return (
     <section className="relative py-24 overflow-hidden backdrop-blur-md">
@@ -78,12 +77,12 @@ export default function Features_App() {
 
                   {/* Title */}
                   <h3 className="text-xl font-bold text-foreground mb-5 leading-tight">
-                    {t(`features.${feature.key}.title`)}
+                    {feature.title}
                   </h3>
 
                   {/* Description */}
                   <p className="text-muted-foreground leading-relaxed mb-6 text-sm">
-                    {t(`features.${feature.key}.description`)}
+                    {feature.description}
                   </p>
 
                   {/* Link */}
@@ -91,7 +90,7 @@ export default function Features_App() {
                     href={feature.link}
                     className="inline-flex items-center gap-2 text-primary font-semibold transition-all duration-300 hover:text-primary/80 group-hover:translate-x-1"
                   >
-                    {t('features.learn_more')}
+                    Learn more
                     <svg
                       className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1"
                       fill="none"

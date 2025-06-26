@@ -57,7 +57,9 @@ export async function GET(req: NextRequest) {
     description: "Handles Stripe webhook events for payment processing",
     supportedEvents: [
       "checkout.session.completed",
-      "payment_link.payment_failed"
+      "payment_intent.payment_failed",
+      "checkout.session.expired",
+      "account.updated"
     ],
     environment: {
       stripeConfigured: !!process.env.STRIPE_SECRET_KEY,

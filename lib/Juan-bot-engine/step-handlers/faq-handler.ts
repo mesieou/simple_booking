@@ -19,7 +19,8 @@ export async function handleFaqOrChitchat(
   messageHistory: ChatMessage[]
 ): Promise<BotResponse> {
   const businessId = chatContext.currentParticipant.associatedBusinessId;
-  console.log(`[handleFaqOrChitchat] Handling FAQ/Chitchat for business ${businessId}`);
+  const userLanguage = chatContext.participantPreferences.language || 'en';
+  console.log(`[handleFaqOrChitchat] Handling FAQ/Chitchat for business ${businessId} in language: ${userLanguage}`);
 
   if (!businessId) {
     console.error("[handleFaqOrChitchat] Critical: associatedBusinessId is missing from chatContext.");
@@ -29,6 +30,11 @@ export async function handleFaqOrChitchat(
   }
 
   let chatbotResponseText: string;
+
+  // Create language instruction for AI
+  const languageInstruction = userLanguage === 'es' 
+    ? 'IMPORTANTE: Responde SIEMPRE en ESPAÑOL.' 
+    : 'IMPORTANT: Respond ALWAYS in ENGLISH.';
 
   try {
     const ragResults = await RAGfunction(businessId, userMessage);
@@ -54,10 +60,23 @@ export async function handleFaqOrChitchat(
       console.log(`[handleFaqOrChitchat] Found ${ragResults.length} relevant document(s). Using them to generate response.`);
       const context = ragResults.map(r => r.content).join('\n---\n');
       systemPrompt = `You are a helpful assistant for a booking system. A user is asking a question. Use the conversation history for context to understand the question fully. 
-      Formulate your answer based ONLY on the provided "Information" section. Be conversational and friendly.
-      If the information doesn't seem to contain the answer, say that you don't have that specific information but you can try to help with something else.
       
-      **IMPORTANT**: After answering the question, ALWAYS offer to help the user book an appointment, as this is your main function.
+      **CRITICAL: Give clear, direct answers based on the provided information.**
+      
+      **SERVICE AVAILABILITY RULES:**
+      - If user asks about a service that's NOT in the information → clearly say "No, we don't offer [service]"
+      - If user asks about a service that IS in the information → provide details about that service
+      - Always mention what services ARE available after saying what's not available
+      
+      **EXAMPLES:**
+      - User asks "do you do haircuts" but info only shows manicures → "No, we don't offer haircut services. We specialize in manicures and pedicures."
+      - User asks "do you do manicures" and info shows manicures → "Yes! We offer several manicure services including..."
+      
+      **NEVER say "I don't have specific information" - be direct and clear.**
+      
+      ${languageInstruction}
+      
+      **IMPORTANT**: After answering the question, ALWAYS offer to help the user book an appointment for the services we DO offer.
       
       **FORMATTING RULES FOR WHATSAPP**:
       - To make text bold, wrap it in single asterisks: *your bold text*.
@@ -78,6 +97,8 @@ export async function handleFaqOrChitchat(
       console.log(`[handleFaqOrChitchat] No relevant document found. Treating as chitchat.`);
       systemPrompt = `You are a friendly and helpful assistant for a booking system. The user is making small talk or asking a general question. 
       Use the conversation history for context and respond conversationally and naturally.
+      
+      ${languageInstruction}
       
       **IMPORTANT**: After your response, ALWAYS offer to help the user book an appointment, as this is your main function.
 
@@ -101,14 +122,18 @@ export async function handleFaqOrChitchat(
     chatbotResponseText = "I'm sorry, I had a little trouble understanding that. Could you try asking in a different way?";
   }
   
+  // Create localized button text
+  const buttonText = userLanguage === 'es' ? 'Reservar una cita' : 'Book an Appointment';
+  const buttonDescription = userLanguage === 'es' ? 'Iniciar el proceso de reserva' : 'Start the booking process';
+
   return {
     text: chatbotResponseText,
     buttons: [
       {
-        buttonText: "Book an Appointment",
+        buttonText,
         buttonValue: START_BOOKING_PAYLOAD,
         buttonType: "postback",
-        buttonDescription: "Start the booking process",
+        buttonDescription,
       },
     ],
   };

@@ -2,7 +2,7 @@
 'use client';
 
 import React from "react";
-import { useLanguage } from "@/lib/rename-categorise-better/utils/translations/language-context";
+import { t } from "@/lib/rename-categorise-better/utils/translations";
 
 interface PreciosProps {
     base?: number;
@@ -10,8 +10,6 @@ interface PreciosProps {
 }
 
 const Precios: React.FC<PreciosProps> = ({ base = 0, labor_min = 0 }) => {
-    const { t } = useLanguage();
-    
     return (
         <div
             className="flex items-baseline space-x-2 text-black font-bold text-2xl md:text-3xl"
