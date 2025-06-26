@@ -1,4 +1,3 @@
-import { t } from "@/lib/rename-categorise-better/utils/translations";
 import { usePathname } from 'next/navigation';
 import { useProvider } from '@/app/context/ProviderContext';
 
@@ -7,12 +6,12 @@ export default function Menu() {
   const { providerId } = useProvider();
 
   const links = [
-    { href: '/', label: t('home') },
-    { href: '/about', label: t('about') },
-    { href: '/services', label: t('services') },
+    { href: '/', label: 'Inicio' },
+    { href: '/about', label: 'Sobre Nosotros' },
+    { href: '/services', label: 'Servicios' },
     providerId
-      ? { href: `/${providerId}/booking/distance`, label: t('booking') }
-      : { href: '#', label: t('booking'), disabled: true },
+      ? { href: `/${providerId}/booking/distance`, label: 'Reservar' }
+      : { href: '#', label: 'Reservar', disabled: true },
   ];
 
   return (

@@ -2,7 +2,6 @@
 'use client';
 
 import React from "react";
-import { t } from "@/lib/rename-categorise-better/utils/translations";
 
 interface PreciosProps {
     base?: number;
@@ -18,7 +17,7 @@ const Precios: React.FC<PreciosProps> = ({ base = 0, labor_min = 0 }) => {
             <span>${base}</span>
             <span>+</span>
             <span>${labor_min}</span>
-            <span className="text-base font-normal ml-1 align-bottom text-black/80">{t('labor')}</span>
+            <span className="text-base font-normal ml-1 align-bottom text-black/80">per minute</span>
         </div>
     );
 };

@@ -4,7 +4,6 @@
 import { useState } from 'react';
 import { Button } from '@components/ui/button';
 import { Input } from '@components/ui/input';
-import { t } from "@/lib/rename-categorise-better/utils/translations";
 
 export default function JoinWaitlist() {
   const [email, setEmail] = useState('');
@@ -20,7 +19,7 @@ export default function JoinWaitlist() {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       setStatus('error');
-      setErrorMessage(t('waitlist.error_invalid_email'));
+      setErrorMessage('Please enter a valid email address');
       return;
     }
 
@@ -32,7 +31,7 @@ export default function JoinWaitlist() {
       setEmail('');
     } catch (error) {
       setStatus('error');
-      setErrorMessage(t('waitlist.error_generic'));
+      setErrorMessage('Something went wrong. Please try again.');
     }
   };
 
@@ -40,13 +39,13 @@ export default function JoinWaitlist() {
     <div className="w-full max-w-md mx-auto">
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="text-center">
-          <h2 className="text-2xl font-bold mb-2">{t('waitlist.title')}</h2>
+          <h2 className="text-2xl font-bold mb-2">Join the Waitlist</h2>
         </div>
         
         <div className="flex gap-2">
           <Input
             type="email"
-            placeholder={t('waitlist.email_placeholder')}
+            placeholder="Enter your email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             disabled={status === 'loading'}
@@ -58,13 +57,13 @@ export default function JoinWaitlist() {
             disabled={status === 'loading'}
             className="whitespace-nowrap"
           >
-            {status === 'loading' ? t('message.loading') : t('waitlist.submit')}
+            {status === 'loading' ? 'Loading...' : 'Join Waitlist'}
           </Button>
         </div>
 
         {status === 'success' && (
           <p className="text-green-600 text-sm text-center">
-            {t('waitlist.success')}
+            Thanks! You've been added to the waitlist.
           </p>
         )}
 
