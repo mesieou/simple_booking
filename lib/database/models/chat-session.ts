@@ -1,10 +1,11 @@
 import { createClient } from "../supabase/server";
 import { v4 as uuidv4 } from 'uuid';
 import { handleModelError } from '@/lib/general-helpers/error';
+import { getServiceRoleClient } from "../supabase/service-role";
 
 // Represents a single message within the allMessages array
 export interface ChatMessage {
-  role: 'user' | 'bot';
+  role: 'user' | 'bot' | 'staff';
   content: string;
   timestamp?: string; // ISO date string, when the message was recorded in allMessages
 }
@@ -81,7 +82,7 @@ export class ChatSession {
   }
 
   static async create(input: ChatSessionCreateInput): Promise<ChatSession> {
-    const supa = await createClient();
+    const supa = getServiceRoleClient(); // Use service role client to bypass RLS for creation
     const newId = uuidv4();
     const now = new Date().toISOString();
 
@@ -121,7 +122,7 @@ export class ChatSession {
       console.warn(`[ChatSessionModel] Attempted to fetch with invalid UUID: ${id}`);
       return null;
     }
-    const supa = await createClient();
+    const supa = getServiceRoleClient(); // Use service role client for all backend operations
     const { data, error } = await supa
       .from('chatSessions')
       .select('*')
@@ -148,7 +149,7 @@ export class ChatSession {
         // For a getter, returning null might be more expected by callers if parameters are invalid.
         return null; 
     }
-    const supa = await createClient();
+    const supa = getServiceRoleClient(); // Use service role client for all backend operations
     const threshold = new Date(Date.now() - sessionTimeoutHours * 60 * 60 * 1000).toISOString();
 
     const { data, error } = await supa
@@ -173,7 +174,7 @@ export class ChatSession {
       console.warn(`[ChatSessionModel] Attempted to update with invalid UUID: ${id}`);
       return null;
     }
-    const supa = await createClient();
+    const supa = getServiceRoleClient(); // Use service role client for all backend operations
     const dataToUpdate: ChatSessionUpdateInput & { updatedAt: string } = {
       ...input,
       updatedAt: new Date().toISOString(), // Always update the timestamp
@@ -214,7 +215,7 @@ export class ChatSession {
       console.warn("[ChatSessionModel] Channel, channelUserId, and currentSessionCreatedAt are required to get previous session.");
       return null;
     }
-    const supa = await createClient();
+    const supa = getServiceRoleClient(); // Use service role client for all backend operations
     try {
       const { data, error } = await supa
         .from('chatSessions')
@@ -247,7 +248,7 @@ export class ChatSession {
       console.warn("[ChatSessionModel] Channel and channelUserId are required to end inactive sessions.");
       return;
     }
-    const supa = await createClient();
+    const supa = getServiceRoleClient(); // Use service role client for all backend operations
     const threshold = new Date(Date.now() - sessionTimeoutHours * 60 * 60 * 1000).toISOString();
 
     // Fire-and-forget query to close any lingering sessions for this user that have expired
@@ -271,7 +272,7 @@ export class ChatSession {
       handleModelError('Invalid UUID for delete ChatSession', new Error('Invalid UUID for delete'));
       return; 
     }
-    const supa = await createClient();
+    const supa = getServiceRoleClient(); // Use service role client for all backend operations
     const { error } = await supa.from('chatSessions').delete().eq('id', id);
 
     if (error) {
@@ -283,7 +284,7 @@ export class ChatSession {
     sessionId: string,
     status: 'active' | 'completed' | 'expired' | 'escalated'
   ): Promise<ChatSession> {
-    const supa = await createClient();
+    const supa = getServiceRoleClient(); // Use service role client for all backend operations
     const { data, error } = await supa
       .from('chatSessions')
       .update({ status: status, updated_at: new Date().toISOString() })
@@ -303,7 +304,7 @@ export class ChatSession {
   }
 
   static async getAll(): Promise<ChatSession[]> {
-    const supa = await createClient();
+    const supa = getServiceRoleClient(); // Use service role client for all backend operations
     const { data, error } = await supa
       .from('chatSessions')
       .select('*');
@@ -314,4 +315,234 @@ export class ChatSession {
 
     return data.map((row: ChatSessionDBSchema) => new ChatSession(row));
   }
-} 
+
+  /**
+   * Get all chat sessions for a specific business
+   */
+  static async getByBusinessId(businessId: string): Promise<ChatSession[]> {
+    if (!this.isValidUUID(businessId)) {
+      console.warn(`[ChatSessionModel] Attempted to fetch with invalid businessId UUID: ${businessId}`);
+      return [];
+    }
+    
+    const supa = getServiceRoleClient();
+    const { data, error } = await supa
+      .from('chatSessions')
+      .select('*')
+      .eq('businessId', businessId)
+      .order('updatedAt', { ascending: false });
+
+    if (error) {
+      handleModelError(`Failed to fetch chat sessions for business ${businessId}`, error);
+    }
+
+    return data.map((row: ChatSessionDBSchema) => new ChatSession(row));
+  }
+
+  /**
+   * Get unique conversations for a business (deduplicated by channelUserId)
+   */
+  static async getConversationsForBusiness(businessId: string): Promise<Array<{
+    channelUserId: string;
+    updatedAt: string;
+  }>> {
+    if (!this.isValidUUID(businessId)) {
+      console.warn(`[ChatSessionModel] Attempted to fetch conversations with invalid businessId UUID: ${businessId}`);
+      return [];
+    }
+    
+    const supa = getServiceRoleClient();
+    const { data, error } = await supa
+      .from('chatSessions')
+      .select('channelUserId, updatedAt')
+      .eq('businessId', businessId)
+      .order('updatedAt', { ascending: false });
+
+    if (error) {
+      handleModelError(`Failed to fetch conversations for business ${businessId}`, error);
+    }
+
+    // Create conversations map to deduplicate by channelUserId
+    const conversationsMap = new Map<string, { channelUserId: string; updatedAt: string }>();
+    
+    if (data) {
+      for (const session of data) {
+        if (!conversationsMap.has(session.channelUserId)) {
+          conversationsMap.set(session.channelUserId, {
+            channelUserId: session.channelUserId,
+            updatedAt: session.updatedAt,
+          });
+        }
+      }
+    }
+
+    return Array.from(conversationsMap.values());
+  }
+
+  /**
+   * Get channelUserId from sessionId with business security check
+   */
+  static async getChannelUserIdBySessionId(sessionId: string, businessId: string): Promise<string | null> {
+    if (!this.isValidUUID(sessionId)) {
+      console.warn(`[ChatSessionModel] Attempted to fetch with invalid sessionId UUID: ${sessionId}`);
+      return null;
+    }
+    
+    if (!this.isValidUUID(businessId)) {
+      console.warn(`[ChatSessionModel] Attempted to fetch with invalid businessId UUID: ${businessId}`);
+      return null;
+    }
+
+    const supa = getServiceRoleClient();
+    const { data, error } = await supa
+      .from('chatSessions')
+      .select('channelUserId')
+      .eq('id', sessionId)
+      .eq('businessId', businessId) // Security check to ensure session belongs to the business
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return null; // No rows returned
+      console.error(`[ChatSessionModel] Error fetching session for preselection: ${error.message}`);
+      return null;
+    }
+
+    return data?.channelUserId || null;
+  }
+
+  /**
+   * High-level method to get all conversation data needed for the chat interface
+   * Combines user business lookup, conversations fetching, session preselection, and escalation status
+   */
+  static async getBusinessConversationsData(
+    userId: string,
+    preselectedSessionId?: string
+  ): Promise<{
+    conversations: Array<{ 
+      channelUserId: string; 
+      updatedAt: string; 
+      hasEscalation: boolean;
+      escalationStatus: string | null;
+      sessionId: string;
+    }>;
+    preselectedChannelUserId?: string;
+  } | null> {
+    try {
+      const supa = getServiceRoleClient();
+
+      // First, get the businessId of the logged-in user
+      const { data: userData, error: userError } = await supa
+        .from("users")
+        .select("businessId")
+        .eq("id", userId)
+        .single();
+
+      if (userError || !userData?.businessId) {
+        console.error("Error fetching user's businessId:", userError);
+        return null;
+      }
+
+      const businessId = userData.businessId;
+
+      // Get all chat sessions for this business
+      const { data: chatSessions, error: sessionsError } = await supa
+        .from("chatSessions")
+        .select("id, channelUserId, updatedAt")
+        .eq("businessId", businessId)
+        .order("updatedAt", { ascending: false });
+
+      if (sessionsError) {
+        console.error("Error fetching chat sessions:", sessionsError);
+        return null;
+      }
+
+      // Get active notifications for this business
+      const { data: notifications, error: notificationsError } = await supa
+        .from("notifications")
+        .select("chatSessionId, status")
+        .eq("businessId", businessId)
+        .in("status", ["pending", "attending"])
+        .order("createdAt", { ascending: false });
+
+      if (notificationsError) {
+        console.error("Error fetching notifications:", notificationsError);
+        // Continue without escalation data rather than failing completely
+      }
+
+      // Create a map of sessionId -> escalation info
+      const escalationMap = new Map<string, { status: string }>();
+      if (notifications) {
+        for (const notification of notifications) {
+          if (!escalationMap.has(notification.chatSessionId)) {
+            escalationMap.set(notification.chatSessionId, {
+              status: notification.status
+            });
+          }
+        }
+      }
+
+      // Group sessions by channelUserId to create unique conversations with escalation data
+      const conversationsMap = new Map<string, { 
+        channelUserId: string; 
+        updatedAt: string; 
+        hasEscalation: boolean;
+        escalationStatus: string | null;
+        sessionId: string;
+      }>();
+      
+      if (chatSessions) {
+        for (const session of chatSessions) {
+          if (!conversationsMap.has(session.channelUserId)) {
+            const escalationInfo = escalationMap.get(session.id);
+            conversationsMap.set(session.channelUserId, {
+              channelUserId: session.channelUserId,
+              updatedAt: session.updatedAt,
+              hasEscalation: !!escalationInfo,
+              escalationStatus: escalationInfo?.status || null,
+              sessionId: session.id,
+            });
+          }
+        }
+      }
+
+      // Convert to array and sort with escalations first
+      const conversations = Array.from(conversationsMap.values()).sort((a, b) => {
+        // Prioritize escalations: pending first, then attending, then non-escalated
+        const getEscalationPriority = (conv: typeof a) => {
+          if (conv.escalationStatus === 'pending') return 0;
+          if (conv.escalationStatus === 'attending') return 1;
+          return 2;
+        };
+
+        const priorityA = getEscalationPriority(a);
+        const priorityB = getEscalationPriority(b);
+
+        if (priorityA !== priorityB) {
+          return priorityA - priorityB;
+        }
+
+        // If same escalation priority, sort by most recent activity
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+      });
+
+      let preselectedChannelUserId: string | undefined = undefined;
+
+      // If a session ID is specified, find its corresponding channelUserId
+      if (preselectedSessionId && chatSessions) {
+        const targetSession = chatSessions.find(session => session.id === preselectedSessionId);
+        if (targetSession) {
+          preselectedChannelUserId = targetSession.channelUserId;
+        }
+      }
+
+      return {
+        conversations,
+        preselectedChannelUserId,
+      };
+
+    } catch (error) {
+      console.error("Error in getBusinessConversationsData:", error);
+      return null;
+    }
+  }
+}

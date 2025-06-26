@@ -1,25 +1,58 @@
-import { requireAuth } from "../context/auth-status";
-import { InfoIcon } from "lucide-react";
+import { createClient } from "../../lib/database/supabase/server";
+import { redirect } from "next/navigation";
+import ChatInterface from "./components/chat-interface";
+import { Conversation } from "./components/chat-interface";
+import { ChatSession } from "../../lib/database/models/chat-session";
 
-export default async function ProtectedPage() {
-  const session = await requireAuth();
+export const dynamic = 'force-dynamic';
+
+export default async function ProtectedPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const supabase = createClient();
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session) {
+    redirect("/sign-in");
+  }
+
+  // Get sessionId from URL parameters
+  const resolvedSearchParams = await searchParams;
+  const sessionIdFromUrl = resolvedSearchParams?.sessionId as string | undefined;
+
+  // Use centralized method to get all conversation data
+  const conversationData = await ChatSession.getBusinessConversationsData(
+    session.user.id,
+    sessionIdFromUrl
+  );
+
+  if (!conversationData) {
+    return <p className="p-4 text-red-500">Could not load your conversations.</p>;
+  }
+
+  // Transform the data to match the ChatInterface expectations
+  const initialConversations: Conversation[] = conversationData.conversations.map(conv => ({
+    channelUserId: conv.channelUserId,
+    updatedAt: conv.updatedAt,
+    hasEscalation: conv.hasEscalation,
+    escalationStatus: conv.escalationStatus,
+    sessionId: conv.sessionId,
+  }));
 
   return (
-    <div className="flex-1 w-full flex flex-col gap-12">
-      <div className="w-full">
-        <div className="bg-accent text-sm p-3 px-5 rounded-md text-foreground flex gap-3 items-center">
-          <InfoIcon size="16" strokeWidth={2} />
-          Welcome, {session.user.email}
-        </div>
-      </div>
-      <div className="flex flex-col gap-2 items-start">
-        <h2 className="font-bold text-2xl mb-4">User Details</h2>
-        <pre className="text-xs font-mono p-3 rounded border max-h-32 overflow-auto">
-          {JSON.stringify(session.user, null, 2)}
-        </pre>
-      </div>
-      <div>
-        <h2 className="font-bold text-2xl mb-4">Next Steps</h2>
+    <div className="w-full max-w-7xl mx-auto p-4 flex flex-col">
+      <h1 className="text-2xl font-bold mb-4 text-white">Your Conversations</h1>
+      {/* Container with proper height calculation to avoid footer overlap */}
+      <div className="h-[calc(100vh-200px)] min-h-[500px]">
+        <ChatInterface
+          initialConversations={initialConversations}
+          preselectedChannelUserId={conversationData.preselectedChannelUserId}
+        />
       </div>
     </div>
   );

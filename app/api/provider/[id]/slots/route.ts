@@ -30,7 +30,8 @@ export async function GET(
     }
 
     return NextResponse.json(data);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Error fetching slots' }, { status: 500 });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Error fetching slots';
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 } 

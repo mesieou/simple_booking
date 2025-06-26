@@ -16,10 +16,11 @@ export async function GET(request: NextRequest): Promise<NextResponse<DistanceAp
   try {
     const data = await fetchDirectGoogleMapsDistance(origin, destination);
     return NextResponse.json(data);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error in GET /api/maps/mapsdistance:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Error processing the request';
     return NextResponse.json(
-      { error: error.message || 'Error processing the request' },
+      { error: errorMessage },
       { status: 500 }
     );
   }
