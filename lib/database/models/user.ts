@@ -121,13 +121,18 @@ export class User {
         }
 
         // --- Upsert User Profile ---
-        const userProfile = {
+        const userProfile: any = {
             id: authUser.id,
             firstName: this.firstName,
             lastName: this.lastName,
             role: this.role,
             businessId: this.businessId,
         };
+        
+        // Add WhatsApp number fields if provided
+        if (options?.whatsappNumber) {
+            userProfile.whatsAppNumberNormalized = PhoneNumberUtils.normalize(options.whatsappNumber);
+        }
 
         // Debug logging for bot operations
         console.log('[User.add] About to upsert user profile:', userProfile);
@@ -424,17 +429,22 @@ export class User {
     }
 
     // Update user
-    static async update(id: string, userData: { firstName: string, lastName: string, role: UserRole, businessId: string }): Promise<User> {
+    static async update(id: string, userData: { firstName: string, lastName: string, role: UserRole, businessId: string, whatsappNumber?: string }): Promise<User> {
         if (!User.isValidUUID(id)) {
             handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
         const supa = await createClient()
-        const updateData = {
+        const updateData: any = {
             "firstName": userData.firstName,
             "lastName": userData.lastName,
             "role": userData.role,
             "businessId": userData.businessId,
+        }
+        
+        // Add WhatsApp number fields if provided
+        if (userData.whatsappNumber) {
+            updateData.whatsAppNumberNormalized = PhoneNumberUtils.normalize(userData.whatsappNumber);
         }
         
         const { data, error } = await supa
