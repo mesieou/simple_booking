@@ -10,6 +10,10 @@ import { StripePaymentService } from '@/lib/payments/stripe-utils';
 import { v4 as uuidv4 } from 'uuid';
 import { CalendarSettings } from '@/lib/database/models/calendar-settings';
 import { DateTime } from 'luxon';
+import { CreatePaymentLink } from '@/lib/database/models/payment';
+import { GoogleMapsService } from '@/lib/general-helpers/google-distance-calculator';
+import { BookingDataChecker, DateTimeFormatter, BookingDataManager, BookingButtonGenerator as UtilityButtonGenerator, StepProcessorBase, BookingMessageGenerator } from './booking-utilities';
+import { LanguageDetectionService } from '../services/language-detection';
 
 // Translation constants for booking steps
 const BOOKING_TRANSLATIONS = {
@@ -243,8 +247,9 @@ const BOOKING_TRANSLATIONS = {
 
 // Utility function to get user's language from chat context
 const getUserLanguage = (chatContext: ChatContext): 'en' | 'es' => {
-  const userLang = chatContext?.participantPreferences?.language;
-  return userLang === 'es' ? 'es' : 'en'; // Default to English
+  // Use the same language source as FAQ handler for consistency
+  const userLanguage = chatContext.participantPreferences.language || 'en';
+  return (userLanguage === 'es') ? 'es' : 'en';
 };
 
 // Utility function to get localized text
@@ -838,15 +843,6 @@ class AvailabilityService {
 // =====================================
 // NEW SIMPLIFIED STEP HANDLERS
 // =====================================
-
-import { 
-  BookingDataChecker, 
-  DateTimeFormatter, 
-  BookingDataManager, 
-  BookingButtonGenerator as UtilityButtonGenerator,
-  StepProcessorBase,
-  BookingMessageGenerator 
-} from './booking-utilities';
 
 // Step 1: Show next 2 available times + "choose another day" button
 // Job: ONLY display times, no input processing
@@ -1731,10 +1727,27 @@ export const quoteSummaryHandler: IndividualStepHandler = {
       
       // Only show deposit/payment info if business requires deposits
       if (requiresDeposit && depositAmount) {
-        summaryMessage += `💳 *To Book:*\n` +
-          `   • Deposit Required: $${depositAmount.toFixed(2)}\n` +
-          `   • Skedy Booking Fee: $4.00\n` +
-          `   • *Total to Pay Now: $${(depositAmount + 4).toFixed(2)}*\n\n`;
+        const totalPayNow = depositAmount + 4;
+        
+        // Get business preferred payment method for balance due
+        const businessId = chatContext.currentParticipant.associatedBusinessId;
+        let preferredPaymentMethod = getUserLanguage(chatContext) === 'es' ? 'efectivo/tarjeta' : 'cash/card';
+        
+        if (businessId) {
+          try {
+            const business = await Business.getById(businessId);
+            if (business.preferredPaymentMethod) {
+              preferredPaymentMethod = business.preferredPaymentMethod;
+            }
+          } catch (error) {
+            console.warn('[QuoteSummary] Could not fetch business payment method');
+          }
+        }
+        
+        summaryMessage += `💳 *Booking Payment:*\n` +
+          `   • Paid Now: $${totalPayNow.toFixed(2)}\n` +
+          `   • Balance Due: $${remainingBalance.toFixed(2)} (${preferredPaymentMethod})\n` +
+          `   • Total Service Cost: $${quoteEstimation.totalJobCost.toFixed(2)}\n\n`;
       }
       
       summaryMessage += `${t.QUOTE_SUMMARY.QUOTE_ID} ${savedQuoteData.id}\n\n`;
@@ -2472,12 +2485,33 @@ export const selectServiceHandler: IndividualStepHandler = {
     
     if (selectedServiceData) {
       console.log('[SelectService] Service found:', selectedServiceData.name);
+      
+      let finalServiceAddress;
+      let serviceLocation;
+      
+      if (!selectedServiceData.mobile) {
+        // For non-mobile services, fetch actual business address
+        const businessId = chatContext.currentParticipant.associatedBusinessId;
+        let businessAddress = 'Our salon location';
+        
+        if (businessId) {
+          try {
+            const business = await Business.getById(businessId);
+            businessAddress = business.businessAddress || business.name || 'Our salon location';
+          } catch (error) {
+            console.error('[SelectService] Error fetching business address:', error);
+          }
+        }
+        
+        finalServiceAddress = businessAddress;
+        serviceLocation = 'business_location';
+      }
+      
       return {
         ...currentGoalData,
         selectedService: ServiceDataProcessor.extractServiceDetails(selectedServiceData),
-        // If the service is not mobile, we can skip the address step
-        finalServiceAddress: !selectedServiceData.mobile ? 'Business Location' : undefined,
-        serviceLocation: !selectedServiceData.mobile ? 'business_location' : undefined,
+        finalServiceAddress,
+        serviceLocation,
       };
     }
 
