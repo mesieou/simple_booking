@@ -3,7 +3,6 @@
 import Video from 'next-video';
 import botDemo from '/videos/bot-demo.mp4';
 import JoinWaitlist from "@components/sections/waitlist-form";
-import { t } from "@/lib/rename-categorise-better/utils/translations";
 
 export default function Header() {
   return (
@@ -19,9 +18,9 @@ export default function Header() {
 
         <div className="flex flex-col justify-evenly">
           <p className="text-3xl lg:text-4xl !leading-tight mx-auto max-w-xl text-center">
-            {t('title')}{" "}
-            <span className="bg-primary px-1 rounded-md">{t('bookings')}</span> {t('and')}{" "}
-            <span className="bg-secondary px-1 rounded-md">{t('calendars')}</span> {t('with_ai')}
+            Streamline your{" "}
+            <span className="bg-primary px-1 rounded-md">bookings</span> and{" "}
+            <span className="bg-secondary px-1 rounded-md">calendars</span> with AI
           </p>
 
           <div className="md:mt-20">
