@@ -5,7 +5,7 @@ import { getServiceRoleClient } from "../supabase/service-role";
 
 // Represents a single message within the allMessages array
 export interface ChatMessage {
-  role: 'user' | 'bot';
+  role: 'user' | 'bot' | 'staff';
   content: string;
   timestamp?: string; // ISO date string, when the message was recorded in allMessages
 }
@@ -412,13 +412,19 @@ export class ChatSession {
 
   /**
    * High-level method to get all conversation data needed for the chat interface
-   * Combines user business lookup, conversations fetching, and session preselection
+   * Combines user business lookup, conversations fetching, session preselection, and escalation status
    */
   static async getBusinessConversationsData(
     userId: string,
     preselectedSessionId?: string
   ): Promise<{
-    conversations: Array<{ channelUserId: string; updatedAt: string }>;
+    conversations: Array<{ 
+      channelUserId: string; 
+      updatedAt: string; 
+      hasEscalation: boolean;
+      escalationStatus: string | null;
+      sessionId: string;
+    }>;
     preselectedChannelUserId?: string;
   } | null> {
     try {
@@ -450,20 +456,75 @@ export class ChatSession {
         return null;
       }
 
-      // Group sessions by channelUserId to create unique conversations
-      const conversationsMap = new Map<string, { channelUserId: string; updatedAt: string }>();
-      if (chatSessions) {
-        for (const session of chatSessions) {
-          if (!conversationsMap.has(session.channelUserId)) {
-            conversationsMap.set(session.channelUserId, {
-              channelUserId: session.channelUserId,
-              updatedAt: session.updatedAt,
+      // Get active notifications for this business
+      const { data: notifications, error: notificationsError } = await supa
+        .from("notifications")
+        .select("chatSessionId, status")
+        .eq("businessId", businessId)
+        .in("status", ["pending", "attending"])
+        .order("createdAt", { ascending: false });
+
+      if (notificationsError) {
+        console.error("Error fetching notifications:", notificationsError);
+        // Continue without escalation data rather than failing completely
+      }
+
+      // Create a map of sessionId -> escalation info
+      const escalationMap = new Map<string, { status: string }>();
+      if (notifications) {
+        for (const notification of notifications) {
+          if (!escalationMap.has(notification.chatSessionId)) {
+            escalationMap.set(notification.chatSessionId, {
+              status: notification.status
             });
           }
         }
       }
 
-      const conversations = Array.from(conversationsMap.values());
+      // Group sessions by channelUserId to create unique conversations with escalation data
+      const conversationsMap = new Map<string, { 
+        channelUserId: string; 
+        updatedAt: string; 
+        hasEscalation: boolean;
+        escalationStatus: string | null;
+        sessionId: string;
+      }>();
+      
+      if (chatSessions) {
+        for (const session of chatSessions) {
+          if (!conversationsMap.has(session.channelUserId)) {
+            const escalationInfo = escalationMap.get(session.id);
+            conversationsMap.set(session.channelUserId, {
+              channelUserId: session.channelUserId,
+              updatedAt: session.updatedAt,
+              hasEscalation: !!escalationInfo,
+              escalationStatus: escalationInfo?.status || null,
+              sessionId: session.id,
+            });
+          }
+        }
+      }
+
+      // Convert to array and sort with escalations first
+      const conversations = Array.from(conversationsMap.values()).sort((a, b) => {
+        // Prioritize escalations: pending first, then attending, then non-escalated
+        const getEscalationPriority = (conv: typeof a) => {
+          if (conv.escalationStatus === 'pending') return 0;
+          if (conv.escalationStatus === 'attending') return 1;
+          return 2;
+        };
+
+        const priorityA = getEscalationPriority(a);
+        const priorityB = getEscalationPriority(b);
+
+        if (priorityA !== priorityB) {
+          return priorityA - priorityB;
+        }
+
+        // If same escalation priority, sort by most recent activity
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+      });
+
       let preselectedChannelUserId: string | undefined = undefined;
 
       // If a session ID is specified, find its corresponding channelUserId

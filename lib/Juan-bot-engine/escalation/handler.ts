@@ -5,34 +5,23 @@ import { WhatsappSender } from '@/lib/conversation-engine/whatsapp/whatsapp-mess
 import { Notification } from '@/lib/database/models/notification';
 import { ChatMessage } from '@/lib/database/models/chat-session';
 import { Business } from '@/lib/database/models/business';
+import { User } from '@/lib/database/models/user';
 
 const LOG_PREFIX = '[EscalationHandler]';
 
 const i18n = {
     en: {
-        historyTitle: "*Recent Conversation History:*\n",
         notificationTitle: "🚨 *Human Assistance Required* 🚨",
-        customerLabel: "Customer",
-        contactLabel: "Contact",
-        summaryLabel: "Summary",
-        btnProvidedHelp: "Provided Help",
-        btnIgnore: "Ignore",
-        btnWrongActivation: "Wrong Activation",
-        summaryHumanRequest: "User explicitly asked to speak to a human.",
-        summaryAggression: "User is expressing aggression or frustration with the bot.",
+        clientLabel: "Client:",
+        assistRequestText: "To assist this client's request, go to",
+        historyTitle: "*Recent conversation history:*",
         userResponse: "Your request has been sent to our team. Someone will contact you shortly via WhatsApp."
     },
     es: {
-        historyTitle: "*Historial de Conversación Reciente:*\n",
         notificationTitle: "🚨 *Se Requiere Asistencia Humana* 🚨",
-        customerLabel: "Cliente",
-        contactLabel: "Contacto",
-        summaryLabel: "Resumen",
-        btnProvidedHelp: "Ayuda Brindada",
-        btnIgnore: "Ignorar",
-        btnWrongActivation: "Activación Errónea",
-        summaryHumanRequest: "El usuario pidió explícitamente hablar con un humano.",
-        summaryAggression: "El usuario está expresando agresión o frustración con el bot.",
+        clientLabel: "Cliente:",
+        assistRequestText: "Para atender la solicitud de este cliente, dirigirse a",
+        historyTitle: "*Historial de conversacion reciente:*",
         userResponse: "Tu solicitud ha sido enviada a nuestro equipo. Alguien se pondrá en contacto contigo en breve a través de WhatsApp."
     }
 };
@@ -43,15 +32,10 @@ export interface EscalationResult {
   reason?: string;
 }
 
-export interface AdminCommandResult {
-  isHandled: boolean;
-  response?: BotResponse;
-}
-
 /**
- * Main orchestration function for handling potential escalations or admin commands.
- * This should be called by the webhook before the main message processor.
- * @returns A result object indicating if the message was handled as an escalation/admin command.
+ * Main function for handling escalations.
+ * Simplified to only handle user escalation triggers.
+ * @returns An EscalationResult indicating if the user should be escalated.
  */
 export async function handleEscalationOrAdminCommand(
   incomingUserMessage: string,
@@ -60,77 +44,19 @@ export async function handleEscalationOrAdminCommand(
   userContext: UserContext,
   history: ChatMessage[],
   customerUser?: { firstName: string; lastName: string; id: string },
-  businessPhoneNumberId?: string
-): Promise<EscalationResult | AdminCommandResult> {
-  // First, check if it's an admin command.
-  const adminResult = await resolveEscalation(incomingUserMessage);
-  if (adminResult.isHandled) {
-    return adminResult;
-  }
-
-  // If not, check if it's a user message that should trigger an escalation.
+  businessPhoneNumberId?: string,
+  whatsappUserName?: string
+): Promise<EscalationResult> {
+  // Check if it's a user message that should trigger an escalation.
   const escalationResult = await checkForEscalationTrigger(
     incomingUserMessage,
     context,
     history,
     customerUser,
-    businessPhoneNumberId
+    businessPhoneNumberId,
+    whatsappUserName
   );
   return escalationResult;
-}
-
-/**
- * Handles a command sent by an admin to resolve a notification.
- * @returns An AdminCommandResult indicating if the message was handled.
- */
-async function resolveEscalation(incomingUserMessage: string): Promise<AdminCommandResult> {
-  if (!incomingUserMessage.startsWith('resolve_')) {
-    return { isHandled: false };
-  }
-
-  console.log(`${LOG_PREFIX} Detected admin action: ${incomingUserMessage}`);
-
-  const parts = incomingUserMessage.split('_');
-  if (parts.length < 3) {
-    console.error(`${LOG_PREFIX} Invalid command format: not enough parts.`);
-    return {
-      isHandled: true,
-      response: { text: "Invalid command format. Expected: resolve_<status>_<notificationId>" },
-    };
-  }
-
-  const notificationId = parts[parts.length - 1];
-  const status = parts.slice(1, -1).join('_');
-  const validStatuses = ['provided_help', 'ignored', 'wrong_activation'];
-
-  if (!validStatuses.includes(status)) {
-    console.error(`${LOG_PREFIX} Invalid status: ${status}`);
-    return {
-      isHandled: true,
-      response: { text: `Invalid status "${status}". Must be one of: ${validStatuses.join(', ')}` },
-    };
-  }
-
-  try {
-    const resolved = await Notification.resolve(notificationId, status as any);
-
-    if (resolved) {
-      console.log(`${LOG_PREFIX} Successfully resolved notification ${notificationId} with status ${status}`);
-      return { isHandled: true, response: { text: `✅ Notification resolved.` } };
-    } else {
-      console.error(`${LOG_PREFIX} Failed to resolve notification ${notificationId}`);
-      return {
-        isHandled: true,
-        response: { text: `❌ Failed to resolve. It may have been resolved already.` },
-      };
-    }
-  } catch (error) {
-    console.error(`${LOG_PREFIX} Error resolving notification:`, error);
-    return {
-      isHandled: true,
-      response: { text: "An internal error occurred while resolving the notification." },
-    };
-  }
 }
 
 /**
@@ -142,9 +68,10 @@ async function checkForEscalationTrigger(
   currentContext: ChatContext,
   messageHistory: ChatMessage[],
   customerUser?: { firstName: string; lastName: string; id: string },
-  businessPhoneNumberId?: string
+  businessPhoneNumberId?: string,
+  whatsappUserName?: string
 ): Promise<EscalationResult> {
-  // --- Layer 1: Immediate Keyword/Regex Detection ---
+  // --- Keyword/Regex Detection ---
   const lowerCaseMessage = incomingUserMessage.toLowerCase();
   const humanRequestKeywords = ['human', 'agent', 'person', 'talk to someone', 'speak to a person', 'humano', 'agente', 'persona', 'hablar con alguien'];
   const aggressionKeywords = ['stupid', 'useless', 'idiot', 'fuck', 'shit', 'crap', 'terrible', 'estúpido', 'inútil', 'idiota', 'mierda', 'pésimo', 'terrible'];
@@ -161,23 +88,96 @@ async function checkForEscalationTrigger(
   if (hasHumanRequest) {
     keywordReason = 'human_request';
   } else {
-    const hasAggression = aggressionKeywords.some(keyword => lowerCaseMessage.includes(keyword));
-    if (hasAggression) {
-      keywordReason = 'aggression';
+    // Count how many aggression keywords are found in current message
+    const currentMessageAggressionCount = aggressionKeywords.filter(keyword => lowerCaseMessage.includes(keyword)).length;
+    console.log(`${LOG_PREFIX}  - Found ${currentMessageAggressionCount} aggression keywords in current message`);
+    
+    if (currentMessageAggressionCount > 0) {
+      // Check recent message history for cumulative aggression
+      const recentMessages = messageHistory.slice(-15); // Last 15 messages
+      
+      // Find the last staff message (indicates escalation was handled)
+      let lastStaffMessageIndex = -1;
+      for (let i = recentMessages.length - 1; i >= 0; i--) {
+        if (recentMessages[i].role === 'staff') {
+          lastStaffMessageIndex = i;
+          break;
+        }
+      }
+      
+      // Only count aggression from messages AFTER the last staff intervention
+      const messagesToCheck = lastStaffMessageIndex >= 0 
+        ? recentMessages.slice(lastStaffMessageIndex + 1) 
+        : recentMessages;
+      
+      let totalAggressionCount = currentMessageAggressionCount;
+      
+      // Count aggression keywords in user messages (after last staff intervention)
+      messagesToCheck.forEach(msg => {
+        if (msg.role === 'user' && msg.content !== incomingUserMessage) { // Exclude current message to avoid double counting
+          const msgLower = msg.content.toLowerCase();
+          const msgAggressionCount = aggressionKeywords.filter(keyword => msgLower.includes(keyword)).length;
+          totalAggressionCount += msgAggressionCount;
+        }
+      });
+      
+      if (lastStaffMessageIndex >= 0) {
+        console.log(`${LOG_PREFIX}  - Last staff intervention found at message ${lastStaffMessageIndex}. Counting aggression only after that point.`);
+      }
+      console.log(`${LOG_PREFIX}  - Total aggression keywords since last intervention: ${totalAggressionCount}`);
+      
+      if (totalAggressionCount >= 3) {
+        keywordReason = 'aggression';
+        console.log(`${LOG_PREFIX}  - Escalating due to cumulative aggression keywords (${totalAggressionCount})`);
+      }
     }
   }
 
   if (keywordReason) {
     console.log(`${LOG_PREFIX} Escalation triggered by keyword. Reason: ${keywordReason}`);
     console.log(`${LOG_PREFIX} Bot entering escalation mode for session ${currentContext.currentConversationSession?.id}.`);
-    const customerName = customerUser ? `${customerUser.firstName} ${customerUser.lastName}` : 'A customer';
-    const customerPhone = currentContext.currentParticipant.customerWhatsappNumber;
-    const customerPhoneUrl = customerPhone ? `https://wa.me/${customerPhone.replace('+', '')}` : 'Not available';
+    
+    // Determine customer name: WhatsApp name → DB firstName+lastName → linked user → phone number
+    let customerName = 'Unknown customer';
+    if (whatsappUserName?.trim()) {
+      customerName = whatsappUserName.trim();
+      console.log(`${LOG_PREFIX} Using WhatsApp profile name: ${customerName}`);
+    } else if (customerUser && customerUser.firstName && customerUser.lastName) {
+      customerName = `${customerUser.firstName} ${customerUser.lastName}`;
+      console.log(`${LOG_PREFIX} Using passed customerUser name: ${customerName}`);
+    } else if (currentContext.currentConversationSession?.id) {
+      // Try to fetch the actual ChatSession from DB to get the linked userId
+      try {
+        const { ChatSession } = await import('@/lib/database/models/chat-session');
+        const chatSession = await ChatSession.getById(currentContext.currentConversationSession.id);
+        
+        if (chatSession && chatSession.userId) {
+          const linkedUser = await User.getById(chatSession.userId);
+          if (linkedUser && linkedUser.firstName && linkedUser.lastName) {
+            customerName = `${linkedUser.firstName} ${linkedUser.lastName}`;
+            console.log(`${LOG_PREFIX} Using linked user name from DB: ${customerName}`);
+          } else if (currentContext.currentParticipant.customerWhatsappNumber) {
+            customerName = currentContext.currentParticipant.customerWhatsappNumber;
+            console.log(`${LOG_PREFIX} Using phone number fallback (linked user has no name): ${customerName}`);
+          }
+        } else if (currentContext.currentParticipant.customerWhatsappNumber) {
+          customerName = currentContext.currentParticipant.customerWhatsappNumber;
+          console.log(`${LOG_PREFIX} Using phone number fallback (no linked user in session): ${customerName}`);
+        }
+      } catch (error) {
+        console.error(`${LOG_PREFIX} Error fetching chat session or linked user:`, error);
+        if (currentContext.currentParticipant.customerWhatsappNumber) {
+          customerName = currentContext.currentParticipant.customerWhatsappNumber;
+          console.log(`${LOG_PREFIX} Using phone number fallback (error fetching session): ${customerName}`);
+        }
+      }
+    } else if (currentContext.currentParticipant.customerWhatsappNumber) {
+      customerName = currentContext.currentParticipant.customerWhatsappNumber;
+      console.log(`${LOG_PREFIX} Using phone number fallback (no linked user): ${customerName}`);
+    }
     
     const language = currentContext.participantPreferences.language === 'es' ? 'es' : 'en';
     const t = i18n[language];
-
-    const summaryForAdmin = keywordReason === 'human_request' ? t.summaryHumanRequest : t.summaryAggression;
     
     try {
       const businessId = currentContext.currentParticipant.associatedBusinessId;
@@ -194,7 +194,11 @@ async function checkForEscalationTrigger(
             console.error(`${LOG_PREFIX} Critical: No fallback phone number available either.`);
             return { isEscalated: false };
         }
-        await sendEscalationNotifications(fallbackPhone, customerName, customerPhoneUrl, summaryForAdmin, messageHistory, "fallback_notification", language, fallbackPhone);
+        
+        const chatSessionId = currentContext.currentConversationSession?.id;
+        if (chatSessionId) {
+          await sendEscalationNotification(fallbackPhone, customerName, messageHistory, language, fallbackPhone, chatSessionId, currentContext.currentParticipant.customerWhatsappNumber);
+        }
         return { isEscalated: true, reason: keywordReason, response: { text: t.userResponse }};
       }
       
@@ -212,7 +216,7 @@ async function checkForEscalationTrigger(
         notification = await Notification.create({
             businessId: currentContext.currentParticipant.associatedBusinessId,
             chatSessionId: currentContext.currentConversationSession.id,
-            message: summaryForAdmin,
+            message: `Escalation triggered: ${keywordReason}`,
             status: 'pending'
         });
       }
@@ -220,7 +224,9 @@ async function checkForEscalationTrigger(
         throw new Error("Failed to create a notification record in the database.");
       }
       
-      await sendEscalationNotifications(escalationPhoneNumber, customerName, customerPhoneUrl, summaryForAdmin, messageHistory, notification.id, language, finalBusinessPhoneNumberId, chatSessionId);
+      if (chatSessionId) {
+        await sendEscalationNotification(escalationPhoneNumber, customerName, messageHistory, language, finalBusinessPhoneNumberId, chatSessionId, currentContext.currentParticipant.customerWhatsappNumber);
+      }
       
       return {
         isEscalated: true,
@@ -232,60 +238,55 @@ async function checkForEscalationTrigger(
 
     }
   }
-  
-  // --- Layer 2: LLM-based analysis (as a fallback) ---
-  // This part is removed as per the decision to simplify and rely on keywords first.
-  // If keyword check fails due to an error, we don't escalate automatically.
 
   return { isEscalated: false };
 }
 
 /**
- * Sends the two-part escalation notification to the business.
+ * Sends a single escalation notification to the business with the specified format.
  */
-async function sendEscalationNotifications(
+async function sendEscalationNotification(
   businessPhoneNumber: string,
   customerName: string,
-  customerPhoneUrl: string,
-  summary: string,
   messageHistory: ChatMessage[],
-  notificationId: string,
   language: string,
   businessPhoneNumberId: string,
-  chatSessionId?: string
+  chatSessionId: string,
+  customerPhoneNumber?: string
 ) {
   const lang = language === 'es' ? 'es' : 'en';
   const t = i18n[lang];
   const sender = new WhatsappSender();
-  const baseUrl = 'https://skedy.io'; 
-  const chatLink = chatSessionId ? `${baseUrl}/protected?sessionId=${chatSessionId}` : customerPhoneUrl;
+  const dashboardLink = `https://skedy.io/protected?sessionId=${chatSessionId}`;
 
-  // 1. Send conversation history
-  const lastNMessages = messageHistory.slice(-5);
+  // Prepare conversation history (last 10 messages)
+  const lastNMessages = messageHistory.slice(-10);
+  let historyText = '';
   if (lastNMessages.length > 0) {
-    const historyText = t.historyTitle + lastNMessages.map(msg => 
-      `${msg.role === 'user' ? '👤' : '🤖'}: ${msg.content}`
-    ).join('\n');
-    
-    try {
-      await sender.sendMessage(businessPhoneNumber, { text: historyText }, businessPhoneNumberId);
-    } catch (error) {
-      console.error(`${LOG_PREFIX} Failed to send message history notification:`, error);
-    }
+    historyText = lastNMessages.map(msg => {
+      const roleIcon = msg.role === 'user' ? '👤' : (msg.role === 'staff' ? '👨‍💼' : '🤖');
+      return `${roleIcon}: ${msg.content}`;
+    }).join('\n');
   }
 
-  // 2. Send the main summary notification with buttons
-  const summaryText = `${t.notificationTitle}\n\n*${t.customerLabel}:* ${customerName}\n*${t.contactLabel}:* ${chatLink}\n\n*${t.summaryLabel}:* ${summary}`;
-  
-  const adminButtons = [
-    { buttonText: t.btnProvidedHelp, buttonValue: `resolve_provided_help_${notificationId}` },
-    { buttonText: t.btnIgnore, buttonValue: `resolve_ignored_${notificationId}` },
-    { buttonText: t.btnWrongActivation, buttonValue: `resolve_wrong_activation_${notificationId}` },
-  ];
+  // Use customer phone number if available
+  const displayPhoneNumber = customerPhoneNumber || 'Unknown';
 
-  console.log(`${LOG_PREFIX} Sending admin notification for notificationId: ${notificationId}`);
-  await sender.sendMessage(businessPhoneNumber, { 
-    text: summaryText, 
-    buttons: adminButtons 
-  }, businessPhoneNumberId);
+  // Create the single message with the specified format
+  const fullMessage = `${t.notificationTitle}
+
+${t.clientLabel} ${customerName} (${displayPhoneNumber})
+
+${t.assistRequestText} ${dashboardLink}.
+
+${t.historyTitle}
+
+${historyText}`;
+
+  console.log(`${LOG_PREFIX} Sending escalation notification for session: ${chatSessionId}`);
+  try {
+    await sender.sendMessage(businessPhoneNumber, { text: fullMessage }, businessPhoneNumberId);
+  } catch (error) {
+    console.error(`${LOG_PREFIX} Failed to send escalation notification:`, error);
+  }
 } 

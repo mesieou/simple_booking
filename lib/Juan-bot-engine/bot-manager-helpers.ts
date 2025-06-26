@@ -204,20 +204,33 @@ export async function persistSessionState(
         }
       }
 
-      const lastMessage = chatMessages[chatMessages.length - 1];
+      // Check if this user message is already in the history to avoid duplicates
+      const lastUserMessage = chatMessages.slice().reverse().find(msg => msg.role === 'user');
+      const isNewMessage = !lastUserMessage || lastUserMessage.content !== userMessage;
       
-      if (!lastMessage || lastMessage.content !== botResponse) {
+      if (isNewMessage) {
+        const currentTimestamp = new Date().toISOString();
+        
+        // Always add the user message
         chatMessages.push({
           role: 'user',
           content: userMessage,
-          timestamp: new Date().toISOString()
+          timestamp: currentTimestamp
         });
         
-        chatMessages.push({
-          role: 'bot',
-          content: botResponse,
-          timestamp: new Date().toISOString()
-        });
+        // Only add bot response if it's not empty (avoid ghost messages)
+        if (botResponse && botResponse.trim() !== '') {
+          chatMessages.push({
+            role: 'bot',
+            content: botResponse,
+            timestamp: currentTimestamp
+          });
+          console.log(`[StatePersister] Adding message pair: user="${userMessage}", bot="${botResponse}"`);
+        } else {
+          console.log(`[StatePersister] Adding user message only: user="${userMessage}" (bot silent)`);
+        }
+      } else {
+        console.log(`[StatePersister] Skipping duplicate message: "${userMessage}"`);
       }
 
       await persistState(sessionId, updatedContext, chatMessages);

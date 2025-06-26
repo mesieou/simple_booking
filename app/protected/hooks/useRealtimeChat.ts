@@ -10,6 +10,7 @@ type UseRealtimeChatProps = {
   onMessagesUpdate: (channelUserId: string) => void;
   onConversationsUpdate: () => void;
   onChatStatusUpdate: () => void;
+  onNotificationsUpdate?: () => void;
 };
 
 export function useRealtimeChat({
@@ -18,6 +19,7 @@ export function useRealtimeChat({
   onMessagesUpdate,
   onConversationsUpdate,
   onChatStatusUpdate,
+  onNotificationsUpdate,
 }: UseRealtimeChatProps) {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const supabase = createClient();
@@ -72,11 +74,14 @@ export function useRealtimeChat({
           event: 'INSERT',
           schema: 'public',
           table: 'notifications',
+          filter: `businessId=eq.${userBusinessId}`
         },
         (payload) => {
           console.log('[Realtime] New notification created:', payload);
-          // New escalation notification - trigger chat status refresh
+          // New escalation notification - refresh conversations, chat status, and notifications
+          onConversationsUpdate();
           onChatStatusUpdate();
+          onNotificationsUpdate?.();
         }
       )
       .on(
@@ -85,11 +90,14 @@ export function useRealtimeChat({
           event: 'UPDATE',
           schema: 'public',
           table: 'notifications',
+          filter: `businessId=eq.${userBusinessId}`
         },
         (payload) => {
           console.log('[Realtime] Notification updated:', payload);
-          // Notification status changed (pending -> attending, etc)
+          // Notification status changed (pending -> attending, etc) - refresh all
+          onConversationsUpdate();
           onChatStatusUpdate();
+          onNotificationsUpdate?.();
         }
       );
 
@@ -113,7 +121,7 @@ export function useRealtimeChat({
         channelRef.current = null;
       }
     };
-  }, [userBusinessId, selectedUserId, onMessagesUpdate, onConversationsUpdate, onChatStatusUpdate]);
+  }, [userBusinessId, selectedUserId, onMessagesUpdate, onConversationsUpdate, onChatStatusUpdate, onNotificationsUpdate]);
 
   return {
     isConnected: channelRef.current?.state === 'joined',

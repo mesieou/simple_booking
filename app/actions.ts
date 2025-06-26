@@ -106,12 +106,12 @@ export type ChatMessage = {
   id: string; // For React key
   content: string;
   createdAt: string;
-  senderRole: 'customer' | 'agent' | 'bot';
+  senderRole: 'customer' | 'agent' | 'bot' | 'staff';
 };
 
 // This represents the shape of a message as it's stored in the DB's JSONB column
 type StoredChatMessage = {
-  role: 'user' | 'bot' | 'agent';
+  role: 'user' | 'bot' | 'agent' | 'staff';
   content: string;
   timestamp?: string;
 }
@@ -119,6 +119,7 @@ type StoredChatMessage = {
 /**
  * @deprecated Use getMessagesForUser instead. This function fetches messages from a single session only.
  */
+// TODO: move this to model
 export async function getMessagesForSession(sessionId: string): Promise<ChatMessage[]> {
   const supabase = createClient();
 
@@ -159,10 +160,11 @@ export async function getMessagesForSession(sessionId: string): Promise<ChatMess
     content: msg.content,
     createdAt: msg.timestamp || new Date().toISOString(), // Provide a fallback for the timestamp
     // Map the 'role' from the DB to the 'senderRole' the UI expects
-    senderRole: msg.role === 'user' ? 'customer' : msg.role, 
+    senderRole: msg.role === 'user' ? 'customer' : msg.role as 'agent' | 'bot' | 'staff', 
   }));
 }
 
+// TODO: move this to model
 export async function getMessagesForUser(channelUserId: string): Promise<ChatMessage[]> {
     const supabase = createClient();
 
@@ -202,10 +204,11 @@ export async function getMessagesForUser(channelUserId: string): Promise<ChatMes
         id: `msg-${channelUserId}-${index}`, // Create a stable key
         content: msg.content,
         createdAt: msg.timestamp || new Date().toISOString(),
-        senderRole: msg.role === 'user' ? 'customer' : msg.role,
+        senderRole: msg.role === 'user' ? 'customer' : msg.role as 'agent' | 'bot' | 'staff',
     }));
 }
 
+// TODO: move this to model
 export async function getUserBusinessId(): Promise<string | null> {
     const supabase = createClient();
 
@@ -228,39 +231,71 @@ export async function getUserBusinessId(): Promise<string | null> {
     return userData.businessId;
 }
 
-export async function getBusinessConversations(): Promise<Array<{ channelUserId: string; updatedAt: string }>> {
+export async function getBusinessConversations(): Promise<Array<{ 
+  channelUserId: string; 
+  updatedAt: string; 
+  hasEscalation: boolean;
+  escalationStatus: string | null;
+  sessionId: string;
+}>> {
     const supabase = createClient();
-    const businessId = await getUserBusinessId();
     
+    const { data: authData } = await supabase.auth.getSession();
+    if (!authData.session) {
+        return [];
+    }
+
+    // Import ChatSession here to avoid circular dependencies
+    const { ChatSession } = await import("@/lib/database/models/chat-session");
+    
+    const conversationData = await ChatSession.getBusinessConversationsData(authData.session.user.id);
+    
+    if (!conversationData) {
+        return [];
+    }
+
+    return conversationData.conversations;
+}
+
+// TODO: move this to model
+export async function getDashboardNotifications(): Promise<Array<{
+  id: string;
+  createdAt: string;
+  message: string;
+  status: string;
+  chatSessionId: string;
+  channelUserId: string;
+}>> {
+    const supabase = createClient();
+    
+    const { data: authData } = await supabase.auth.getSession();
+    if (!authData.session) {
+        return [];
+    }
+
+    const businessId = await getUserBusinessId();
     if (!businessId) {
         return [];
     }
 
-    const { data: chatSessions, error } = await supabase
-        .from("chatSessions")
-        .select("channelUserId, updatedAt")
-        .eq("businessId", businessId)
-        .order("updatedAt", { ascending: false });
+    // Import Notification here to avoid circular dependencies
+    const { Notification } = await import("@/lib/database/models/notification");
+    
+    const notifications = await Notification.getDashboardNotificationsSimple(businessId);
+    
+    return notifications;
+}
 
-    if (error) {
-        console.error("Error fetching chat sessions:", error);
-        return [];
+// TODO: move this to model
+export async function markNotificationAsRead(notificationId: string): Promise<void> {
+    const supabase = createClient();
+    
+    const { data: authData } = await supabase.auth.getSession();
+    if (!authData.session) {
+        throw new Error("Not authenticated");
     }
 
-    if (!chatSessions) {
-        return [];
-    }
-
-    // Group sessions by channelUserId to create unique conversations
-    const conversationsMap = new Map<string, { channelUserId: string; updatedAt: string }>();
-    for (const session of chatSessions) {
-        if (!conversationsMap.has(session.channelUserId)) {
-            conversationsMap.set(session.channelUserId, {
-                channelUserId: session.channelUserId,
-                updatedAt: session.updatedAt,
-            });
-        }
-    }
-
-    return Array.from(conversationsMap.values());
+    // For now, we'll just store this in localStorage since we don't have notification_reads table yet
+    // This is a temporary solution until we implement the database table
+    console.log(`[Actions] Marking notification ${notificationId} as read for user ${authData.session.user.id}`);
 } 
