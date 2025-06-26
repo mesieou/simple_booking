@@ -1344,8 +1344,8 @@ export const quoteSummaryHandler: IndividualStepHandler = {
         status: 'pending'
       }, selectedService.mobile); // Pass mobile flag for validation
 
-      // Persist to database
-      const savedQuoteData = await quote.add();
+      // Persist to database (use service role for bot operations)
+      const savedQuoteData = await quote.add({ useServiceRole: true });
       console.log('[QuoteSummary] Quote successfully created with ID:', savedQuoteData.id);
 
       // Step 4: Generate display formatting
