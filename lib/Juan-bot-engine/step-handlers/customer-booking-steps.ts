@@ -10,8 +10,6 @@ import { StripePaymentService } from '@/lib/payments/stripe-utils';
 import { v4 as uuidv4 } from 'uuid';
 import { CalendarSettings } from '@/lib/database/models/calendar-settings';
 import { DateTime } from 'luxon';
-import { CreatePaymentLink } from '@/lib/database/models/payment';
-import { GoogleMapsService } from '@/lib/general-helpers/google-distance-calculator';
 import { BookingDataChecker, DateTimeFormatter, BookingDataManager, BookingButtonGenerator as UtilityButtonGenerator, StepProcessorBase, BookingMessageGenerator } from './booking-utilities';
 import { LanguageDetectionService } from '../services/language-detection';
 
@@ -1744,10 +1742,15 @@ export const quoteSummaryHandler: IndividualStepHandler = {
           }
         }
         
-        summaryMessage += `💳 *Booking Payment:*\n` +
-          `   • Paid Now: $${totalPayNow.toFixed(2)}\n` +
-          `   • Balance Due: $${remainingBalance.toFixed(2)} (${preferredPaymentMethod})\n` +
-          `   • Total Service Cost: $${quoteEstimation.totalJobCost.toFixed(2)}\n\n`;
+        summaryMessage += `💳 *Booking Payment:*
+` +
+          `   • Paid Now: $${totalPayNow.toFixed(2)}
+` +
+          (remainingBalance !== undefined ? `   • Balance Due: $${remainingBalance.toFixed(2)} (${preferredPaymentMethod})
+` : '') +
+          `   • Total Service Cost: $${quoteEstimation.totalJobCost.toFixed(2)}
+
+`;
       }
       
       summaryMessage += `${t.QUOTE_SUMMARY.QUOTE_ID} ${savedQuoteData.id}\n\n`;
