@@ -1,110 +1,63 @@
-'use client';
-
-import { useLanguage } from "@/lib/rename-categorise-better/utils/translations/language-context";
-import { useState } from 'react';
 import { usePathname } from 'next/navigation';
-import LanguageSwitcher from './language-switcher';
 import { useProvider } from '@/app/context/ProviderContext';
 
 export default function Menu() {
-  const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
-  const { t } = useLanguage();
   const { providerId } = useProvider();
 
   const links = [
-    { href: '/', label: t('home') },
-    { href: '/about', label: t('about') },
-    { href: '/services', label: t('services') },
+    { href: '/', label: 'Inicio' },
+    { href: '/about', label: 'Sobre Nosotros' },
+    { href: '/services', label: 'Servicios' },
     providerId
-      ? { href: `/${providerId}/booking/distance`, label: t('booking') }
-      : { href: '#', label: t('booking'), disabled: true },
+      ? { href: `/${providerId}/booking/distance`, label: 'Reservar' }
+      : { href: '#', label: 'Reservar', disabled: true },
   ];
 
   return (
     <div className="relative">
-      {/* Hamburger button for mobile */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="md:hidden text-gray-100 focus:outline-none"
-        aria-label="Toggle menu"
-      >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          {isOpen ? (
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          ) : (
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          )}
-        </svg>
-      </button>
-
-      {/* Mobile menu */}
-      <div
-        className={`fixed top-0 left-0 h-full w-64 transform transition-transform duration-300 ease-in-out z-50 md:hidden shadow-xl ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
-        }`}
-      >
-        <div className="p-4">
-          <button
-            onClick={() => setIsOpen(false)}
-            className="text-gray-100 mb-4"
-          >
+      {/* Mobile menu toggle */}
+      <div className="md:hidden">
+        <details className="relative">
+          <summary className="text-gray-100 focus:outline-none cursor-pointer">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             </svg>
-          </button>
-          <ul className="space-y-4">
-            {links.map(({ href, label, disabled }) => {
-              const isActive = pathname === href;
-              return (
-                <li key={href}>
-                  <a
-                    href={disabled ? undefined : href}
-                    className={`block py-2 px-3 rounded-sm text-lg ${
-                      isActive
-                        ? 'text-rose-600'
-                        : 'text-gray-100 hover:bg-gray-700'
-                    } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    aria-disabled={disabled}
-                  >
-                    {label}
-                  </a>
-                </li>
-              );
-            })}
-            <li className="mt-4">
-              <LanguageSwitcher />
-            </li>
-          </ul>
-        </div>
+          </summary>
+          
+          {/* Mobile menu */}
+          <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
+            {links.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                className={`block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 ${
+                  pathname === link.href ? 'bg-gray-100' : ''
+                } ${link.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                onClick={link.disabled ? (e) => e.preventDefault() : undefined}
+              >
+                {link.label}
+              </a>
+            ))}
+          </div>
+        </details>
       </div>
 
       {/* Desktop menu */}
-      <div className="hidden md:flex md:w-auto md:order-1 items-center">
-        <ul className="flex flex-col p-4 md:p-0 mt-4 font-medium border rounded-lg md:space-x-8 rtl:space-x-reverse md:flex-row md:mt-0 md:border-0 shadow-xl">
-          {links.map(({ href, label, disabled }) => {
-            const isActive = pathname === href;
-            return (
-              <li key={href}>
-                <a
-                  href={disabled ? undefined : href}
-                  className={`block py-2 px-3 rounded-sm md:p-0 text-lg
-                    ${isActive
-                      ? 'text-rose-600 dark:text-blue-500'
-                      : 'text-gray-100 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 md:hover:bg-transparent md:hover:text-blue-700 md:dark:hover:text-blue-500'}
-                    ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  aria-disabled={disabled}
-                >
-                  {label}
-                </a>
-              </li>
-            );
-          })}
-          <li className="ml-4">
-            <LanguageSwitcher />
-          </li>
-        </ul>
-      </div>
+      <nav className="hidden md:flex space-x-8">
+        {links.map((link) => (
+          <a
+            key={link.href}
+            href={link.href}
+            className={`text-gray-100 hover:text-white transition-colors ${
+              pathname === link.href ? 'text-white font-medium' : ''
+            } ${link.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+            onClick={link.disabled ? (e) => e.preventDefault() : undefined}
+          >
+            {link.label}
+          </a>
+        ))}
+      </nav>
     </div>
   );
 }

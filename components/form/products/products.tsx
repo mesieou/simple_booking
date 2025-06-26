@@ -2,7 +2,6 @@
 'use client';
 
 import React from "react";
-import { useLanguage } from "@/lib/rename-categorise-better/utils/translations/language-context";
 
 interface PreciosProps {
     base?: number;
@@ -10,8 +9,6 @@ interface PreciosProps {
 }
 
 const Precios: React.FC<PreciosProps> = ({ base = 0, labor_min = 0 }) => {
-    const { t } = useLanguage();
-    
     return (
         <div
             className="flex items-baseline space-x-2 text-black font-bold text-2xl md:text-3xl"
@@ -20,7 +17,7 @@ const Precios: React.FC<PreciosProps> = ({ base = 0, labor_min = 0 }) => {
             <span>${base}</span>
             <span>+</span>
             <span>${labor_min}</span>
-            <span className="text-base font-normal ml-1 align-bottom text-black/80">{t('labor')}</span>
+            <span className="text-base font-normal ml-1 align-bottom text-black/80">per minute</span>
         </div>
     );
 };

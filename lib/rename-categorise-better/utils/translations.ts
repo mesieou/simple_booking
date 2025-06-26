@@ -1,4 +1,4 @@
-export const en = {
+export const translations = {
   nav: {
     home: 'Home',
     about: 'About',
@@ -77,4 +77,48 @@ export const en = {
   }
 } as const;
 
-export type TranslationKey = keyof typeof en.nav | keyof typeof en.form | keyof typeof en.message | keyof typeof en.pricing | keyof typeof en.about | keyof typeof en.footer | keyof typeof en.features | keyof typeof en.hero | keyof typeof en.waitlist; 
+export type TranslationKey = 
+  | keyof typeof translations.nav 
+  | keyof typeof translations.form 
+  | keyof typeof translations.message 
+  | keyof typeof translations.pricing
+  | keyof typeof translations.about
+  | keyof typeof translations.footer
+  | keyof typeof translations.hero
+  | `waitlist.${keyof typeof translations.waitlist}`
+  | `features.${keyof typeof translations.features}.title`
+  | `features.${keyof typeof translations.features}.description`
+  | 'features.learn_more';
+
+export const t = (key: TranslationKey): string => {
+  if (key.startsWith('features.')) {
+    const [, feature, type] = key.split('.');
+    const featureData = translations.features[feature as keyof typeof translations.features];
+    if (typeof featureData === 'string') {
+      return featureData;
+    }
+    if (type) {
+      return featureData[type as 'title' | 'description'];
+    }
+    return featureData.title;
+  }
+  
+  if (key.startsWith('waitlist.')) {
+    const [, waitlistKey] = key.split('.');
+    return translations.waitlist[waitlistKey as keyof typeof translations.waitlist];
+  }
+  
+  if (Object.keys(translations.hero).includes(key as string)) {
+    return translations.hero[key as keyof typeof translations.hero];
+  }
+  
+  const allTranslations = {
+    ...translations.nav,
+    ...translations.form,
+    ...translations.message,
+    ...translations.pricing,
+    ...translations.about,
+    ...translations.footer
+  };
+  return allTranslations[key as keyof typeof allTranslations] || key;
+}; 

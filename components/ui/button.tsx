@@ -1,8 +1,8 @@
-// Import necessary libraries and components
 import * as React from "react"; // React core library
 import { Slot } from "@radix-ui/react-slot"; // For flexible component rendering
 import { cva, type VariantProps } from "class-variance-authority"; // For creating variant classes
-import { cn } from "@/lib/rename-categorise-better/utils/utils"; // Utility for combining class names
+import { cn } from "@/lib/utils";
+
 
 // Define button variants using class-variance-authority (cva)
 const buttonVariants = cva(
@@ -13,7 +13,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         // Primary button with gradient from primary to secondary color
-        default: "bg-gradient-to-r from-primary to-secondary text-primary-foreground hover:bg-gradient-to-r hover:from-secondary hover:to-primary",
+        default: "bg-gradient-to-r from-primary to-secondary border border-border text-primary-foreground hover:bg-gradient-to-r hover:from-secondary hover:to-primary",
         
         // Destructive button (for dangerous actions)
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
@@ -22,7 +22,7 @@ const buttonVariants = cva(
         outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
         
         // Secondary button with reverse gradient
-        secondary: "bg-gradient-to-r from-secondary to-primary text-secondary-foreground hover:bg-gradient-to-r hover:from-primary hover:to-secondary",
+        secondary: "text-secondary-foreground border border-border",
         
         // Ghost button (minimal styling)
         ghost: "hover:bg-accent hover:text-accent-foreground",
