@@ -1653,7 +1653,7 @@ export const quoteSummaryHandler: IndividualStepHandler = {
       const quote = new Quote(quoteData, selectedService.mobile); // Pass mobile flag for validation
 
       // Persist to database
-      const savedQuoteData = await quote.add();
+      const savedQuoteData = await quote.add({ useServiceRole: true });
       console.log('[QuoteSummary] Quote successfully created with ID:', savedQuoteData.id);
 
       // Step 4: Generate display formatting

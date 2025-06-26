@@ -18,7 +18,7 @@ export async function signUpAction(formData: FormData) {
     email,
     password,
     options: {
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
+      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://skedy.io'}/auth/callback`,
     },
   });
 
@@ -68,7 +68,7 @@ export async function forgotPasswordAction(formData: FormData) {
   const supabase = createClient();
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/protected/reset-password`,
+    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://skedy.io'}/protected/reset-password`,
   });
 
   if (error) {
