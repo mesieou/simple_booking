@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import type { Metadata } from "next";
 import Navbar from "@components/layout/navbar";
 import AnimatedBackground from "@/components/AnimatedBackground";
+import { Suspense } from "react";
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -53,7 +54,13 @@ export default function RootLayout({
           <div className="flex-1 w-full flex flex-col items-center">
             <Navbar />
             <div className="flex flex-col gap-20 max-w-5xl p-5 relative z-10">
-              {children}
+              <Suspense fallback={
+                <div className="flex items-center justify-center min-h-[200px]">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </div>
+              }>
+                {children}
+              </Suspense>
             </div>
             <Footer />
           </div>
