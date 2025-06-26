@@ -55,10 +55,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
 
     return NextResponse.json(data);
-  } catch (error: any) {
-    console.error("Error in geocoding:", error.message);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Error geocoding the address";
+    console.error("Error in geocoding:", errorMessage);
     return NextResponse.json(
-      { error: error.message || "Error geocoding the address" },
+      { error: errorMessage },
       { status: 500 }
     );
   }

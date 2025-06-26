@@ -20,10 +20,11 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json(data);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error in autocomplete:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Error processing the request';
     return NextResponse.json(
-      { error: error.message || 'Error processing the request' },
+      { error: errorMessage },
       { status: 500 }
     );
   }
