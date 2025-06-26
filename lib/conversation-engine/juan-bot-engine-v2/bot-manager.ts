@@ -4,7 +4,7 @@ import { ChatMessage } from "@/lib/database/models/chat-session";
 import { UserContext } from "@/lib/database/models/user-context";
 import { IntelligentLLMService } from './services/intelligent-llm-service';
 import { BotResponse } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
-import { franc } from 'franc-min';
+import { LanguageDetectionService } from "@/lib/Juan-bot-engine/services/language-detection";
 import { 
   getOrCreateChatContext, 
   persistSessionState,
@@ -137,6 +137,8 @@ import {
     // Other handlers
     askEmailHandler,
     createBookingHandler,
+    // FAQ handler
+    handleFaqQuestionHandler,
 } from './step-handlers/customer-booking-steps';
 
 export const botTasks: Record<string, IndividualStepHandler> = {
@@ -163,6 +165,8 @@ export const botTasks: Record<string, IndividualStepHandler> = {
   // Other handlers
   askEmail: askEmailHandler,
   createBooking: createBookingHandler,
+  // FAQ handler
+  handleFaqQuestion: handleFaqQuestionHandler,
 };
 
 // --- Helper function for step skipping ---
@@ -213,35 +217,15 @@ class MessageProcessor {
     let responseToUser: string;
     let uiButtonsToDisplay: ButtonConfig[] | undefined;
 
-    // --- LANGUAGE DETECTION ---
-    try {
-      const existingLang = currentContext.participantPreferences.language;
-
-      // Only detect language if it's not already set to a non-English language.
-      // This makes the language preference "sticky".
-      if (!existingLang || existingLang === 'en') {
-        // Detect language from user message (ISO 639-3)
-        const langCode3 = franc(incomingUserMessage, { minLength: 3 });
-
-        // Map to ISO 639-1 (2-letter code) if needed
-        const langMap: { [key: string]: string } = {
-          'spa': 'es',
-          'eng': 'en',
-          // Add other mappings as needed
-        };
-
-        const langCode2 = langMap[langCode3] || 'en'; // Default to English
-
-        if (existingLang !== langCode2) {
-          console.log(`[MessageProcessor] Language preference set to ${langCode2}`);
-          currentContext.participantPreferences.language = langCode2;
-        }
-      } else {
-        console.log(`[MessageProcessor] Sticky language preference maintained: ${existingLang}`);
-      }
-    } catch (error) {
-      console.error('[MessageProcessor] Error detecting language:', error);
-      // Proceed with default language
+    // --- CENTRALIZED LANGUAGE DETECTION ---
+    const languageResult = await LanguageDetectionService.detectAndUpdateLanguage(
+      incomingUserMessage, 
+      currentContext, 
+      '[MessageProcessor]'
+    );
+    
+    if (languageResult.wasChanged) {
+      console.log(`[MessageProcessor] Language detection: ${languageResult.reason}`);
     }
     // --- END LANGUAGE DETECTION ---
 

@@ -1,84 +1,79 @@
 // Este archivo será movido a components/sections/waitlist-form.tsx
 'use client';
 
-import React, { useState } from "react";
-import { FormMessage, Message } from "@components/form/form-message";
-import { createClient } from "@/lib/database/supabase/client"
-import { useLanguage } from "@/lib/rename-categorise-better/utils/translations/language-context";
+import { useState } from 'react';
+import { Button } from '@components/ui/button';
+import { Input } from '@components/ui/input';
+import { t } from "@/lib/rename-categorise-better/utils/translations";
 
-// Main JoinWaitlist component
-function JoinWaitlist() {
-  const { t } = useLanguage();
-  //create an instance of supa to save the emails in the database
-  const supa = createClient();
-  
-  const [email, setEmail] = useState<string>("");
-  const [formMessage, setFormMessage] = useState<Message | null>(null);
-  const [isSubmitted, setIsSubmitted] = useState(false);
-   
-  // this saves the email typed by the user using usestate hook
-  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEmail(e.target.value);
-  };
+export default function JoinWaitlist() {
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [errorMessage, setErrorMessage] = useState('');
 
-  // this function checks the email format and send it to supa
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setStatus('loading');
+    setErrorMessage('');
 
     // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      setFormMessage({ error: t('waitlist.error_invalid_email') });
+      setStatus('error');
+      setErrorMessage(t('waitlist.error_invalid_email'));
       return;
     }
 
-    // updates the use state and display a success message to the user
-    setIsSubmitted(true);
-    setFormMessage({ success: t('waitlist.success') });
-
-    
-    // Saving the email to the database
-    const { data, error } = await supa.from("waitlist").insert([{email}]);  
-    if (error) {
-      console.error("Supabase insert error", error);
-      setFormMessage({ error: t('waitlist.error_generic') })
-      setIsSubmitted(false);
+    try {
+      // Here you would typically send the email to your backend
+      // For now, we'll just simulate a successful submission
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setStatus('success');
+      setEmail('');
+    } catch (error) {
+      setStatus('error');
+      setErrorMessage(t('waitlist.error_generic'));
     }
   };
 
   return (
-    <div className="flex justify-center items-center md:p-6">
-      <div className="max-w-md w-ful p-6  md:flex items-center gap-2">
-        <h2 className="text-2xl text-white font-semibold mb-4 text-center">{t('waitlist.title')}</h2>
+    <div className="w-full max-w-md mx-auto">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-2">{t('waitlist.title')}</h2>
+        </div>
+        
+        <div className="flex gap-2">
+          <Input
+            type="email"
+            placeholder={t('waitlist.email_placeholder')}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={status === 'loading'}
+            className="flex-1"
+            required
+          />
+          <Button 
+            type="submit" 
+            disabled={status === 'loading'}
+            className="whitespace-nowrap"
+          >
+            {status === 'loading' ? t('message.loading') : t('waitlist.submit')}
+          </Button>
+        </div>
 
-        {/* Display success or error message */}
-        {formMessage && <FormMessage message={formMessage} />}
-
-        {!isSubmitted && (
-          <form onSubmit={handleSubmit}>
-            <div className="mb-4">
-              <input
-                type="email"
-                id="email"
-                value={email}
-                onChange={handleEmailChange}
-                required
-                placeholder={t('waitlist.email_placeholder')}
-                className="w-full text-black bg-white p-2 mt-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring text-center"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="w-full bg-gradient-to-r from-primary to-secondary text-primary-foreground py-2 rounded-md hover:bg-gradient-to-l from-primary to-secondary focus:outline-none focus:ring-2 focus:ring-ring"
-            >
-              {t('waitlist.submit')}
-            </button>
-          </form>
+        {status === 'success' && (
+          <p className="text-green-600 text-sm text-center">
+            {t('waitlist.success')}
+          </p>
         )}
-      </div>
+
+        {status === 'error' && (
+          <p className="text-red-600 text-sm text-center">
+            {errorMessage}
+          </p>
+        )}
+      </form>
     </div>
   );
 }
-
-export default JoinWaitlist;

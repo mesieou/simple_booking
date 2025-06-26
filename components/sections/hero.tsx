@@ -1,14 +1,11 @@
 'use client';
 
-
 import Video from 'next-video';
 import botDemo from '/videos/bot-demo.mp4';
 import JoinWaitlist from "@components/sections/waitlist-form";
-import { useLanguage } from "@/lib/rename-categorise-better/utils/translations/language-context";
+import { t } from "@/lib/rename-categorise-better/utils/translations";
 
 export default function Header() {
-  const { t } = useLanguage();
-
   return (
     <div className="flex flex-col gap-16 items-center">
       <div className="flex flex-col md:flex-row gap-8 justify-center w-full items-center">

@@ -22,6 +22,8 @@ export interface QuoteData {
     totalJobDurationEstimation: number;
     serviceId: string;
     depositAmount?: number;
+    remainingBalance?: number;
+    proposedDateTime?: string;
 }
 
 export class Quote {
@@ -42,38 +44,55 @@ export class Quote {
         if (data.totalJobCostEstimation < 0) handleModelError("Total job cost estimation cannot be negative", new Error("Invalid totalJobCostEstimation"));
         if (data.totalJobDurationEstimation < 0) handleModelError("Total job duration estimation cannot be negative", new Error("Invalid totalJobDurationEstimation"));
         if (data.depositAmount !== undefined && data.depositAmount < 0) handleModelError("Deposit amount cannot be negative", new Error("Invalid depositAmount"));
+        if (data.remainingBalance !== undefined && data.remainingBalance < 0) handleModelError("Remaining balance cannot be negative", new Error("Invalid remainingBalance"));
         this.data = data;
     }
 
-    // Calculate deposit amount based on business deposit percentage (only if percentage is set)
-    async calculateDepositAmount(): Promise<number | null> {
-        if (this.data.depositAmount !== undefined) {
-            return this.data.depositAmount;
-        }
-
+    // Calculate deposit amount and remaining balance
+    async calculatePaymentDetails(): Promise<{ depositAmount: number | undefined; remainingBalance: number }> {
         try {
             const { Business } = await import('./business');
             const business = await Business.getById(this.data.businessId);
             
-            // Only calculate if business has a deposit percentage set
+            // Calculate deposit and remaining balance
+            let depositAmount: number | undefined = undefined;
+            let remainingBalance = this.data.totalJobCostEstimation;
+            
+            // Only calculate deposit if business has a deposit percentage set
             if (business.depositPercentage !== undefined && business.depositPercentage > 0) {
-                const depositAmount = Math.round((this.data.totalJobCostEstimation * business.depositPercentage) / 100);
+                depositAmount = Math.round((this.data.totalJobCostEstimation * business.depositPercentage) / 100);
+                remainingBalance = this.data.totalJobCostEstimation - depositAmount;
+                
                 this.data.depositAmount = depositAmount;
-                return depositAmount;
+                this.data.remainingBalance = remainingBalance;
             } else {
-                // No deposit percentage set, return null
-                return null;
+                // No deposit required - full amount is remaining balance
+                this.data.depositAmount = undefined;
+                this.data.remainingBalance = remainingBalance;
             }
+            
+            return { depositAmount, remainingBalance };
         } catch (error) {
-            console.error('Error calculating deposit amount:', error);
-            return null;
+            console.error('Error calculating payment details:', error);
+            // Fallback values
+            this.data.remainingBalance = this.data.totalJobCostEstimation;
+            return { 
+                depositAmount: undefined, 
+                remainingBalance: this.data.totalJobCostEstimation
+            };
         }
+    }
+
+    // Backward compatibility method
+    async calculateDepositAmount(): Promise<number | undefined> {
+        const { depositAmount } = await this.calculatePaymentDetails();
+        return depositAmount;
     }
 
     //creates a Quote in supa
     async add(): Promise<QuoteData> {
-        // Calculate deposit amount before saving
-        await this.calculateDepositAmount();
+        // Calculate all payment details before saving
+        await this.calculatePaymentDetails();
 
         const supa = await createClient();
         const quote = {
@@ -89,6 +108,8 @@ export class Quote {
             "totalJobDurationEstimation": this.data.totalJobDurationEstimation,
             "serviceId": this.data.serviceId,
             "depositAmount": this.data.depositAmount,
+            "remainingBalance": this.data.remainingBalance,
+            "proposedDateTime": this.data.proposedDateTime,
             "createdAt": new Date().toISOString(),
             "updatedAt": new Date().toISOString()
         }
@@ -174,6 +195,8 @@ export class Quote {
             "totalJobDurationEstimation": quoteData.totalJobDurationEstimation,
             "serviceId": quoteData.serviceId,
             "depositAmount": quoteData.depositAmount,
+            "remainingBalance": quoteData.remainingBalance,
+            "proposedDateTime": quoteData.proposedDateTime,
             "updatedAt": new Date().toISOString()
         }
         const { data, error } = await supa.from("quotes").update(quote).eq("id", id).select().single();
@@ -219,4 +242,6 @@ export class Quote {
     get createdAt(): string | undefined { return this.data.createdAt; }
     get updatedAt(): string | undefined { return this.data.updatedAt; }
     get depositAmount(): number | undefined { return this.data.depositAmount; }
+    get remainingBalance(): number | undefined { return this.data.remainingBalance; }
+    get proposedDateTime(): string | undefined { return this.data.proposedDateTime; }
 }
