@@ -91,6 +91,7 @@
     "sharp": "^0.34.1",
     "sitemap": "^8.0.0",
     "sonner": "^2.0.5",
+    "stripe": "^17.7.0",
     "ts-luxon": "^6.0.0",
     "ts-retry-promise": "^0.8.1",
     "vaul": "^1.1.2",
