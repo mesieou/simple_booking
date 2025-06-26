@@ -9,9 +9,15 @@ import { computeQuoteEstimation, type QuoteEstimation } from '@/lib/general-help
 import { v4 as uuidv4 } from 'uuid';
 import { CalendarSettings } from '@/lib/database/models/calendar-settings';
 import { DateTime } from 'luxon';
-import { GoogleMapsService } from '@/lib/general-helpers/google-distance-calculator';
-import { DateTimeFormatter, BookingButtonGenerator, BookingDataChecker } from './booking-utilities';
-import { LanguageDetectionService } from '../../Juan-bot-engine/services/language-detection';
+import { 
+  BookingDataChecker, 
+  DateTimeFormatter, 
+  BookingDataManager, 
+  BookingButtonGenerator as UtilityButtonGenerator,
+  StepProcessorBase,
+  BookingMessageGenerator 
+} from './booking-utilities';
+import { LanguageDetectionService } from '../../../Juan-bot-engine/services/language-detection';
 
 // Configuration constants for booking steps
 const BOOKING_CONFIG = {
@@ -532,15 +538,6 @@ class AvailabilityService {
 // =====================================
 // NEW SIMPLIFIED STEP HANDLERS
 // =====================================
-
-import { 
-  BookingDataChecker, 
-  DateTimeFormatter, 
-  BookingDataManager, 
-  BookingButtonGenerator as UtilityButtonGenerator,
-  StepProcessorBase,
-  BookingMessageGenerator 
-} from './booking-utilities';
 
 // Step 1: Show next 2 available times + "choose another day" button
 // Job: ONLY display times, no input processing
