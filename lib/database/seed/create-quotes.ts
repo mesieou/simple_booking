@@ -26,12 +26,15 @@ export async function createQuotes(
   // Create services for the business
   const services = await createServices(business, 1);
   const service = services[0];
+  
+  // Get ServiceData from the Service instance
+  const serviceData = service.getData();
 
   for (let i = 0; i < numQuotes; i++) {
     const travelTimeEstimate = faker.number.int({ min: 5, max: 90 });
-    const totalJobDurationEstimation = calculateTotalJobDuration(service, travelTimeEstimate);
-    const travelCostEstimate = calculateTravelCost(service, travelTimeEstimate);
-    const totalJobCostEstimation = calculateTotalJobCost(service, travelTimeEstimate).totalJobCost;
+    const totalJobDurationEstimation = calculateTotalJobDuration(serviceData, travelTimeEstimate);
+    const travelCostEstimate = calculateTravelCost(serviceData, travelTimeEstimate);
+    const totalJobCostEstimation = calculateTotalJobCost(serviceData, travelTimeEstimate).totalJobCost;
 
     const quote = new Quote({
       pickUp: faker.location.streetAddress(),

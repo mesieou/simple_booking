@@ -1,6 +1,7 @@
 import { createClient } from "../supabase/server";
 import { v4 as uuidv4 } from 'uuid';
 import { handleModelError } from '@/lib/general-helpers/error';
+import { getServiceRoleClient } from "../supabase/service-role";
 
 // Corresponds to the structure of the JSONB objects in the userContexts table.
 // These are based on Juan's original bot-manager types.
@@ -75,10 +76,13 @@ export class UserContext {
    * This is typically called on a user's first interaction.
    */
   static async create(input: UserContextCreateInput): Promise<UserContext> {
-    const supa = await createClient();
+    const supa = getServiceRoleClient();
     const now = new Date().toISOString();
 
-    const dbData: Omit<UserContextDBSchema, 'id'> = {
+    const newId = uuidv4();
+
+    const dbData: UserContextDBSchema = {
+      id: newId,
       channelUserId: input.channelUserId,
       businessId: input.businessId,
       currentGoal: input.currentGoal,
@@ -110,7 +114,7 @@ export class UserContext {
       console.warn('[UserContextModel] channelUserId is required for getByChannelUserId');
       return null;
     }
-    const supa = await createClient();
+    const supa = getServiceRoleClient();
     const { data, error } = await supa
       .from('userContexts')
       .select('*')
@@ -124,6 +128,29 @@ export class UserContext {
   }
 
   /**
+   * Retrieves a user context by their unique channel identifier AND business identifier.
+   * This is the preferred method for multi-tenant environments to ensure context isolation.
+   */
+  static async getByChannelUserIdAndBusinessId(channelUserId: string, businessId: string): Promise<UserContext | null> {
+    if (!channelUserId || !businessId) {
+      console.warn('[UserContextModel] channelUserId and businessId are required for getByChannelUserIdAndBusinessId');
+      return null;
+    }
+    const supa = getServiceRoleClient();
+    const { data, error } = await supa
+      .from('userContexts')
+      .select('*')
+      .eq('channelUserId', channelUserId)
+      .eq('businessId', businessId)
+      .maybeSingle();
+
+    if (error) {
+      handleModelError(`Failed to fetch user context for channelUserId ${channelUserId} and businessId ${businessId}`, error);
+    }
+    return data ? new UserContext(data as UserContextDBSchema) : null;
+  }
+
+  /**
    * Updates an existing user context record based on its unique channel identifier.
    * This will be called after every turn to persist the new state.
    */
@@ -132,7 +159,7 @@ export class UserContext {
       console.warn('[UserContextModel] channelUserId is required for updateByChannelUserId');
       return null;
     }
-    const supa = await createClient();
+    const supa = getServiceRoleClient();
     const dataToUpdate: UserContextUpdateInput & { updatedAt: string } = {
       ...input,
       updatedAt: new Date().toISOString(),
@@ -167,7 +194,7 @@ export class UserContext {
       handleModelError('Invalid UUID for delete UserContext', new Error('Invalid UUID for delete'));
       return;
     }
-    const supa = await createClient();
+    const supa = getServiceRoleClient();
     const { error } = await supa.from('userContexts').delete().eq('id', id);
 
     if (error) {
