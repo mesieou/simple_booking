@@ -161,6 +161,121 @@ function generateAvailabilityDocumentContent(
 }
 
 /**
+ * Helper function to convert raw availability data to a more usable format for RAG.
+ * @param availabilityData Raw availability data from the database
+ * @returns Array of available slots grouped by day
+ */
+function convertAvailabilityDataToSlots(availabilityData: any[]): Array<{ date: string; slots: string[] }> {
+  if (!availabilityData || availabilityData.length === 0) {
+    return [];
+  }
+
+  const now = new Date();
+  const result: Array<{ date: string; slots: string[] }> = [];
+
+  // Process each day's availability
+  for (const dayData of availabilityData) {
+    const dayDate = new Date(dayData.date);
+    
+    // Skip past dates
+    if (dayDate < now) continue;
+    
+    // Get slots for common durations (60min and 90min are most common)
+    const slots60 = dayData.slots['60'] || [];
+    const slots90 = dayData.slots['90'] || [];
+    
+    // Combine and deduplicate slots
+    const allSlots = Array.from(new Set([...slots60, ...slots90]));
+    
+    // Filter out past times for today
+    const isToday = dayDate.toDateString() === now.toDateString();
+    const filteredSlots = allSlots.filter(time => {
+      if (!isToday) return true;
+      
+      // Check if time is in the future for today
+      const [hours, minutes] = time.split(':').map(Number);
+      const slotTime = new Date();
+      slotTime.setHours(hours, minutes, 0, 0);
+      return slotTime > now;
+    });
+    
+    // Only include days with available slots
+    if (filteredSlots.length > 0) {
+      result.push({
+        date: dayData.date,
+        slots: filteredSlots.sort() // Sort times chronologically
+      });
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Helper function to convert actual available time slots into natural language for RAG.
+ * @param availableSlots Array of available time slots grouped by day
+ * @param businessName The business name for context
+ * @returns A string containing actual available appointment times
+ */
+function generateAvailableSlotsContent(
+  availableSlots: Array<{ date: string; slots: string[] }>,
+  businessName: string
+): string {
+  if (!availableSlots || availableSlots.length === 0) {
+    return `${businessName} currently has no available appointment slots this week.`;
+  }
+
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  
+  // Format each day's availability
+  const formattedDays = availableSlots.map(dayData => {
+    const date = new Date(dayData.date);
+    
+    // Determine day label
+    let dayLabel = '';
+    if (date.toDateString() === today.toDateString()) {
+      dayLabel = 'Today';
+    } else if (date.toDateString() === tomorrow.toDateString()) {
+      dayLabel = 'Tomorrow';
+    } else {
+      dayLabel = date.toLocaleDateString('en-US', { 
+        weekday: 'long',
+        month: 'short', 
+        day: 'numeric' 
+      });
+    }
+    
+    // Format times in 12-hour format
+    const formattedTimes = dayData.slots.slice(0, 4).map(time => { // Show max 4 times per day
+      const [hours, minutes] = time.split(':');
+      const hour24 = parseInt(hours);
+      const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
+      const ampm = hour24 >= 12 ? 'PM' : 'AM';
+      return `${hour12}:${minutes} ${ampm}`;
+    });
+    
+    // Add "and more" if there are additional slots
+    const moreSlots = dayData.slots.length > 4 ? ` and ${dayData.slots.length - 4} more` : '';
+    
+    return `${dayLabel}: ${formattedTimes.join(', ')}${moreSlots}`;
+  });
+
+  // Create summary
+  const totalSlots = availableSlots.reduce((sum, day) => sum + day.slots.length, 0);
+  const availabilityLevel = totalSlots > 15 ? 'excellent' : totalSlots > 8 ? 'good' : 'limited';
+  
+  return `
+    ${businessName} Current Availability (${availabilityLevel} availability this week):
+    ${formattedDays.join('. ')}.
+    
+    Total available appointment slots: ${totalSlots}.
+    These are the actual times customers can book right now.
+  `.trim().replace(/\s\s+/g, ' ');
+}
+
+/**
  * Helper function to detect if user query is asking about business contact or address info specifically.
  * @param userMessage - The user's message to analyze
  * @returns boolean - True if the query is specifically about business contact/address
@@ -345,8 +460,9 @@ export async function RAGfunction(
       Service.getByBusiness(businessId)
     ];
     
-    // Add business info fetching if it's a contact/comprehensive query
-    if (isContactQuery || isComprehensiveQuery) {
+    // Add business info fetching if it's a contact/comprehensive/availability query
+    // (availability queries need business info to format the response properly)
+    if (isContactQuery || isComprehensiveQuery || isScheduleQuery) {
       promises.push(Business.getById(businessId));
     }
     
@@ -354,16 +470,48 @@ export async function RAGfunction(
     if (isScheduleQuery || isComprehensiveQuery) {
       // Fetch calendar settings for the business - this returns an array
       promises.push(CalendarSettings.getByBusiness(businessId));
+      // Also fetch actual available slots - need to find the provider first
+      promises.push(
+        (async () => {
+          try {
+            // Find the provider user for this business
+            const { User } = await import('@/lib/database/models/user');
+            const provider = await User.findUserByBusinessId(businessId);
+            if (provider) {
+              // Get comprehensive availability for the next 7 days
+              const { AvailabilitySlots } = await import('@/lib/database/models/availability-slots');
+              const today = new Date();
+              const oneWeekFromNow = new Date();
+              oneWeekFromNow.setDate(today.getDate() + 7);
+              
+              const availabilityData = await AvailabilitySlots.getByProviderAndDateRange(
+                provider.id,
+                today.toISOString().split('T')[0],
+                oneWeekFromNow.toISOString().split('T')[0]
+              );
+              
+              // Convert raw availability data to a more usable format
+              const availableSlots = convertAvailabilityDataToSlots(availabilityData);
+              return { provider, availableSlots };
+            }
+            return null;
+          } catch (error) {
+            console.error('[RAGfunction] Error fetching availability slots:', error);
+            return null;
+          }
+        })()
+      );
     }
     
     const results = await Promise.all(promises);
     const [documentResults, serviceInstances] = results;
     let businessInstance = null;
     let calendarSettings = null;
+    let availabilityData = null;
     
     // Extract business and calendar settings from results based on what was requested
     let resultIndex = 2;
-    if (isContactQuery || isComprehensiveQuery) {
+    if (isContactQuery || isComprehensiveQuery || isScheduleQuery) {
       businessInstance = results[resultIndex];
       resultIndex++;
     }
@@ -371,6 +519,9 @@ export async function RAGfunction(
       const calendarSettingsArray = results[resultIndex];
       // Take the first calendar settings if available (most businesses have one provider)
       calendarSettings = calendarSettingsArray && calendarSettingsArray.length > 0 ? calendarSettingsArray[0] : null;
+      resultIndex++;
+      // Extract availability slots data
+      availabilityData = results[resultIndex];
     }
     
     console.log(`[RAGfunction] Vector search returned ${documentResults.length} documents.`);
@@ -380,6 +531,16 @@ export async function RAGfunction(
     }
     if (calendarSettings) {
       console.log(`[RAGfunction] Fetched availability/calendar settings.`);
+    }
+    if (availabilityData) {
+      const totalSlots = availabilityData.availableSlots ? 
+        availabilityData.availableSlots.reduce((sum: number, day: any) => sum + (day.slots?.length || 0), 0) : 0;
+      console.log(`[RAGfunction] Fetched availability slots data:`, {
+        hasProvider: !!availabilityData.provider,
+        providerId: availabilityData.provider?.id,
+        availableDays: availabilityData.availableSlots?.length || 0,
+        totalSlots: totalSlots
+      });
     }
 
     let serviceResults: VectorSearchResult[] = [];
@@ -412,7 +573,7 @@ export async function RAGfunction(
     // Add business information result if available
     let businessResults: VectorSearchResult[] = [];
     if (businessInstance) {
-      const businessData = businessInstance.getData();
+      const businessData = businessInstance;
       const businessContent = generateBusinessDocumentContent(businessData);
       
       // Generate embedding for business info
@@ -434,8 +595,10 @@ export async function RAGfunction(
     // Add availability information result if available
     let availabilityResults: VectorSearchResult[] = [];
     if (calendarSettings && businessInstance) {
-      const businessData = businessInstance.getData();
-      const availabilityContent = generateAvailabilityDocumentContent(
+      const businessData = businessInstance;
+      
+      // Enhanced availability content that includes actual available slots
+      let availabilityContent = generateAvailabilityDocumentContent(
         {
           userId: calendarSettings.userId,
           businessId: calendarSettings.businessId,
@@ -448,6 +611,16 @@ export async function RAGfunction(
         }, 
         businessData.name
       );
+      
+      // Add actual available slots if we have them
+      if (availabilityData && availabilityData.availableSlots && availabilityData.availableSlots.length > 0) {
+        const slotsText = generateAvailableSlotsContent(availabilityData.availableSlots, businessData.name);
+        availabilityContent += `\n\n${slotsText}`;
+        const totalSlots = availabilityData.availableSlots.reduce((sum: number, day: any) => sum + (day.slots?.length || 0), 0);
+        console.log(`[RAGfunction] Added ${availabilityData.availableSlots.length} days with ${totalSlots} total available slots to availability content.`);
+      } else {
+        console.log(`[RAGfunction] No actual available slots found - showing working hours only.`);
+      }
       
       // Generate embedding for availability info
       const availabilityEmbedding = await generateEmbedding(availabilityContent);
@@ -462,7 +635,7 @@ export async function RAGfunction(
         category: 'Availability',
         confidenceScore: 1.0,
       }];
-      console.log(`[RAGfunction] Generated availability information search result.`);
+      console.log(`[RAGfunction] Generated availability information search result with ${availabilityContent.length} characters of content.`);
     }
 
     // Step 3: Combine and re-rank matches by applying boost factors
