@@ -12,6 +12,7 @@ export interface BusinessData {
     interfaceType: InterfaceType;
     websiteUrl?: string;
     whatsappNumber?: string;
+    whatsappPhoneNumberId?: string; // WhatsApp Business API Phone Number ID for sending messages
     businessAddress?: string;
     createdAt?: string;
     updatedAt?: string;
@@ -35,6 +36,11 @@ export class Business {
         this.data = data;
     }
 
+    // Getter method to access business data
+    getData(): BusinessData {
+        return { ...this.data };
+    }
+
     //creates a business in supa
     async add(): Promise<BusinessData> {
         const supa = await createClient();
@@ -47,6 +53,7 @@ export class Business {
             "interfaceType": this.data.interfaceType,
             "websiteUrl": this.data.websiteUrl,
             "whatsappNumber": this.data.whatsappNumber,
+            "whatsappPhoneNumberId": this.data.whatsappPhoneNumberId,
             "businessAddress": this.data.businessAddress,
             "depositPercentage": this.data.depositPercentage,
             "stripeConnectAccountId": this.data.stripeConnectAccountId,
@@ -143,6 +150,7 @@ export class Business {
             "interfaceType": businessData.interfaceType,
             "websiteUrl": businessData.websiteUrl,
             "whatsappNumber": businessData.whatsappNumber,
+            "whatsappPhoneNumberId": businessData.whatsappPhoneNumberId,
             "businessAddress": businessData.businessAddress,
             "depositPercentage": businessData.depositPercentage,
             "stripeConnectAccountId": businessData.stripeConnectAccountId,
@@ -198,6 +206,7 @@ export class Business {
     get interfaceType(): InterfaceType { return this.data.interfaceType; }
     get websiteUrl(): string | undefined { return this.data.websiteUrl; }
     get whatsappNumber(): string | undefined { return this.data.whatsappNumber; }
+    get whatsappPhoneNumberId(): string | undefined { return this.data.whatsappPhoneNumberId; }
     get businessAddress(): string | undefined { return this.data.businessAddress; }
     get depositPercentage(): number | undefined { return this.data.depositPercentage; }
     get stripeConnectAccountId(): string | undefined { return this.data.stripeConnectAccountId; }
@@ -225,5 +234,77 @@ export class Business {
     
         console.log(`[Business] Found business: ${data ? data.name : 'None'}`);
         return data ? new Business(data) : null;
+    }
+
+    /**
+     * Automatically maps and saves the WhatsApp Phone Number ID for a business
+     * based on the WhatsApp number. This should be called when receiving webhook data.
+     * @param whatsappNumber The WhatsApp number (e.g., "+1234567890")
+     * @param phoneNumberId The WhatsApp Phone Number ID (e.g., "108123456789")
+     * @returns Promise<boolean> - true if updated successfully, false otherwise
+     */
+    static async autoMapWhatsappPhoneNumberId(
+        whatsappNumber: string, 
+        phoneNumberId: string
+    ): Promise<boolean> {
+        try {
+            console.log(`[Business] Auto-mapping WhatsApp Phone Number ID for ${whatsappNumber} -> ${phoneNumberId}`);
+            
+            const supa = await createClient();
+            
+            // Find business by WhatsApp number and update if Phone Number ID is missing
+            const { data, error } = await supa
+                .from("businesses")
+                .update({ 
+                    whatsappPhoneNumberId: phoneNumberId,
+                    updatedAt: new Date().toISOString()
+                })
+                .eq("whatsappNumber", whatsappNumber)
+                .is("whatsappPhoneNumberId", null) // Only update if not already set
+                .select("id, name")
+                .maybeSingle();
+
+            if (error) {
+                console.error(`[Business] Error auto-mapping Phone Number ID:`, error);
+                return false;
+            }
+
+            if (data) {
+                console.log(`[Business] Successfully auto-mapped Phone Number ID for business: ${data.name} (${data.id})`);
+                return true;
+            } else {
+                console.log(`[Business] No business found with WhatsApp number ${whatsappNumber} or Phone Number ID already set`);
+                return false;
+            }
+        } catch (error) {
+            console.error(`[Business] Exception in autoMapWhatsappPhoneNumberId:`, error);
+            return false;
+        }
+    }
+
+    /**
+     * Gets the WhatsApp Phone Number ID for a business by WhatsApp number
+     * @param whatsappNumber The WhatsApp number to look up
+     * @returns Promise<string | null> - the Phone Number ID or null if not found
+     */
+    static async getWhatsappPhoneNumberId(whatsappNumber: string): Promise<string | null> {
+        try {
+            const supa = await createClient();
+            
+            const { data, error } = await supa
+                .from("businesses")
+                .select("whatsappPhoneNumberId")
+                .eq("whatsappNumber", whatsappNumber)
+                .single();
+
+            if (error || !data?.whatsappPhoneNumberId) {
+                return null;
+            }
+
+            return data.whatsappPhoneNumberId;
+        } catch (error) {
+            console.error(`[Business] Error getting WhatsApp Phone Number ID:`, error);
+            return null;
+        }
     }
 }

@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/database/supabase/client';
 import { type Session } from '@supabase/supabase-js';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,11 +13,13 @@ import Link from 'next/link';
 export default function InvitePage() {
   const supabase = createClient();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const businessId = searchParams.get('businessId');
   const { toast } = useToast();
 
   const [session, setSession] = useState<Session | null>(null);
   const [sessionLoading, setSessionLoading] = useState(true);
+  const [isAlreadyMember, setIsAlreadyMember] = useState(false);
 
   const [businessName, setBusinessName] = useState('');
   const [email, setEmail] = useState('');
@@ -35,20 +37,38 @@ export default function InvitePage() {
       setSession(session);
 
       if (businessId) {
+        // Check if business exists
         const { data: businessData, error } = await supabase
           .from('businesses')
           .select('name')
           .eq('id', businessId)
           .single();
-        if (businessData) setBusinessName(businessData.name);
+        
+        if (businessData) {
+          setBusinessName(businessData.name);
+        }
+        
         if (error && !businessData) {
-            toast({ title: "Invalid Invitation", description: "This invitation link is invalid or has expired.", variant: "destructive" });
+          toast({ title: "Invalid Invitation", description: "This invitation link is invalid or has expired.", variant: "destructive" });
+        }
+
+        // If user is logged in, check if they're already part of this business
+        if (session) {
+          const { data: userProfile, error: profileError } = await supabase
+            .from('users')
+            .select('businessId')
+            .eq('id', session.user.id)
+            .single();
+
+          if (!profileError && userProfile?.businessId === businessId) {
+            setIsAlreadyMember(true);
+          }
         }
       }
       setSessionLoading(false);
     };
     getInitialData();
-  }, [businessId, supabase, toast]);
+  }, [businessId, supabase, toast, session]);
 
   const handleAcceptInvite = async () => {
     setLoading(true);
@@ -59,7 +79,7 @@ export default function InvitePage() {
         toast({ title: "Failed to join", description: error.message, variant: "destructive" });
     } else {
         toast({ title: "Success!", description: data.message });
-        window.location.href = '/protected'; // Redirect on success
+        router.push('/protected'); // Use Next.js router instead of hard redirect
     }
     setLoading(false);
   };
@@ -105,13 +125,29 @@ export default function InvitePage() {
         toast({ title: "Failed to join", description: linkError.message, variant: "destructive" });
     } else {
         toast({ title: "Success!", description: linkData.message });
-        window.location.href = '/protected'; 
+        router.push('/protected'); // Use Next.js router instead of hard redirect
     }
     setLoading(false);
   };
 
   if (sessionLoading) {
     return <div className="flex-1 flex flex-col w-full px-8 sm:max-w-md justify-center gap-2 animate-pulse"><p className='text-center'>Loading...</p></div>;
+  }
+
+  // Handle case where user is already a member of this business
+  if (session && isAlreadyMember) {
+    return (
+      <div className="flex-1 flex flex-col w-full px-8 sm:max-w-md justify-center gap-6 text-center">
+        <h1 className="text-2xl font-bold">Already a Member!</h1>
+        <p className="text-muted-foreground">
+          You are already a member of <span className='font-bold text-foreground'>{businessName}</span>.
+        </p>
+        <p className="text-sm text-muted-foreground">Logged in as {session.user.email}</p>
+        <Button onClick={() => router.push('/protected')}>
+          Go to Dashboard
+        </Button>
+      </div>
+    );
   }
 
   if (session) {
