@@ -12,13 +12,13 @@ export interface LanguageDetectionResult {
 
 export class LanguageDetectionService {
   private static readonly SUPPORTED_LANGUAGES = ['en', 'es'];
-  private static readonly MIN_MESSAGE_LENGTH_FOR_DETECTION = 4;
+  private static readonly MIN_MESSAGE_LENGTH_FOR_DETECTION = 8;
   private static readonly DEFAULT_LANGUAGE = 'en';
-  private static readonly MIN_CONFIDENCE_FOR_SWITCH = 0.3;
+  private static readonly MIN_CONFIDENCE_FOR_SWITCH = 0.8;
 
   /**
-   * Centralized language detection that all parts of the system should use
-   * Handles bidirectional switching between English and Spanish
+   * Simplified language detection that only runs on human messages
+   * Once language is detected and set, it persists unless explicitly changed by human input
    */
   static async detectAndUpdateLanguage(
     message: string, 
@@ -29,9 +29,9 @@ export class LanguageDetectionService {
       const existingLang = chatContext.participantPreferences.language || this.DEFAULT_LANGUAGE;
       const messageLength = message.trim().length;
 
-      // For very short messages, don't change language to prevent accidental switches
-      if (messageLength <= this.MIN_MESSAGE_LENGTH_FOR_DETECTION) {
-        console.log(`${logPrefix} Short message (${messageLength} chars) - maintaining existing language: ${existingLang}`);
+      // FIRST: Always skip system-generated messages completely
+      if (this.isSystemGeneratedMessage(message)) {
+        console.log(`${logPrefix} System message detected - using existing language: ${existingLang}`);
         
         // Ensure we have a language set
         if (!chatContext.participantPreferences.language) {
@@ -42,76 +42,86 @@ export class LanguageDetectionService {
           detectedLanguage: existingLang,
           wasChanged: false,
           confidence: 'low',
-          reason: 'Message too short for reliable detection'
+          reason: 'System message - language preserved'
         };
       }
 
-      // Smart LLM-based language detection
-      const detectionResult = await this.detectLanguageMultiApproach(message);
-      const detectedLang = detectionResult.language;
-      const confidence = detectionResult.confidence;
-
-      console.log(`${logPrefix} Language detection: ${detectedLang} (confidence: ${confidence.toFixed(2)}, method: ${detectionResult.method})`);
-
-      // Only switch languages if confidence is high enough
-      if (!detectedLang || !this.SUPPORTED_LANGUAGES.includes(detectedLang)) {
-        console.log(`${logPrefix} Unsupported or low-confidence language detection - maintaining existing: ${existingLang}`);
+      // SECOND: If we already have a language set, be very conservative about changing it
+      // Only change if it's a substantial human message with high confidence
+      if (chatContext.participantPreferences.language) {
+        console.log(`${logPrefix} Language already set to '${existingLang}' - being conservative`);
         
-        if (!chatContext.participantPreferences.language) {
-          chatContext.participantPreferences.language = this.DEFAULT_LANGUAGE;
+        // For short messages, always keep existing language
+        if (messageLength <= this.MIN_MESSAGE_LENGTH_FOR_DETECTION) {
+          console.log(`${logPrefix} Short message (${messageLength} chars) - preserving ${existingLang}`);
+          return {
+            detectedLanguage: existingLang,
+            wasChanged: false,
+            confidence: 'low',
+            reason: 'Short message - language preserved'
+          };
         }
 
-        return {
-          detectedLanguage: existingLang,
-          wasChanged: false,
-          confidence: 'low',
-          reason: `Low confidence detection: ${detectedLang || 'unknown'}`
-        };
-      }
-
-      // Only switch if confidence is above threshold
-      if (confidence < this.MIN_CONFIDENCE_FOR_SWITCH) {
-        console.log(`${logPrefix} Detection confidence too low (${confidence.toFixed(2)}) - maintaining existing: ${existingLang}`);
-        
-        if (!chatContext.participantPreferences.language) {
-          chatContext.participantPreferences.language = this.DEFAULT_LANGUAGE;
+        // For longer messages, only switch with very high confidence
+        const detectionResult = await this.detectLanguageWithLLM(message);
+        if (detectionResult.language && 
+            detectionResult.language !== existingLang && 
+            detectionResult.confidence >= this.MIN_CONFIDENCE_FOR_SWITCH) {
+          
+          console.log(`${logPrefix} High-confidence language switch: ${existingLang} → ${detectionResult.language}`);
+          chatContext.participantPreferences.language = detectionResult.language;
+          
+          return {
+            detectedLanguage: detectionResult.language,
+            wasChanged: true,
+            previousLanguage: existingLang,
+            confidence: 'high',
+            reason: `High-confidence switch (${detectionResult.confidence.toFixed(2)})`
+          };
+        } else {
+          console.log(`${logPrefix} Insufficient confidence for language change - preserving ${existingLang}`);
+          return {
+            detectedLanguage: existingLang,
+            wasChanged: false,
+            confidence: 'medium',
+            reason: 'Insufficient confidence for language change'
+          };
         }
-
-        return {
-          detectedLanguage: existingLang,
-          wasChanged: false,
-          confidence: 'low',
-          reason: `Confidence below threshold: ${confidence.toFixed(2)}`
-        };
       }
 
-      // Check if language actually changed
-      if (detectedLang !== existingLang) {
-        console.log(`${logPrefix} Language preference changed from '${existingLang}' to '${detectedLang}' based on message: "${message.substring(0, 50)}..."`);
-        chatContext.participantPreferences.language = detectedLang;
-
+      // THIRD: First-time language detection (no language set yet)
+      console.log(`${logPrefix} First-time language detection for message: "${message.substring(0, 50)}..."`);
+      
+      if (messageLength <= this.MIN_MESSAGE_LENGTH_FOR_DETECTION) {
+        console.log(`${logPrefix} First message too short - defaulting to ${this.DEFAULT_LANGUAGE}`);
+        chatContext.participantPreferences.language = this.DEFAULT_LANGUAGE;
+        
         return {
-          detectedLanguage: detectedLang,
+          detectedLanguage: this.DEFAULT_LANGUAGE,
           wasChanged: true,
-          previousLanguage: existingLang,
-          confidence: 'high',
-          reason: `Language switched based on message content`
-        };
-      } else {
-        console.log(`${logPrefix} Language preference maintained: ${existingLang}`);
-
-        return {
-          detectedLanguage: existingLang,
-          wasChanged: false,
-          confidence: 'high',
-          reason: 'Detected language matches existing preference'
+          confidence: 'low',
+          reason: 'First message too short - used default'
         };
       }
+
+      const detectionResult = await this.detectLanguageWithLLM(message);
+      const detectedLang = detectionResult.language || this.DEFAULT_LANGUAGE;
+      
+      console.log(`${logPrefix} First-time detection result: ${detectedLang} (confidence: ${detectionResult.confidence.toFixed(2)})`);
+      
+      chatContext.participantPreferences.language = detectedLang;
+      
+      return {
+        detectedLanguage: detectedLang,
+        wasChanged: true,
+        confidence: detectionResult.confidence >= 0.7 ? 'high' : 'medium',
+        reason: `Initial language detection: ${detectionResult.method}`
+      };
 
     } catch (error) {
-      console.error(`${logPrefix} Error detecting language:`, error);
+      console.error(`${logPrefix} Error in language detection:`, error);
       
-      // Fallback to ensure we always have a language
+      // Fallback: ensure we always have a language
       const fallbackLang = chatContext.participantPreferences.language || this.DEFAULT_LANGUAGE;
       if (!chatContext.participantPreferences.language) {
         chatContext.participantPreferences.language = fallbackLang;
@@ -121,13 +131,13 @@ export class LanguageDetectionService {
         detectedLanguage: fallbackLang,
         wasChanged: false,
         confidence: 'low',
-        reason: `Error during detection: ${error instanceof Error ? error.message : 'Unknown error'}`
+        reason: `Error fallback: ${error instanceof Error ? error.message : 'Unknown error'}`
       };
     }
   }
 
   /**
-   * Get the current language without changing it
+   * Get the current language without any detection logic
    */
   static getCurrentLanguage(chatContext: ChatContext): string {
     return chatContext.participantPreferences.language || this.DEFAULT_LANGUAGE;
@@ -150,45 +160,54 @@ export class LanguageDetectionService {
   }
 
   /**
-   * Smart LLM-based language detection with franc fallback
-   * Returns language with confidence score and method used
+   * Comprehensive detection of system-generated messages
+   * This covers ALL possible button/system payloads to prevent language detection corruption
    */
-  private static async detectLanguageMultiApproach(message: string): Promise<{ 
-    language: string | null; 
-    confidence: number; 
-    method: string 
-  }> {
-    // Try LLM detection first (most accurate)
-    try {
-      const llmResult = await this.detectWithLLM(message);
-      if (llmResult.language && llmResult.confidence > 0.7) {
-        return llmResult;
-      }
-    } catch (error) {
-      console.warn('[LanguageDetection] LLM detection failed, falling back to franc:', error);
+  private static isSystemGeneratedMessage(message: string): boolean {
+    const trimmedMessage = message.trim();
+    
+    // UUID pattern (e.g., "ba203e4d-dae8-4072-9633-438861d69de9")
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidPattern.test(trimmedMessage)) {
+      return true;
     }
-
-    // Fallback to franc with improved mapping
-    return this.detectWithFrancImproved(message);
+    
+    // Button payload patterns - be comprehensive to catch all system messages
+    const systemPatterns = [
+      // Time slot patterns
+      /^slot_\d+_/, 
+      // Date patterns  
+      /^day_\d{4}-\d{2}-\d{2}$/,
+      // Standard button values
+      /^(choose_another_day|choose_different_date|contact_support|confirm_quote|edit_quote|contact_us|try_again|no_availability)$/,
+      // Time display patterns (12 PM, 1 AM, etc.)
+      /^\d{1,2}(?::\d{2})?\s*[AP]M?$/i,
+      // Any single word with underscores (likely system codes)
+      /^[a-zA-Z0-9_-]+$/
+    ];
+    
+    return systemPatterns.some(pattern => pattern.test(trimmedMessage));
   }
 
   /**
-   * Use LLM for intelligent language detection
+   * LLM-based language detection - our primary and most accurate method
    */
-  private static async detectWithLLM(message: string): Promise<{ 
+  private static async detectLanguageWithLLM(message: string): Promise<{ 
     language: string | null; 
     confidence: number; 
     method: string 
   }> {
     const systemPrompt = `You are a language detection expert. Analyze messages and determine if they're written in English or Spanish.
 
-Consider:
-- Grammar structure
-- Vocabulary
-- Context and intent
-- Common phrases and expressions
+IMPORTANT: Only detect clear, unambiguous language usage. Be conservative.
 
-Respond with ONLY a JSON object in this exact format:
+Guidelines:
+- Look for clear vocabulary, grammar, and sentence structure
+- Consider common greetings, question words, and phrases
+- If the message is ambiguous or unclear, return lower confidence
+- Focus on natural human language patterns
+
+Respond with ONLY a JSON object:
 {
   "language": "en" or "es",
   "confidence": number between 0 and 1,
@@ -196,8 +215,9 @@ Respond with ONLY a JSON object in this exact format:
 }
 
 Examples:
-- "hello can i make a reservation" → {"language": "en", "confidence": 0.95, "reasoning": "English greeting and vocabulary"}
-- "hola quiero hacer una reserva" → {"language": "es", "confidence": 0.95, "reasoning": "Spanish greeting and vocabulary"}
+- "hello can i make a reservation" → {"language": "en", "confidence": 0.95, "reasoning": "Clear English vocabulary and structure"}
+- "hola quiero hacer una reserva" → {"language": "es", "confidence": 0.95, "reasoning": "Clear Spanish vocabulary and structure"}
+- "yes" → {"language": "en", "confidence": 0.6, "reasoning": "English word but very short"}
 - "si" → {"language": "es", "confidence": 0.6, "reasoning": "Spanish word but could be ambiguous"}`;
 
     const userPrompt = `Analyze this message: "${message}"`;
@@ -208,9 +228,9 @@ Examples:
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        "gpt-4o-mini", // Use mini for simple language detection
-        0.3, // Low temperature for consistent results
-        150  // Short response needed
+        "gpt-4o-mini",
+        0.2, // Very low temperature for consistent results
+        100  // Short response
       );
 
       const resultText = response.choices[0]?.message?.content?.trim();
@@ -232,67 +252,15 @@ Examples:
           typeof result.confidence === 'number') {
         return {
           language: result.language,
-          confidence: result.confidence,
+          confidence: Math.max(0, Math.min(1, result.confidence)),
           method: `llm-ai (${result.reasoning || 'AI analysis'})`
         };
       }
       
       return { language: null, confidence: 0, method: 'llm-invalid-response' };
     } catch (error) {
-      console.error('[LanguageDetection] LLM parsing error:', error);
+      console.error('[LanguageDetection] LLM error:', error);
       return { language: null, confidence: 0, method: 'llm-error' };
-    }
-  }
-
-    /**
-   * Improved franc-based detection as fallback
-   */
-  private static detectWithFrancImproved(message: string): { 
-    language: string | null; 
-    confidence: number; 
-    method: string 
-  } {
-    try {
-      const francResult = franc(message, { minLength: 2 });
-      
-      // Enhanced mapping including common misdetections
-      const francMap: { [key: string]: string } = {
-        'spa': 'es',
-        'eng': 'en',
-        'fra': 'en', // franc often misdetects English as French
-        'ita': 'es', // Italian might be closer to Spanish for our use case
-        'por': 'es'  // Portuguese might be closer to Spanish
-      };
-
-      const mappedLang = francMap[francResult];
-      if (!mappedLang) {
-        return { language: null, confidence: 0, method: 'franc-unsupported' };
-      }
-
-      // Calculate confidence based on message characteristics
-      const messageLength = message.length;
-      let confidence = 0.5; // Base confidence for franc
-
-      // Increase confidence for longer messages
-      if (messageLength > 10) confidence += 0.2;
-      if (messageLength > 20) confidence += 0.1;
-      
-      // Specific heuristics for common cases
-      if (francResult === 'eng' || (francResult === 'fra' && /\b(hello|hi|can|make|book|help|time|when)\b/i.test(message))) {
-        confidence = Math.min(confidence + 0.3, 0.8);
-      }
-      
-      if (francResult === 'spa' || /[ñáéíóúü]/.test(message)) {
-        confidence = Math.min(confidence + 0.3, 0.8);
-      }
-
-      return {
-        language: mappedLang,
-        confidence: Math.min(confidence, 0.8), // Cap fallback confidence
-        method: `franc-improved (${francResult})`
-      };
-    } catch {
-      return { language: null, confidence: 0, method: 'franc-error' };
     }
   }
 } 

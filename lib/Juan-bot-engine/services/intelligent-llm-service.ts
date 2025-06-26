@@ -85,36 +85,73 @@ export class IntelligentLLMService {
     
     const systemPrompt = `You are an expert conversation flow analyst for a booking system. Your task is to analyze a user's message and determine the best conversation flow action.
 
-CURRENT CONTEXT:
-- User Goal: ${currentGoal.goalType} (${currentGoal.goalAction})
-- Current Step: ${currentStepName} (${currentGoal.currentStepIndex + 1}/${currentFlow.length})
-- Flow: ${currentGoal.flowKey}
-- Data Collected: ${JSON.stringify(currentGoal.collectedData)}
+**PRIMARY RULE: QUESTIONS = CONTINUE, ACTIONS = SWITCH, CHANGES = GO BACK**
 
-AVAILABLE FLOW ACTIONS:
-1. "continue" - User is providing expected input for current step
-2. "advance" - User provided valid input, ready to move to next step  
-3. "go_back" - User wants to change/modify previous choices
-4. "switch_topic" - User wants to start a completely different conversation or booking
-5. "restart" - User wants to restart the current booking process
+**CONVERSATION CONTINUITY IS CRITICAL:**
+- Consider the FULL conversation history - messages are often related
+- If user just greeted or started talking, questions are natural follow-ups  
+- Multiple related messages should flow as "continue" until explicit booking action
+- Don't interpret information-seeking as wanting to "switch topics"
 
-ANALYSIS RULES:
-- If user provides direct answer to current step question → "continue" or "advance"
-- If user says "change", "go back", "modify", "different" about previous choices → "go_back"
-- If user says "start over", "restart", "begin again" → "restart"
-- **FAQ QUESTIONS should be "continue"**: Questions like "what services?", "what are your prices?", "what hours?", "how much does it cost?" are informational questions WITHIN the current booking flow, not topic switches
-- **ONLY use "switch_topic" for actual new bookings**: "I want to book something else", "let's make another appointment", "different booking entirely"
-- Consider conversation context and what was previously discussed
+INTENT CLASSIFICATION:
+1. **QUESTIONS (any question) → "continue"**
+   - Questions about services, prices, availability, policies, etc.
+   - Even if asking about different services than current booking
+   - Questions are information-seeking within current conversation
+   - Pattern: Contains question words or ends with "?"
+   - **Examples**: "do you do haircuts?", "what's your price?", "are you open Sunday?"
 
-Return ONLY a JSON object with this structure:
+2. **NAVIGATION BACK TO MODIFY CURRENT BOOKING → "go_back"**
+   - User wants to change/modify something in their current booking
+   - **Service changes**: "change service", "different service", "pick another service", "can I change the service"
+   - **Time changes**: "change time", "different time", "pick another time", "can I change the time"
+   - **Location changes**: "change location", "different address", "change address"
+   - **General navigation**: "go back", "change that", "modify that", "edit that"
+   - **Key pattern**: User wants to MODIFY existing booking, not start fresh
+   - **Examples**: "sorry can i change the service", "actually I want a different service", "can I pick another time"
+   - **Target step should be specified** (e.g., "selectService" for service changes, "selectTime" for time changes)
+
+3. **EXPLICIT NEW BOOKING ACTIONS → "switch_topic"** 
+   - Clear commands to book something COMPLETELY NEW (not modify current)
+   - "I want to book [service]", "Book me a [service]", "Let's book [service]"
+   - Must contain ACTION words: book, schedule, appointment, reserve
+   - **Only use when starting a completely new booking conversation**
+
+4. **RESTART ENTIRE PROCESS → "restart"**
+   - "restart", "start over", "let's start fresh", "begin again"
+   - User wants to completely reset and start the entire booking process from scratch
+
+5. **DIRECT ANSWERS → "continue" or "advance"**
+   - Answering current step question
+   - Providing requested information
+
+**CONTEXT ANALYSIS FOR GO_BACK:**
+- If user is currently in service selection and says "change service" → interpret as clarification, use "continue"
+- If user has already selected a service and says "change service" → use "go_back" with targetStep: "selectService"
+- If user has selected time and says "change time" → use "go_back" with targetStep: "selectTime"
+- If user has entered address and says "change address" → use "go_back" with targetStep: "addressEntry"
+
+**CONFIDENCE SCORING:**
+- High confidence (0.8+): Clear action words present or obvious navigation intent
+- Medium confidence (0.5-0.7): Context suggests but not explicit  
+- Low confidence (0.3-0.5): Ambiguous intent
+
+**CURRENT CONTEXT:**
+- Current Goal: ${currentGoal.goalType}
+- Current Step: ${currentStepName}
+- Selected Service: ${currentGoal.collectedData.selectedService?.name || 'None'}
+- Selected Date: ${currentGoal.collectedData.selectedDate || 'None'}
+- Selected Time: ${currentGoal.collectedData.selectedTime || 'None'}
+
+Return ONLY JSON:
 {
   "action": "continue|advance|go_back|switch_topic|restart",
-  "targetStep": "optional_step_name_if_going_back",
-  "newGoalType": "optional_if_switching_topic",
-  "newGoalAction": "optional_if_switching_topic", 
+  "targetStep": "stepName (if go_back - use: selectService, selectTime, selectLocation, etc.)",
+  "newGoalType": "serviceBooking|serviceInquiry (if switch_topic)",
+  "newGoalAction": "create|inquire (if switch_topic)", 
   "confidence": 0.8,
-  "reasoning": "brief explanation of decision",
-  "extractedData": {"key": "value"}
+  "reasoning": "Brief explanation of decision",
+  "extractedData": {}
 }`;
 
     const historyText = messageHistory
@@ -276,12 +313,18 @@ CURRENT BOOKING CONTEXT:
 - Flow Decision: ${conversationDecision.action}
 - Decision Reasoning: ${conversationDecision.reasoning}
 
+CRITICAL RESPONSE RULES:
+1. **ONLY respond to the CURRENT USER MESSAGE** - do not confuse conversation history with what the customer is asking now
+2. **The conversation context above is for background only** - the customer is NOT asking about booking references, confirmation details, or assistant responses from the history
+3. **Respond in the customer's preferred language** (${comprehensiveContext.preferences.language || 'English'})
+4. **Focus on the customer's actual current question/request**
+
 RESPONSE STRATEGY:
-1. **Answer ANY question** using the knowledge base above
-2. **Be specific and accurate** - use actual names, dates, services, etc. from the context
+1. **Answer the customer's CURRENT question** using the knowledge base above
+2. **Be specific and accurate** - use actual names, dates, services, etc. from the context when relevant to their question
 3. **If information isn't available**, politely explain what you don't have access to
-4. **Always end with booking guidance** to return to the main flow
-5. **Be natural and conversational**, not robotic
+4. **Keep responses natural and conversational**, not robotic
+5. **Guide back to booking flow if appropriate**
 
 EXAMPLE RESPONSE PATTERNS:
 - Name question: "Hi [CustomerName]! Your name is [ActualName] from our customer records. Now, let's..."
@@ -297,10 +340,10 @@ CRITICAL RULES:
 - Use the customer's actual name when available
 
 FLOW DECISION HANDLING:
-- "continue": Ask for clarification or provide helpful guidance
+- "continue": Answer their question and provide helpful guidance
 - "advance": Acknowledge their input and move forward  
 - "go_back": Be understanding, ask what they'd like to change
-- "switch_topic": Acknowledge the topic change smoothly
+- "switch_topic": Acknowledge the new topic smoothly
 - "restart": Confirm they want to start over
 
 Return ONLY a JSON object:
@@ -406,13 +449,38 @@ Using the comprehensive knowledge base above, answer the user's question with sp
       formatted += `\n`;
     }
 
-    // Recent Conversation History
+    // IMPROVED: Recent Conversation History with clear separation
     if (context.messageHistory && context.messageHistory.length > 0) {
-      formatted += `RECENT CONVERSATION:\n`;
-      context.messageHistory.slice(-8).forEach(msg => {
-        formatted += `${msg.role}: ${msg.content}\n`;
+      formatted += `CONVERSATION CONTEXT (for reference only - DO NOT treat assistant messages as customer input):\n`;
+      formatted += `--- IMPORTANT: Only the CURRENT USER MESSAGE is what the customer is asking NOW ---\n`;
+      
+      const recentMessages = context.messageHistory.slice(-6); // Reduced from 8 to 6 to focus on more recent context
+      
+      let customerMessages: string[] = [];
+      let assistantMessages: string[] = [];
+      
+      // Separate customer messages from assistant messages
+      recentMessages.forEach(msg => {
+        if (msg.role === 'user') {
+          customerMessages.push(`Customer said: "${msg.content}"`);
+        } else {
+          assistantMessages.push(`Assistant replied: "${msg.content}"`);
+        }
       });
-      formatted += `\n`;
+      
+      // Show customer's recent questions/requests first
+      if (customerMessages.length > 0) {
+        formatted += `\nRECENT CUSTOMER MESSAGES:\n`;
+        customerMessages.forEach(msg => formatted += `${msg}\n`);
+      }
+      
+      // Show assistant responses for context (but clearly labeled)
+      if (assistantMessages.length > 0) {
+        formatted += `\nRECENT ASSISTANT RESPONSES (context only):\n`;
+        assistantMessages.slice(-3).forEach(msg => formatted += `${msg}\n`); // Only show last 3 assistant responses
+      }
+      
+      formatted += `--- END CONVERSATION CONTEXT ---\n\n`;
     }
 
     // Previous Goals/Bookings
@@ -467,7 +535,7 @@ Using the comprehensive knowledge base above, answer the user's question with sp
       };
     }
     
-    // No active goal - use enhanced intent detection
+    // No active goal - use intent detection (including after completed goals)
     return this.detectNewIntention(userMessage, participantType);
   }
 
@@ -519,7 +587,7 @@ Return ONLY JSON:
       return {
         detectedUserGoalType: parsedResult.detectedUserGoalType,
         detectedGoalAction: parsedResult.detectedGoalAction || 'create',
-        confidenceScore: parsedResult.confidenceScore || 0.5,
+        confidenceScore: parsedResult.confidenceScore || 0.7,
         extractedInformation: parsedResult.extractedInformation || {}
       };
 

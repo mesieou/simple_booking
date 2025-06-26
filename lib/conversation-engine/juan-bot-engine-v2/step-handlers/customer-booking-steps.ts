@@ -9,6 +9,9 @@ import { computeQuoteEstimation, type QuoteEstimation } from '@/lib/general-help
 import { v4 as uuidv4 } from 'uuid';
 import { CalendarSettings } from '@/lib/database/models/calendar-settings';
 import { DateTime } from 'luxon';
+import { GoogleMapsService } from '@/lib/general-helpers/google-distance-calculator';
+import { DateTimeFormatter, BookingButtonGenerator, BookingDataChecker } from './booking-utilities';
+import { LanguageDetectionService } from '../../Juan-bot-engine/services/language-detection';
 
 // Configuration constants for booking steps
 const BOOKING_CONFIG = {
@@ -1905,12 +1908,33 @@ export const selectServiceHandler: IndividualStepHandler = {
     
     if (selectedServiceData) {
       console.log('[SelectService] Service found:', selectedServiceData.name);
+      
+      let finalServiceAddress;
+      let serviceLocation;
+      
+      if (!selectedServiceData.mobile) {
+        // For non-mobile services, fetch actual business address
+        const businessId = chatContext.currentParticipant.associatedBusinessId;
+        let businessAddress = 'Our salon location';
+        
+        if (businessId) {
+          try {
+            const business = await Business.getById(businessId);
+            businessAddress = business.businessAddress || business.name || 'Our salon location';
+          } catch (error) {
+            console.error('[SelectService] Error fetching business address:', error);
+          }
+        }
+        
+        finalServiceAddress = businessAddress;
+        serviceLocation = 'business_location';
+      }
+      
       return {
         ...currentGoalData,
         selectedService: ServiceDataProcessor.extractServiceDetails(selectedServiceData),
-        // If the service is not mobile, we can skip the address step
-        finalServiceAddress: !selectedServiceData.mobile ? 'Business Location' : undefined,
-        serviceLocation: !selectedServiceData.mobile ? 'business_location' : undefined,
+        finalServiceAddress,
+        serviceLocation,
       };
     }
 
