@@ -1,6 +1,10 @@
+"use client";
+
 import Link from 'next/link';
 import Image from 'next/image';
 import logo from '../../public/SkedyLogo.png';
+import { useAuth } from '@/app/context/auth-context';
+import { Button } from '@components/ui/button';
 
 const menuItems = [
   { label: 'Home', href: '/' },
@@ -10,6 +14,104 @@ const menuItems = [
 ];
 
 export const Navbar = () => {
+  const { user, loading, signOut } = useAuth();
+
+  const renderAuthSection = () => {
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+        </div>
+      );
+    }
+
+    if (user) {
+      return (
+        <div className="flex items-center gap-4">
+          <span className="text-sm text-muted-foreground font-medium">
+            {user.email}
+          </span>
+          <Button 
+            variant="ghost" 
+            onClick={signOut}
+            className="h-10 px-4 py-2"
+          >
+            Sign out
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <>
+        <Link 
+          href="/sign-in"
+          className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 text-secondary-foreground border border-border h-10 px-4 py-2 hover:bg-accent hover:text-accent-foreground"
+          aria-label="Sign In" 
+          tabIndex={0}
+        >
+          Sign In
+        </Link>
+        <Link 
+          href="/sign-up"
+          className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-gradient-to-r from-primary to-secondary border border-border text-primary-foreground hover:bg-gradient-to-r hover:from-secondary hover:to-primary h-10 px-4 py-2"
+          aria-label="Sign Up" 
+          tabIndex={0}
+        >
+          Sign Up
+        </Link>
+      </>
+    );
+  };
+
+  const renderMobileAuthSection = () => {
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center w-full px-4 mt-2">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+        </div>
+      );
+    }
+
+    if (user) {
+      return (
+        <div className="flex flex-col gap-3 w-full px-4 mt-2">
+          <div className="text-center text-sm text-muted-foreground font-medium py-2">
+            {user.email}
+          </div>
+          <Button 
+            variant="ghost" 
+            onClick={signOut}
+            className="w-full h-10 px-4 py-2"
+          >
+            Sign out
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex flex-col gap-3 w-full px-4 mt-2">
+        <Link 
+          href="/sign-in"
+          className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 text-secondary-foreground border border-border h-10 px-4 py-2 hover:bg-accent hover:text-accent-foreground w-full"
+          aria-label="Sign In" 
+          tabIndex={0}
+        >
+          Sign In
+        </Link>
+        <Link 
+          href="/sign-up"
+          className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-gradient-to-r from-primary to-secondary border border-border text-primary-foreground hover:bg-gradient-to-r hover:from-secondary hover:to-primary h-10 px-4 py-2 w-full"
+          aria-label="Sign Up" 
+          tabIndex={0}
+        >
+          Sign Up
+        </Link>
+      </div>
+    );
+  };
+
   return (
     <nav className="w-full flex justify-center h-20 relative my-4">
       <div className="w-full max-w-5xl flex justify-between items-center p-4 px-6 text-sm">
@@ -43,24 +145,9 @@ export const Navbar = () => {
           </ul>
         </div>
         
-        {/* Auth Buttons Desktop */}
+        {/* Auth Section Desktop */}
         <div className="hidden md:flex items-center justify-end w-1/3 gap-4">
-          <Link 
-            href="/sign-in"
-            className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 text-secondary-foreground border border-border h-10 px-4 py-2 hover:bg-accent hover:text-accent-foreground"
-            aria-label="Sign In" 
-            tabIndex={0}
-          >
-            Sign In
-          </Link>
-          <Link 
-            href="/sign-up"
-            className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-gradient-to-r from-primary to-secondary border border-border text-primary-foreground hover:bg-gradient-to-r hover:from-secondary hover:to-primary h-10 px-4 py-2"
-            aria-label="Sign Up" 
-            tabIndex={0}
-          >
-            Sign Up
-          </Link>
+          {renderAuthSection()}
         </div>
         
         {/* Mobile Menu Toggle - Hidden on desktop */}
@@ -92,24 +179,7 @@ export const Navbar = () => {
                   {item.label}
                 </Link>
               ))}
-              <div className="flex flex-col gap-3 w-full px-4 mt-2">
-                <Link 
-                  href="/sign-in"
-                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 text-secondary-foreground border border-border h-10 px-4 py-2 hover:bg-accent hover:text-accent-foreground w-full"
-                  aria-label="Sign In" 
-                  tabIndex={0}
-                >
-                  Sign In
-                </Link>
-                <Link 
-                  href="/sign-up"
-                  className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-gradient-to-r from-primary to-secondary border border-border text-primary-foreground hover:bg-gradient-to-r hover:from-secondary hover:to-primary h-10 px-4 py-2 w-full"
-                  aria-label="Sign Up" 
-                  tabIndex={0}
-                >
-                  Sign Up
-                </Link>
-              </div>
+              {renderMobileAuthSection()}
             </div>
           </details>
         </div>
