@@ -9,14 +9,22 @@ export async function GET(request: Request) {
   const code = requestUrl.searchParams.get("code");
   const origin = requestUrl.origin;
   const redirectTo = requestUrl.searchParams.get("redirect_to")?.toString();
+  const returnUrl = requestUrl.searchParams.get("returnUrl")?.toString();
 
   if (code) {
     const supabase = createClient();
     await supabase.auth.exchangeCodeForSession(code);
   }
 
+  // Check for redirect_to first (existing functionality), then returnUrl (new functionality)
   if (redirectTo) {
     return NextResponse.redirect(`${origin}${redirectTo}`);
+  }
+  
+  if (returnUrl) {
+    // Decode the return URL and redirect to it
+    const decodedReturnUrl = decodeURIComponent(returnUrl);
+    return NextResponse.redirect(`${origin}${decodedReturnUrl}`);
   }
 
   // URL to redirect to after sign in process completes
