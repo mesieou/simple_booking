@@ -14,10 +14,10 @@ export default async function ProtectedPage({
   const supabase = createClient();
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (!session) {
+  if (!user) {
     redirect("/sign-in");
   }
 
@@ -27,7 +27,7 @@ export default async function ProtectedPage({
 
   // Use centralized method to get all conversation data
   const conversationData = await ChatSession.getBusinessConversationsData(
-    session.user.id,
+    user.id,
     sessionIdFromUrl
   );
 
