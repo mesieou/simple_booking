@@ -8,7 +8,7 @@ import Questions from "@components/sections/questions";
 export default function FAQPage() {
   return (
     <div>
-      
+      <Pricing />
     </div>
   );
 }   
