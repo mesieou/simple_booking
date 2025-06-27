@@ -124,18 +124,35 @@ export async function getMessagesForSession(sessionId: string): Promise<ChatMess
   const supabase = createClient();
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (!session) {
+  if (!user) {
     throw new Error("Not authenticated");
   }
 
-  // RLS is handled on the chatSessions table, so this query is secure.
-  const { data, error } = await supabase
+  // Get user's business ID for security validation
+  const { data: userData, error: userError } = await supabase
+    .from("users")
+    .select("businessId")
+    .eq("id", user.id)
+    .single();
+
+  if (userError || !userData?.businessId) {
+    console.error("Error fetching user's businessId:", userError);
+    throw new Error("Could not identify your business");
+  }
+
+  // Use service role client for consistent behavior
+  const { getServiceRoleClient } = await import("@/lib/database/supabase/service-role");
+  const serviceSupabase = getServiceRoleClient();
+
+  // Fetch session with business validation for security
+  const { data, error } = await serviceSupabase
     .from("chatSessions")
-    .select("allMessages")
+    .select("allMessages, businessId")
     .eq("id", sessionId)
+    .eq("businessId", userData.businessId) // Security: only sessions from user's business
     .single();
 
   if (error) {
@@ -167,17 +184,34 @@ export async function getMessagesForSession(sessionId: string): Promise<ChatMess
 // TODO: move this to model
 export async function getMessagesForUser(channelUserId: string): Promise<ChatMessage[]> {
     const supabase = createClient();
-
-    const { data: authData } = await supabase.auth.getSession();
-    if (!authData.session) {
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
       throw new Error("Not authenticated");
     }
 
-    // RLS on chatSessions table ensures we only get sessions for the user's business.
-    const { data: sessions, error } = await supabase
+    // Get user's business ID first for security validation
+    const { data: userData, error: userError } = await supabase
+        .from("users")
+        .select("businessId")
+        .eq("id", user.id)
+        .single();
+
+    if (userError || !userData?.businessId) {
+        console.error("Error fetching user's businessId:", userError);
+        throw new Error("Could not identify your business");
+    }
+
+    // Import service role client for consistent behavior with conversations
+    const { getServiceRoleClient } = await import("@/lib/database/supabase/service-role");
+    const serviceSupabase = getServiceRoleClient();
+
+    // Fetch sessions with business validation for security
+    const { data: sessions, error } = await serviceSupabase
         .from("chatSessions")
-        .select("allMessages, createdAt")
+        .select("allMessages, createdAt, businessId")
         .eq("channelUserId", channelUserId)
+        .eq("businessId", userData.businessId) // Security: only sessions from user's business
         .order("createdAt", { ascending: true });
     
     if (error) {
@@ -212,15 +246,15 @@ export async function getMessagesForUser(channelUserId: string): Promise<ChatMes
 export async function getUserBusinessId(): Promise<string | null> {
     const supabase = createClient();
 
-    const { data: authData } = await supabase.auth.getSession();
-    if (!authData.session) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
         return null;
     }
 
     const { data: userData, error } = await supabase
         .from("users")
         .select("businessId")
-        .eq("id", authData.session.user.id)
+        .eq("id", user.id)
         .single();
 
     if (error || !userData?.businessId) {
@@ -240,15 +274,15 @@ export async function getBusinessConversations(): Promise<Array<{
 }>> {
     const supabase = createClient();
     
-    const { data: authData } = await supabase.auth.getSession();
-    if (!authData.session) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
         return [];
     }
 
     // Import ChatSession here to avoid circular dependencies
     const { ChatSession } = await import("@/lib/database/models/chat-session");
     
-    const conversationData = await ChatSession.getBusinessConversationsData(authData.session.user.id);
+    const conversationData = await ChatSession.getBusinessConversationsData(user.id);
     
     if (!conversationData) {
         return [];
@@ -268,8 +302,8 @@ export async function getDashboardNotifications(): Promise<Array<{
 }>> {
     const supabase = createClient();
     
-    const { data: authData } = await supabase.auth.getSession();
-    if (!authData.session) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
         return [];
     }
 
@@ -290,12 +324,12 @@ export async function getDashboardNotifications(): Promise<Array<{
 export async function markNotificationAsRead(notificationId: string): Promise<void> {
     const supabase = createClient();
     
-    const { data: authData } = await supabase.auth.getSession();
-    if (!authData.session) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
         throw new Error("Not authenticated");
     }
 
     // For now, we'll just store this in localStorage since we don't have notification_reads table yet
     // This is a temporary solution until we implement the database table
-    console.log(`[Actions] Marking notification ${notificationId} as read for user ${authData.session.user.id}`);
+    console.log(`[Actions] Marking notification ${notificationId} as read for user ${user.id}`);
 } 

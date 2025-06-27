@@ -30,9 +30,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshSession = async () => {
     const supabase = createClient();
-    const { data: { session } } = await supabase.auth.getSession();
-    setSession(session);
-    setUser(session?.user ?? null);
+    
+    // First verify user with server auth (more secure)
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (user) {
+      // If user exists, get the full session for client state
+      const { data: { session } } = await supabase.auth.getSession();
+      setSession(session);
+      setUser(session?.user ?? null);
+    } else {
+      // No user, clear state
+      setSession(null);
+      setUser(null);
+    }
+    
     setLoading(false);
   };
 
