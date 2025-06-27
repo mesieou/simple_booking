@@ -33,8 +33,15 @@ export default function InvitePage() {
   useEffect(() => {
     const getInitialData = async () => {
       setSessionLoading(true);
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // If user exists, get the full session for compatibility
+      if (user) {
+        const { data: { session } } = await supabase.auth.getSession();
+        setSession(session);
+      } else {
+        setSession(null);
+      }
 
       if (businessId) {
         // Check if business exists
@@ -53,11 +60,11 @@ export default function InvitePage() {
         }
 
         // If user is logged in, check if they're already part of this business
-        if (session) {
+        if (user) {
           const { data: userProfile, error: profileError } = await supabase
             .from('users')
             .select('businessId')
-            .eq('id', session.user.id)
+            .eq('id', user.id)
             .single();
 
           if (!profileError && userProfile?.businessId === businessId) {
@@ -68,7 +75,7 @@ export default function InvitePage() {
       setSessionLoading(false);
     };
     getInitialData();
-  }, [businessId, supabase, toast, session]);
+  }, [businessId, supabase, toast]);
 
   const handleAcceptInvite = async () => {
     setLoading(true);
