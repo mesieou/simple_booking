@@ -1,11 +1,10 @@
-// Este archivo será movido a components/sections/waitlist-form.tsx
-'use client';
+"use client";
 
 import { useState } from 'react';
-import { Button } from '@components/ui/button';
-import { Input } from '@components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
-export default function JoinWaitlist() {
+const WaitlistForm = () => {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
@@ -75,4 +74,6 @@ export default function JoinWaitlist() {
       </form>
     </div>
   );
-}
+};
+
+export default WaitlistForm; 
