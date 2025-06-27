@@ -83,7 +83,9 @@ export async function updateSession(request: NextRequest) {
     // If there is no user and the user tries to access a protected route
     // BUT allow Stripe Connect callbacks to pass through
     if (!user && pathname.startsWith("/protected")) {
-      return NextResponse.redirect(new URL("/sign-in", request.url));
+      // Preserve the original URL (including query parameters) as a return URL
+      const returnUrl = encodeURIComponent(request.nextUrl.pathname + request.nextUrl.search);
+      return NextResponse.redirect(new URL(`/sign-in?returnUrl=${returnUrl}`, request.url));
     }
 
     // Allow Stripe Connect callbacks to bypass authentication
