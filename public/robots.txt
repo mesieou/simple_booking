@@ -1,0 +1,9 @@
+# *
+User-agent: *
+Allow: /
+
+# Host
+Host: https://skedy.io/
+
+# Sitemaps
+Sitemap: https://skedy.io/sitemap.xml
