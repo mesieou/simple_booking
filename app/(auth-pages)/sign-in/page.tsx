@@ -57,7 +57,9 @@ export default function SignIn() {
   return (
     <div className="flex-1 flex flex-col w-full px-8 sm:max-w-md justify-center gap-2">
       <form
-        className="animate-in flex-1 flex flex-col w-full justify-center gap-6 text-foreground"
+        className={`animate-in flex-1 flex flex-col w-full justify-center gap-6 text-foreground transition-opacity duration-200 ${
+          loading ? "opacity-70" : "opacity-100"
+        }`}
         onSubmit={handleSignIn}
       >
         <div className="flex flex-col gap-2 text-center">
@@ -77,6 +79,7 @@ export default function SignIn() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              disabled={loading}
               className="bg-background autofill:bg-background"
               autoComplete="email"
             />
@@ -91,23 +94,46 @@ export default function SignIn() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              disabled={loading}
               className="bg-background autofill:bg-background"
               autoComplete="current-password"
             />
           </div>
         </div>
 
-        <Button type="submit" disabled={loading}>
-          {loading ? "Signing in..." : "Sign In"}
+        <Button type="submit" disabled={loading} className="relative">
+          {loading && (
+            <div className="absolute left-4 flex items-center">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+            </div>
+          )}
+          <span className={loading ? "ml-6" : ""}>
+            {loading ? "Signing in..." : "Sign In"}
+          </span>
         </Button>
 
         <p className="text-center text-sm text-muted-foreground">
           Don't have an account?{" "}
-          <Link href="/sign-up" className="text-primary hover:underline">
+          <Link 
+            href="/sign-up" 
+            className={`text-primary hover:underline transition-opacity ${
+              loading ? "pointer-events-none opacity-50" : ""
+            }`}
+          >
             Sign up
           </Link>
         </p>
       </form>
+      
+      {/* Loading overlay */}
+      {loading && (
+        <div className="fixed inset-0 bg-black/10 backdrop-blur-sm z-40 flex items-center justify-center">
+          <div className="bg-background/80 rounded-lg p-6 shadow-lg border flex items-center gap-3">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+            <p className="text-foreground">Signing you in...</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

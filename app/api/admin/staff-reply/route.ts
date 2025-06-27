@@ -8,9 +8,9 @@ export async function POST(req: NextRequest) {
   try {
     const supabase = createClient();
     
-    // Verify user authentication
-    const { data: { session }, error: authError } = await supabase.auth.getSession();
-    if (authError || !session?.user) {
+    // Verify user authentication with server verification
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     const { data: userData, error: userError } = await supabase
       .from("users")
       .select("businessId")
-      .eq("id", session.user.id)
+      .eq("id", user.id)
       .single();
 
     if (userError || !userData?.businessId) {
