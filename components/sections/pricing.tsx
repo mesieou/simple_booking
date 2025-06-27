@@ -37,105 +37,76 @@ export function Pricing() {
             Simple & transparent pricing
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground mb-12">
-            We believe Untitled should be accessible to all companies, no matter
-            the size.
+            We believe Skedy should be accessible to all companies, no matter the size.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-          <Card className="flex flex-col rounded-2xl bg-white/5 dark:bg-black/5 border border-white/10 dark:border-black/10">
+        <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
+          {/* Basic Plan */}
+          <Card className="flex flex-col rounded-2xl bg-white/5 dark:bg-black/5 border border-white/10 dark:border-black/10 max-w-sm mx-auto">
             <CardHeader>
-              <CardTitle className="text-2xl font-bold">Basic plan</CardTitle>
+              <CardTitle className="text-xl font-bold">Basic Plan <span className="text-primary text-base">(Free)</span></CardTitle>
               <CardDescription>
-                Our most popular plan for small teams.
+                Perfect for getting started with automating your business.
               </CardDescription>
             </CardHeader>
-            <CardContent className="flex-grow">
-              <div className="flex items-baseline gap-2 mb-6">
-                <span className="text-5xl font-bold">$10</span>
-                <span className="text-muted-foreground">per month</span>
-              </div>
+            <CardContent className="flex-grow px-4">
               <p className="font-semibold mb-4">FEATURES</p>
-              <p className="text-muted-foreground mb-6">
-                Everything in our free plan plus....
-              </p>
               <ul className="space-y-4">
                 <li className="flex items-center gap-3">
                   <CheckIcon className="text-primary" />
-                  <span>Access to basic features</span>
+                  <span>AI-powered calendar management</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <CheckIcon className="text-primary" />
-                  <span>Basic reporting + analytics</span>
+                  <span>Virtual assistant to schedule appointments via WhatsApp</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <CheckIcon className="text-primary" />
-                  <span>Up to 10 individual users</span>
+                  <span>Option to enable payments at the time of booking</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <CheckIcon className="text-primary" />
-                  <span>20GB individual data</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <CheckIcon className="text-primary" />
-                  <span>Basic chat support</span>
+                  <span>Automatic email reminders</span>
                 </li>
               </ul>
             </CardContent>
             <CardFooter>
-              <Button size="lg" className="w-full">
-                Get started
+              <Button size="lg" className="w-full" disabled>
+                Free
               </Button>
             </CardFooter>
           </Card>
 
-          <Card className="flex flex-col rounded-2xl bg-primary/5 dark:bg-primary/10 border-primary/20">
+          {/* Business Plan */}
+          <Card className="flex flex-col rounded-2xl bg-primary/5 dark:bg-primary/10 border-primary/20 max-w-sm mx-auto">
             <CardHeader>
               <div className="flex justify-between items-center">
-                <CardTitle className="text-2xl font-bold">
-                  Business plan
+                <CardTitle className="text-xl font-bold">
+                  Business Plan <span className="text-primary text-base">(Contact us)</span>
                 </CardTitle>
-                <Badge>Popular</Badge>
+                <Badge>Custom</Badge>
               </div>
               <CardDescription>
-                Advanced features and reporting.
+                For teams that need more customization, advanced features, or support for a high volume of clients.
               </CardDescription>
             </CardHeader>
-            <CardContent className="flex-grow">
-              <div className="flex items-baseline gap-2 mb-6">
-                <span className="text-5xl font-bold">$20</span>
-                <span className="text-muted-foreground">per month</span>
-              </div>
+            <CardContent className="flex-grow px-4">
               <p className="font-semibold mb-4">FEATURES</p>
-              <p className="text-muted-foreground mb-6">
-                Everything in our basic plan plus....
-              </p>
               <ul className="space-y-4">
                 <li className="flex items-center gap-3">
                   <CheckIcon className="text-primary" />
-                  <span>200+ integrations</span>
+                  <span>Simple web dashboard</span>
                 </li>
                 <li className="flex items-center gap-3">
                   <CheckIcon className="text-primary" />
-                  <span>Advanced reporting</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <CheckIcon className="text-primary" />
-                  <span>Up to 20 individual users</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <CheckIcon className="text-primary" />
-                  <span>40GB individual data</span>
-                </li>
-                <li className="flex items-center gap-3">
-                  <CheckIcon className="text-primary" />
-                  <span>Priority chat support</span>
+                  <span>Instant access</span>
                 </li>
               </ul>
             </CardContent>
             <CardFooter>
               <Button size="lg" className="w-full">
-                Get started
+                Contact us
               </Button>
             </CardFooter>
           </Card>
