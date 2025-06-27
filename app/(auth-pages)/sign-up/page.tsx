@@ -78,7 +78,9 @@ export default function SignUp() {
   return (
     <div className="flex-1 flex flex-col w-full px-8 sm:max-w-md justify-center gap-2">
       <form
-        className="animate-in flex-1 flex flex-col w-full justify-center gap-6 text-foreground"
+        className={`animate-in flex-1 flex flex-col w-full justify-center gap-6 text-foreground transition-opacity duration-200 ${
+          loading ? "opacity-70" : "opacity-100"
+        }`}
         onSubmit={handleSignUp}
       >
         <div className="flex flex-col gap-2 text-center">
@@ -97,6 +99,7 @@ export default function SignUp() {
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
               required
+              disabled={loading}
               autoComplete="given-name"
             />
           </div>
@@ -109,6 +112,7 @@ export default function SignUp() {
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
               required
+              disabled={loading}
               autoComplete="family-name"
             />
           </div>
@@ -122,6 +126,7 @@ export default function SignUp() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              disabled={loading}
               className="bg-background autofill:bg-background"
               autoComplete="email"
             />
@@ -136,6 +141,7 @@ export default function SignUp() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              disabled={loading}
               className="bg-background autofill:bg-background"
               autoComplete="new-password"
             />
@@ -150,23 +156,46 @@ export default function SignUp() {
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
+              disabled={loading}
               className="bg-background autofill:bg-background"
               autoComplete="new-password"
             />
           </div>
         </div>
 
-        <Button type="submit" disabled={loading}>
-          {loading ? "Creating account..." : "Sign Up"}
+        <Button type="submit" disabled={loading} className="relative">
+          {loading && (
+            <div className="absolute left-4 flex items-center">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+            </div>
+          )}
+          <span className={loading ? "ml-6" : ""}>
+            {loading ? "Creating account..." : "Sign Up"}
+          </span>
         </Button>
 
         <p className="text-center text-sm text-muted-foreground">
           Already have an account?{" "}
-          <Link href="/sign-in" className="text-primary hover:underline">
+          <Link 
+            href="/sign-in" 
+            className={`text-primary hover:underline transition-opacity ${
+              loading ? "pointer-events-none opacity-50" : ""
+            }`}
+          >
             Sign In
           </Link>
         </p>
       </form>
+      
+      {/* Loading overlay */}
+      {loading && (
+        <div className="fixed inset-0 bg-black/10 backdrop-blur-sm z-40 flex items-center justify-center">
+          <div className="bg-background/80 rounded-lg p-6 shadow-lg border flex items-center gap-3">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+            <p className="text-foreground">Creating your account...</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

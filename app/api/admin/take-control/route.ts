@@ -6,31 +6,31 @@ export async function POST(req: NextRequest) {
   try {
     const supabase = createClient();
     
-    // Verify user authentication
-    const { data: { session }, error: authError } = await supabase.auth.getSession();
-    if (authError || !session?.user) {
+    // Verify user authentication with server verification
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.log(`[TakeControl] User ${session.user.id} attempting to take control.`);
+    console.log(`[TakeControl] User ${user.id} attempting to take control.`);
 
     const { sessionId } = await req.json();
     if (!sessionId) {
       return NextResponse.json({ error: "Session ID is required" }, { status: 400 });
     }
 
-    // Get user's business ID and role
+    // Get user's business ID to verify they can access this session
     const { data: userData, error: userError } = await supabase
       .from("users")
-      .select("businessId, role")
-      .eq("id", session.user.id)
+      .select("businessId")
+      .eq("id", user.id)
       .single();
 
     if (userError || !userData?.businessId) {
       return NextResponse.json({ error: "Could not identify your business" }, { status: 403 });
     }
     
-    console.log(`[TakeControl] User role: ${userData.role}, Business ID: ${userData.businessId}`);
+    console.log(`[TakeControl] User Business ID: ${userData.businessId}`);
 
     // Verify the chat session belongs to the staff's business
     const { data: sessionData, error: sessionError } = await supabase

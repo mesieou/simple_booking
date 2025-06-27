@@ -194,7 +194,8 @@ export async function POST(req: NextRequest) {
                         chatContext.currentConversationSession, 
                         undefined, // No active goal
                         parsedMessage.text || '', 
-                        waitingMessage // Save the waiting message to history
+                        waitingMessage, // Save the waiting message to history
+                        historyForLLM // Preserve full history during escalation
                     );
                 }
 
@@ -211,7 +212,8 @@ export async function POST(req: NextRequest) {
                         chatContext.currentConversationSession, 
                         undefined, // No active goal
                         parsedMessage.text || '', 
-                        '' // No bot response during staff assistance
+                        '', // No bot response during staff assistance
+                        historyForLLM // Preserve full history during escalation - dont delete
                     );
                 }
 
@@ -258,7 +260,8 @@ export async function POST(req: NextRequest) {
                         chatContext.currentConversationSession, 
                         undefined, 
                         parsedMessage.text || '', 
-                        escalationResult.response.text || ''
+                        escalationResult.response.text || '',
+                        historyForLLM // Pass full history
                     );
                 }
                 return NextResponse.json({ status: "success - handled by escalation system" }, { status: 200 });
@@ -297,7 +300,8 @@ export async function POST(req: NextRequest) {
                     chatContext.currentConversationSession, 
                     undefined,
                     parsedMessage.text, 
-                    botManagerResponse.text
+                    botManagerResponse.text,
+                    historyForLLM // Pass full history
                 );
             }
         }

@@ -12,13 +12,18 @@ export async function updateSession(request: NextRequest) {
   const supabase = await createSSRClient();
 
   try {
+    // Use getUser() instead of getSession() for better security
+    // This contacts the Supabase Auth server to verify the user is authentic
     const {
-      data: { session },
+      data: { user },
       error,
-    } = await supabase.auth.getSession();
+    } = await supabase.auth.getUser();
 
     if (error) {
-      console.error("Error al verificar la sesión:", error);
+      // Only log unexpected errors, not normal "no session" cases
+      if (error.message !== "Auth session missing!" && error.status !== 400) {
+        console.error("Error al verificar el usuario:", error);
+      }
       // Let's not redirect on error, just continue, maybe it's a temporary issue.
       // return NextResponse.redirect(new URL("/sign-in", request.url));
     }
@@ -30,9 +35,9 @@ export async function updateSession(request: NextRequest) {
       (searchParams.get('success') === 'true' || searchParams.get('refresh') === 'true') &&
       searchParams.get('businessId');
 
-    // If there is a session, we need to check if the user is onboarded
-    if (session) {
-      console.log(`[Middleware] Session found for user: ${session.user.id}`);
+    // If there is a user, we need to check if the user is onboarded
+    if (user) {
+      console.log(`[Middleware] Session found for user: ${user.id}`);
 
       // Create a separate, admin client that can bypass RLS for this specific, safe query.
       const supabaseAdmin = createClient(
@@ -49,7 +54,7 @@ export async function updateSession(request: NextRequest) {
       const { data: userProfile, error: profileError } = await supabaseAdmin
         .from("users")
         .select("businessId")
-        .eq("id", session.user.id)
+        .eq("id", user.id)
         .single();
       
       if (profileError) {
@@ -75,9 +80,9 @@ export async function updateSession(request: NextRequest) {
       }
     }
 
-    // If there is no session and the user tries to access a protected route
+    // If there is no user and the user tries to access a protected route
     // BUT allow Stripe Connect callbacks to pass through
-    if (!session && pathname.startsWith("/protected")) {
+    if (!user && pathname.startsWith("/protected")) {
       return NextResponse.redirect(new URL("/sign-in", request.url));
     }
 
