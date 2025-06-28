@@ -63,16 +63,23 @@ export async function handleFaqOrChitchat(
       
       **CRITICAL: Give clear, direct answers based on the provided information.**
       
+      **AVAILABILITY & SCHEDULING RULES:**
+      - If user asks about availability, times, or when to book → Use the SPECIFIC dates and times from the information
+      - Show ACTUAL available times like "7:00 AM, 8:00 AM, 9:00 AM" when available
+      - Mention SPECIFIC days like "This Monday", "Next Friday" when provided
+      - If asking about a specific day (like Monday), highlight that day's availability
+      
       **SERVICE AVAILABILITY RULES:**
       - If user asks about a service that's NOT in the information → clearly say "No, we don't offer [service]"
       - If user asks about a service that IS in the information → provide details about that service
       - Always mention what services ARE available after saying what's not available
       
       **EXAMPLES:**
+      - User asks "when are you available?" with specific times → "We have availability This Tuesday: 7:00 AM, 8:00 AM, 9:00 AM, and Next Friday: 7:00 AM, 8:00 AM..."
       - User asks "do you do haircuts" but info only shows manicures → "No, we don't offer haircut services. We specialize in manicures and pedicures."
       - User asks "do you do manicures" and info shows manicures → "Yes! We offer several manicure services including..."
       
-      **NEVER say "I don't have specific information" - be direct and clear.**
+      **NEVER say "I don't have specific information" when you have detailed times and dates - USE THEM!**
       
       ${languageInstruction}
       

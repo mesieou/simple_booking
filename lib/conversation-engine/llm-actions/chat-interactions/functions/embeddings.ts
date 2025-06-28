@@ -10,7 +10,7 @@ export type { VectorSearchResult };
 const BOOST_FACTORS: { [key: string]: number } = {
   'service': 2.0, // Increased boost for live service data
   'business': 2.5, // Higher boost for business contact info
-  'availability': 2.3, // High boost for availability/working hours
+  'availability': 3.0, // Very high boost for availability/working hours to prioritize over PDF documents
 };
 
 const openai = new OpenAI({
@@ -18,6 +18,13 @@ const openai = new OpenAI({
   maxRetries: 3,
   timeout: 30000,
 });
+
+// Simple in-memory cache for intent classification to avoid redundant LLM calls
+const intentCache = new Map<string, { 
+  classification: {isAvailability: boolean, isContact: boolean, isService: boolean}, 
+  timestamp: number 
+}>();
+const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes
 
 export async function generateEmbedding(text: string): Promise<number[]> {
   console.log(`[generateEmbedding] Attempting for text (first 80 chars): "${text.substring(0, 80).replace(/\n/g, ' ')}..."`);
@@ -56,75 +63,97 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 }
 
 /**
- * Helper function to convert structured service data into a natural language text paragraph.
- * This text is optimized for semantic search and for an LLM to generate answers from.
+ * Helper function to convert structured service data into comprehensive natural language text.
+ * Includes ALL service fields from the database for complete coverage.
  * @param service The service data object.
- * @returns A string containing the descriptive text of the service.
+ * @returns A string containing ALL service information.
  */
 function generateServiceDocumentContent(service: ServiceData): string {
-  let priceDescription = '';
+  // Comprehensive pricing description covering ALL pricing fields
+  let pricingDescription = '';
   if (service.pricingType === 'fixed' && service.fixedPrice !== undefined) {
-      priceDescription = `The price is $${service.fixedPrice}.`;
+    pricingDescription = `Fixed price: $${service.fixedPrice}.`;
   } else if (service.pricingType === 'per_minute' && service.ratePerMinute !== undefined) {
-      const base = service.baseCharge ? `a base charge of $${service.baseCharge}` : '';
-      const included = service.includedMinutes ? `the first ${service.includedMinutes} minutes included` : '';
-      
-      priceDescription = `The price is calculated at $${service.ratePerMinute} per minute`;
-
-      if (base && included) {
-          priceDescription += `, with ${base} and ${included}.`;
-      } else if (base) {
-          priceDescription += `, with ${base}.`;
-      } else if (included) {
-          priceDescription += `, with ${included}.`;
-      } else {
-          priceDescription += '.';
-      }
+    const components = [];
+    components.push(`$${service.ratePerMinute} per minute`);
+    
+    if (service.baseCharge && service.baseCharge > 0) {
+      components.push(`base charge of $${service.baseCharge}`);
+    }
+    
+    if (service.includedMinutes && service.includedMinutes > 0) {
+      components.push(`first ${service.includedMinutes} minutes included`);
+    }
+    
+    pricingDescription = `Per-minute pricing: ${components.join(', ')}.`;
   }
 
-  const description = service.description || `A ${service.name} service.`;
-
+  const description = service.description || `Professional ${service.name} service.`;
+  const mobileService = service.mobile ? 'Available for mobile/house calls' : 'In-location service only (not mobile)';
+  
   return `
-    Service Name: ${service.name}.
+    Service: ${service.name}.
     Description: ${description}
-    The estimated duration for this service is ${service.durationEstimate} minutes.
-    ${priceDescription}
-    This service ${service.mobile ? 'is available for house calls' : 'is not available for house calls'}.
+    Duration: ${service.durationEstimate} minutes estimated.
+    Pricing: ${pricingDescription}
+    Service Type: ${mobileService}.
+    Pricing Model: ${service.pricingType} pricing.
+    ${service.baseCharge ? `Base charge: $${service.baseCharge}.` : ''}
+    ${service.includedMinutes ? `Included time: ${service.includedMinutes} minutes.` : ''}
+    ${service.ratePerMinute ? `Rate: $${service.ratePerMinute} per minute.` : ''}
+    Created: ${service.createdAt ? new Date(service.createdAt).toLocaleDateString() : 'Recently'}.
   `.trim().replace(/\s\s+/g, ' ');
 }
 
 /**
- * Helper function to convert business data into a natural language text paragraph for RAG.
+ * Helper function to convert business data into comprehensive natural language text.
+ * Includes ALL business fields from the database for complete coverage.
  * @param business The business data object.
- * @returns A string containing the business contact and location information.
+ * @returns A string containing ALL business information.
  */
 function generateBusinessDocumentContent(business: BusinessData): string {
-  const paymentInfo = business.stripeAccountStatus ? 
-    `Payment processing is ${business.stripeAccountStatus}.` : 
-    'Payment processing setup not specified.';
+  // Payment processing status
+  const paymentStatus = business.stripeAccountStatus ? 
+    `Payment processing: ${business.stripeAccountStatus} via Stripe.` : 
+    'Payment processing: Status not specified.';
   
+  // Deposit information
   const depositInfo = business.depositPercentage ? 
-    `Deposit required: ${business.depositPercentage}% of service cost.` : 
-    'No deposit information available.';
-
+    `Deposit required: ${business.depositPercentage}% of total service cost.` : 
+    'Deposits: No deposit required.';
+    
+  // Contact methods
+  const contactMethods = [];
+  if (business.phone) contactMethods.push(`Phone: ${business.phone}`);
+  if (business.email) contactMethods.push(`Email: ${business.email}`);
+  if (business.whatsappNumber) contactMethods.push(`WhatsApp: ${business.whatsappNumber}`);
+  
+  // Interface and setup
+  const interfaceInfo = `Platform: ${business.interfaceType} interface.`;
+  const websiteInfo = business.websiteUrl ? `Website: ${business.websiteUrl}.` : '';
+  
   return `
-    Business Name: ${business.name}.
-    Contact Information: Phone: ${business.phone}, Email: ${business.email}.
-    ${business.businessAddress ? `Address: ${business.businessAddress}.` : 'Address not specified.'}
-    ${business.whatsappNumber ? `WhatsApp: ${business.whatsappNumber}.` : ''}
-    Time Zone: ${business.timeZone}.
-    Interface Type: ${business.interfaceType}.
-    ${business.websiteUrl ? `Website: ${business.websiteUrl}.` : ''}
-    ${paymentInfo}
+    Business: ${business.name}.
+    Contact: ${contactMethods.join(', ')}.
+    ${business.businessAddress ? `Address: ${business.businessAddress}.` : 'Address: Location details available upon booking.'}
+    ${websiteInfo}
+    Timezone: ${business.timeZone}.
+    ${interfaceInfo}
+    ${paymentStatus}
     ${depositInfo}
+    ${business.preferredPaymentMethod ? `Preferred payment: ${business.preferredPaymentMethod}.` : ''}
+    ${business.stripeConnectAccountId ? 'Stripe payment processing enabled.' : ''}
+    ${business.whatsappPhoneNumberId ? 'WhatsApp Business API integrated.' : ''}
+    Established: ${business.createdAt ? new Date(business.createdAt).toLocaleDateString() : 'Recently'}.
   `.trim().replace(/\s\s+/g, ' ');
 }
 
 /**
- * Helper function to convert working hours and availability data into natural language for RAG.
+ * Helper function to convert calendar settings into comprehensive natural language text.
+ * Includes ALL calendar and working hour fields for complete coverage.
  * @param calendarSettings The calendar settings with working hours
  * @param businessName The business name for context
- * @returns A string containing working hours and availability information
+ * @returns A string containing ALL schedule and calendar information
  */
 function generateAvailabilityDocumentContent(
   calendarSettings: CalendarSettingsData, 
@@ -134,6 +163,7 @@ function generateAvailabilityDocumentContent(
   const timezone = calendarSettings.settings?.timezone || 'UTC';
   const bufferTime = calendarSettings.settings?.bufferTime || 0;
   
+  // Detailed working hours
   const daysWithHours: string[] = [];
   const workingDays = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
   const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -149,14 +179,25 @@ function generateAvailabilityDocumentContent(
     .map((day, index) => workingHours[day] ? null : dayNames[index])
     .filter(Boolean);
 
+  // Calendar integration details
+  const calendarIntegration = calendarSettings.manageCalendar ? 
+    `Calendar sync: ${calendarSettings.calendarType || 'Enabled'} calendar integration active.` : 
+    'Calendar sync: Manual scheduling only.';
+    
+  const lastSyncInfo = calendarSettings.lastSync ? 
+    `Last synced: ${new Date(calendarSettings.lastSync).toLocaleDateString()}.` : '';
+
   return `
-    ${businessName} Working Hours and Availability:
+    ${businessName} Complete Schedule Information:
     Operating Hours: ${daysWithHours.join(', ')}.
-    ${closedDays.length > 0 ? `Closed: ${closedDays.join(', ')}.` : 'Open all week.'}
-    Time Zone: ${timezone}.
-    ${bufferTime > 0 ? `Buffer time between appointments: ${bufferTime} minutes.` : 'No buffer time between appointments.'}
-    Available durations: 1 hour, 1.5 hours, 2 hours, 2.5 hours, 3 hours, 4 hours, 5 hours, 6 hours.
-    Appointments can be booked up to 30 days in advance.
+    ${closedDays.length > 0 ? `Closed: ${closedDays.join(', ')}.` : 'Open every day of the week.'}
+    Business Timezone: ${timezone}.
+    ${bufferTime > 0 ? `Buffer time between appointments: ${bufferTime} minutes.` : 'Back-to-back appointments allowed.'}
+    Available appointment durations: 1 hour, 1.5 hours, 2 hours, 2.5 hours, 3 hours, 4 hours, 5 hours, 6 hours.
+    Booking window: Appointments can be scheduled up to 30 days in advance.
+    ${calendarIntegration}
+    ${lastSyncInfo}
+    Calendar ID: ${calendarSettings.calendarId || 'Manual management'}.
   `.trim().replace(/\s\s+/g, ' ');
 }
 
@@ -178,7 +219,9 @@ function convertAvailabilityDataToSlots(availabilityData: any[]): Array<{ date: 
     const dayDate = new Date(dayData.date);
     
     // Skip past dates
-    if (dayDate < now) continue;
+    if (dayDate < now) {
+      continue;
+    }
     
     // Get slots for common durations (60min and 90min are most common)
     const slots60 = dayData.slots['60'] || [];
@@ -229,26 +272,30 @@ function generateAvailableSlotsContent(
   const tomorrow = new Date(today);
   tomorrow.setDate(today.getDate() + 1);
   
-  // Format each day's availability
+  // Format each day's availability with special handling for upcoming days
   const formattedDays = availableSlots.map(dayData => {
     const date = new Date(dayData.date);
     
-    // Determine day label
+    // Determine day label with more specific handling
     let dayLabel = '';
+    const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+    
     if (date.toDateString() === today.toDateString()) {
       dayLabel = 'Today';
     } else if (date.toDateString() === tomorrow.toDateString()) {
       dayLabel = 'Tomorrow';
     } else {
-      dayLabel = date.toLocaleDateString('en-US', { 
-        weekday: 'long',
-        month: 'short', 
-        day: 'numeric' 
-      });
+      // Check if it's within this week
+      const daysDiff = Math.ceil((date.getTime() - today.getTime()) / (1000 * 3600 * 24));
+      if (daysDiff <= 7) {
+        dayLabel = `This ${dayName}`;
+      } else {
+        dayLabel = `Next ${dayName} (${date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})`;
+      }
     }
     
     // Format times in 12-hour format
-    const formattedTimes = dayData.slots.slice(0, 4).map(time => { // Show max 4 times per day
+    const formattedTimes = dayData.slots.slice(0, 6).map(time => { // Show up to 6 times per day for more options
       const [hours, minutes] = time.split(':');
       const hour24 = parseInt(hours);
       const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
@@ -257,147 +304,43 @@ function generateAvailableSlotsContent(
     });
     
     // Add "and more" if there are additional slots
-    const moreSlots = dayData.slots.length > 4 ? ` and ${dayData.slots.length - 4} more` : '';
+    const moreSlots = dayData.slots.length > 6 ? ` and ${dayData.slots.length - 6} more slots` : '';
     
     return `${dayLabel}: ${formattedTimes.join(', ')}${moreSlots}`;
   });
 
-  // Create summary
+  // Create summary with specific day mentions
   const totalSlots = availableSlots.reduce((sum, day) => sum + day.slots.length, 0);
-  const availabilityLevel = totalSlots > 15 ? 'excellent' : totalSlots > 8 ? 'good' : 'limited';
+  const availabilityLevel = totalSlots > 20 ? 'excellent' : totalSlots > 10 ? 'good' : 'limited';
+  
+  // Check for specific days that might be requested
+  const mondaySlots = availableSlots.filter(day => {
+    const date = new Date(day.date);
+    return date.getDay() === 1; // Monday is day 1
+  });
+  
+  let mondayInfo = '';
+  if (mondaySlots.length > 0) {
+    const mondayTimes = mondaySlots[0].slots.slice(0, 4).map(time => {
+      const [hours, minutes] = time.split(':');
+      const hour24 = parseInt(hours);
+      const hour12 = hour24 === 0 ? 12 : hour24 > 12 ? hour24 - 12 : hour24;
+      const ampm = hour24 >= 12 ? 'PM' : 'AM';
+      return `${hour12}:${minutes} ${ampm}`;
+    });
+    const mondayDate = new Date(mondaySlots[0].date);
+    const isThisMonday = Math.ceil((mondayDate.getTime() - today.getTime()) / (1000 * 3600 * 24)) <= 7;
+    const mondayLabel = isThisMonday ? 'This Monday' : 'Next Monday';
+    mondayInfo = ` ${mondayLabel} specifically has ${mondaySlots[0].slots.length} available slots: ${mondayTimes.join(', ')}.`;
+  }
   
   return `
-    ${businessName} Current Availability (${availabilityLevel} availability this week):
-    ${formattedDays.join('. ')}.
+    ${businessName} Current Availability (${availabilityLevel} availability):
+    ${formattedDays.join('. ')}.${mondayInfo}
     
     Total available appointment slots: ${totalSlots}.
     These are the actual times customers can book right now.
   `.trim().replace(/\s\s+/g, ' ');
-}
-
-/**
- * Helper function to detect if user query is asking about business contact or address info specifically.
- * @param userMessage - The user's message to analyze
- * @returns boolean - True if the query is specifically about business contact/address
- */
-function isBusinessContactQuery(userMessage: string): boolean {
-  const lowerMessage = userMessage.toLowerCase();
-  const contactKeywords = [
-    // English - Contact & Location
-    'address', 'location', 'where', 'contact', 'phone', 'email', 'hours', 'open',
-    'closed', 'schedule', 'find you', 'located', 'directions', 'how to reach',
-    'business hours', 'operating hours', 'when are you open',
-    
-    // Spanish - Contact & Location
-    'dirección', 'ubicación', 'dónde', 'contacto', 'teléfono', 'correo', 'horarios', 'abierto',
-    'cerrado', 'horario', 'encontrarlos', 'ubicado', 'direcciones', 'cómo llegar',
-    'horarios de atención', 'horarios de trabajo', 'cuándo están abiertos', 'dónde están'
-  ];
-  
-  return contactKeywords.some(keyword => lowerMessage.includes(keyword));
-}
-
-/**
- * Helper function to detect if user query is asking about availability, working hours, or schedule.
- * @param userMessage - The user's message to analyze
- * @returns boolean - True if the query is about availability/schedule
- */
-function isAvailabilityQuery(userMessage: string): boolean {
-  const lowerMessage = userMessage.toLowerCase();
-  const availabilityKeywords = [
-    // English - Availability & Schedule
-    'available', 'availability', 'when can', 'hours', 'schedule', 'working hours',
-    'open', 'closed', 'book', 'appointment', 'time slots', 'free time',
-    'operating hours', 'business hours', 'what time', 'when are you',
-    
-    // Spanish - Availability & Schedule  
-    'disponible', 'disponibilidad', 'cuándo pueden', 'horarios', 'horario',
-    'abierto', 'cerrado', 'reservar', 'cita', 'turnos', 'tiempo libre',
-    'horarios de trabajo', 'horarios de atención', 'qué hora', 'cuándo están'
-  ];
-  
-  return availabilityKeywords.some(keyword => lowerMessage.includes(keyword));
-}
-
-/**
- * Helper function to detect if a user query is asking specifically about services, business info, or contact details.
- * Supports multiple languages (English and Spanish).
- * @param userMessage - The user's message to analyze
- * @returns boolean - True if the query should return comprehensive information
- */
-function isServiceRelatedQuery(userMessage: string): boolean {
-  const lowerMessage = userMessage.toLowerCase();
-  
-  // Service-related keywords (English & Spanish)
-  const serviceKeywords = [
-    // English - Services
-    'service', 'services', 'what do you offer', 'what services', 'available services',
-    'what can you do', 'what are your', 'options available', 'list all', 'show all',
-    'tell me about', 'what is', 'describe',
-    
-    // Spanish - Services  
-    'servicio', 'servicios', 'qué ofrecen', 'qué servicios', 'servicios disponibles',
-    'qué pueden hacer', 'cuáles son sus', 'opciones disponibles', 'lista todos', 'muestra todos',
-    'cuéntame sobre', 'qué es', 'describe', 'háblame de',
-  ];
-
-  // Pricing-related keywords (English & Spanish)
-  const pricingKeywords = [
-    // English - Pricing
-    'price', 'prices', 'cost', 'costs', 'how much', 'pricing', 'rate', 'rates',
-    'fee', 'fees', 'charge', 'charges', 'budget', 'afford', 'expensive', 'cheap',
-    
-    // Spanish - Pricing
-    'precio', 'precios', 'costo', 'costos', 'cuánto cuesta', 'cuánto vale', 'tarifa', 'tarifas',
-    'cobran', 'cobra', 'presupuesto', 'barato', 'caro', 'económico'
-  ];
-
-  // Duration/time-related keywords (English & Spanish)
-  const durationKeywords = [
-    // English - Duration
-    'duration', 'durations', 'how long', 'time', 'minutes', 'hours', 'takes',
-    'long does it take', 'session length', 'appointment length',
-    
-    // Spanish - Duration
-    'duración', 'duraciones', 'cuánto tiempo', 'tiempo', 'minutos', 'horas', 'toma',
-    'cuánto tarda', 'cuánto dura', 'duración de la sesión', 'duración de la cita'
-  ];
-
-  // Business info keywords (English & Spanish)
-  const businessInfoKeywords = [
-    // English - Contact & Location
-    'address', 'location', 'where', 'contact', 'phone', 'email', 'hours', 'open',
-    'closed', 'schedule', 'find you', 'located', 'directions', 'how to reach',
-    'business hours', 'operating hours', 'when are you open',
-    
-    // Spanish - Contact & Location
-    'dirección', 'ubicación', 'dónde', 'contacto', 'teléfono', 'correo', 'horarios', 'abierto',
-    'cerrado', 'horario', 'encontrarlos', 'ubicado', 'direcciones', 'cómo llegar',
-    'horarios de atención', 'horarios de trabajo', 'cuándo están abiertos', 'dónde están'
-  ];
-
-  // Description-related keywords (English & Spanish)
-  const descriptionKeywords = [
-    // English - Descriptions
-    'description', 'descriptions', 'what does', 'explain', 'details', 'information',
-    'about', 'include', 'involves', 'process', 'procedure',
-    
-    // Spanish - Descriptions
-    'descripción', 'descripciones', 'qué hace', 'explica', 'detalles', 'información',
-    'sobre', 'incluye', 'involucra', 'proceso', 'procedimiento', 'en qué consiste'
-  ];
-
-  // Combine all keyword arrays
-  const allKeywords = [
-    ...serviceKeywords,
-    ...pricingKeywords, 
-    ...durationKeywords,
-    ...businessInfoKeywords,
-    ...descriptionKeywords
-  ];
-  
-  // Check if any keyword matches
-  return allKeywords.some(keyword => lowerMessage.includes(keyword));
 }
 
 function cosineSimilarity(vecA: number[], vecB: number[]): number {
@@ -421,20 +364,96 @@ function cosineSimilarity(vecA: number[], vecB: number[]): number {
 }
 
 /**
- * RAG (Retrieval-Augmented Generation) function that combines embedding generation 
- * with vector search to find the most relevant documents for a user query.
- * It searches pre-existing documents, live service data, business information, and availability/working hours.
- * For service-related queries, business info, or availability queries, it returns ALL relevant database table data only (no documents).
+ * Enhanced query classification using smart LLM analysis.
+ * Determines what data the user actually needs without hardcoding keywords.
+ */
+async function smartQueryClassification(userMessage: string): Promise<{
+  isAvailability: boolean;
+  isContact: boolean; 
+  isService: boolean;
+}> {
+  const cacheKey = userMessage.toLowerCase().trim();
+  const now = Date.now();
+  
+  // Check cache first
+  const cached = intentCache.get(cacheKey);
+  if (cached && (now - cached.timestamp) < CACHE_DURATION_MS) {
+    console.log(`[Smart Classification] Cache hit for "${userMessage.substring(0, 30)}..."`);
+    return cached.classification;
+  }
+  
+  try {
+    const systemPrompt = `You are a smart query classifier for a booking system. Determine what type of information the user needs:
+
+AVAILABILITY: When user asks about scheduling, dates, times, when something is available, booking appointments
+CONTACT: When user asks about phone, email, address, location, how to reach the business  
+SERVICE: When user asks about what services are offered, prices, costs, what the business does
+
+Examples:
+- "When are you available?" → AVAILABILITY: true, CONTACT: false, SERVICE: false
+- "Para cuando tendrías cita?" → AVAILABILITY: true, CONTACT: false, SERVICE: false  
+- "What's your phone number?" → AVAILABILITY: false, CONTACT: true, SERVICE: false
+- "How much for a haircut?" → AVAILABILITY: false, CONTACT: false, SERVICE: true
+- "What services do you offer?" → AVAILABILITY: false, CONTACT: false, SERVICE: true
+- "Hello" → AVAILABILITY: false, CONTACT: false, SERVICE: false
+
+Respond with ONLY JSON: {"availability": true/false, "contact": true/false, "service": true/false}`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `Classify this query: "${userMessage}"` }
+      ] as any,
+      temperature: 0.1,
+      max_tokens: 100,
+      response_format: { type: "json_object" }
+    });
+
+    const result = response.choices[0]?.message?.content;
+    if (!result) throw new Error('No response from classification model');
+
+    const parsed = JSON.parse(result);
+    const classification = {
+      isAvailability: parsed.availability || false,
+      isContact: parsed.contact || false,
+      isService: parsed.service || false
+    };
+    
+    // Cache the result
+    intentCache.set(cacheKey, { classification, timestamp: now });
+    
+    console.log(`[Smart Classification] "${userMessage.substring(0, 50)}..." → Availability: ${classification.isAvailability}, Contact: ${classification.isContact}, Service: ${classification.isService}`);
+    
+    return classification;
+    
+  } catch (error) {
+    console.error('[Smart Classification] Error:', error);
+    
+    // Simple fallback based on keyword analysis
+    const lowerMessage = userMessage.toLowerCase();
+    return {
+      isAvailability: ['available', 'appointment', 'book', 'when', 'cita', 'fecha', 'hora'].some(w => lowerMessage.includes(w)),
+      isContact: ['phone', 'email', 'address', 'location', 'contact', 'teléfono', 'dirección'].some(w => lowerMessage.includes(w)),
+      isService: ['service', 'price', 'cost', 'offer', 'do you do', 'servicio', 'precio', 'costo'].some(w => lowerMessage.includes(w))
+    };
+  }
+}
+
+/**
+ * SIMPLIFIED RAG function that prioritizes structured data over documents.
  * 
- * Supported query types:
- * - Services: Returns all services with prices, durations, descriptions, mobile availability
- * - Business Info: Returns complete business contact information, address, payment setup
- * - Availability: Returns working hours, schedule, buffer times, timezone information
- * - Combined: Returns all above information for comprehensive queries
+ * **APPROACH**:
+ * 1. Use smart LLM classification to understand what user needs
+ * 2. Fetch ONLY the relevant structured data from database 
+ * 3. Always prioritize structured data over documents
+ * 4. Only fallback to documents if no structured data available
  * 
- * @param businessId - The ID of the business to search within
- * @param userMessage - The user's message/query to search for
- * @returns Promise<VectorSearchResult[]> - Array of relevant results (database tables only for comprehensive queries, top 3 mixed for others)
+ * **SCALABLE & SIMPLE for MVP**:
+ * - No complex data type detection
+ * - Explicit data source mapping
+ * - Predictable processing logic
+ * - Always returns most relevant information first
  */
 export async function RAGfunction(
   businessId: string,
@@ -442,248 +461,154 @@ export async function RAGfunction(
 ): Promise<VectorSearchResult[]> {
   console.log(`[RAGfunction] Starting RAG search for business ${businessId} with message: "${userMessage.substring(0, 100)}..."`);
   
-  // Detect if this is a service-related, business info, or contact query
-  const isComprehensiveQuery = isServiceRelatedQuery(userMessage);
-  const isContactQuery = isBusinessContactQuery(userMessage);
-  const isScheduleQuery = isAvailabilityQuery(userMessage);
-  console.log(`[RAGfunction] Comprehensive information query detected: ${isComprehensiveQuery}`);
-  console.log(`[RAGfunction] Business contact query detected: ${isContactQuery}`);
-  console.log(`[RAGfunction] Availability/schedule query detected: ${isScheduleQuery}`);
+  // Step 1: Smart LLM classification to understand what user needs
+  const intent = await smartQueryClassification(userMessage);
+  const isBusinessQuery = intent.isAvailability || intent.isContact || intent.isService;
+  
+  console.log(`[RAGfunction] Smart classification - Business query: ${isBusinessQuery}, Availability: ${intent.isAvailability}, Contact: ${intent.isContact}, Service: ${intent.isService}`);
   
   try {
     const userEmbedding = await generateEmbedding(userMessage);
-    console.log(`[RAGfunction] Successfully generated embedding for user message`);
+    const results: VectorSearchResult[] = [];
     
-    // Step 2: Perform vector search on documents, fetch live services, and fetch business/availability info in parallel
-    const promises: Promise<any>[] = [
-      findBestVectorResult(userEmbedding, businessId),
-      Service.getByBusiness(businessId)
-    ];
-    
-    // Add business info fetching if it's a contact/comprehensive/availability query
-    // (availability queries need business info to format the response properly)
-    if (isContactQuery || isComprehensiveQuery || isScheduleQuery) {
-      promises.push(Business.getById(businessId));
-    }
-    
-    // Add availability info fetching if it's a schedule/availability query or comprehensive query
-    if (isScheduleQuery || isComprehensiveQuery) {
-      // Fetch calendar settings for the business - this returns an array
-      promises.push(CalendarSettings.getByBusiness(businessId));
-      // Also fetch actual available slots - need to find the provider first
-      promises.push(
-        (async () => {
-          try {
-            // Find the provider user for this business
-            const { User } = await import('@/lib/database/models/user');
-            const provider = await User.findUserByBusinessId(businessId);
-            if (provider) {
-              // Get comprehensive availability for the next 7 days
-              const { AvailabilitySlots } = await import('@/lib/database/models/availability-slots');
-              const today = new Date();
-              const oneWeekFromNow = new Date();
-              oneWeekFromNow.setDate(today.getDate() + 7);
-              
-              const availabilityData = await AvailabilitySlots.getByProviderAndDateRange(
-                provider.id,
-                today.toISOString().split('T')[0],
-                oneWeekFromNow.toISOString().split('T')[0]
-              );
-              
-              // Convert raw availability data to a more usable format
-              const availableSlots = convertAvailabilityDataToSlots(availabilityData);
-              return { provider, availableSlots };
-            }
-            return null;
-          } catch (error) {
-            console.error('[RAGfunction] Error fetching availability slots:', error);
-            return null;
+    // Step 2: If it's a business query, fetch structured data explicitly
+    if (isBusinessQuery) {
+      console.log(`[RAGfunction] Fetching structured business data...`);
+      
+      // Get business info for contact queries
+      if (intent.isContact) {
+        try {
+          const business = await Business.getById(businessId);
+          if (business) {
+            const businessData = business.getData();
+            const businessContent = generateBusinessDocumentContent(businessData);
+            const businessEmbedding = await generateEmbedding(businessContent);
+            const similarity = cosineSimilarity(userEmbedding, businessEmbedding);
+            
+            results.push({
+              documentId: businessData.id!,
+              content: businessContent,
+              similarityScore: similarity * 3.0, // High priority boost
+              type: 'business',
+              source: 'Business Information',
+              category: 'Contact',
+              confidenceScore: 1.0,
+            });
+            console.log(`[RAGfunction] Added business contact information`);
           }
-        })()
-      );
-    }
-    
-    const results = await Promise.all(promises);
-    const [documentResults, serviceInstances] = results;
-    let businessInstance = null;
-    let calendarSettings = null;
-    let availabilityData = null;
-    
-    // Extract business and calendar settings from results based on what was requested
-    let resultIndex = 2;
-    if (isContactQuery || isComprehensiveQuery || isScheduleQuery) {
-      businessInstance = results[resultIndex];
-      resultIndex++;
-    }
-    if (isScheduleQuery || isComprehensiveQuery) {
-      const calendarSettingsArray = results[resultIndex];
-      // Take the first calendar settings if available (most businesses have one provider)
-      calendarSettings = calendarSettingsArray && calendarSettingsArray.length > 0 ? calendarSettingsArray[0] : null;
-      resultIndex++;
-      // Extract availability slots data
-      availabilityData = results[resultIndex];
-    }
-    
-    console.log(`[RAGfunction] Vector search returned ${documentResults.length} documents.`);
-    console.log(`[RAGfunction] Fetched ${serviceInstances.length} live services.`);
-    if (businessInstance) {
-      console.log(`[RAGfunction] Fetched business information for ${businessInstance.name}.`);
-    }
-    if (calendarSettings) {
-      console.log(`[RAGfunction] Fetched availability/calendar settings.`);
-    }
-    if (availabilityData) {
-      const totalSlots = availabilityData.availableSlots ? 
-        availabilityData.availableSlots.reduce((sum: number, day: any) => sum + (day.slots?.length || 0), 0) : 0;
-      console.log(`[RAGfunction] Fetched availability slots data:`, {
-        hasProvider: !!availabilityData.provider,
-        providerId: availabilityData.provider?.id,
-        availableDays: availabilityData.availableSlots?.length || 0,
-        totalSlots: totalSlots
-      });
-    }
-
-    let serviceResults: VectorSearchResult[] = [];
-    if (serviceInstances.length > 0) {
-      const serviceData = serviceInstances.map((s: any) => s.getData());
-      const serviceContents = serviceData.map(generateServiceDocumentContent);
-
-      // Batch generate embeddings for all services
-      const serviceEmbeddingsResponse = await openai.embeddings.create({
-        model: "text-embedding-3-small",
-        input: serviceContents,
-      });
-      const serviceEmbeddings = serviceEmbeddingsResponse.data.map(e => e.embedding);
-
-      serviceResults = serviceData.map((service: any, index: number) => {
-        const similarity = cosineSimilarity(userEmbedding, serviceEmbeddings[index]);
-        return {
-          documentId: service.id!,
-          content: serviceContents[index],
-          similarityScore: similarity,
-          type: 'service',
-          source: 'Business Service',
-          category: 'Services',
-          confidenceScore: 1.0,
-        };
-      });
-      console.log(`[RAGfunction] Generated ${serviceResults.length} search results from live services.`);
-    }
-
-    // Add business information result if available
-    let businessResults: VectorSearchResult[] = [];
-    if (businessInstance) {
-      const businessData = businessInstance;
-      const businessContent = generateBusinessDocumentContent(businessData);
-      
-      // Generate embedding for business info
-      const businessEmbedding = await generateEmbedding(businessContent);
-      const businessSimilarity = cosineSimilarity(userEmbedding, businessEmbedding);
-      
-      businessResults = [{
-        documentId: businessData.id!,
-        content: businessContent,
-        similarityScore: businessSimilarity,
-        type: 'business',
-        source: 'Business Information',
-        category: 'Contact',
-        confidenceScore: 1.0,
-      }];
-      console.log(`[RAGfunction] Generated business information search result.`);
-    }
-
-    // Add availability information result if available
-    let availabilityResults: VectorSearchResult[] = [];
-    if (calendarSettings && businessInstance) {
-      const businessData = businessInstance;
-      
-      // Enhanced availability content that includes actual available slots
-      let availabilityContent = generateAvailabilityDocumentContent(
-        {
-          userId: calendarSettings.userId,
-          businessId: calendarSettings.businessId,
-          workingHours: calendarSettings.workingHours,
-          manageCalendar: calendarSettings.manageCalendar,
-          calendarId: calendarSettings.calendarId,
-          calendarType: calendarSettings.calendarType,
-          settings: calendarSettings.settings,
-          lastSync: calendarSettings.lastSync
-        }, 
-        businessData.name
-      );
-      
-      // Add actual available slots if we have them
-      if (availabilityData && availabilityData.availableSlots && availabilityData.availableSlots.length > 0) {
-        const slotsText = generateAvailableSlotsContent(availabilityData.availableSlots, businessData.name);
-        availabilityContent += `\n\n${slotsText}`;
-        const totalSlots = availabilityData.availableSlots.reduce((sum: number, day: any) => sum + (day.slots?.length || 0), 0);
-        console.log(`[RAGfunction] Added ${availabilityData.availableSlots.length} days with ${totalSlots} total available slots to availability content.`);
-      } else {
-        console.log(`[RAGfunction] No actual available slots found - showing working hours only.`);
+        } catch (error) {
+          console.error('[RAGfunction] Error fetching business data:', error);
+        }
       }
       
-      // Generate embedding for availability info
-      const availabilityEmbedding = await generateEmbedding(availabilityContent);
-      const availabilitySimilarity = cosineSimilarity(userEmbedding, availabilityEmbedding);
+      // Get services for service queries
+      if (intent.isService) {
+        try {
+          const services = await Service.getByBusiness(businessId);
+          if (services && services.length > 0) {
+            for (const service of services) {
+              const serviceData = service.getData();
+              const serviceContent = generateServiceDocumentContent(serviceData);
+              const serviceEmbedding = await generateEmbedding(serviceContent);
+              const similarity = cosineSimilarity(userEmbedding, serviceEmbedding);
+              
+              results.push({
+                documentId: serviceData.id!,
+                content: serviceContent,
+                similarityScore: similarity * 2.5, // High priority boost
+                type: 'service',
+                source: 'Business Service',
+                category: 'Services',
+                confidenceScore: 1.0,
+              });
+            }
+            console.log(`[RAGfunction] Added ${services.length} services`);
+          }
+        } catch (error) {
+          console.error('[RAGfunction] Error fetching services:', error);
+        }
+      }
       
-      availabilityResults = [{
-        documentId: `${businessData.id}-availability`,
-        content: availabilityContent,
-        similarityScore: availabilitySimilarity,
-        type: 'availability',
-        source: 'Working Hours & Availability',
-        category: 'Availability',
-        confidenceScore: 1.0,
-      }];
-      console.log(`[RAGfunction] Generated availability information search result with ${availabilityContent.length} characters of content.`);
+      // Get availability for availability queries
+      if (intent.isAvailability) {
+        try {
+          // Get calendar settings
+          const calendarSettings = await CalendarSettings.getByBusiness(businessId);
+          if (calendarSettings && calendarSettings.length > 0) {
+            const calendar = calendarSettings[0];
+            const calendarContent = generateAvailabilityDocumentContent(calendar, businessId);
+            const calendarEmbedding = await generateEmbedding(calendarContent);
+            const similarity = cosineSimilarity(userEmbedding, calendarEmbedding);
+            
+            results.push({
+              documentId: `${businessId}-calendar`,
+              content: calendarContent,
+              similarityScore: similarity * 3.5, // Highest priority boost
+              type: 'availability',
+              source: 'Working Hours & Availability',
+              category: 'Availability',
+              confidenceScore: 1.0,
+            });
+            console.log(`[RAGfunction] Added calendar settings`);
+          }
+          
+          // Get real-time availability slots
+          const { User } = await import('@/lib/database/models/user');
+          const provider = await User.findUserByBusinessId(businessId);
+          if (provider) {
+            const { AvailabilitySlots } = await import('@/lib/database/models/availability-slots');
+            const today = new Date();
+            const twoWeeksFromNow = new Date();
+            twoWeeksFromNow.setDate(today.getDate() + 14);
+            
+            const availabilityData = await AvailabilitySlots.getByProviderAndDateRange(
+              provider.id,
+              today.toISOString().split('T')[0],
+              twoWeeksFromNow.toISOString().split('T')[0]
+            );
+            
+            if (availabilityData && availabilityData.length > 0) {
+              const availableSlots = convertAvailabilityDataToSlots(availabilityData);
+              if (availableSlots.length > 0) {
+                const slotsContent = generateAvailableSlotsContent(availableSlots, businessId);
+                const slotsEmbedding = await generateEmbedding(slotsContent);
+                const similarity = cosineSimilarity(userEmbedding, slotsEmbedding);
+                
+                results.push({
+                  documentId: `${businessId}-slots`,
+                  content: slotsContent,
+                  similarityScore: similarity * 4.0, // Highest priority boost
+                  type: 'availability',
+                  source: 'Real-time Availability',
+                  category: 'Availability',
+                  confidenceScore: 1.0,
+                });
+                console.log(`[RAGfunction] Added real-time availability slots`);
+              }
+            } else {
+              console.log(`[RAGfunction] No availability data found for provider ${provider.id}`);
+            }
+          }
+        } catch (error) {
+          console.error('[RAGfunction] Error fetching availability:', error);
+        }
+      }
     }
-
-    // Step 3: Combine and re-rank matches by applying boost factors
-    const allResults = [...documentResults, ...serviceResults, ...businessResults, ...availabilityResults];
-
-    const reRankedMatches = allResults.map(match => {
-      const isServiceDoc = match.source === 'Business Service';
-      const isBusinessDoc = match.source === 'Business Information';
-      const isAvailabilityDoc = match.source === 'Working Hours & Availability';
-      let boost = 1;
-      
-      if (isAvailabilityDoc) {
-        boost = BOOST_FACTORS['availability'] || 2.3;
-      } else if (isBusinessDoc) {
-        boost = BOOST_FACTORS['business'] || 2.5;
-      } else if (isServiceDoc) {
-        boost = BOOST_FACTORS['service'] || 2.0;
-      }
-
-      if (boost > 1) {
-        console.log(`[RAGfunction] Boosting score for doc ID ${match.documentId} (Type: ${match.type}, Source: ${match.source}) by ${((boost - 1) * 100).toFixed(0)}%`);
-      }
-      return {
-        ...match,
-        similarityScore: match.similarityScore * boost
-      };
-    });
-
-    // Step 4: Sort the matches by their new boosted score
-    reRankedMatches.sort((a, b) => b.similarityScore - a.similarityScore);
     
-    // Step 5: Return results based on query type
-    if (isComprehensiveQuery || isContactQuery || isScheduleQuery) {
-      // For comprehensive queries (services, pricing, business info, contact, availability), return ONLY database table data
-      // All service, business, and availability information is already in the tables, no need for potentially outdated documents
-      const services = reRankedMatches.filter(match => match.source === 'Business Service');
-      const business = reRankedMatches.filter(match => match.source === 'Business Information');
-      const availability = reRankedMatches.filter(match => match.source === 'Working Hours & Availability');
-      const combinedResults = [...business, ...availability, ...services];
-      
-      console.log(`[RAGfunction] Comprehensive query detected - returning ${business.length} business info + ${availability.length} availability + ${services.length} services = ${combinedResults.length} total results (excluding documents - using only database tables)`);
-      return combinedResults;
+    // Step 3: If we have structured data, return it. Otherwise, fallback to documents.
+    if (results.length > 0) {
+      // Sort by similarity score (already boosted)
+      results.sort((a, b) => b.similarityScore - a.similarityScore);
+      console.log(`[RAGfunction] Returning ${results.length} structured data results`);
+      return results;
     } else {
-      // For general queries, return top 3 results as before (can include documents)
-      const top3Results = reRankedMatches.slice(0, 3);
-      console.log(`[RAGfunction] General query - returning top ${top3Results.length} results`);
-      return top3Results;
+      // Fallback to document search
+      console.log(`[RAGfunction] No structured data found, falling back to document search`);
+      const documentResults = await findBestVectorResult(userEmbedding, businessId);
+      console.log(`[RAGfunction] Returning ${documentResults.length} document results`);
+      return documentResults.slice(0, 3); // Limit to top 3 documents
     }
+    
   } catch (error) {
     console.error(`[RAGfunction] Error during RAG search:`, error);
     throw new Error(`RAG function failed: ${error instanceof Error ? error.message : String(error)}`);
