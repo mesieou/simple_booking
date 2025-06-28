@@ -1,0 +1,98 @@
+import type { IndividualStepHandler } from '@/lib/bot-engine/types';
+import { getLocalizedText, AvailabilityService } from './booking-utils';
+
+// Step 1: Show next 2 available times + "choose another day" button
+// Job: ONLY display times, no input processing
+export const showAvailableTimesHandler: IndividualStepHandler = {
+  defaultChatbotPrompt: 'Here are the next available appointment times:', // This will be overridden by confirmationMessage
+  
+  // Only accept empty input (first display), reject button clicks so they go to next step
+  validateUserInput: async (userInput) => {
+    console.log('[ShowAvailableTimes] Validating input:', userInput);
+    
+    // If this is empty input (first display), accept it
+    if (!userInput || userInput === "") {
+      console.log('[ShowAvailableTimes] Empty input - accepting for first display');
+      return { isValidInput: true };
+    }
+    
+    // If this is a button click, reject it so it goes to handleTimeChoice
+    if (userInput.startsWith('slot_') || userInput === 'choose_another_day') {
+      console.log('[ShowAvailableTimes] Button click detected - rejecting to pass to next step');
+      return { 
+        isValidInput: false,
+        validationErrorMessage: '' // No error message, just advance to next step
+      };
+    }
+    
+    return { 
+      isValidInput: false,
+      validationErrorMessage: 'Please select one of the available options.' 
+    };
+  },
+  
+  // Use generic processor with custom availability fetching logic
+  // Get and display available times only on first display
+  processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
+    console.log('[ShowAvailableTimes] Processing input:', validatedInput);
+    
+    // Only process empty input (first display)
+    if (validatedInput !== "") {
+      console.log('[ShowAvailableTimes] Non-empty input - not processing');
+      return currentGoalData;
+    }
+    
+    const businessWhatsappNumberCustomersMessagedTo = chatContext.currentParticipant.businessWhatsappNumber;
+    const selectedServiceByCustomer = currentGoalData.selectedService;
+    
+    console.log('[ShowAvailableTimes] Business WhatsApp number customers messaged TO:', businessWhatsappNumberCustomersMessagedTo);
+    console.log('[ShowAvailableTimes] Service selected by customer:', selectedServiceByCustomer);
+    
+    if (!businessWhatsappNumberCustomersMessagedTo || !selectedServiceByCustomer?.durationEstimate) {
+      return {
+        ...currentGoalData,
+        availabilityError: 'Configuration error - missing business or service information',
+        confirmationMessage: getLocalizedText(chatContext, 'MESSAGES.CONFIGURATION_ERROR')
+      };
+    }
+    
+    const next2WholeHourSlots = await AvailabilityService.getNext2WholeHourSlotsForBusinessWhatsapp(
+      businessWhatsappNumberCustomersMessagedTo,
+      selectedServiceByCustomer.durationEstimate,
+      chatContext
+    );
+    
+    console.log('[ShowAvailableTimes] Next 2 whole hour slots:', next2WholeHourSlots);
+    
+    return {
+      ...currentGoalData,
+      next2WholeHourSlots: next2WholeHourSlots,
+      confirmationMessage: getLocalizedText(chatContext, 'MESSAGES.AVAILABLE_TIMES'),
+      listSectionTitle: getLocalizedText(chatContext, 'LIST_SECTIONS.AVAILABLE_OPTIONS')
+    };
+  },
+  
+  // Show exactly 2 whole hour time slots + "Choose another day" button
+  fixedUiButtons: async (currentGoalData, chatContext) => {
+    const availabilityError = currentGoalData.availabilityError as string | undefined;
+    if (availabilityError) {
+      return [{ buttonText: getLocalizedText(chatContext, 'BUTTONS.CONTACT_DIRECTLY'), buttonValue: 'contact_support' }];
+    }
+    
+    const next2WholeHourSlots = currentGoalData.next2WholeHourSlots as Array<{ date: string; time: string; displayText: string }> | undefined;
+    
+    if (!next2WholeHourSlots || next2WholeHourSlots.length === 0) {
+      return [{ buttonText: getLocalizedText(chatContext, 'BUTTONS.OTHER_DAYS'), buttonValue: 'choose_another_day' }];
+    }
+    
+    const timeSlotButtons = next2WholeHourSlots.map((slot, index) => ({
+      buttonText: slot.displayText,
+      buttonValue: `slot_${index}_${slot.date}_${slot.time}`
+    }));
+    
+    return [
+      ...timeSlotButtons,
+      { buttonText: getLocalizedText(chatContext, 'BUTTONS.OTHER_DAYS'), buttonValue: 'choose_another_day' }
+    ];
+  }
+}; 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getWhatsappHeaders } from "@/lib/conversation-engine/whatsapp/whatsapp-headers";
+import { getWhatsappHeaders } from "@/lib/bot-engine/channels/whatsapp/whatsapp-headers";
 
 export const dynamic = "force-dynamic";
 
