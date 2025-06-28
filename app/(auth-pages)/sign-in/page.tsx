@@ -2,8 +2,8 @@
 
 import { createClient } from "@/lib/database/supabase/client";
 import { useAuth } from "@/app/context/auth-context";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect } from "react";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
@@ -16,7 +16,11 @@ export default function SignIn() {
   const [loading, setLoading] = useState(false);
   const { refreshSession } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
+  
+  // Get the return URL from query parameters
+  const returnUrl = searchParams.get('returnUrl');
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,10 +43,17 @@ export default function SignIn() {
       // Show success message
       toast({
         title: "Sign in successful",
-        description: "You will be redirected to the protected page",
+        description: returnUrl ? "Redirecting to your requested page..." : "You will be redirected to the protected page",
       });
 
-      // The middleware will handle the redirect
+      // Redirect to the return URL if provided, otherwise let middleware handle it
+      if (returnUrl) {
+        const decodedReturnUrl = decodeURIComponent(returnUrl);
+        router.push(decodedReturnUrl);
+      } else {
+        // For users without a specific return URL, let middleware handle the redirect
+        router.push('/protected');
+      }
     } catch (error: any) {
       toast({
         title: "Sign in error",
@@ -115,7 +126,7 @@ export default function SignIn() {
         <p className="text-center text-sm text-muted-foreground">
           Don't have an account?{" "}
           <Link 
-            href="/sign-up" 
+            href={returnUrl ? `/sign-up?returnUrl=${encodeURIComponent(returnUrl)}` : "/sign-up"}
             className={`text-primary hover:underline transition-opacity ${
               loading ? "pointer-events-none opacity-50" : ""
             }`}
