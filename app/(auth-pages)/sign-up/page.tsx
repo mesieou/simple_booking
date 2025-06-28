@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/database/supabase/client";
 import { useAuth } from "@/app/context/auth-context";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
@@ -19,7 +19,11 @@ export default function SignUp() {
   const [loading, setLoading] = useState(false);
   const { refreshSession } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
+  
+  // Get the return URL from query parameters
+  const returnUrl = searchParams.get('returnUrl');
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,7 +50,9 @@ export default function SignUp() {
             lastName,
             role: 'customer',
           },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: returnUrl 
+            ? `${window.location.origin}/auth/callback?returnUrl=${encodeURIComponent(returnUrl)}`
+            : `${window.location.origin}/auth/callback`,
         },
       });
 
@@ -177,7 +183,7 @@ export default function SignUp() {
         <p className="text-center text-sm text-muted-foreground">
           Already have an account?{" "}
           <Link 
-            href="/sign-in" 
+            href={returnUrl ? `/sign-in?returnUrl=${encodeURIComponent(returnUrl)}` : "/sign-in"}
             className={`text-primary hover:underline transition-opacity ${
               loading ? "pointer-events-none opacity-50" : ""
             }`}
