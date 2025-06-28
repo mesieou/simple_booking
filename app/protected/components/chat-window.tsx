@@ -22,6 +22,12 @@ interface ChatStatus {
   notificationId: string | null;
 }
 
+interface FeedbackState {
+  isOpen: boolean;
+  messageContent: string;
+  feedbackType: 'thumbs_up' | 'thumbs_down' | null;
+}
+
 export function ChatWindow({ 
   conversation, 
   messages, 
@@ -41,10 +47,31 @@ export function ChatWindow({
   const [showUserDetails, setShowUserDetails] = useState(false);
   const [userDetails, setUserDetails] = useState<any>(null);
   const [showNotification, setShowNotification] = useState(true);
+  
+  // Feedback system state
+  const [feedbackState, setFeedbackState] = useState<FeedbackState>({
+    isOpen: false,
+    messageContent: '',
+    feedbackType: null
+  });
+  const [feedbackText, setFeedbackText] = useState('');
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
+  const [messageFeedbacks, setMessageFeedbacks] = useState<Map<string, Array<{type: 'thumbs_up' | 'thumbs_down', timestamp: string}>>>(new Map());
 
   const scrollToBottom = () => {
     if (messagesContainerRef.current) {
       messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
+  };
+
+  // Keep track of scroll position before feedback updates
+  const preserveScrollPosition = () => {
+    return messagesContainerRef.current?.scrollTop || 0;
+  };
+
+  const restoreScrollPosition = (scrollTop: number) => {
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = scrollTop;
     }
   };
 
@@ -72,8 +99,180 @@ export function ChatWindow({
     }
   };
 
+  // Feedback system handlers
+  const handleFeedbackClick = (messageContent: string, type: 'thumbs_up' | 'thumbs_down') => {
+    if (type === 'thumbs_up') {
+      // For thumbs up, submit immediately without text
+      submitFeedback(messageContent, type, '');
+    } else {
+      // For thumbs down, open window/modal for feedback text
+      setFeedbackState({
+        isOpen: true,
+        messageContent,
+        feedbackType: type
+      });
+      setFeedbackText('');
+    }
+  };
+
+  const handleFeedbackSubmit = () => {
+    if (feedbackState.messageContent && feedbackState.feedbackType) {
+      submitFeedback(feedbackState.messageContent, feedbackState.feedbackType, feedbackText);
+    }
+  };
+
+  const closeFeedbackModal = () => {
+    setFeedbackState({
+      isOpen: false,
+      messageContent: '',
+      feedbackType: null
+    });
+    setFeedbackText('');
+  };
+
+  const submitFeedback = async (messageContent: string, type: 'thumbs_up' | 'thumbs_down', text: string) => {
+    if (!sessionId) {
+      console.error('[Feedback] No sessionId available for feedback submission');
+      return;
+    }
+    
+    console.log(`[Feedback] User clicked ${type} for message in session ${sessionId}`);
+    console.log('[Feedback] Message content:', messageContent);
+    if (type === 'thumbs_down' && text) {
+      console.log('[Feedback] Feedback text provided:', text);
+    }
+    
+    setSubmittingFeedback(true);
+    try {
+      const feedbackData = {
+        sessionId,
+        messageContent,
+        feedbackType: type,
+        feedbackText: text || null,
+        timestamp: new Date().toISOString()
+      };
+      
+      console.log('[Feedback] Sending feedback to API:', feedbackData);
+      
+      const response = await fetch('/api/admin/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(feedbackData)
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok) {
+        console.log('[Feedback] Successfully saved feedback to database');
+        console.log('[Feedback] API response:', result);
+        
+        // Preserve scroll position before updating state
+        const currentScrollTop = preserveScrollPosition();
+        
+        // Create unique key for this session + message combination
+        const feedbackKey = `${sessionId}-${messageContent}`;
+        const currentFeedbacks = messageFeedbacks.get(feedbackKey) || [];
+        currentFeedbacks.push({
+          type,
+          timestamp: new Date().toISOString()
+        });
+        setMessageFeedbacks(new Map(messageFeedbacks.set(feedbackKey, currentFeedbacks)));
+        
+        // Close modal if it was open
+        if (feedbackState.isOpen) {
+          closeFeedbackModal();
+        }
+        
+        console.log('[Feedback] Local state updated, feedback UI should now show as given');
+        
+        // Restore scroll position after state update
+        setTimeout(() => {
+          restoreScrollPosition(currentScrollTop);
+        }, 0);
+        
+      } else {
+        console.error('[Feedback] API error:', result.error);
+        alert('Error submitting feedback: ' + result.error);
+      }
+      
+    } catch (error) {
+      console.error('[Feedback] Network/parsing error:', error);
+      alert('Error submitting feedback. Please try again.');
+    } finally {
+      setSubmittingFeedback(false);
+    }
+  };
+
+  // Reset feedback state when conversation changes and load existing feedbacks
   useEffect(() => {
-    scrollToBottom();
+    console.log('[ChatWindow] Conversation or session changed, resetting feedback state');
+    setMessageFeedbacks(new Map());
+    setFeedbackState({
+      isOpen: false,
+      messageContent: '',
+      feedbackType: null
+    });
+    setFeedbackText('');
+
+    // Load existing feedbacks for this session
+    if (sessionId) {
+      loadExistingFeedbacks(sessionId);
+    }
+  }, [sessionId, conversation?.channelUserId]);
+
+  const loadExistingFeedbacks = async (currentSessionId: string) => {
+    try {
+      console.log('[ChatWindow] Loading existing feedbacks for session:', currentSessionId);
+      
+      const response = await fetch(`/api/admin/feedback?sessionId=${currentSessionId}`);
+      const result = await response.json();
+      
+      if (response.ok && result.feedbacks) {
+        console.log('[ChatWindow] Found existing feedbacks:', result.feedbacks.length);
+        
+        // Preserve scroll position before updating state
+        const currentScrollTop = preserveScrollPosition();
+        
+        // Convert existing feedbacks to our local state format
+        const feedbackMap = new Map<string, Array<{type: 'thumbs_up' | 'thumbs_down', timestamp: string}>>();
+        
+        result.feedbacks.forEach((feedback: any) => {
+          const feedbackKey = `${currentSessionId}-${feedback.messageContent}`;
+          const existing = feedbackMap.get(feedbackKey) || [];
+          existing.push({
+            type: feedback.feedbackType,
+            timestamp: feedback.timestamp
+          });
+          feedbackMap.set(feedbackKey, existing);
+        });
+        
+        setMessageFeedbacks(feedbackMap);
+        console.log('[ChatWindow] Loaded feedbacks into local state');
+        
+        // Restore scroll position after loading feedbacks
+        setTimeout(() => {
+          restoreScrollPosition(currentScrollTop);
+        }, 0);
+      } else {
+        console.log('[ChatWindow] No existing feedbacks found or error loading them');
+      }
+    } catch (error) {
+      console.error('[ChatWindow] Error loading existing feedbacks:', error);
+    }
+  };
+
+  // Only scroll to bottom when messages actually change (not when feedback state changes)
+  const messagesRef = useRef(messages);
+  useEffect(() => {
+    // Only scroll if messages actually changed (different length or different content)
+    const hasNewMessages = messages.length !== messagesRef.current.length || 
+                          JSON.stringify(messages) !== JSON.stringify(messagesRef.current);
+    
+    if (hasNewMessages) {
+      console.log('[ChatWindow] New messages detected, scrolling to bottom');
+      scrollToBottom();
+      messagesRef.current = messages;
+    }
   }, [messages]);
 
   // Fetch chat status when sessionId changes or conversation changes
@@ -335,27 +534,80 @@ export function ChatWindow({
                  <p className="text-center text-gray-400 mt-10">This is the beginning of your conversation.</p>
             )}
             <div className="space-y-6">
-                {messages.map((msg) => (
-                    <div
-                        key={msg.id}
-                        className={`flex ${msg.senderRole === 'customer' ? 'justify-start' : 'justify-end'}`}
-                    >
+                {messages.map((msg) => {
+                    const isBot = msg.senderRole === 'bot';
+                    // Create unique key for this session + message combination
+                    const feedbackKey = `${sessionId}-${msg.content}`;
+                    const feedbacks = messageFeedbacks.get(feedbackKey) || [];
+                    const hasThumbsUp = feedbacks.some(f => f.type === 'thumbs_up');
+                    const hasThumbsDown = feedbacks.some(f => f.type === 'thumbs_down');
+                    
+                    return (
                         <div
-                            className={`p-4 rounded-lg max-w-lg text-white ${
-                                msg.senderRole === 'customer'
-                                ? 'bg-slate-700'
-                                : msg.senderRole === 'staff' 
-                                ? 'bg-green-600'
-                                : 'bg-purple-600'
-                            }`}
+                            key={msg.id}
+                            className={`flex ${msg.senderRole === 'customer' ? 'justify-start' : 'justify-end'}`}
                         >
-                            <p className="text-sm">{msg.content}</p>
-                            <p className="text-xs text-right text-white/60 mt-2">
-                                {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </p>
+                            <div className="flex flex-col max-w-lg">
+                                <div
+                                    className={`p-4 rounded-lg text-white ${
+                                        msg.senderRole === 'customer'
+                                        ? 'bg-slate-700'
+                                        : msg.senderRole === 'staff' 
+                                        ? 'bg-green-600'
+                                        : 'bg-purple-600'
+                                    }`}
+                                >
+                                    <p className="text-sm">{msg.content}</p>
+                                    <p className="text-xs text-right text-white/60 mt-2">
+                                        {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </p>
+                                </div>
+                                
+                                {/* Feedback buttons - only for bot messages */}
+                                {isBot && (
+                                    <div className="flex items-center gap-2 mt-2 ml-auto">
+                                        <span className="text-xs text-gray-400">Rate this response:</span>
+                                        
+                                        {/* Thumbs Up Button */}
+                                        <button
+                                            onClick={() => handleFeedbackClick(msg.content, 'thumbs_up')}
+                                            disabled={submittingFeedback}
+                                            className={`p-1.5 rounded-full transition-colors hover:bg-slate-600 disabled:opacity-50 ${
+                                                hasThumbsUp ? 'text-green-400 bg-green-900/20' : 'text-gray-400'
+                                            }`}
+                                            title="Good response"
+                                        >
+                                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.8 2.4L6.8 7.933a4 4 0 00-.8 2.4z" />
+                                            </svg>
+                                        </button>
+                                        
+                                        {/* Thumbs Down Button */}
+                                        <button
+                                            onClick={() => handleFeedbackClick(msg.content, 'thumbs_down')}
+                                            disabled={submittingFeedback}
+                                            className={`p-1.5 rounded-full transition-colors hover:bg-slate-600 disabled:opacity-50 ${
+                                                hasThumbsDown ? 'text-red-400 bg-red-900/20' : 'text-gray-400'
+                                            }`}
+                                            title="Poor response"
+                                        >
+                                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M18 9.5a1.5 1.5 0 11-3 0v-6a1.5 1.5 0 013 0v6zM14 9.667v-5.43a2 2 0 00-1.106-1.79l-.05-.025A4 4 0 0011.057 2H5.64a2 2 0 00-1.962 1.608l-1.2 6A2 2 0 004.44 12H8v4a2 2 0 002 2 1 1 0 001-1v-.667a4 4 0 01.8-2.4l1.4-1.866a4 4 0 00.8-2.4z" />
+                                            </svg>
+                                        </button>
+                                        
+                                        {/* Feedback count indicator */}
+                                        {feedbacks.length > 0 && (
+                                            <span className="text-xs text-gray-500 ml-1">
+                                                ({feedbacks.length})
+                                            </span>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
             <div ref={messagesEndRef} />
         </div>
@@ -449,6 +701,75 @@ export function ChatWindow({
                     </p>
                   </div>
                 )}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Feedback Modal */}
+        {feedbackState.isOpen && (
+          <>
+            {/* Backdrop */}
+            <div 
+              className="fixed inset-0 bg-black/50 z-50"
+              onClick={closeFeedbackModal}
+            ></div>
+            
+            {/* Modal */}
+            <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 bg-slate-800 rounded-lg border border-white/20 shadow-2xl z-50 p-6">
+              {/* Header */}
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-white">
+                  👎 Provide Feedback
+                </h3>
+                <button
+                  onClick={closeFeedbackModal}
+                  className="p-1 hover:bg-slate-700 rounded-full transition-colors"
+                >
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Message Preview */}
+              <div className="mb-4">
+                <label className="text-sm font-medium text-gray-400 mb-2 block">Bot Message:</label>
+                <div className="bg-slate-700/50 rounded-lg p-3 text-sm text-gray-300 border border-slate-600">
+                  {feedbackState.messageContent}
+                </div>
+              </div>
+
+              {/* Feedback Text Input */}
+              <div className="mb-6">
+                <label className="text-sm font-medium text-gray-400 mb-2 block">
+                  What could be improved? (Optional)
+                </label>
+                <textarea
+                  value={feedbackText}
+                  onChange={(e) => setFeedbackText(e.target.value)}
+                  placeholder="Describe what was wrong or how the bot could respond better..."
+                  className="w-full p-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
+                  rows={4}
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={closeFeedbackModal}
+                  className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+                  disabled={submittingFeedback}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleFeedbackSubmit}
+                  disabled={submittingFeedback}
+                  className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {submittingFeedback ? 'Submitting...' : 'Submit Feedback'}
+                </button>
               </div>
             </div>
           </>
