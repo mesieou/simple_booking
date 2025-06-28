@@ -91,6 +91,14 @@ export class FlowController {
       return currentSteps[currentStepIndex];
     }
     
+    // CRITICAL FIX: First check if the current step still needs data
+    const currentStepName = currentSteps[currentStepIndex];
+    if (currentStepName && this.stepNeedsData(currentStepName, goalData)) {
+      console.log(`[FlowController] Current step ${currentStepName} still needs data - staying on current step`);
+      return currentStepName;
+    }
+    
+    // Then check future steps
     for (let i = currentStepIndex + 1; i < currentSteps.length; i++) {
       const stepName = currentSteps[i];
       
@@ -111,8 +119,29 @@ export class FlowController {
   private stepNeedsData(stepName: string, collectedData: Record<string, any>): boolean {
     const stepLower = stepName.toLowerCase();
     
-    if (stepLower.includes('service') && !collectedData.selectedService) return true;
-    if ((stepLower.includes('address') || stepLower.includes('location')) && !collectedData.finalServiceAddress && !collectedData.customerAddress) return true;
+    // Check for initial service selection step
+    if (stepLower === 'selectservice') {
+      // Only needs data if no service selected yet
+      return !collectedData.selectedService;
+    }
+    
+    // Check for additional services step
+    if (stepLower === 'addadditionalservices') {
+      // Needs data if not completed
+      return collectedData.addServicesState !== 'completed';
+    }
+    
+    // Check for address/location steps
+    if (stepLower.includes('address') && !collectedData.customerAddress) return true;
+    
+    // FIXED: confirmLocation just needs services to determine location, not finalServiceAddress
+    if (stepLower === 'confirmlocation') {
+      // Check if we have services to process (either selectedServices array or single selectedService)
+      const hasServices = (collectedData.selectedServices && collectedData.selectedServices.length > 0) || 
+                         collectedData.selectedService;
+      return !hasServices;
+    }
+    
     if ((stepLower.includes('time') || stepLower.includes('date') || stepLower.includes('day') || stepLower.includes('hour')) && (!collectedData.selectedDate || !collectedData.selectedTime)) return true;
     if ((stepLower.includes('user') || stepLower.includes('name')) && !collectedData.userId && !collectedData.existingUserFound) return true;
     if ((stepLower.includes('quote') || stepLower.includes('summary')) && (!collectedData.selectedService || !collectedData.selectedDate || !collectedData.selectedTime || !collectedData.finalServiceAddress)) return true;
@@ -174,8 +203,21 @@ export class FlowController {
   private clearDataForStepType(collectedData: Record<string, any>, targetStepName: string) {
     const stepLower = targetStepName.toLowerCase();
     
-    if (stepLower.includes('service')) {
+    if (stepLower === 'selectservice') {
+      // Clear all service-related data when going back to initial service selection
       collectedData.selectedService = undefined;
+      collectedData.selectedServices = undefined;
+      collectedData.addServicesState = undefined;
+      collectedData.finalServiceAddress = undefined;
+      collectedData.serviceLocation = undefined;
+      collectedData.bookingSummary = undefined;
+      collectedData.persistedQuote = undefined;
+      collectedData.quoteId = undefined;
+    }
+    
+    if (stepLower === 'addadditionalservices') {
+      // Only clear the additional services state, keep the first selected service
+      collectedData.addServicesState = undefined;
       collectedData.finalServiceAddress = undefined;
       collectedData.serviceLocation = undefined;
       collectedData.bookingSummary = undefined;

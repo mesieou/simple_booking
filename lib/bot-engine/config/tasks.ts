@@ -4,6 +4,7 @@ import { IndividualStepHandler } from "@/lib/bot-engine/types";
 import { askAddressHandler } from '../steps/booking/ask-address';
 import { validateAddressHandler } from '../steps/booking/validate-address';
 import { selectServiceHandler } from "../steps/booking/select-service";
+import { addAdditionalServicesHandler } from "../steps/booking/add-additional-services";
 import { confirmLocationHandler } from "../steps/booking/confirm-location";
 import { showAvailableTimesHandler } from '../steps/booking/show-available-times';
 import { handleTimeChoiceHandler } from '../steps/booking/handle-time-choice';
@@ -29,6 +30,7 @@ export const botTasks: Record<string, IndividualStepHandler> = {
   askAddress: askAddressHandler,
   validateAddress: validateAddressHandler,
   selectService: selectServiceHandler,
+  addAdditionalServices: addAdditionalServicesHandler,
   confirmLocation: confirmLocationHandler,
   // New simplified time/date handlers
   showAvailableTimes: showAvailableTimesHandler,

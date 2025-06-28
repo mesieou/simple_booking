@@ -27,7 +27,9 @@ export const BOOKING_TRANSLATIONS = {
       EDIT: 'Edit',
       CHANGE_SERVICE: 'Change Service',
       CHANGE_TIME: 'Change Date/Time',
-      SELECT: 'Select'
+      SELECT: 'Select',
+      ADD_ANOTHER_SERVICE: '➕ Add Another Service',
+      CONTINUE_WITH_SERVICES: '✅ Continue'
     },
     MESSAGES: {
       AVAILABLE_TIMES: 'Next available times:',
@@ -70,7 +72,11 @@ export const BOOKING_TRANSLATIONS = {
       CHECKING_STATUS: 'Checking your account status...',
       CREATING_ACCOUNT: 'Creating your account...',
       PROCESSING_CHOICE: 'Processing your choice...',
-      CONFIRMING_DETAILS: 'Perfect! Let me confirm your service details...'
+      CONFIRMING_DETAILS: 'Perfect! Let me confirm your service details...',
+      SERVICE_SELECTED: '✅ Selected: {serviceName}',
+      SERVICES_SELECTED: '✅ Selected services:\n{servicesList}',
+      ADD_MORE_SERVICES: 'Would you like to add another service or continue with the booking?',
+      MULTIPLE_SERVICES_CONFIRMED: 'Great! You\'ve selected {count} services. Let\'s continue with your booking.'
     },
     TIME_LABELS: {
       TODAY: 'Today',
@@ -85,6 +91,7 @@ export const BOOKING_TRANSLATIONS = {
     QUOTE_SUMMARY: {
       TITLE: '📋 *Booking Quote Summary*',
       SERVICE: '💼 *Service:*',
+      SERVICES: '💼 *Services:*',
       DATE: '📅 *Date:*',
       TIME: '⏰ *Time:*',
       DURATION: '⏱️ *Duration:*',
@@ -92,6 +99,7 @@ export const BOOKING_TRANSLATIONS = {
       LOCATION: '📍 *Location:*',
       PRICING: '💰 *Pricing:*',
       SERVICE_COST: '• Service:',
+      SERVICES_COST: '• Total Services:',
       TRAVEL_COST: '• Travel:',
       TOTAL_COST: '• *Total:*',
       QUOTE_ID: 'Quote ID:',
@@ -100,15 +108,25 @@ export const BOOKING_TRANSLATIONS = {
     },
     BOOKING_CONFIRMATION: {
       TITLE: '🎉 Your booking is confirmed!',
-      SERVICE: '📅 Service:',
-      DATE: '🗓️ Date:',
+      SERVICE: '💼 Service:',
+      SERVICES: '💼 Services:',
+      DATE: '📅 Date:',
       TIME: '⏰ Time:',
       LOCATION: '📍 Location:',
       PRICING: '💰 *Pricing:*',
       SERVICE_COST: '• Service:',
+      SERVICES_COST: '• Total Services:',
       TRAVEL_COST: '• Travel:',
       TOTAL_COST: '• *Total Cost:*',
-      BOOKING_ID: 'Booking ID:',
+      PAYMENT_DETAILS: '💳 *Payment Summary:*',
+      AMOUNT_PAID: '• Paid:',
+      AMOUNT_OWED: '• Balance Due:',
+      PAYMENT_METHOD: '• Payment Method:',
+      CONTACT_INFO: '📞 *Contact Information:*',
+      ARRIVAL_INSTRUCTIONS: '🗺️ *How to Arrive:*',
+      MOBILE_INSTRUCTIONS: 'We will arrive at your location at the scheduled time. Please ensure someone is available to receive our service.',
+      SALON_INSTRUCTIONS: 'Please arrive 5-10 minutes early. If you need to reschedule or have any questions, please contact us.',
+      BOOKING_ID: '📄 Booking ID:',
       LOOKING_FORWARD: 'We look forward to seeing you! You can ask me anything else if you have more questions.'
     }
   },
@@ -140,7 +158,9 @@ export const BOOKING_TRANSLATIONS = {
       EDIT: 'Editar',
       CHANGE_SERVICE: 'Cambiar Servicio',
       CHANGE_TIME: 'Cambiar Fecha/Hora',
-      SELECT: 'Seleccionar'
+      SELECT: 'Seleccionar',
+      ADD_ANOTHER_SERVICE: '➕ Agregar Otro Servicio',
+      CONTINUE_WITH_SERVICES: '✅ Continuar'
     },
     MESSAGES: {
       AVAILABLE_TIMES: 'Próximos horarios:',
@@ -183,7 +203,11 @@ export const BOOKING_TRANSLATIONS = {
       CHECKING_STATUS: 'Verificando el estado de tu cuenta...',
       CREATING_ACCOUNT: 'Creando tu cuenta...',
       PROCESSING_CHOICE: 'Procesando tu elección...',
-      CONFIRMING_DETAILS: '¡Perfecto! Déjame confirmar los detalles de tu servicio...'
+      CONFIRMING_DETAILS: '¡Perfecto! Déjame confirmar los detalles de tu servicio...',
+      SERVICE_SELECTED: '✅ Seleccionado: {serviceName}',
+      SERVICES_SELECTED: '✅ Servicios seleccionados:\n{servicesList}',
+      ADD_MORE_SERVICES: '¿Te gustaría agregar otro servicio o continuar con la reserva?',
+      MULTIPLE_SERVICES_CONFIRMED: '¡Excelente! Has seleccionado {count} servicios. Continuemos con tu reserva.'
     },
     TIME_LABELS: {
       TODAY: 'Hoy',
@@ -198,6 +222,7 @@ export const BOOKING_TRANSLATIONS = {
     QUOTE_SUMMARY: {
       TITLE: '📋 *Resumen de Cotización de Reserva*',
       SERVICE: '💼 *Servicio:*',
+      SERVICES: '💼 *Servicios:*',
       DATE: '📅 *Fecha:*',
       TIME: '⏰ *Hora:*',
       DURATION: '⏱️ *Duración:*',
@@ -205,6 +230,7 @@ export const BOOKING_TRANSLATIONS = {
       LOCATION: '📍 *Ubicación:*',
       PRICING: '💰 *Precios:*',
       SERVICE_COST: '• Servicio:',
+      SERVICES_COST: '• Total Servicios:',
       TRAVEL_COST: '• Viaje:',
       TOTAL_COST: '• *Total:*',
       QUOTE_ID: 'ID de Cotización:',
@@ -213,15 +239,25 @@ export const BOOKING_TRANSLATIONS = {
     },
     BOOKING_CONFIRMATION: {
       TITLE: '🎉 ¡Tu reserva está confirmada!',
-      SERVICE: '📅 Servicio:',
-      DATE: '🗓️ Fecha:',
+      SERVICE: '💼 Servicio:',
+      SERVICES: '💼 Servicios:',
+      DATE: '📅 Fecha:',
       TIME: '⏰ Hora:',
       LOCATION: '📍 Ubicación:',
       PRICING: '💰 *Precios:*',
       SERVICE_COST: '• Servicio:',
+      SERVICES_COST: '• Total Servicios:',
       TRAVEL_COST: '• Viaje:',
       TOTAL_COST: '• *Costo Total:*',
-      BOOKING_ID: 'ID de Reserva:',
+      PAYMENT_DETAILS: '💳 *Resumen de Pago:*',
+      AMOUNT_PAID: '• Pagado:',
+      AMOUNT_OWED: '• Saldo Pendiente:',
+      PAYMENT_METHOD: '• Método de Pago:',
+      CONTACT_INFO: '📞 *Información de Contacto:*',
+      ARRIVAL_INSTRUCTIONS: '🗺️ *Cómo Llegar:*',
+      MOBILE_INSTRUCTIONS: 'Llegaremos a tu ubicación a la hora programada. Por favor asegúrate de que alguien esté disponible para recibir nuestro servicio.',
+      SALON_INSTRUCTIONS: 'Por favor llega 5-10 minutos antes. Si necesitas reprogramar o tienes preguntas, por favor contáctanos.',
+      BOOKING_ID: '📄 ID de Reserva:',
       LOOKING_FORWARD: '¡Esperamos verte! Puedes preguntarme cualquier otra cosa si tienes más preguntas.'
     }
   }
