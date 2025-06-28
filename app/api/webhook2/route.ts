@@ -1,26 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { 
-  processIncomingMessage, 
-  type ConversationalParticipant, 
-  type ChatContext,
-} from "@/lib/Juan-bot-engine/bot-manager";
-import { parseWhatsappMessage } from "@/lib/conversation-engine/whatsapp/whatsapp-payload-parser";
-import { type WebhookAPIBody } from "@/lib/conversation-engine/whatsapp/whatsapp-message-logger"; 
-import { WhatsappSender } from "@/lib/conversation-engine/whatsapp/whatsapp-message-sender";
+  processIncomingMessage
+} from "@/lib/bot-engine/core/message-processor";
+import { type ConversationalParticipant, type ChatContext } from "@/lib/bot-engine/types";
+import { parseWhatsappMessage } from "@/lib/bot-engine/channels/whatsapp/whatsapp-payload-parser";
+import { type WebhookAPIBody } from "@/lib/bot-engine/channels/whatsapp/whatsapp-message-logger"; 
+import { WhatsappSender } from "@/lib/bot-engine/channels/whatsapp/whatsapp-message-sender";
 import { type ParsedMessage, type BotResponse } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
 import { 
     handleEscalationOrAdminCommand, 
-    EscalationResult
-} from "@/lib/Juan-bot-engine/escalation/handler";
-import { getOrCreateChatContext, persistSessionState, START_BOOKING_PAYLOAD } from "@/lib/Juan-bot-engine/bot-manager-helpers";
-import { handleFaqOrChitchat } from "@/lib/Juan-bot-engine/step-handlers/faq-handler";
+} from "@/lib/bot-engine/escalation/handler";
+import { getOrCreateChatContext } from "@/lib/bot-engine/session/session-manager";
+import { persistSessionState } from "@/lib/bot-engine/session/state-persister";
+import { handleFaqOrChitchat } from "@/lib/bot-engine/steps/faq/faq-handler";
 import crypto from 'crypto';
-import { IntelligentLLMService } from "@/lib/Juan-bot-engine/services/intelligent-llm-service";
-import { LanguageDetectionService } from "@/lib/Juan-bot-engine/services/language-detection";
+import { LanguageDetectionService } from "@/lib/bot-engine/services/language-service";
 import { Notification } from '@/lib/database/models/notification';
 import { ChatSession } from '@/lib/database/models/chat-session';
 import { UserContext } from "@/lib/database/models/user-context";
 import { Business } from '@/lib/database/models/business';
+import { IntelligentLLMService } from "@/lib/bot-engine/services/llm-service";
+import { START_BOOKING_PAYLOAD } from "@/lib/bot-engine/config/constants";
 
 // No type guard needed anymore - handleEscalationOrAdminCommand only returns EscalationResult
 

@@ -1,6 +1,6 @@
 import { CrawlConfig, Category, CATEGORY_DISPLAY_NAMES, PROCESS_CONTENT_CONFIG, /* defaultConfig, */ CategorizedContent } from '@/lib/general-config/general-config';
 import { savePageMainResponse } from './logger-artifact-savers';
-import { categorizeWebsiteContent as actualCategorizeWebsiteContent, CategorizationApiOutput } from '../../../conversation-engine/llm-actions/chat-interactions/functions/content-analysis';
+import { categorizeWebsiteContent as actualCategorizeWebsiteContent, CategorizationApiOutput } from '../../../shared/llm/functions/content-analysis';
 
 // Output structure for each LLM-defined chunk
 export interface LLMSegmentedChunk {
