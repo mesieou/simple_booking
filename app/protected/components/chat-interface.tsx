@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { ChatLayout } from "./chat-layout";
 import { ChatList } from "./chat-list";
 import { ChatWindow } from "./chat-window";
@@ -43,27 +43,58 @@ export default function ChatInterface({
       setUserBusinessId(businessId);
     };
     initBusinessId();
+    
+    // Cleanup timeouts on unmount
+    return () => {
+      if (refreshConversationsTimeoutRef.current) {
+        clearTimeout(refreshConversationsTimeoutRef.current);
+      }
+      if (refreshMessagesTimeoutRef.current) {
+        clearTimeout(refreshMessagesTimeoutRef.current);
+      }
+    };
   }, []);
 
   // Callback functions for realtime updates
+  const refreshMessagesTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
   const refreshMessages = useCallback(async (channelUserId: string) => {
-    try {
-      console.log('[ChatInterface] Refreshing messages for:', channelUserId);
-      const fetchedMessages = await getMessagesForUser(channelUserId);
-      setMessages(fetchedMessages);
-    } catch (err) {
-      console.error('[ChatInterface] Error refreshing messages:', err);
+    // Clear existing timeout
+    if (refreshMessagesTimeoutRef.current) {
+      clearTimeout(refreshMessagesTimeoutRef.current);
     }
+    
+    // Debounce the refresh by 200ms
+    refreshMessagesTimeoutRef.current = setTimeout(async () => {
+      try {
+        console.log('[ChatInterface] Refreshing messages for:', channelUserId, '(debounced)');
+        const fetchedMessages = await getMessagesForUser(channelUserId);
+        setMessages(fetchedMessages);
+      } catch (err) {
+        console.error('[ChatInterface] Error refreshing messages:', err);
+      }
+    }, 200);
   }, []);
 
+  // Add debounce to prevent excessive API calls
+  const refreshConversationsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
   const refreshConversations = useCallback(async () => {
-    try {
-      console.log('[ChatInterface] Refreshing conversations');
-      const updatedConversations = await getBusinessConversations();
-      setConversations(updatedConversations);
-    } catch (err) {
-      console.error('[ChatInterface] Error refreshing conversations:', err);
+    // Clear existing timeout
+    if (refreshConversationsTimeoutRef.current) {
+      clearTimeout(refreshConversationsTimeoutRef.current);
     }
+    
+    // Debounce the refresh by 300ms
+    refreshConversationsTimeoutRef.current = setTimeout(async () => {
+      try {
+        console.log('[ChatInterface] Refreshing conversations (debounced)');
+        const updatedConversations = await getBusinessConversations();
+        setConversations(updatedConversations);
+      } catch (err) {
+        console.error('[ChatInterface] Error refreshing conversations:', err);
+      }
+    }, 300);
   }, []);
 
   const refreshChatStatus = useCallback(() => {
@@ -133,26 +164,15 @@ export default function ChatInterface({
   const handleMessageSent = useCallback(() => {
     // When a message is sent, this will be called by ChatWindow
     // The realtime subscription will automatically update the messages
-    // but we can also trigger a manual refresh as backup
-    if (selectedUserId) {
-      refreshMessages(selectedUserId);
-    }
-  }, [selectedUserId, refreshMessages]);
+    // No need for manual refresh since realtime handles it
+    console.log('[ChatInterface] Message sent - relying on realtime updates');
+  }, []); // Remove dependencies to prevent re-creation
 
   const handleNotificationClick = useCallback((channelUserId: string, sessionId: string) => {
     console.log('[ChatInterface] Notification clicked for:', channelUserId, 'sessionId:', sessionId);
-    
-    // Find the conversation for this channelUserId
-    const conversation = conversations.find(c => c.channelUserId === channelUserId);
-    if (conversation) {
-      setSelectedUserId(channelUserId);
-    } else {
-      // If conversation not in current list, refresh conversations first
-      refreshConversations().then(() => {
-        setSelectedUserId(channelUserId);
-      });
-    }
-  }, [conversations, refreshConversations]);
+    // Always just select the user - the conversation list will be updated by realtime
+    setSelectedUserId(channelUserId);
+  }, []); // Remove dependencies to prevent re-creation
   
   const selectedConversation = conversations.find(c => c.channelUserId === selectedUserId);
 
