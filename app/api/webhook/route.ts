@@ -242,15 +242,8 @@ export async function POST(req: NextRequest) {
             console.log(`${LOG_PREFIX} No active booking goal. Routing to FAQ/Chitchat handler.`);
             const faqResponse = await handleFaqOrChitchat(chatContext, parsedMessage.text, historyForLLM);
             
-            // --- Post-Processing for FAQ/Chitchat Responses ---
-            const targetLanguage = chatContext.participantPreferences.language;
-            if (targetLanguage && targetLanguage !== 'en') {
-                console.log(`${LOG_PREFIX} Translating FAQ response to ${targetLanguage}`);
-                botManagerResponse = await translateBotResponse(faqResponse, targetLanguage);
-            } else {
-                botManagerResponse = faqResponse;
-            }
-            // --- End Post-Processing ---
+            // FAQ handler already generates response in correct language - no additional translation needed
+            botManagerResponse = faqResponse;
 
             // Persist the state after the FAQ handler runs
             if (botManagerResponse.text && chatContext.currentConversationSession) {
