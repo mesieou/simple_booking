@@ -84,10 +84,6 @@
             "color": "foldercolorizer.color_99cc00"
         },
         {
-            "folderPath": "simple_booking\\lib\\Juan-bot-engine\\",
-            "color": "foldercolorizer.color_cc66cc"
-        },
-        {
             "folderPath": "simple_booking\\.env.local\\",
             "color": "foldercolorizer.color_ccff33"
         },
@@ -114,34 +110,6 @@
         {
             "folderPath": "simple_booking\\lib\\conversation-engine\\escalation\\",
             "color": "foldercolorizer.color_6666ff"
-        },
-        {
-            "folderPath": "simple_booking\\lib\\Juan-bot-engine\\bot-manager.ts\\",
-            "badge": "😀"
-        },
-        {
-            "folderPath": "simple_booking\\lib\\Juan-bot-engine\\bot-manager-helpers.ts\\",
-            "badge": "😀"
-        },
-        {
-            "folderPath": "simple_booking\\lib\\Juan-bot-engine\\step-handlers\\faq-handler.ts\\",
-            "badge": "😀"
-        },
-        {
-            "folderPath": "simple_booking\\lib\\Juan-bot-engine\\step-handlers\\business-account-steps.ts\\",
-            "badge": "😀"
-        },
-        {
-            "folderPath": "simple_booking\\lib\\Juan-bot-engine\\step-handlers\\customer-booking-steps.ts\\",
-            "badge": "😀"
-        },
-        {
-            "folderPath": "simple_booking\\lib\\Juan-bot-engine\\step-handlers\\booking-utilities.ts\\",
-            "badge": "😀"
-        },
-        {
-            "folderPath": "simple_booking\\lib\\Juan-bot-engine\\services\\intelligent-llm-service.ts\\",
-            "badge": "😀"
         },
         {
             "folderPath": "simple_booking\\lib\\conversation-engine\\juan-bot-engine-v2\\bot-manager-helpers.ts\\",

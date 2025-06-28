@@ -1,0 +1,1 @@
+export const START_BOOKING_PAYLOAD = 'start_booking_flow'; 

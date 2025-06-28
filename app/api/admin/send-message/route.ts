@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/database/supabase/server";
 import { getServiceRoleClient } from "@/lib/database/supabase/service-role";
-import { WhatsappSender } from "@/lib/conversation-engine/whatsapp/whatsapp-message-sender";
+import { WhatsappSender } from "@/lib/bot-engine/channels/whatsapp/whatsapp-message-sender";
 import { Business } from "@/lib/database/models/business";
 
 export async function POST(req: NextRequest) {

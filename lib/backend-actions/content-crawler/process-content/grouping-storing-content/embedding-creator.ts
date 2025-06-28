@@ -1,5 +1,5 @@
-import { generateEmbedding } from '@/lib/conversation-engine/llm-actions/chat-interactions/functions/embeddings';
-import { scheduleTask } from '@/lib/conversation-engine/llm-actions/chat-interactions/openai-config/rate-limiter';
+import { generateEmbedding } from '@/lib/shared/llm/functions/embeddings';
+import { scheduleTask } from '@/lib/shared/llm/openai/rate-limiter';
 import { saveLlmInteraction } from '../logger-artifact-savers';
 
 /**
