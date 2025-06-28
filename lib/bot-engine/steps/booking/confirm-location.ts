@@ -7,16 +7,33 @@ export const confirmLocationHandler: IndividualStepHandler = {
   autoAdvance: true,
   
   validateUserInput: async (userInput, currentGoalData) => {
-    if (currentGoalData.selectedService?.mobile) {
-      return { isValidInput: true };
-    }
+    // Support both multi-service and single service
+    const selectedServices = currentGoalData.selectedServices || [];
+    const selectedService = currentGoalData.selectedService;
+    const servicesToCheck = selectedServices.length > 0 ? selectedServices : (selectedService ? [selectedService] : []);
+    
+    // Always return valid since this step just determines location based on service type
     return { isValidInput: true };
   },
   
   processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
-    const service = currentGoalData.selectedService;
+    // Support both multi-service and single service
+    const selectedServices = currentGoalData.selectedServices || [];
+    const selectedService = currentGoalData.selectedService;
+    const servicesToCheck = selectedServices.length > 0 ? selectedServices : (selectedService ? [selectedService] : []);
     
-    if (service.mobile) {
+    if (servicesToCheck.length === 0) {
+      console.error('[ConfirmLocation] No services found to process');
+      return {
+        ...currentGoalData,
+        confirmationMessage: 'Error: No service selected. Please start over.'
+      };
+    }
+    
+    // Check if any service is mobile
+    const hasMobileService = servicesToCheck.some(service => service?.mobile);
+    
+    if (hasMobileService) {
       // For mobile services, use the validated customer address
       const finalAddress = currentGoalData.finalServiceAddress || currentGoalData.customerAddress;
       

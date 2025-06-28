@@ -238,6 +238,8 @@ Analyze this message and determine the appropriate conversation flow action.`;
       currentBooking: {
         step: this.getCurrentStepName(currentGoal),
         service: currentGoal.collectedData.selectedService,
+        selectedServices: currentGoal.collectedData.selectedServices, // Include multi-service array
+        addServicesState: currentGoal.collectedData.addServicesState,
         date: currentGoal.collectedData.selectedDate,
         time: currentGoal.collectedData.selectedTime,
         location: currentGoal.collectedData.serviceLocation,
@@ -324,6 +326,13 @@ RESPONSE STRATEGY:
 3. **If information isn't available**, politely explain what you don't have access to
 4. **Keep responses natural and conversational**, not robotic
 5. **Guide back to booking flow if appropriate**
+
+MULTI-SERVICE FLOW SPECIAL INSTRUCTIONS:
+- If current step is "addAdditionalServices" and state is "selecting", customer wants to ADD more services
+- Show available services that are NOT already selected
+- Use language like "Here are the additional services available" or "You can add these services"
+- NEVER say "go back" or "choose different" - they're ADDING, not changing
+- List the available services clearly for them to choose from
 
 EXAMPLE RESPONSE PATTERNS:
 - Name question: "Hi [CustomerName]! Your name is [ActualName] from our customer records. Now, let's..."
@@ -422,7 +431,14 @@ Using the comprehensive knowledge base above, answer the user's question with sp
 
     // Current Booking Progress
     formatted += `CURRENT BOOKING PROGRESS:\n`;
-    if (context.currentBooking.service) {
+    
+    // Show selected services array if available (multi-service flow)
+    if (context.currentBooking.selectedServices && context.currentBooking.selectedServices.length > 0) {
+      formatted += `- Selected Services:\n`;
+      context.currentBooking.selectedServices.forEach((service: any, index: number) => {
+        formatted += `  ${index + 1}. ${service.name} ($${service.fixedPrice}, ${service.durationEstimate}min)\n`;
+      });
+    } else if (context.currentBooking.service) {
       formatted += `- Service: ${context.currentBooking.service.name} ($${context.currentBooking.service.fixedPrice}, ${context.currentBooking.service.durationEstimate}min)\n`;
     }
     if (context.currentBooking.date) {
@@ -437,14 +453,58 @@ Using the comprehensive knowledge base above, answer the user's question with sp
     if (context.currentBooking.summary) {
       formatted += `- Booking Summary: ${JSON.stringify(context.currentBooking.summary)}\n`;
     }
-    formatted += `- Current Step: ${context.currentBooking.step}\n\n`;
+    formatted += `- Current Step: ${context.currentBooking.step}\n`;
+    
+    // Add multi-service context if we're in that flow
+    if (context.currentBooking.step === 'addAdditionalServices') {
+      formatted += `\n--- MULTI-SERVICE BOOKING CONTEXT ---\n`;
+      formatted += `- FLOW TYPE: Adding additional services to existing booking\n`;
+      formatted += `- USER ACTION: Customer wants to ADD MORE services (not change existing ones)\n`;
+      
+      if (context.currentBooking.addServicesState === 'confirming') {
+        formatted += `- CURRENT STATE: Customer is deciding whether to add another service or continue with selected services\n`;
+        formatted += `- BUTTONS AVAILABLE: "Add Another Service" and "Continue"\n`;
+      } else if (context.currentBooking.addServicesState === 'selecting') {
+        formatted += `- CURRENT STATE: Customer is selecting an additional service from available options\n`;
+        formatted += `- ACTION: Show remaining services (excluding already selected ones)\n`;
+      }
+      
+      formatted += `- IMPORTANT: This is NOT a change request - customer is building a multi-service appointment\n`;
+      formatted += `- LANGUAGE: Respond about "adding" services, not "changing" the booking\n`;
+      formatted += `--- END MULTI-SERVICE CONTEXT ---\n`;
+    }
+    formatted += `\n`;
 
     // Available Services
     if (context.availableServices && context.availableServices.length > 0) {
       formatted += `AVAILABLE SERVICES:\n`;
-      context.availableServices.forEach(service => {
-        formatted += `- ${service.name}: $${service.fixedPrice} (${service.durationEstimate}min) - ${service.description || 'No description'}\n`;
-      });
+      
+      // If we're in addAdditionalServices selecting state, show filtered services
+      if (context.currentBooking.step === 'addAdditionalServices' && 
+          context.currentBooking.addServicesState === 'selecting' &&
+          context.currentBooking.selectedServices) {
+        
+        const selectedServiceIds = context.currentBooking.selectedServices.map((s: any) => s.id);
+        const availableForAdding = context.availableServices.filter(service => 
+          !selectedServiceIds.includes(service.id)
+        );
+        
+        formatted += `--- SERVICES AVAILABLE FOR ADDING (excluding already selected) ---\n`;
+        availableForAdding.forEach(service => {
+          formatted += `- ${service.name}: $${service.fixedPrice} (${service.durationEstimate}min) - ${service.description || 'No description'}\n`;
+        });
+        formatted += `--- END AVAILABLE FOR ADDING ---\n\n`;
+        
+        formatted += `ALL SERVICES (for reference):\n`;
+        context.availableServices.forEach(service => {
+          const isSelected = selectedServiceIds.includes(service.id);
+          formatted += `- ${service.name}: $${service.fixedPrice} (${service.durationEstimate}min)${isSelected ? ' [ALREADY SELECTED]' : ''}\n`;
+        });
+      } else {
+        context.availableServices.forEach(service => {
+          formatted += `- ${service.name}: $${service.fixedPrice} (${service.durationEstimate}min) - ${service.description || 'No description'}\n`;
+        });
+      }
       formatted += `\n`;
     }
 

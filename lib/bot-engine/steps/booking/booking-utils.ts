@@ -194,6 +194,34 @@ export class ServiceDataProcessor {
       mobile: service.mobile
     };
   }
+
+  static filterAvailableServices(allServices: ServiceData[], selectedServices: any[]): ServiceData[] {
+    if (!selectedServices || selectedServices.length === 0) {
+      return allServices;
+    }
+    
+    const selectedServiceIds = selectedServices.map(service => service.id);
+    return allServices.filter(service => !selectedServiceIds.includes(service.id));
+  }
+
+  static formatSelectedServicesList(selectedServices: any[], chatContext: ChatContext): string {
+    if (!selectedServices || selectedServices.length === 0) {
+      return '';
+    }
+    
+    return selectedServices.map((service, index) => {
+      const serviceName = service.name || 'Unknown Service';
+      const price = service.fixedPrice ? `$${service.fixedPrice}` : '';
+      const duration = service.durationEstimate ? `${service.durationEstimate}min` : '';
+      const mobile = service.mobile ? '🚗 Mobile' : '🏪 In-store';
+      
+      // Build details array
+      const details = [price, duration, mobile].filter(Boolean);
+      const detailsText = details.length > 0 ? ` (${details.join(' • ')})` : '';
+      
+      return `${index + 1}. ${serviceName}${detailsText}`;
+    }).join('\n');
+  }
 }
 
 export class BookingButtonGenerator {
@@ -314,10 +342,39 @@ export class BookingButtonGenerator {
       { buttonText: getLocalizedText(chatContext, 'BUTTONS.ADDRESS_EDIT'), buttonValue: 'address_edit' }
     ];
   }
+
+  static createServiceContinuationButtons(chatContext: ChatContext): ButtonConfig[] {
+    return [
+      { 
+        buttonText: getLocalizedText(chatContext, 'BUTTONS.ADD_ANOTHER_SERVICE'), 
+        buttonValue: 'add_another_service' 
+      },
+      { 
+        buttonText: getLocalizedText(chatContext, 'BUTTONS.CONTINUE_WITH_SERVICES'), 
+        buttonValue: 'continue_with_services' 
+      }
+    ];
+  }
 }
 
 export class BookingValidator {
   
+  static validateServiceContinuation(userInput: string, chatContext: ChatContext): LLMProcessingResult {
+    const normalizedInput = userInput.toLowerCase().trim();
+    
+    if (normalizedInput === 'add_another_service' || normalizedInput === 'continue_with_services') {
+      return { 
+        isValidInput: true,
+        transformedInput: userInput
+      };
+    }
+    
+    return {
+      isValidInput: false,
+      validationErrorMessage: getLocalizedText(chatContext, 'MESSAGES.ADD_MORE_SERVICES')
+    };
+  }
+
   static validateServiceSelection(userInput: string, availableServices: ServiceData[], chatContext: ChatContext): LLMProcessingResult {
     console.log('[BookingValidator] Validating service selection:');
     console.log('[BookingValidator] User input:', userInput);

@@ -97,7 +97,8 @@ export const quoteSummaryHandler: IndividualStepHandler = {
       return currentGoalData;
     }
     
-    const selectedService = currentGoalData.selectedService;
+    const selectedServices = currentGoalData.selectedServices || [];
+    const selectedService = currentGoalData.selectedService; // Backward compatibility
     const selectedDate = currentGoalData.selectedDate;
     const selectedTime = currentGoalData.selectedTime;
     const finalServiceAddress = currentGoalData.finalServiceAddress;
@@ -105,7 +106,10 @@ export const quoteSummaryHandler: IndividualStepHandler = {
     const userId = currentGoalData.userId;
     const businessId = chatContext.currentParticipant.associatedBusinessId;
     
-    if (!selectedService || !selectedDate || !selectedTime || !finalServiceAddress || !userId || !businessId) {
+    // Use selectedServices if available, otherwise fall back to selectedService
+    const servicesToProcess = selectedServices.length > 0 ? selectedServices : (selectedService ? [selectedService] : []);
+    
+    if (servicesToProcess.length === 0 || !selectedDate || !selectedTime || !finalServiceAddress || !userId || !businessId) {
       return {
         ...currentGoalData,
         summaryError: 'Missing booking information'
@@ -113,28 +117,79 @@ export const quoteSummaryHandler: IndividualStepHandler = {
     }
 
     try {
-      // Step 1: Calculate quote using proper helpers
-      const service = new Service({
-        id: selectedService.id,
-        name: selectedService.name,
-        durationEstimate: selectedService.durationEstimate,
-        fixedPrice: selectedService.fixedPrice,
-        pricingType: selectedService.pricingType,
-        mobile: selectedService.mobile,
-        ratePerMinute: selectedService.ratePerMinute,
-        baseCharge: selectedService.baseCharge,
-        businessId: businessId
-      });
+      // Step 1: Calculate quote for all services
+      console.log('[QuoteSummary] Processing', servicesToProcess.length, 'services');
+      
+      let totalServiceCost = 0;
+      let totalDuration = 0;
+      let hasMobileService = false;
+      const serviceDetails = [];
+      
+      // Calculate totals for all services
+      for (const serviceData of servicesToProcess) {
+        const service = new Service({
+          id: serviceData.id,
+          name: serviceData.name,
+          durationEstimate: serviceData.durationEstimate,
+          fixedPrice: serviceData.fixedPrice,
+          pricingType: serviceData.pricingType,
+          mobile: serviceData.mobile,
+          ratePerMinute: serviceData.ratePerMinute,
+          baseCharge: serviceData.baseCharge,
+          businessId: businessId
+        });
 
-      // For mobile services, we need travel time estimate
-      let travelTimeEstimate = 0;
-      if (serviceLocation === 'customer_address') {
-        // TODO: Replace with actual travel time calculation from Google API
-        travelTimeEstimate = 25; // Mock travel time in minutes
+        // Calculate individual service cost
+        const serviceQuote = computeQuoteEstimation(service, 0); // No travel for individual calculation
+        totalServiceCost += serviceQuote.serviceCost;
+        totalDuration += serviceData.durationEstimate || 0;
+        
+        if (serviceData.mobile) {
+          hasMobileService = true;
+        }
+        
+        serviceDetails.push({
+          id: serviceData.id,
+          name: serviceData.name,
+          duration: serviceData.durationEstimate,
+          cost: serviceQuote.serviceCost,
+          mobile: serviceData.mobile
+        });
       }
 
-      // Use the proper quote calculation
-      const quoteEstimation: QuoteEstimation = computeQuoteEstimation(service, travelTimeEstimate);
+      // For mobile services, we need travel time estimate (only once for the whole booking)
+      let travelTimeEstimate = 0;
+      let travelCost = 0;
+      if (serviceLocation === 'customer_address' && hasMobileService) {
+        // TODO: Replace with actual travel time calculation from Google API
+        travelTimeEstimate = 25; // Mock travel time in minutes
+        
+        // Calculate travel cost based on the first mobile service's rates
+        const firstMobileService = servicesToProcess.find(s => s.mobile);
+        if (firstMobileService) {
+          const tempService = new Service({
+            id: firstMobileService.id,
+            name: firstMobileService.name,
+            durationEstimate: 0, // No service time for travel calculation
+            fixedPrice: 0,
+            pricingType: firstMobileService.pricingType,
+            mobile: firstMobileService.mobile,
+            ratePerMinute: firstMobileService.ratePerMinute,
+            baseCharge: firstMobileService.baseCharge,
+            businessId: businessId
+          });
+          const travelQuote = computeQuoteEstimation(tempService, travelTimeEstimate);
+          travelCost = travelQuote.travelCost;
+        }
+      }
+
+      // Create combined quote estimation
+      const quoteEstimation: QuoteEstimation = {
+        serviceCost: totalServiceCost,
+        travelCost: travelCost,
+        totalJobCost: totalServiceCost + travelCost,
+        totalJobDuration: totalDuration + travelTimeEstimate
+      };
 
       // Step 2: Get business address for quote persistence
       let businessAddress = 'Business Location'; // Fallback
@@ -160,12 +215,15 @@ export const quoteSummaryHandler: IndividualStepHandler = {
       }
 
       // Step 3: Create and persist the quote
+      // For now, use the first service ID for the quote model (future: extend to support multiple services)
+      const primaryService = servicesToProcess[0];
+      
       const quoteData: QuoteData = {
         userId,
         pickUp,
         dropOff,
         businessId,
-        serviceId: selectedService.id,
+        serviceId: primaryService.id, // Using first service for compatibility
         travelTimeEstimate,
         totalJobDurationEstimation: quoteEstimation.totalJobDuration,
         travelCostEstimate: quoteEstimation.travelCost,
@@ -173,7 +231,7 @@ export const quoteSummaryHandler: IndividualStepHandler = {
         status: 'pending',
       };
 
-      const quote = new Quote(quoteData, selectedService.mobile); // Pass mobile flag for validation
+      const quote = new Quote(quoteData, hasMobileService); // Pass mobile flag for validation
 
       // Persist to database
       const savedQuoteData = await quote.add({ useServiceRole: true });
@@ -202,6 +260,16 @@ export const quoteSummaryHandler: IndividualStepHandler = {
       const hour12 = parseInt(hour24) === 0 ? 12 : parseInt(hour24) > 12 ? parseInt(hour24) - 12 : parseInt(hour24);
       const ampm = parseInt(hour24) >= 12 ? 'PM' : 'AM';
       const formattedTime = `${hour12}:${selectedTime.split(':')[1]} ${ampm}`;
+      
+      // Format services list with pricing for display
+      const formatServicesWithPricing = (services: any[], language: 'en' | 'es') => {
+        if (services.length === 1) {
+          return `${services[0].name} - $${services[0].cost.toFixed(2)}`;
+        }
+        return services.map((service, index) => 
+          `${index + 1}. ${service.name} - $${service.cost.toFixed(2)}`
+        ).join('\n   ');
+      };
       
       // Calculate payment details using Quote model
       let depositAmount = savedQuoteData.depositAmount;
@@ -251,29 +319,33 @@ export const quoteSummaryHandler: IndividualStepHandler = {
         console.log('[QuoteSummary] Using English fallback translations');
         
         // Create simple summary message without full translations
+        const servicesDisplay = servicesToProcess.length > 1 
+          ? `💼 Services:\n   ${formatServicesWithPricing(serviceDetails, 'en')}`
+          : `💼 Service:\n   ${formatServicesWithPricing(serviceDetails, 'en')}`;
+          
         let summaryMessage = `📋 Booking Quote Summary\n\n` +
-          `Service: ${selectedService.name}\n` +
-          `Date: ${formattedDate}\n` +
-          `Time: ${formattedTime}\n` +
-          `Duration: ${duration} minutes\n` +
-          `Estimated completion: ${estimatedEndTime}\n` +
-          `Location: ${finalServiceAddress}\n\n` +
-          `Pricing:\n` +
-          `   Service: $${quoteEstimation.serviceCost.toFixed(2)}\n` +
-          `${quoteEstimation.travelCost > 0 ? `   Travel: $${quoteEstimation.travelCost.toFixed(2)}\n` : ''}` +
-          `   Total: $${quoteEstimation.totalJobCost.toFixed(2)}*\n\n`;
+          `${servicesDisplay}\n` +
+          `${quoteEstimation.travelCost > 0 ? `🚗 Travel: $${quoteEstimation.travelCost.toFixed(2)}\n` : ''}` +
+          `💰 Total Cost: $${quoteEstimation.totalJobCost.toFixed(2)}\n\n` +
+          `📅 Date: ${formattedDate}\n` +
+          `⏰ Time: ${formattedTime} (${duration} min)\n` +
+          `🏁 Completion: ~${estimatedEndTime}\n` +
+          `📍 Location: ${finalServiceAddress}\n\n`;
         
         // Add payment info if needed
         if (requiresDeposit && depositAmount) {
-          const totalPayNow = depositAmount + 4;
-          summaryMessage += `Payment:\n` +
-            `   • Paid Now: $${totalPayNow.toFixed(2)}\n` +
+          const bookingFee = 4;
+          const totalPayNow = depositAmount + bookingFee;
+          summaryMessage += `💳 Payment Details:\n` +
+            `   • Deposit: $${depositAmount.toFixed(2)}\n` +
+            `   • Booking Fee: $${bookingFee.toFixed(2)}\n` +
+            `   • Pay Now: $${totalPayNow.toFixed(2)}\n` +
             (remainingBalance !== undefined ? `   • Balance Due: $${remainingBalance.toFixed(2)}\n` : '') +
-            `   • Total Service Cost: $${quoteEstimation.totalJobCost.toFixed(2)}\n\n`;
+            `\n`;
         }
         
-        summaryMessage += `Quote ID: ${savedQuoteData.id}\n\n`;
-        summaryMessage += requiresDeposit ? `Ready to secure your booking?` : `Would you like to confirm this quote?`;
+        summaryMessage += `📄 Quote ID: ${savedQuoteData.id}\n\n`;
+        summaryMessage += requiresDeposit ? `🔒 Ready to secure your booking?` : `✅ Would you like to confirm this quote?`;
         
         return {
           ...currentGoalData,
@@ -285,6 +357,8 @@ export const quoteSummaryHandler: IndividualStepHandler = {
           depositAmount: requiresDeposit ? depositAmount : undefined,
           remainingBalance: remainingBalance,
           totalPaymentAmount: requiresDeposit && depositAmount ? depositAmount + 4 : undefined,
+          selectedServices: servicesToProcess, // Store multiple services
+          serviceDetails, // Store service breakdown
           bookingSummary: {
             serviceCost: quoteEstimation.serviceCost,
             travelCost: quoteEstimation.travelCost,
@@ -296,28 +370,33 @@ export const quoteSummaryHandler: IndividualStepHandler = {
             duration,
             estimatedEndTime,
             formattedDate,
-            formattedTime
+            formattedTime,
+            serviceCount: servicesToProcess.length,
+            services: serviceDetails
           },
           shouldAutoAdvance: false,
           confirmationMessage: summaryMessage
         };
       }
       
+      // detectedLanguage is already declared above, no need to redeclare
+      const servicesDisplayLocalized = servicesToProcess.length > 1 
+        ? `${t.QUOTE_SUMMARY.SERVICES}\n   ${formatServicesWithPricing(serviceDetails, detectedLanguage)}`
+        : `${t.QUOTE_SUMMARY.SERVICE}\n   ${formatServicesWithPricing(serviceDetails, detectedLanguage)}`;
+        
       let summaryMessage = `${t.QUOTE_SUMMARY.TITLE}\n\n` +
-        `${t.QUOTE_SUMMARY.SERVICE} ${selectedService.name}\n` +
+        `${servicesDisplayLocalized}\n` +
+        `${quoteEstimation.travelCost > 0 ? `🚗 ${t.QUOTE_SUMMARY.TRAVEL_COST} $${quoteEstimation.travelCost.toFixed(2)}\n` : ''}` +
+        `💰 ${t.QUOTE_SUMMARY.TOTAL_COST} $${quoteEstimation.totalJobCost.toFixed(2)}\n\n` +
         `${t.QUOTE_SUMMARY.DATE} ${formattedDate}\n` +
-        `${t.QUOTE_SUMMARY.TIME} ${formattedTime}\n` +
-        `${t.QUOTE_SUMMARY.DURATION} ${duration} ${t.QUOTE_SUMMARY.MINUTES}\n` +
+        `${t.QUOTE_SUMMARY.TIME} ${formattedTime} (${duration} ${t.QUOTE_SUMMARY.MINUTES})\n` +
         `${t.QUOTE_SUMMARY.ESTIMATED_COMPLETION} ${estimatedEndTime}\n` +
-        `${t.QUOTE_SUMMARY.LOCATION} ${finalServiceAddress}\n\n` +
-        `${t.QUOTE_SUMMARY.PRICING}\n` +
-        `   ${t.QUOTE_SUMMARY.SERVICE_COST} $${quoteEstimation.serviceCost.toFixed(2)}\n` +
-        `${quoteEstimation.travelCost > 0 ? `   ${t.QUOTE_SUMMARY.TRAVEL_COST} $${quoteEstimation.travelCost.toFixed(2)}\n` : ''}` +
-        `   ${t.QUOTE_SUMMARY.TOTAL_COST} $${quoteEstimation.totalJobCost.toFixed(2)}*\n\n`;
+        `${t.QUOTE_SUMMARY.LOCATION} ${finalServiceAddress}\n\n`;
       
       // Only show deposit/payment info if business requires deposits
       if (requiresDeposit && depositAmount) {
-        const totalPayNow = depositAmount + 4;
+        const bookingFee = 4;
+        const totalPayNow = depositAmount + bookingFee;
         
         // Get business preferred payment method for balance due
         const businessId = chatContext.currentParticipant.associatedBusinessId;
@@ -334,23 +413,26 @@ export const quoteSummaryHandler: IndividualStepHandler = {
           }
         }
         
-        summaryMessage += `💳 *Booking Payment:*
-` +
-          `   • Paid Now: $${totalPayNow.toFixed(2)}
-` +
-          (remainingBalance !== undefined ? `   • Balance Due: $${remainingBalance.toFixed(2)} (${preferredPaymentMethod})
-` : '') +
-          `   • Total Service Cost: $${quoteEstimation.totalJobCost.toFixed(2)}
-
-`;
+        const depositLabel = detectedLanguage === 'es' ? 'Depósito' : 'Deposit';
+        const bookingFeeLabel = detectedLanguage === 'es' ? 'Tarifa de Reserva' : 'Booking Fee';
+        const payNowLabel = detectedLanguage === 'es' ? 'Pagar Ahora' : 'Pay Now';
+        const balanceDueLabel = detectedLanguage === 'es' ? 'Saldo Pendiente' : 'Balance Due';
+        
+        summaryMessage += `💳 *${detectedLanguage === 'es' ? 'Detalles de Pago' : 'Payment Details'}:*\n` +
+          `   • ${depositLabel}: $${depositAmount.toFixed(2)}\n` +
+          `   • ${bookingFeeLabel}: $${bookingFee.toFixed(2)}\n` +
+          `   • ${payNowLabel}: $${totalPayNow.toFixed(2)}\n` +
+          (remainingBalance !== undefined ? `   • ${balanceDueLabel}: $${remainingBalance.toFixed(2)} (${preferredPaymentMethod})\n` : '') +
+          `\n`;
       }
       
-      summaryMessage += `${t.QUOTE_SUMMARY.QUOTE_ID} ${savedQuoteData.id}\n\n`;
+      summaryMessage += `📄 ${t.QUOTE_SUMMARY.QUOTE_ID} ${savedQuoteData.id}\n\n`;
       
       if (requiresDeposit) {
-        summaryMessage += `Ready to secure your booking?`;
+        const readyLabel = detectedLanguage === 'es' ? '🔒 ¿Listo para asegurar tu reserva?' : '🔒 Ready to secure your booking?';
+        summaryMessage += readyLabel;
       } else {
-        summaryMessage += `${t.QUOTE_SUMMARY.CONFIRM_QUESTION}`;
+        summaryMessage += `✅ ${t.QUOTE_SUMMARY.CONFIRM_QUESTION}`;
       }
       
       return {
@@ -363,6 +445,8 @@ export const quoteSummaryHandler: IndividualStepHandler = {
         depositAmount: requiresDeposit ? depositAmount : undefined,
         remainingBalance: remainingBalance,
         totalPaymentAmount: requiresDeposit && depositAmount ? depositAmount + 4 : undefined,
+        selectedServices: servicesToProcess, // Store multiple services
+        serviceDetails, // Store service breakdown
         bookingSummary: {
           serviceCost: quoteEstimation.serviceCost,
           travelCost: quoteEstimation.travelCost,
@@ -374,7 +458,9 @@ export const quoteSummaryHandler: IndividualStepHandler = {
           duration,
           estimatedEndTime,
           formattedDate,
-          formattedTime
+          formattedTime,
+          serviceCount: servicesToProcess.length,
+          services: serviceDetails
         },
         shouldAutoAdvance: false, // Don't auto-advance, show buttons for user choice
         confirmationMessage: summaryMessage
