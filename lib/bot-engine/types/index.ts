@@ -88,3 +88,22 @@ export interface IndividualStepHandler {
   fixedUiButtons?: (currentGoalData: Record<string, any>, chatContext: ChatContext) => Promise<ButtonConfig[]> | ButtonConfig[];
   autoAdvance?: boolean;
 } 
+
+// Audio Transcription Types
+export interface AudioTranscriptionResult {
+  wasProcessed: boolean;
+  transcribedMessage: string;
+  originalMessage: string;
+  error?: string;
+}
+
+export interface AudioMetadata {
+  duration?: number; // in seconds
+  format?: string;
+  size?: number; // in bytes
+}
+
+export interface AudioFile {
+  url: string;
+  metadata?: AudioMetadata;
+} 

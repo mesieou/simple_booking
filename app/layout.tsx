@@ -10,6 +10,7 @@ import Navbar from "@components/layout/navbar";
 import AnimatedBackground from "@/components/AnimatedBackground";
 import { Suspense } from "react";
 import { AuthProvider } from "@/app/context/auth-context";
+import { Toaster } from "@/components/ui/toaster";
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -51,22 +52,23 @@ export default function RootLayout({
     <html lang="en" className={cn(inter.className)}>
       <body className="bg-background text-foreground">
         <AuthProvider>
-          <AnimatedBackground />
-          <main className="min-h-screen flex flex-col">
-            <div className="flex-1 w-full flex flex-col items-center">
-              <Navbar />
-              <div className="flex flex-col gap-20 max-w-5xl p-5 relative z-10">
-                <Suspense fallback={
-                  <div className="flex items-center justify-center min-h-[200px]">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                  </div>
-                }>
-                  {children}
-                </Suspense>
+            <AnimatedBackground />
+            <main className="min-h-screen flex flex-col">
+              <div className="flex-1 w-full flex flex-col items-center">
+                <Navbar />
+                <div className="flex flex-col gap-20 max-w-5xl p-5 relative z-10">
+                  <Suspense fallback={
+                    <div className="flex items-center justify-center min-h-[200px]">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    </div>
+                  }>
+                    {children}
+                  </Suspense>
+                </div>
+                <Footer />
               </div>
-              <Footer />
-            </div>
-          </main>
+            </main>
+            <Toaster />
         </AuthProvider>
       </body>
     </html>

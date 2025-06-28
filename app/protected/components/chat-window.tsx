@@ -557,7 +557,171 @@ export function ChatWindow({
                                         : 'bg-purple-600'
                                     }`}
                                 >
-                                    <p className="text-sm">{msg.content}</p>
+                                    {/* Show message content - prioritize real attachments over placeholders */}
+                                    {(msg.attachments && msg.attachments.length > 0) ? (
+                                        // Has real attachments - show them and any caption text
+                                        <div className="space-y-2">
+                                            {/* Show any text content beyond the placeholder */}
+                                            {msg.content.replace(/\[(IMAGE|VIDEO|DOCUMENT|AUDIO|STICKER)\]/g, '').trim() && (
+                                                <p className="text-sm">{msg.content.replace(/\[(IMAGE|VIDEO|DOCUMENT|AUDIO|STICKER)\]/g, '').trim()}</p>
+                                            )}
+                                        </div>
+                                    ) : (['[IMAGE]', '[VIDEO]', '[DOCUMENT]', '[AUDIO]', '[STICKER]'].some(placeholder => msg.content.includes(placeholder))) ? (
+                                        // No real attachments but has placeholder - show placeholder as fallback
+                                        <div className="space-y-2">
+                                            {/* Media placeholder fallback */}
+                                            <div className="flex items-center gap-2 p-3 bg-black/20 rounded-lg border border-white/20">
+                                                <div className="text-2xl">
+                                                    {msg.content.includes('[IMAGE]') && '🖼️'}
+                                                    {msg.content.includes('[VIDEO]') && '🎥'}
+                                                    {msg.content.includes('[DOCUMENT]') && '📄'}
+                                                    {msg.content.includes('[AUDIO]') && '🎵'}
+                                                    {msg.content.includes('[STICKER]') && '😊'}
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-medium">
+                                                        {msg.content.includes('[IMAGE]') && 'Photo'}
+                                                        {msg.content.includes('[VIDEO]') && 'Video'}
+                                                        {msg.content.includes('[DOCUMENT]') && 'Document'}
+                                                        {msg.content.includes('[AUDIO]') && 'Voice message'}
+                                                        {msg.content.includes('[STICKER]') && 'Sticker'}
+                                                    </p>
+                                                    <p className="text-xs text-white/50">(File not available)</p>
+                                                </div>
+                                            </div>
+                                            {/* Show any additional text content if it exists beyond the placeholder */}
+                                            {msg.content.replace(/\[(IMAGE|VIDEO|DOCUMENT|AUDIO|STICKER)\]/g, '').trim() && (
+                                                <p className="text-sm">{msg.content.replace(/\[(IMAGE|VIDEO|DOCUMENT|AUDIO|STICKER)\]/g, '').trim()}</p>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        // Regular text message
+                                        <p className="text-sm">{msg.content}</p>
+                                    )}
+                                    
+                                    {/* Display real attachments if available */}
+                                    {msg.attachments && msg.attachments.length > 0 && (
+                                        <div className="mt-3 space-y-2">
+                                            {msg.attachments.map((attachment, index) => (
+                                                <div key={index} className="space-y-2">
+                                                    {/* Images */}
+                                                    {attachment.type === 'image' && attachment.url && (
+                                                        <div className="relative">
+                                                            <img 
+                                                                src={attachment.url}
+                                                                alt={attachment.caption || "Photo"}
+                                                                className="max-w-xs max-h-64 rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                                                                onClick={() => window.open(attachment.url, '_blank')}
+                                                                onError={(e) => {
+                                                                    // Fallback to placeholder if image fails to load
+                                                                    const imgElement = e.currentTarget;
+                                                                    imgElement.style.display = 'none';
+                                                                    
+                                                                    const placeholder = document.createElement('div');
+                                                                    placeholder.className = 'flex items-center gap-2 p-3 bg-black/20 rounded-lg border border-white/20';
+                                                                    placeholder.innerHTML = '<span class="text-2xl">🖼️</span><div><p class="text-sm font-medium">Photo</p><p class="text-xs text-white/50">(Failed to load)</p></div>';
+                                                                    imgElement.parentNode?.appendChild(placeholder);
+                                                                }}
+                                                            />
+                                                            {attachment.caption && (
+                                                                <p className="text-xs text-white/70 mt-1">{attachment.caption}</p>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                    
+                                                    {/* Videos */}
+                                                    {attachment.type === 'video' && attachment.url && (
+                                                        <div className="relative">
+                                                            <video 
+                                                                src={attachment.url}
+                                                                controls
+                                                                className="max-w-xs max-h-64 rounded-lg"
+                                                                onError={(e) => {
+                                                                    // Fallback to placeholder if video fails to load
+                                                                    const videoElement = e.currentTarget;
+                                                                    videoElement.style.display = 'none';
+                                                                    
+                                                                    const placeholder = document.createElement('div');
+                                                                    placeholder.className = 'flex items-center gap-2 p-3 bg-black/20 rounded-lg border border-white/20';
+                                                                    placeholder.innerHTML = '<span class="text-2xl">🎥</span><div><p class="text-sm font-medium">Video</p><p class="text-xs text-white/50">(Failed to load)</p></div>';
+                                                                    videoElement.parentNode?.appendChild(placeholder);
+                                                                }}
+                                                            />
+                                                            {attachment.caption && (
+                                                                <p className="text-xs text-white/70 mt-1">{attachment.caption}</p>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                    
+                                                    {/* Audio */}
+                                                    {attachment.type === 'audio' && attachment.url && (
+                                                        <div className="flex items-center gap-2 p-3 bg-black/20 rounded-lg border border-white/20">
+                                                            <span className="text-2xl">🎵</span>
+                                                            <div className="flex-1">
+                                                                <p className="text-sm font-medium mb-2">Voice message</p>
+                                                                <audio 
+                                                                    src={attachment.url}
+                                                                    controls
+                                                                    className="w-full max-w-xs"
+                                                                    onError={(e) => {
+                                                                        const audioElement = e.currentTarget;
+                                                                        audioElement.style.display = 'none';
+                                                                        const errorText = document.createElement('p');
+                                                                        errorText.className = 'text-xs text-white/50';
+                                                                        errorText.textContent = '(Failed to load audio)';
+                                                                        audioElement.parentNode?.appendChild(errorText);
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    
+                                                    {/* Documents */}
+                                                    {attachment.type === 'document' && attachment.url && (
+                                                        <div className="flex items-center gap-2 p-3 bg-black/20 rounded-lg border border-white/20">
+                                                            <span className="text-2xl">📄</span>
+                                                            <div className="flex-1">
+                                                                <p className="text-sm font-medium">Document</p>
+                                                                <a 
+                                                                    href={attachment.url}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="text-xs text-blue-400 hover:text-blue-300 underline"
+                                                                >
+                                                                    Open document
+                                                                </a>
+                                                                {attachment.caption && (
+                                                                    <p className="text-xs text-white/70 mt-1">{attachment.caption}</p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    
+                                                    {/* Stickers */}
+                                                    {attachment.type === 'sticker' && attachment.url && (
+                                                        <div className="relative">
+                                                            <img 
+                                                                src={attachment.url}
+                                                                alt="Sticker"
+                                                                className="w-24 h-24 object-contain"
+                                                                onError={(e) => {
+                                                                    // Fallback to placeholder if sticker fails to load
+                                                                    const stickerElement = e.currentTarget;
+                                                                    stickerElement.style.display = 'none';
+                                                                    
+                                                                    const placeholder = document.createElement('div');
+                                                                    placeholder.className = 'flex items-center gap-2 p-3 bg-black/20 rounded-lg border border-white/20 w-24';
+                                                                    placeholder.innerHTML = '<span class="text-2xl">😊</span><div><p class="text-xs font-medium">Sticker</p><p class="text-xs text-white/50">(Failed to load)</p></div>';
+                                                                    stickerElement.parentNode?.appendChild(placeholder);
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
                                     <p className="text-xs text-right text-white/60 mt-2">
                                         {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </p>

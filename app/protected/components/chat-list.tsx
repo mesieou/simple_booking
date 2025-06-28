@@ -77,7 +77,11 @@ export function ChatList({
               </div>
               <p className="text-xs text-gray-400 truncate">
                 Last activity:{" "}
-                {new Date(convo.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                {new Date(convo.updatedAt).toLocaleTimeString('en-US', { 
+                  hour: '2-digit', 
+                  minute: '2-digit',
+                  hour12: false 
+                })}
               </p>
             </li>
           ))}

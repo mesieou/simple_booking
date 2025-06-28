@@ -8,6 +8,14 @@ export interface ChatMessage {
   role: 'user' | 'bot' | 'staff';
   content: string;
   timestamp?: string; // ISO date string, when the message was recorded in allMessages
+  attachments?: Array<{
+    type: 'image' | 'video' | 'document' | 'audio' | 'sticker';
+    url: string;
+    caption?: string;
+    originalFilename?: string;
+    mimeType?: string;
+    size?: number;
+  }>; // Optional field for media content
 }
 
 // Interface for the actual database schema of the chatSessions table
