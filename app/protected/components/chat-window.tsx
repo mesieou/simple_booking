@@ -445,97 +445,7 @@ export function ChatWindow({
       const response = await fetch('/api/admin/take-control', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId })
-      });
-      
-      const data = await response.json();
-      
-      if (response.ok) {
-        console.log('[ChatWindow] Successfully took control');
-        await fetchChatStatus(); // Refresh local status
-      } else {
-        alert("Error taking control: " + data.error);
-      }
-    } catch (error) {
-      console.error("Error taking control:", error);
-      alert("Failed to take control of chat");
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!sessionId || !messageText.trim()) return;
-    
-    setSendingMessage(true);
-    try {
-      const response = await fetch('/api/admin/staff-reply', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, message: messageText })
-      });
-      
-      const data = await response.json();
-      
-      if (response.ok) {
-        setMessageText("");
-        console.log('[ChatWindow] Message sent successfully');
-        
-        // Trigger callback to update messages via realtime or manual refresh
-        if (onMessageSent) {
-          onMessageSent();
-        }
-      } else {
-        alert("Error sending message: " + data.error);
-      }
-    } catch (error) {
-      console.error("Error sending message:", error);
-      alert("Failed to send message");
-    } finally {
-      setSendingMessage(false);
-    }
-  };
-
-  const handleFinishAssistance = async () => {
-    if (!sessionId) return;
-    
-    setActionLoading(true);
-    try {
-      const response = await fetch('/api/admin/finish-assistance', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId })
-      });
-      
-      const data = await response.json();
-      
-      if (response.ok) {
-        console.log('[ChatWindow] Successfully finished assistance');
-        await fetchChatStatus(); // Refresh local status
-      } else {
-        alert("Error finishing assistance: " + data.error);
-      }
-    } catch (error) {
-      console.error("Error finishing assistance:", error);
-      alert("Failed to finish assistance");
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  if (!conversation) {
-    return (
-      <div className="flex-1 flex h-full items-center justify-center text-gray-400">
-        <p>Select a conversation from the list to see the messages.</p>
-      </div>
-    );
-  }
-
-    return (
-    <div className="flex flex-col h-full overflow-hidden relative">
-      {/* Main Header - Fixed background */}
-      <div className="p-4 md:p-6 border-b border-white/10 bg-slate-900/40">
+        body: JSON.stringify({ sess      <div className="p-4 md:p-6 border-b border-white/10 bg-slate-900/40">
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3 md:gap-0">
           <button 
             onClick={handleShowUserDetails}
@@ -651,11 +561,7 @@ export function ChatWindow({
                                         <div className="space-y-2">
                                             {/* Show any text content beyond the placeholder */}
                                             {msg.content.replace(/\[(IMAGE|VIDEO|DOCUMENT|AUDIO|STICKER)\]/g, '').trim() && (
-                                                <p className="text-sm">
-                                                  {msg.senderRole === 'customer' 
-                                                    ? formatMessageForAdmin(msg.content.replace(/\[(IMAGE|VIDEO|DOCUMENT|AUDIO|STICKER)\]/g, '').trim())
-                                                    : msg.content.replace(/\[(IMAGE|VIDEO|DOCUMENT|AUDIO|STICKER)\]/g, '').trim()}
-                                                </p>
+                                                <p className="text-sm">{msg.content.replace(/\[(IMAGE|VIDEO|DOCUMENT|AUDIO|STICKER)\]/g, '').trim()}</p>
                                             )}
                                         </div>
                                     ) : (['[IMAGE]', '[VIDEO]', '[DOCUMENT]', '[AUDIO]', '[STICKER]'].some(placeholder => msg.content.includes(placeholder))) ? (
@@ -683,18 +589,12 @@ export function ChatWindow({
                                             </div>
                                             {/* Show any additional text content if it exists beyond the placeholder */}
                                             {msg.content.replace(/\[(IMAGE|VIDEO|DOCUMENT|AUDIO|STICKER)\]/g, '').trim() && (
-                                                <p className="text-sm">
-                                                  {msg.senderRole === 'customer' 
-                                                    ? formatMessageForAdmin(msg.content.replace(/\[(IMAGE|VIDEO|DOCUMENT|AUDIO|STICKER)\]/g, '').trim())
-                                                    : msg.content.replace(/\[(IMAGE|VIDEO|DOCUMENT|AUDIO|STICKER)\]/g, '').trim()}
-                                                </p>
+                                                <p className="text-sm">{msg.content.replace(/\[(IMAGE|VIDEO|DOCUMENT|AUDIO|STICKER)\]/g, '').trim()}</p>
                                             )}
                                         </div>
                                     ) : (
                                         // Regular text message
-                                        <p className="text-sm">
-                                          {msg.senderRole === 'customer' ? formatMessageForAdmin(msg.content) : msg.content}
-                                        </p>
+                                        <p className="text-sm">{msg.content}</p>
                                     )}
                                     
                                     {/* Display real attachments if available */}
@@ -963,6 +863,75 @@ export function ChatWindow({
                     <p className="text-white text-base md:text-sm">
                       {new Date(userDetails.lastEscalationDate).toLocaleDateString()}
                     </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Feedback Modal */}
+        {feedbackState.isOpen && (
+          <>
+            {/* Backdrop */}
+            <div 
+              className="fixed inset-0 bg-black/50 z-50"
+              onClick={closeFeedbackModal}
+            ></div>
+            
+            {/* Modal */}
+            <div className="fixed inset-4 md:top-1/2 md:left-1/2 md:transform md:-translate-x-1/2 md:-translate-y-1/2 md:w-96 md:h-auto md:inset-auto bg-slate-800 rounded-lg border border-white/20 shadow-2xl z-50 p-6 overflow-y-auto">
+              {/* Header */}
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl md:text-lg font-semibold text-white">
+                  👎 Provide Feedback
+                </h3>
+                <button
+                  onClick={closeFeedbackModal}
+                  className="min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 md:p-1 hover:bg-slate-700 rounded-full transition-colors flex items-center justify-center"
+                >
+                  <svg className="w-6 h-6 md:w-5 md:h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Message Preview */}
+              <div className="mb-6">
+                <label className="text-sm md:text-sm font-medium text-gray-400 mb-3 block">Bot Message:</label>
+                <div className="bg-slate-700/50 rounded-lg p-4 text-base md:text-sm text-gray-300 border border-slate-600">
+                  {feedbackState.messageContent}
+                </div>
+              </div>
+
+              {/* Feedback Text Input */}
+              <div className="mb-8">
+                <label className="text-sm md:text-sm font-medium text-gray-400 mb-3 block">
+                  What could be improved? (Optional)
+                </label>
+                <textarea
+                  value={feedbackText}
+                  onChange={(e) => setFeedbackText(e.target.value)}
+                  placeholder="Describe what was wrong or how the bot could respond better..."
+                  className="w-full min-h-[120px] p-4 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 resize-none text-base md:text-sm"
+                  rows={4}
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex flex-col md:flex-row gap-3 md:justify-end">
+                <button
+                  onClick={closeFeedbackModal}
+                  className="min-h-[48px] md:min-h-0 px-6 py-3 md:py-2 text-gray-400 hover:text-white transition-colors rounded-lg md:rounded border border-gray-600 md:border-0 text-base md:text-sm"
+                  disabled={submittingFeedback}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleFeedbackSubmit}
+                  disabled={submittingFeedback}
+                  className="min-h-[48px] md:min-h-0 px-6 py-3 md:py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-base md:text-sm font-medium"
+      </p>
                   </div>
                 )}
               </div>
