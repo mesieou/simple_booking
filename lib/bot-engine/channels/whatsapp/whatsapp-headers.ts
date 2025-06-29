@@ -7,10 +7,10 @@
  * Uses WHATSAPP_ACCESS_TOKEN for Authorization
  */
 export const getWhatsappHeaders = (): Record<string, string> => {
-  const token = process.env.WHATSAPP_VERIFY_TOKEN;
+  const token = process.env.WHATSAPP_PERMANENT_TOKEN;
   
   if (!token) {
-    throw new Error("WHATSAPP_ACCESS_TOKEN environment variable is required for WhatsApp API requests");
+    throw new Error("WHATSAPP_PERMANENT_TOKEN environment variable is required for WhatsApp API requests");
   }
 
   return {
