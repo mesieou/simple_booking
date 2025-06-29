@@ -165,7 +165,7 @@ export const quoteSummaryHandler: IndividualStepHandler = {
         travelTimeEstimate = 25; // Mock travel time in minutes
         
         // Calculate travel cost based on the first mobile service's rates
-        const firstMobileService = servicesToProcess.find(s => s.mobile);
+        const firstMobileService = servicesToProcess.find((s: any) => s.mobile);
         if (firstMobileService) {
           const tempService = new Service({
             id: firstMobileService.id,
@@ -188,7 +188,8 @@ export const quoteSummaryHandler: IndividualStepHandler = {
         serviceCost: totalServiceCost,
         travelCost: travelCost,
         totalJobCost: totalServiceCost + travelCost,
-        totalJobDuration: totalDuration + travelTimeEstimate
+        totalJobDuration: totalDuration + travelTimeEstimate,
+        travelTime: travelTimeEstimate
       };
 
       // Step 2: Get business address for quote persistence
@@ -215,15 +216,15 @@ export const quoteSummaryHandler: IndividualStepHandler = {
       }
 
       // Step 3: Create and persist the quote
-      // For now, use the first service ID for the quote model (future: extend to support multiple services)
-      const primaryService = servicesToProcess[0];
+      // Create quote with multiple services support
+      const serviceIds = servicesToProcess.map((service: any) => service.id);
       
       const quoteData: QuoteData = {
         userId,
         pickUp,
         dropOff,
         businessId,
-        serviceId: primaryService.id, // Using first service for compatibility
+        serviceIds: serviceIds, // All selected services
         travelTimeEstimate,
         totalJobDurationEstimation: quoteEstimation.totalJobDuration,
         travelCostEstimate: quoteEstimation.travelCost,
@@ -236,6 +237,7 @@ export const quoteSummaryHandler: IndividualStepHandler = {
       // Persist to database
       const savedQuoteData = await quote.add({ useServiceRole: true });
       console.log('[QuoteSummary] Quote successfully created with ID:', savedQuoteData.id);
+      console.log('[QuoteSummary] Quote includes services:', serviceIds);
 
       // Step 4: Generate display formatting
       // Calculate estimated completion time
@@ -266,7 +268,7 @@ export const quoteSummaryHandler: IndividualStepHandler = {
         if (services.length === 1) {
           return `${services[0].name} - $${services[0].cost.toFixed(2)}`;
         }
-        return services.map((service, index) => 
+        return services.map((service: any, index: number) => 
           `${index + 1}. ${service.name} - $${service.cost.toFixed(2)}`
         ).join('\n   ');
       };

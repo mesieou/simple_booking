@@ -522,6 +522,18 @@ export class AvailabilityService {
       availabilityData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
       
       for (const dayData of availabilityData) {
+        // Check if provider works on this day of the week before processing slots
+        const targetDate = new Date(dayData.date + 'T00:00:00.000Z');
+        const dayOfWeek = targetDate.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
+        const dayNames = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+        const dayKey = dayNames[dayOfWeek] as keyof CalendarSettings["workingHours"];
+        const workingHours = calendarSettings?.workingHours[dayKey];
+
+        if (!workingHours) {
+          console.log(`[AvailabilityService] Provider doesn't work on ${dayKey} (${dayData.date}), skipping day`);
+          continue;
+        }
+
         const slotsForDuration = dayData.slots[durationKey] || [];
         
         for (const timeSlot of slotsForDuration) {
@@ -648,6 +660,41 @@ export class AvailabilityService {
     chatContext: ChatContext
   ): Promise<boolean> {
     try {
+      // First, check if the provider works on this day of the week
+      const userIdOfBusinessOwner = await this.findUserIdByBusinessWhatsappNumber(businessWhatsappNumber, chatContext);
+      if (!userIdOfBusinessOwner) {
+        console.error('[ValidateCustomDate] No business owner found for this WhatsApp number');
+        return false;
+      }
+
+      const businessId = chatContext.currentParticipant.associatedBusinessId;
+      if (!businessId) {
+        console.error('[ValidateCustomDate] No associated business ID found in context for calendar settings lookup.');
+        return false;
+      }
+
+      // Get calendar settings to check working hours
+      const calendarSettings = await CalendarSettings.getByUserAndBusiness(userIdOfBusinessOwner, businessId);
+      if (!calendarSettings) {
+        console.error('[ValidateCustomDate] No calendar settings found for provider');
+        return false;
+      }
+
+      // Check if provider works on this day of the week
+      const targetDate = new Date(date + 'T00:00:00.000Z');
+      const dayOfWeek = targetDate.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
+      const dayNames = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+      const dayKey = dayNames[dayOfWeek] as keyof CalendarSettings["workingHours"];
+      const workingHours = calendarSettings.workingHours[dayKey];
+
+      console.log(`[ValidateCustomDate] Date: ${date}, Day of week: ${dayOfWeek} (${dayKey}), Working hours: ${workingHours ? `${workingHours.start}-${workingHours.end}` : 'NOT WORKING'}`);
+
+      if (!workingHours) {
+        console.log(`[ValidateCustomDate] Provider doesn't work on ${dayKey}, rejecting date ${date}`);
+        return false;
+      }
+
+      // If provider works on this day, check if there are available slots
       const availableHoursForThisBusinessAndDate = await AvailabilityService.getAvailableHoursForDateByBusinessWhatsapp(businessWhatsappNumber, date, serviceDuration, chatContext);
       console.log(`[ValidateCustomDate] Date: ${date}, Service Duration: ${serviceDuration}, Available Hours: [${availableHoursForThisBusinessAndDate.join(', ')}], Has Availability: ${availableHoursForThisBusinessAndDate.length > 0}`);
       return availableHoursForThisBusinessAndDate.length > 0;

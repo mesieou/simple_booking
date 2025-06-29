@@ -54,6 +54,8 @@ export interface ComprehensiveContext {
   currentBooking: {
     step?: string;
     service?: any;
+    selectedServices?: any[];
+    addServicesState?: string;
     date?: string;
     time?: string;
     location?: any;

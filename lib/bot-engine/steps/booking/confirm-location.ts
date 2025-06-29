@@ -31,7 +31,7 @@ export const confirmLocationHandler: IndividualStepHandler = {
     }
     
     // Check if any service is mobile
-    const hasMobileService = servicesToCheck.some(service => service?.mobile);
+    const hasMobileService = servicesToCheck.some((service: any) => service?.mobile);
     
     if (hasMobileService) {
       // For mobile services, use the validated customer address

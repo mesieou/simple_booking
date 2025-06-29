@@ -1,6 +1,22 @@
 import type { IndividualStepHandler } from '@/lib/bot-engine/types';
 import { getLocalizedText } from './booking-utils';
 
+// Simple phone number formatting utility
+const formatPhoneForDisplay = (normalizedPhone: string): string => {
+  if (!normalizedPhone) return '';
+  
+  // Add + prefix
+  const withPlus = `+${normalizedPhone}`;
+  
+  // Format based on length (basic formatting)
+  if (normalizedPhone.length >= 10) {
+    // International format: +XX XXX XXX XXX
+    return withPlus.replace(/(\+\d{2})(\d{3})(\d{3})(\d{3})/, '$1 $2 $3 $4');
+  }
+  
+  return withPlus;
+};
+
 export const bookingConfirmationHandler: IndividualStepHandler = {
   defaultChatbotPrompt: 'Your booking is confirmed!',
   
@@ -48,7 +64,7 @@ export const bookingConfirmationHandler: IndividualStepHandler = {
         if (provider) {
           // Format normalized phone for display
           const providerPhone = provider.phoneNormalized 
-            ? (await import('@/lib/database/models/user')).PhoneNumberUtils.formatForDisplay(provider.phoneNormalized)
+            ? formatPhoneForDisplay(provider.phoneNormalized)
             : '';
           const providerEmail = provider.email || '';
           providerContactInfo = [providerPhone, providerEmail].filter(Boolean).join(' • ');
@@ -74,7 +90,7 @@ export const bookingConfirmationHandler: IndividualStepHandler = {
     }
 
     // Determine service type for arrival instructions
-    const hasMobileService = selectedServices.some(s => s.mobile) || bookingSummary.services?.some(s => s.mobile);
+    const hasMobileService = selectedServices.some((s: any) => s.mobile) || bookingSummary.services?.some((s: any) => s.mobile);
     const arrivalInstructions = hasMobileService 
       ? getLocalizedText(chatContext, 'BOOKING_CONFIRMATION.MOBILE_INSTRUCTIONS')
       : getLocalizedText(chatContext, 'BOOKING_CONFIRMATION.SALON_INSTRUCTIONS');
