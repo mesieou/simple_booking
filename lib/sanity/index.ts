@@ -9,9 +9,12 @@ export {
   getImageUrl, 
   getResponsiveImageUrl, 
   getOptimizedImageUrl,
-  SanityImage,
-  SanityDocument
+  type SanityImage,
+  type SanityDocument
 } from './client'
+
+// Blog types
+export type { BlogPost, BlogAuthor, BlogCategory, BlogSettings } from '@/components/blog/types'
 
 // GROQ queries
 export {

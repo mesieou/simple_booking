@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronLeftIcon, ChevronRightIcon } from 'lucide-react'
+import { ChevronLeftIcon, ChevronRightIcon, MoreHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BlogPaginationProps } from './types'
 
