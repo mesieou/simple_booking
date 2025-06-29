@@ -16,7 +16,7 @@ interface FeedbackRequest {
 // Admin numbers for negative feedback notifications
 const ADMIN_NOTIFICATION_NUMBERS = [
   '+61450549485',
-  '+61 473 164 581',
+  '+61473164581',
 ];
 
 // Helper function to get admin notification numbers
