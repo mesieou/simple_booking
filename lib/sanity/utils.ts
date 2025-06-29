@@ -246,7 +246,11 @@ export const fetchDocumentsWithArrayReferences = async <T>(
  */
 export const executeCustomQuery = async <T>(query: string, params?: Record<string, any>): Promise<T> => {
   try {
-    return await sanityClient.fetch<T>(query, params)
+    if (params) {
+      return await sanityClient.fetch<T>(query, params)
+    } else {
+      return await sanityClient.fetch<T>(query)
+    }
   } catch (error) {
     console.error('Error executing custom query:', error)
     throw error

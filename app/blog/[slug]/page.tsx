@@ -16,7 +16,7 @@ import { urlFor } from '@/lib/sanity'
 import { executeCustomQuery, isSanityConfigured } from '@/lib/sanity'
 
 interface PostPageProps {
-  params: { slug: string }
+  params: Promise<{ slug: string }>
 }
 
 export const metadata: Metadata = {
@@ -31,6 +31,9 @@ export const metadata: Metadata = {
 }
 
 export default async function PostPage({ params }: PostPageProps) {
+  // Resolver los parámetros
+  const { slug } = await params
+  
   // Verificar configuración de Sanity
   if (!isSanityConfigured()) {
     console.error('Sanity is not properly configured')
@@ -61,7 +64,7 @@ export default async function PostPage({ params }: PostPageProps) {
         mainImage,
         body
       }
-    `, { slug: params.slug })
+    `, { slug })
     
     // Debug: log del post para ver qué datos se están cargando
     console.log('Post data:', JSON.stringify(post, null, 2))
@@ -70,7 +73,7 @@ export default async function PostPage({ params }: PostPageProps) {
     console.log('Content length:', post.body?.length)
     
     if (!post) {
-      console.log('Post not found for slug:', params.slug)
+      console.log('Post not found for slug:', slug)
       notFound()
     }
 
@@ -85,13 +88,10 @@ export default async function PostPage({ params }: PostPageProps) {
     }
 
     const getReadingTime = (content: any[]) => {
-      if (post.readingTime) return post.readingTime
-      
       // Verificar si content existe y es un array
       if (!content || !Array.isArray(content)) {
         return 1 // Tiempo mínimo de lectura
       }
-      
       // Estimación básica: 200 palabras por minuto
       const textContent = JSON.stringify(content) || ''
       const wordCount = textContent.split(' ').length
@@ -125,7 +125,7 @@ export default async function PostPage({ params }: PostPageProps) {
         publishedAt
       }
     `, { 
-      slug: params.slug, 
+      slug, 
       categoryIds: post.categories?.map(cat => cat._id) || [] 
     })
 
@@ -190,13 +190,6 @@ export default async function PostPage({ params }: PostPageProps) {
                   <span>{getReadingTime(post.body)} min de lectura</span>
                 </div>
               </div>
-
-              {/* Resumen */}
-              {post.excerpt && (
-                <p className="text-lg text-muted-foreground leading-relaxed">
-                  {post.excerpt}
-                </p>
-              )}
             </div>
           </div>
         </div>
@@ -231,26 +224,9 @@ export default async function PostPage({ params }: PostPageProps) {
                   )}
                 </div>
 
-                {/* Tags */}
-                {post.tags && post.tags.length > 0 && (
-                  <div className="mt-8 pt-8 border-t">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Tag className="w-4 h-4" />
-                      <span className="font-medium">Etiquetas:</span>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {post.tags.map((tag, index) => (
-                        <Badge key={index} variant="outline">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
                 {/* Botón de compartir */}
                 <div className="mt-8 pt-8 border-t">
-                  <ShareButton title={post.title} text={post.excerpt} />
+                  <ShareButton title={post.title} />
                 </div>
               </article>
 

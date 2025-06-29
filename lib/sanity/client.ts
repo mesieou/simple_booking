@@ -29,9 +29,12 @@ export const getImageUrl = (source: any, width: number, height?: number) => {
 
 // Helper function to get responsive image URLs
 export const getResponsiveImageUrl = (source: any, sizes: number[]) => {
+  // For responsive images, we'll return the largest size
+  // You might want to implement a more sophisticated responsive image solution
+  const maxSize = Math.max(...sizes)
   return imageBuilder
     .image(source)
-    .sizes(sizes.map(size => `${size}px`).join(', '))
+    .width(maxSize)
     .url()
 }
 
