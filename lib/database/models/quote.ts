@@ -21,7 +21,7 @@ export interface QuoteData {
     totalJobCostEstimation: number;
     travelTimeEstimate: number;
     totalJobDurationEstimation: number;
-    serviceId: string;
+    serviceIds: string[]; // Multi-service support - now the primary field
     depositAmount?: number;
     remainingBalance?: number;
     proposedDateTime?: string;
@@ -41,7 +41,7 @@ export class Quote {
         if (!data.userId) handleModelError("User ID is required", new Error("Missing userId"));
         if (!data.businessId) handleModelError("Business ID is required", new Error("Missing businessId"));
         if (!data.status) handleModelError("Status is required", new Error("Missing status"));
-        if (!data.serviceId) handleModelError("Service ID is required", new Error("Missing serviceId"));
+        if (!data.serviceIds || data.serviceIds.length === 0) handleModelError("At least one service ID is required", new Error("Missing serviceIds"));
         if (data.totalJobCostEstimation < 0) handleModelError("Total job cost estimation cannot be negative", new Error("Invalid totalJobCostEstimation"));
         if (data.totalJobDurationEstimation < 0) handleModelError("Total job duration estimation cannot be negative", new Error("Invalid totalJobDurationEstimation"));
         if (data.depositAmount !== undefined && data.depositAmount < 0) handleModelError("Deposit amount cannot be negative", new Error("Invalid depositAmount"));
@@ -110,7 +110,7 @@ export class Quote {
             "totalJobCostEstimation": this.data.totalJobCostEstimation,
             "travelTimeEstimate": this.data.travelTimeEstimate,
             "totalJobDurationEstimation": this.data.totalJobDurationEstimation,
-            "serviceId": this.data.serviceId,
+            "serviceIds": this.data.serviceIds,
             "depositAmount": this.data.depositAmount,
             "remainingBalance": this.data.remainingBalance,
             "proposedDateTime": this.data.proposedDateTime,
@@ -202,7 +202,7 @@ export class Quote {
             "totalJobCostEstimation": quoteData.totalJobCostEstimation,
             "travelTimeEstimate": quoteData.travelTimeEstimate,
             "totalJobDurationEstimation": quoteData.totalJobDurationEstimation,
-            "serviceId": quoteData.serviceId,
+            "serviceIds": quoteData.serviceIds,
             "depositAmount": quoteData.depositAmount,
             "remainingBalance": quoteData.remainingBalance,
             "proposedDateTime": quoteData.proposedDateTime,
@@ -247,10 +247,25 @@ export class Quote {
     get totalJobCostEstimation(): number { return this.data.totalJobCostEstimation; }
     get travelTimeEstimate(): number { return this.data.travelTimeEstimate; }
     get totalJobDurationEstimation(): number { return this.data.totalJobDurationEstimation; }
-    get serviceId(): string { return this.data.serviceId; }
+    get serviceIds(): string[] { return this.data.serviceIds; }
     get createdAt(): string | undefined { return this.data.createdAt; }
     get updatedAt(): string | undefined { return this.data.updatedAt; }
     get depositAmount(): number | undefined { return this.data.depositAmount; }
     get remainingBalance(): number | undefined { return this.data.remainingBalance; }
     get proposedDateTime(): string | undefined { return this.data.proposedDateTime; }
+
+    // Utility method to get all service IDs (handles both single and multi-service)
+    getAllServiceIds(): string[] {
+        return this.data.serviceIds;
+    }
+
+    // Get primary service ID (first one) for backward compatibility
+    getPrimaryServiceId(): string {
+        return this.data.serviceIds[0];
+    }
+
+    // Check if this is a multi-service quote
+    isMultiService(): boolean {
+        return this.data.serviceIds.length > 1;
+    }
 }

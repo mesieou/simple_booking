@@ -1,5 +1,5 @@
 import type { IndividualStepHandler } from '@/lib/bot-engine/types';
-import { AvailabilityService, getUserLanguage, getLocalizedText } from './booking-utils';
+import { AvailabilityService, getUserLanguage, getLocalizedText, ServiceDataProcessor } from './booking-utils';
 
 export const showDayBrowserHandler: IndividualStepHandler = {
   defaultChatbotPrompt: 'Here are the available days:',
@@ -31,21 +31,31 @@ export const showDayBrowserHandler: IndividualStepHandler = {
   },
   
   processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
-    if (currentGoalData.quickBookingSelected || validatedInput !== "") {
-        return currentGoalData;
-    }
-
     console.log('[ShowDayBrowser] Starting processAndExtractData');
     console.log('[ShowDayBrowser] Current goal data keys:', Object.keys(currentGoalData));
-    console.log('[ShowDayBrowser] Quick booking selected:', currentGoalData.quickBookingSelected);
-    console.log('[ShowDayBrowser] Browse mode selected:', currentGoalData.browseModeSelected);
     
-    if (currentGoalData.quickBookingSelected) {
-      console.log('[ShowDayBrowser] Skipping - quick booking selected');
-      return {
-        ...currentGoalData,
-        confirmationMessage: ''
-      };
+    const quickBookingSelected = currentGoalData.quickBookingSelected;
+    const browseModeSelected = currentGoalData.browseModeSelected;
+    
+    console.log('[ShowDayBrowser] Quick booking selected:', quickBookingSelected);
+    console.log('[ShowDayBrowser] Browse mode selected:', browseModeSelected);
+    
+    // Skip processing if we're in quick booking mode
+    if (quickBookingSelected) {
+      console.log('[ShowDayBrowser] Skipping day browser due to quick booking selection');
+      return currentGoalData;
+    }
+    
+    // Should only process if we're in browse mode
+    if (!browseModeSelected) {
+      console.log('[ShowDayBrowser] Not in browse mode, returning current data');
+      return currentGoalData;
+    }
+    
+    // Only process empty input (first display)
+    if (validatedInput !== "") {
+      console.log('[ShowDayBrowser] Non-empty input - not processing');
+      return currentGoalData;
     }
     
     const businessWhatsappNumberCustomersMessagedTo = chatContext.currentParticipant.businessWhatsappNumber;
@@ -53,31 +63,38 @@ export const showDayBrowserHandler: IndividualStepHandler = {
     
     console.log('[ShowDayBrowser] Business WhatsApp number customers messaged TO:', businessWhatsappNumberCustomersMessagedTo);
     console.log('[ShowDayBrowser] Service selected by customer:', selectedServiceByCustomer);
+    console.log('[ShowDayBrowser] Checking availability for next 10 days for this business...');
     
-    if (!businessWhatsappNumberCustomersMessagedTo || !selectedServiceByCustomer?.durationEstimate) {
+    // Calculate total duration from all selected services
+    const totalServiceDuration = ServiceDataProcessor.calculateTotalServiceDuration(currentGoalData);
+    
+    console.log('[ShowDayBrowser] Total service duration for availability check:', totalServiceDuration, 'minutes');
+    
+    // Validate required data before proceeding
+    if (!businessWhatsappNumberCustomersMessagedTo || totalServiceDuration <= 0) {
       console.error('[ShowDayBrowser] Missing required data', {
-        businessWhatsappNumberCustomersMessagedTo,
-        selectedServiceByCustomer: selectedServiceByCustomer ? { name: selectedServiceByCustomer.name, duration: selectedServiceByCustomer.durationEstimate } : 'null'
+        businessWhatsappNumber: businessWhatsappNumberCustomersMessagedTo,
+        totalServiceDuration
       });
       return {
         ...currentGoalData,
-        availabilityError: 'Configuration error',
+        availableDays: [],
         confirmationMessage: 'Sorry, there was a configuration error. Please try again or contact support.'
       };
     }
     
     const availableDaysForThisBusiness = [];
-    const today = new Date();
     
-    console.log('[ShowDayBrowser] Checking availability for next 10 days for this business...');
-    
+    // Check next 10 days for any availability
     for (let i = 0; i < 10; i++) {
+      const today = new Date();
+      today.setDate(today.getDate() + i);
       const date = new Date(today);
-      date.setDate(today.getDate() + i);
-      const dateString = date.toISOString().split('T')[0];
+      
+      const dateString = date.toISOString().split('T')[0]; // YYYY-MM-DD format
       
       console.log(`[ShowDayBrowser] === DAY ${i} DEBUG ===`);
-      console.log(`[ShowDayBrowser] Today reference: ${today.toISOString()}`);
+      console.log(`[ShowDayBrowser] Today reference: ${new Date().toISOString()}`);
       console.log(`[ShowDayBrowser] Adding ${i} days to today`);
       console.log(`[ShowDayBrowser] Calculated date object: ${date.toISOString()}`);
       console.log(`[ShowDayBrowser] Date string for availability check: ${dateString}`);
@@ -88,7 +105,7 @@ export const showDayBrowserHandler: IndividualStepHandler = {
         const businessHasAvailabilityOnThisDate = await AvailabilityService.validateCustomDateForBusinessWhatsapp(
           businessWhatsappNumberCustomersMessagedTo,
           dateString,
-          selectedServiceByCustomer.durationEstimate,
+          totalServiceDuration,
           chatContext
         );
         
