@@ -1,5 +1,5 @@
 import type { IndividualStepHandler } from '@/lib/bot-engine/types';
-import { getLocalizedText, getLocalizedTextWithVars, AvailabilityService } from './booking-utils';
+import { getLocalizedText, getLocalizedTextWithVars, AvailabilityService, ServiceDataProcessor } from './booking-utils';
 
 export const selectSpecificTimeHandler: IndividualStepHandler = {
   defaultChatbotPrompt: 'Please select your preferred time:',
@@ -68,12 +68,17 @@ export const selectSpecificTimeHandler: IndividualStepHandler = {
         const selectedService = currentGoalData.selectedService;
         const selectedDate = currentGoalData.selectedDate;
         
-        if (businessWhatsappNumber && selectedService?.durationEstimate && selectedDate) {
+        // Calculate total duration from all selected services
+        const totalServiceDuration = ServiceDataProcessor.calculateTotalServiceDuration(currentGoalData);
+        
+        console.log('[SelectSpecificTime] Total service duration for availability check:', totalServiceDuration, 'minutes');
+        
+        if (businessWhatsappNumber && totalServiceDuration > 0 && selectedDate) {
           try {
             const availableHours = await AvailabilityService.getAvailableHoursForDateByBusinessWhatsapp(
               businessWhatsappNumber,
               selectedDate,
-              selectedService.durationEstimate,
+              totalServiceDuration,
               chatContext
             );
             
