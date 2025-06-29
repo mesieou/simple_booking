@@ -311,11 +311,20 @@ export async function parseWhatsappMessage(payload: WebhookAPIBody): Promise<Par
       return null;
     }
 
-    // For image/video/media messages without text content, provide a placeholder
-    if (!textContent && attachments && attachments.length > 0) {
+    // For media messages, always include placeholder regardless of caption
+    if (attachments && attachments.length > 0) {
       const mediaType = attachments[0].type;
-      textContent = `[${mediaType.toUpperCase()}]`;
-      console.log(`[WhatsappParser] Media message without caption detected. Using placeholder: ${textContent}`);
+      const placeholder = `[${mediaType.toUpperCase()}]`;
+      
+      if (textContent && textContent.trim()) {
+        // Combine placeholder with caption for escalation detection
+        textContent = `${placeholder} ${textContent}`;
+        console.log(`[WhatsappParser] Media message with caption detected. Combined: ${textContent}`);
+      } else {
+        // Just placeholder if no caption
+        textContent = placeholder;
+        console.log(`[WhatsappParser] Media message without caption detected. Using placeholder: ${textContent}`);
+      }
     }
 
     return {

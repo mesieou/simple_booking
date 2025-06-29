@@ -190,6 +190,8 @@ export default function ChatInterface({
       
       <div className="flex-1 min-h-0">
         <ChatLayout
+          selectedUserId={selectedUserId}
+          hasNotifications={conversations.some(c => c.hasEscalation)}
           notificationPanel={
             <NotificationPanel
               onNotificationClick={handleNotificationClick}

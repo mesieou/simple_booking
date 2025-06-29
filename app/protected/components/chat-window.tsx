@@ -451,17 +451,17 @@ export function ChatWindow({
     return (
     <div className="flex flex-col h-full overflow-hidden relative">
       {/* Main Header - Fixed background */}
-      <div className="p-6 border-b border-white/10 bg-slate-900/40">
-        <div className="flex justify-between items-center">
+      <div className="p-4 md:p-6 border-b border-white/10 bg-slate-900/40">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-3 md:gap-0">
           <button 
             onClick={handleShowUserDetails}
-            className="text-xl font-semibold text-white hover:text-blue-400 transition-colors cursor-pointer text-left"
+            className="text-lg md:text-xl font-semibold text-white hover:text-blue-400 transition-colors cursor-pointer text-left"
           >
             Chat with {conversation.channelUserId}
           </button>
           
           {/* Staff Control Buttons */}
-          <div className="flex gap-3">
+          <div className="flex flex-col md:flex-row gap-2 md:gap-3">
             {statusLoading && (
               <span className="text-gray-400 text-sm">Loading status...</span>
             )}
@@ -470,7 +470,7 @@ export function ChatWindow({
               <button
                 onClick={handleTakeControl}
                 disabled={actionLoading}
-                className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                className="min-h-[44px] px-4 md:px-6 py-3 md:py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg md:rounded text-sm md:text-base font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {actionLoading ? "Taking Control..." : "Take Control"}
               </button>
@@ -480,7 +480,7 @@ export function ChatWindow({
               <button
                 onClick={handleFinishAssistance}
                 disabled={actionLoading}
-                className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                className="min-h-[44px] px-4 md:px-6 py-3 md:py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg md:rounded text-sm md:text-base font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {actionLoading ? "Finishing..." : "Finish Assistance"}
               </button>
@@ -491,17 +491,17 @@ export function ChatWindow({
 
       {/* Status Notification - Transparent overlay only within chat */}
       {chatStatus?.hasEscalation && showNotification && (
-        <div className="absolute top-[89px] left-0 right-0 z-10 pointer-events-none">
+        <div className="absolute top-[77px] md:top-[89px] left-0 right-0 z-10 pointer-events-none">
           {chatStatus.escalationStatus === 'pending' && (
-            <div className="mx-6 mb-4 px-4 py-3 bg-yellow-900/20 border border-yellow-500/30 rounded-lg">
-              <div className="flex items-center justify-between text-sm text-yellow-400">
-                <div className="flex items-center gap-2">
+            <div className="mx-4 md:mx-6 mb-4 px-4 py-3 bg-yellow-900/20 border border-yellow-500/30 rounded-lg">
+              <div className="flex items-center justify-between text-sm md:text-sm text-yellow-400">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
                   <span>⚠️</span>
-                  <span>Customer requested human assistance</span>
+                  <span className="truncate">Customer requested human assistance</span>
                 </div>
                 <button
                   onClick={() => setShowNotification(false)}
-                  className="pointer-events-auto text-yellow-400 hover:text-yellow-300 transition-colors ml-3"
+                  className="pointer-events-auto text-yellow-400 hover:text-yellow-300 transition-colors ml-3 p-1 md:p-0 min-h-[32px] min-w-[32px] md:min-h-0 md:min-w-0 flex items-center justify-center"
                 >
                   ✕
                 </button>
@@ -509,15 +509,15 @@ export function ChatWindow({
             </div>
           )}
           {chatStatus.escalationStatus === 'attending' && (
-            <div className="mx-6 mb-4 px-4 py-3 bg-green-900/20 border border-green-500/30 rounded-lg">
-              <div className="flex items-center justify-between text-sm text-green-400">
-                <div className="flex items-center gap-2">
+            <div className="mx-4 md:mx-6 mb-4 px-4 py-3 bg-green-900/20 border border-green-500/30 rounded-lg">
+              <div className="flex items-center justify-between text-sm md:text-sm text-green-400">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
                   <span>✅</span>
-                  <span>You are currently assisting this customer</span>
+                  <span className="truncate">You are currently assisting this customer</span>
                 </div>
                 <button
                   onClick={() => setShowNotification(false)}
-                  className="pointer-events-auto text-green-400 hover:text-green-300 transition-colors ml-3"
+                  className="pointer-events-auto text-green-400 hover:text-green-300 transition-colors ml-3 p-1 md:p-0 min-h-[32px] min-w-[32px] md:min-h-0 md:min-w-0 flex items-center justify-center"
                 >
                   ✕
                 </button>
@@ -527,13 +527,17 @@ export function ChatWindow({
         </div>
       )}
         
-        <div ref={messagesContainerRef} className="flex-1 p-6 overflow-y-auto max-h-full">
-            {isLoading && <div className="text-center text-gray-400">Loading messages...</div>}
-            {error && <div className="text-center text-red-400">{error}</div>}
+        <div ref={messagesContainerRef} className="flex-1 p-4 md:p-6 overflow-y-auto max-h-full">
+            {isLoading && <div className="text-center text-gray-400 py-8">Loading messages...</div>}
+            {error && <div className="text-center text-red-400 py-8">{error}</div>}
             {!isLoading && !error && messages.length === 0 && (
-                 <p className="text-center text-gray-400 mt-10">This is the beginning of your conversation.</p>
+                 <div className="text-center py-12">
+                   <div className="text-6xl opacity-50 mb-4">💬</div>
+                   <p className="text-gray-400 text-base md:text-sm">This is the beginning of your conversation.</p>
+                   <p className="text-gray-500 text-sm md:text-xs mt-2">Messages will appear here</p>
+                 </div>
             )}
-            <div className="space-y-6">
+            <div className="space-y-4 md:space-y-6">
                 {messages.map((msg) => {
                     const isBot = msg.senderRole === 'bot';
                     // Create unique key for this session + message combination
@@ -547,9 +551,9 @@ export function ChatWindow({
                             key={msg.id}
                             className={`flex ${msg.senderRole === 'customer' ? 'justify-start' : 'justify-end'}`}
                         >
-                            <div className="flex flex-col max-w-lg">
+                            <div className="flex flex-col max-w-sm md:max-w-lg w-full md:w-auto">
                                 <div
-                                    className={`p-4 rounded-lg text-white ${
+                                    className={`p-3 md:p-4 rounded-lg text-white ${
                                         msg.senderRole === 'customer'
                                         ? 'bg-slate-700'
                                         : msg.senderRole === 'staff' 
@@ -729,43 +733,45 @@ export function ChatWindow({
                                 
                                 {/* Feedback buttons - only for bot messages */}
                                 {isBot && (
-                                    <div className="flex items-center gap-2 mt-2 ml-auto">
-                                        <span className="text-xs text-gray-400">Rate this response:</span>
+                                    <div className="flex flex-col md:flex-row items-start md:items-center gap-2 mt-3 ml-auto">
+                                        <span className="text-xs text-gray-400 mb-1 md:mb-0">Rate this response:</span>
                                         
-                                        {/* Thumbs Up Button */}
-                                        <button
-                                            onClick={() => handleFeedbackClick(msg.content, 'thumbs_up')}
-                                            disabled={submittingFeedback}
-                                            className={`p-1.5 rounded-full transition-colors hover:bg-slate-600 disabled:opacity-50 ${
-                                                hasThumbsUp ? 'text-green-400 bg-green-900/20' : 'text-gray-400'
-                                            }`}
-                                            title="Good response"
-                                        >
-                                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                                <path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.8 2.4L6.8 7.933a4 4 0 00-.8 2.4z" />
-                                            </svg>
-                                        </button>
-                                        
-                                        {/* Thumbs Down Button */}
-                                        <button
-                                            onClick={() => handleFeedbackClick(msg.content, 'thumbs_down')}
-                                            disabled={submittingFeedback}
-                                            className={`p-1.5 rounded-full transition-colors hover:bg-slate-600 disabled:opacity-50 ${
-                                                hasThumbsDown ? 'text-red-400 bg-red-900/20' : 'text-gray-400'
-                                            }`}
-                                            title="Poor response"
-                                        >
-                                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                                <path d="M18 9.5a1.5 1.5 0 11-3 0v-6a1.5 1.5 0 013 0v6zM14 9.667v-5.43a2 2 0 00-1.106-1.79l-.05-.025A4 4 0 0011.057 2H5.64a2 2 0 00-1.962 1.608l-1.2 6A2 2 0 004.44 12H8v4a2 2 0 002 2 1 1 0 001-1v-.667a4 4 0 01.8-2.4l1.4-1.866a4 4 0 00.8-2.4z" />
-                                            </svg>
-                                        </button>
-                                        
-                                        {/* Feedback count indicator */}
-                                        {feedbacks.length > 0 && (
-                                            <span className="text-xs text-gray-500 ml-1">
-                                                ({feedbacks.length})
-                                            </span>
-                                        )}
+                                        <div className="flex items-center gap-2">
+                                            {/* Thumbs Up Button */}
+                                            <button
+                                                onClick={() => handleFeedbackClick(msg.content, 'thumbs_up')}
+                                                disabled={submittingFeedback}
+                                                className={`min-h-[44px] md:min-h-0 p-3 md:p-1.5 rounded-lg md:rounded-full transition-colors hover:bg-slate-600 disabled:opacity-50 ${
+                                                    hasThumbsUp ? 'text-green-400 bg-green-900/20' : 'text-gray-400'
+                                                }`}
+                                                title="Good response"
+                                            >
+                                                <svg className="w-5 h-5 md:w-4 md:h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v.667a4 4 0 01-.8 2.4L6.8 7.933a4 4 0 00-.8 2.4z" />
+                                                </svg>
+                                            </button>
+                                            
+                                            {/* Thumbs Down Button */}
+                                            <button
+                                                onClick={() => handleFeedbackClick(msg.content, 'thumbs_down')}
+                                                disabled={submittingFeedback}
+                                                className={`min-h-[44px] md:min-h-0 p-3 md:p-1.5 rounded-lg md:rounded-full transition-colors hover:bg-slate-600 disabled:opacity-50 ${
+                                                    hasThumbsDown ? 'text-red-400 bg-red-900/20' : 'text-gray-400'
+                                                }`}
+                                                title="Poor response"
+                                            >
+                                                <svg className="w-5 h-5 md:w-4 md:h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path d="M18 9.5a1.5 1.5 0 11-3 0v-6a1.5 1.5 0 013 0v6zM14 9.667v-5.43a2 2 0 00-1.106-1.79l-.05-.025A4 4 0 0011.057 2H5.64a2 2 0 00-1.962 1.608l-1.2 6A2 2 0 004.44 12H8v4a2 2 0 002 2 1 1 0 001-1v-.667a4 4 0 01.8-2.4l1.4-1.866a4 4 0 00.8-2.4z" />
+                                                </svg>
+                                            </button>
+                                            
+                                            {/* Feedback count indicator */}
+                                            {feedbacks.length > 0 && (
+                                                <span className="text-xs text-gray-500 ml-1">
+                                                    ({feedbacks.length})
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -776,23 +782,23 @@ export function ChatWindow({
             <div ref={messagesEndRef} />
         </div>
         
-        <div className="p-6 border-t border-white/10 bg-slate-900/40">
+        <div className="p-4 md:p-6 border-t border-white/10 bg-slate-900/40">
             {/* Message input */}
             <form onSubmit={handleSendMessage} className="relative">
                 <input
                     type="text"
                     placeholder={chatStatus?.canSendMessages ? "Type a message..." : "Take control to send messages"}
-                    className="w-full p-4 pr-14 border rounded-full bg-slate-700 border-slate-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
+                    className="w-full min-h-[48px] md:min-h-0 p-4 pr-12 md:pr-14 border rounded-xl md:rounded-full bg-slate-700 border-slate-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 text-base md:text-sm"
                     disabled={!chatStatus?.canSendMessages || sendingMessage}
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
                 />
                 <button 
                     type="submit"
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white disabled:cursor-not-allowed disabled:hover:text-gray-400" 
+                    className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2 p-2 md:p-1 text-gray-400 hover:text-white disabled:cursor-not-allowed disabled:hover:text-gray-400 rounded-full hover:bg-slate-600/50 transition-colors" 
                     disabled={!chatStatus?.canSendMessages || !messageText.trim() || sendingMessage}
                 >
-                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>
+                   <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 md:w-6 md:h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>
                 </button>
             </form>
         </div>
@@ -807,32 +813,32 @@ export function ChatWindow({
             ></div>
             
             {/* Modal */}
-            <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 bg-slate-800 rounded-lg border border-white/20 shadow-2xl z-50 p-6">
+            <div className="fixed inset-4 md:top-1/2 md:left-1/2 md:transform md:-translate-x-1/2 md:-translate-y-1/2 md:w-96 md:h-auto md:inset-auto bg-slate-800 rounded-lg border border-white/20 shadow-2xl z-50 p-6 overflow-y-auto">
               {/* Header */}
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-white">User Details</h3>
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl md:text-lg font-semibold text-white">User Details</h3>
                 <button
                   onClick={() => setShowUserDetails(false)}
-                  className="p-1 hover:bg-slate-700 rounded-full transition-colors"
+                  className="min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 md:p-1 hover:bg-slate-700 rounded-full transition-colors flex items-center justify-center"
                 >
-                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-6 h-6 md:w-5 md:h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
 
               {/* Content */}
-              <div className="space-y-4">
+              <div className="space-y-6 md:space-y-4">
                 {/* Phone Number */}
                 <div>
-                  <label className="text-sm font-medium text-gray-400">Phone Number</label>
-                  <p className="text-white">{conversation?.channelUserId}</p>
+                  <label className="text-sm md:text-sm font-medium text-gray-400 block mb-2">Phone Number</label>
+                  <p className="text-white text-base md:text-sm">{conversation?.channelUserId}</p>
                 </div>
 
                 {/* User Name */}
                 <div>
-                  <label className="text-sm font-medium text-gray-400">Name</label>
-                  <p className="text-white">
+                  <label className="text-sm md:text-sm font-medium text-gray-400 block mb-2">Name</label>
+                  <p className="text-white text-base md:text-sm">
                     {userDetails?.name || 'Not available'}
                   </p>
                 </div>
@@ -840,15 +846,15 @@ export function ChatWindow({
                 {/* WhatsApp Name (separate field for future enhancement) */}
                 {userDetails?.whatsappName && (
                   <div>
-                    <label className="text-sm font-medium text-gray-400">WhatsApp Profile Name</label>
-                    <p className="text-white">{userDetails.whatsappName}</p>
+                    <label className="text-sm md:text-sm font-medium text-gray-400 block mb-2">WhatsApp Profile Name</label>
+                    <p className="text-white text-base md:text-sm">{userDetails.whatsappName}</p>
                   </div>
                 )}
 
                 {/* Previous Escalations */}
                 <div>
-                  <label className="text-sm font-medium text-gray-400">Previous Escalations</label>
-                  <p className="text-white">
+                  <label className="text-sm md:text-sm font-medium text-gray-400 block mb-2">Previous Escalations</label>
+                  <p className="text-white text-base md:text-sm">
                     {userDetails?.escalationCount !== undefined 
                       ? `${userDetails.escalationCount} escalation${userDetails.escalationCount !== 1 ? 's' : ''}`
                       : 'Loading...'
@@ -859,8 +865,8 @@ export function ChatWindow({
                 {/* Last Escalation Date */}
                 {userDetails?.lastEscalationDate && (
                   <div>
-                    <label className="text-sm font-medium text-gray-400">Last Escalation</label>
-                    <p className="text-white">
+                    <label className="text-sm md:text-sm font-medium text-gray-400 block mb-2">Last Escalation</label>
+                    <p className="text-white text-base md:text-sm">
                       {new Date(userDetails.lastEscalationDate).toLocaleDateString()}
                     </p>
                   </div>
@@ -880,49 +886,49 @@ export function ChatWindow({
             ></div>
             
             {/* Modal */}
-            <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 bg-slate-800 rounded-lg border border-white/20 shadow-2xl z-50 p-6">
+            <div className="fixed inset-4 md:top-1/2 md:left-1/2 md:transform md:-translate-x-1/2 md:-translate-y-1/2 md:w-96 md:h-auto md:inset-auto bg-slate-800 rounded-lg border border-white/20 shadow-2xl z-50 p-6 overflow-y-auto">
               {/* Header */}
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-white">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl md:text-lg font-semibold text-white">
                   👎 Provide Feedback
                 </h3>
                 <button
                   onClick={closeFeedbackModal}
-                  className="p-1 hover:bg-slate-700 rounded-full transition-colors"
+                  className="min-h-[44px] min-w-[44px] md:min-h-0 md:min-w-0 md:p-1 hover:bg-slate-700 rounded-full transition-colors flex items-center justify-center"
                 >
-                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-6 h-6 md:w-5 md:h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
 
               {/* Message Preview */}
-              <div className="mb-4">
-                <label className="text-sm font-medium text-gray-400 mb-2 block">Bot Message:</label>
-                <div className="bg-slate-700/50 rounded-lg p-3 text-sm text-gray-300 border border-slate-600">
+              <div className="mb-6">
+                <label className="text-sm md:text-sm font-medium text-gray-400 mb-3 block">Bot Message:</label>
+                <div className="bg-slate-700/50 rounded-lg p-4 text-base md:text-sm text-gray-300 border border-slate-600">
                   {feedbackState.messageContent}
                 </div>
               </div>
 
               {/* Feedback Text Input */}
-              <div className="mb-6">
-                <label className="text-sm font-medium text-gray-400 mb-2 block">
+              <div className="mb-8">
+                <label className="text-sm md:text-sm font-medium text-gray-400 mb-3 block">
                   What could be improved? (Optional)
                 </label>
                 <textarea
                   value={feedbackText}
                   onChange={(e) => setFeedbackText(e.target.value)}
                   placeholder="Describe what was wrong or how the bot could respond better..."
-                  className="w-full p-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
+                  className="w-full min-h-[120px] p-4 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 resize-none text-base md:text-sm"
                   rows={4}
                 />
               </div>
 
               {/* Actions */}
-              <div className="flex gap-3 justify-end">
+              <div className="flex flex-col md:flex-row gap-3 md:justify-end">
                 <button
                   onClick={closeFeedbackModal}
-                  className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+                  className="min-h-[48px] md:min-h-0 px-6 py-3 md:py-2 text-gray-400 hover:text-white transition-colors rounded-lg md:rounded border border-gray-600 md:border-0 text-base md:text-sm"
                   disabled={submittingFeedback}
                 >
                   Cancel
@@ -930,7 +936,7 @@ export function ChatWindow({
                 <button
                   onClick={handleFeedbackSubmit}
                   disabled={submittingFeedback}
-                  className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="min-h-[48px] md:min-h-0 px-6 py-3 md:py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-base md:text-sm font-medium"
                 >
                   {submittingFeedback ? 'Submitting...' : 'Submit Feedback'}
                 </button>
