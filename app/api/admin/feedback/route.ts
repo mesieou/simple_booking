@@ -15,9 +15,8 @@ interface FeedbackRequest {
 
 // Admin numbers for negative feedback notifications
 const ADMIN_NOTIFICATION_NUMBERS = [
-  '+61450549485', // Primary admin
-  // Add Juan's number here when available
-  // '+1234567890', // Juan's number
+  '+61450549485',
+  '+61 473 164 581',
 ];
 
 // Helper function to get admin notification numbers
