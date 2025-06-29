@@ -1,5 +1,5 @@
 import type { IndividualStepHandler } from '@/lib/bot-engine/types';
-import { getLocalizedText, AvailabilityService } from './booking-utils';
+import { getLocalizedText, AvailabilityService, ServiceDataProcessor } from './booking-utils';
 
 // Step 1: Show next 2 available times + "choose another day" button
 // Job: ONLY display times, no input processing
@@ -48,7 +48,12 @@ export const showAvailableTimesHandler: IndividualStepHandler = {
     console.log('[ShowAvailableTimes] Business WhatsApp number customers messaged TO:', businessWhatsappNumberCustomersMessagedTo);
     console.log('[ShowAvailableTimes] Service selected by customer:', selectedServiceByCustomer);
     
-    if (!businessWhatsappNumberCustomersMessagedTo || !selectedServiceByCustomer?.durationEstimate) {
+    // Calculate total duration from all selected services
+    const totalServiceDuration = ServiceDataProcessor.calculateTotalServiceDuration(currentGoalData);
+    
+    console.log('[ShowAvailableTimes] Total service duration for availability check:', totalServiceDuration, 'minutes');
+    
+    if (!businessWhatsappNumberCustomersMessagedTo || totalServiceDuration <= 0) {
       return {
         ...currentGoalData,
         availabilityError: 'Configuration error - missing business or service information',
@@ -58,7 +63,7 @@ export const showAvailableTimesHandler: IndividualStepHandler = {
     
     const next2WholeHourSlots = await AvailabilityService.getNext2WholeHourSlotsForBusinessWhatsapp(
       businessWhatsappNumberCustomersMessagedTo,
-      selectedServiceByCustomer.durationEstimate,
+      totalServiceDuration,
       chatContext
     );
     
