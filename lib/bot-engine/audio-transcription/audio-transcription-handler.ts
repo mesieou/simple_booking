@@ -139,26 +139,17 @@ export async function handleAudioTranscription(
 
     console.log(`${LOG_PREFIX} Extracted audio file: ${audioFile.url}`);
 
-    // Determine language for Whisper (helps with accuracy)
-    const language = chatContext?.participantPreferences?.language === 'es' ? 'es' : 'en';
-    
-    // Create transcription options
-    const transcriptionOptions: TranscriptionOptions = {
-      language: language,
-      // Add a context prompt to help with booking-related terminology
-      prompt: language === 'es' 
-        ? "Reserva, cita, servicio, fecha, hora, dirección, teléfono, nombre, precio, disponibilidad"
-        : "Booking, appointment, service, date, time, address, phone, name, price, availability"
+    // Create transcription options, but without the language hint
+    const transcriptionOptions: Omit<TranscriptionOptions, 'language'> = {
+      prompt: "Booking, appointment, service, date, time, address, phone, name, price, availability, reserva, cita, servicio, fecha, hora, dirección, teléfono, nombre, precio, disponibilidad"
     };
-
-    // Transcribe audio
-    const transcriptionResult = await transcribeAudio(audioFile, transcriptionOptions);
+    
+    // Transcribe audio using auto-language detection
+    const transcriptionResult = await transcribeAudio({ url: audioFile.url }, transcriptionOptions);
 
     if (!transcriptionResult.success) {
       console.error(`${LOG_PREFIX} Transcription failed: ${transcriptionResult.error}`);
-      
-      const errorMessage = getErrorMessage(transcriptionResult.error || 'Unknown error', language);
-      
+      const errorMessage = getErrorMessage(transcriptionResult.error || 'Unknown error', 'en'); // Default to English for error
       return {
         wasProcessed: true,
         transcribedMessage: errorMessage,
@@ -167,20 +158,17 @@ export async function handleAudioTranscription(
       };
     }
 
-    // Success! Replace [AUDIO] placeholder with transcribed text
     const transcribedText = transcriptionResult.text!;
-    const transcribedMessage = message.replace('[AUDIO]', transcribedText);
-
     console.log(`${LOG_PREFIX} Audio successfully transcribed and processed: "${transcribedText}"`);
 
     return {
       wasProcessed: true,
-      transcribedMessage: transcribedMessage,
+      transcribedMessage: transcribedText,
       originalMessage: message
     };
 
   } catch (error) {
-    console.error(`${LOG_PREFIX} Unexpected error during audio transcription:`, error);
+    console.error(`${LOG_PREFIX} Error during transcription process:`, error);
     
     const language = chatContext?.participantPreferences?.language === 'es' ? 'es' : 'en';
     const errorMessage = getErrorMessage('Transcription failed', language);

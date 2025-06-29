@@ -11,7 +11,7 @@ import {
     handleEscalationOrAdminCommand, 
     hasStickerContent,
 } from "@/lib/bot-engine/escalation/handler";
-import { handleAudioTranscription } from "@/lib/bot-engine/audio-transcription";
+import { handleAudioTranscription } from "@/lib/bot-engine/audio-transcription/audio-transcription-handler";
 import { getOrCreateChatContext } from "@/lib/bot-engine/session/session-manager";
 import { persistSessionState } from "@/lib/bot-engine/session/state-persister";
 import { handleFaqOrChitchat } from "@/lib/bot-engine/steps/faq/faq-handler";
@@ -203,7 +203,7 @@ export async function POST(req: NextRequest) {
                         chatContext.currentConversationSession, 
                         undefined, // No active goal
                         parsedMessage.text || '', 
-                        waitingMessage, // Save the waiting message to history
+                        { text: waitingMessage }, // Pass as BotResponse object
                         historyForLLM, // Preserve full history during escalation
                         parsedMessage // Pass original message for attachments
                     );
@@ -293,7 +293,7 @@ export async function POST(req: NextRequest) {
                         chatContext.currentConversationSession, 
                         undefined, 
                         parsedMessage.text || '', 
-                        escalationResult.response.text || '',
+                        escalationResult.response, // Pass the full BotResponse object
                         historyForLLM, // Pass full history
                         parsedMessage // Pass original message for attachments
                     );
@@ -326,7 +326,7 @@ export async function POST(req: NextRequest) {
                         chatContext.currentConversationSession, 
                         undefined,
                         parsedMessage.text || '', 
-                        audioTranscriptionResult.transcribedMessage,
+                        { text: audioTranscriptionResult.transcribedMessage }, // Pass as BotResponse
                         historyForLLM,
                         parsedMessage // Pass original message to preserve audio in attachments
                     );
@@ -354,7 +354,11 @@ export async function POST(req: NextRequest) {
                 userCurrentGoal.goalStatus = 'completed';
             }
 
-            botManagerResponse = await processIncomingMessage(parsedMessage.text, participant);
+            botManagerResponse = await processIncomingMessage(
+              parsedMessage.text, 
+              participant, 
+              historyForLLM
+            );
             
         } else {
             console.log(`${LOG_PREFIX} No active booking goal. Routing to FAQ/Chitchat handler.`);
@@ -370,7 +374,7 @@ export async function POST(req: NextRequest) {
                     chatContext.currentConversationSession, 
                     undefined,
                     parsedMessage.text, 
-                    botManagerResponse.text,
+                    botManagerResponse, // Pass the full BotResponse object
                     historyForLLM, // Pass full history
                     parsedMessage // Pass original message for attachments
                 );

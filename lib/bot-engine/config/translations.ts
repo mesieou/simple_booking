@@ -53,7 +53,7 @@ export const BOOKING_TRANSLATIONS = {
       PICK_DIFFERENT_TIME: 'Let\'s pick a different time...',
       WELCOME_BACK: 'Welcome back, {name}! I found your account.',
       NOT_IN_SYSTEM: 'I don\'t see you in our system yet.',
-      CREATE_ACCOUNT: 'Let me create your account.',
+      CREATE_ACCOUNT: 'Let me create your account. Please provide me with your first name.',
       FIRST_NAME_PROMPT: 'What\'s your first name so I can create your account?',
       FIRST_NAME_VALIDATION: 'Please provide your first name (at least 2 characters).',
       THANKS_CREATING: 'Thanks {name}! Creating your account...',
