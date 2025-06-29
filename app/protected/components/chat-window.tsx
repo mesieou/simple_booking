@@ -3,6 +3,90 @@ import { Conversation } from "./chat-interface";
 import { ChatMessage } from "../../actions";
 import { useEffect, useRef, useState } from "react";
 
+// Function to format technical button values into readable format for admin
+const formatMessageForAdmin = (content: string): string => {
+  // Handle UUID pattern (services)
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (uuidPattern.test(content)) {
+    return '🔧 Service Selected';
+  }
+
+  // Handle time slots: slot_1_2025-06-30T00:00:00+00:00_11:00
+  const slotMatch = content.match(/^slot_(\d+)_(\d{4}-\d{2}-\d{2})T.*_(\d{2}):(\d{2})$/);
+  if (slotMatch) {
+    const [, slotNum, date, hour, minute] = slotMatch;
+    const dateObj = new Date(date);
+    const formattedDate = dateObj.toLocaleDateString('en-US', { 
+      month: 'long', 
+      day: 'numeric', 
+      year: 'numeric' 
+    });
+    return `📅 ${formattedDate} at ${hour}:${minute} (Slot ${slotNum})`;
+  }
+
+  // Handle day selection: day_2025-06-30
+  const dayMatch = content.match(/^day_(\d{4}-\d{2}-\d{2})$/);
+  if (dayMatch) {
+    const [, date] = dayMatch;
+    const dateObj = new Date(date);
+    const formattedDate = dateObj.toLocaleDateString('en-US', { 
+      month: 'long', 
+      day: 'numeric', 
+      year: 'numeric' 
+    });
+    return `📅 ${formattedDate}`;
+  }
+
+  // Handle payment completion
+  if (content.startsWith('PAYMENT_COMPLETED_')) {
+    return '💳 Payment Completed';
+  }
+
+  // Handle specific button actions
+  const buttonMappings: Record<string, string> = {
+    // Main actions
+    'add_another_service': '➕ Add Another Service',
+    'continue_with_services': '✅ Continue with Services',
+    'confirm_quote': '✅ Confirm Quote',
+    'edit_quote': '✏️ Edit Quote',
+    
+    // Navigation
+    'choose_another_day': '📅 Other Days',
+    'choose_different_date': '📅 Choose Different Date',
+    'choose_date': '📅 Choose Date',
+    
+    // Editing
+    'edit_service': '🔄 Change Service',
+    'edit_time': '⏰ Change Date/Time',
+    
+    // Address
+    'address_confirmed': '✅ Address Correct',
+    'address_edit': '✏️ Edit Address',
+    
+    // Support/Errors
+    'contact_support': '📞 Contact Support',
+    'system_error': '❌ System Error',
+    'services_unavailable': '⚠️ Services Unavailable',
+    'try_again': '🔄 Try Again',
+    'restart_booking': '🔄 Restart Booking',
+    
+    // Account
+    'use_registered_email': '📧 Use Registered Email',
+    'no_email_available': '❌ No Email Available',
+    
+    // Special
+    'start_booking_flow': '🎯 Start Booking'
+  };
+
+  // Check if content matches any button mapping
+  if (buttonMappings[content]) {
+    return buttonMappings[content];
+  }
+
+  // Return original content if no pattern matches
+  return content;
+};
+
 type ChatWindowProps = {
     conversation: Conversation | undefined;
     messages: ChatMessage[];
@@ -567,7 +651,11 @@ export function ChatWindow({
                                         <div className="space-y-2">
                                             {/* Show any text content beyond the placeholder */}
                                             {msg.content.replace(/\[(IMAGE|VIDEO|DOCUMENT|AUDIO|STICKER)\]/g, '').trim() && (
-                                                <p className="text-sm">{msg.content.replace(/\[(IMAGE|VIDEO|DOCUMENT|AUDIO|STICKER)\]/g, '').trim()}</p>
+                                                <p className="text-sm">
+                                                  {msg.senderRole === 'customer' 
+                                                    ? formatMessageForAdmin(msg.content.replace(/\[(IMAGE|VIDEO|DOCUMENT|AUDIO|STICKER)\]/g, '').trim())
+                                                    : msg.content.replace(/\[(IMAGE|VIDEO|DOCUMENT|AUDIO|STICKER)\]/g, '').trim()}
+                                                </p>
                                             )}
                                         </div>
                                     ) : (['[IMAGE]', '[VIDEO]', '[DOCUMENT]', '[AUDIO]', '[STICKER]'].some(placeholder => msg.content.includes(placeholder))) ? (
@@ -595,12 +683,18 @@ export function ChatWindow({
                                             </div>
                                             {/* Show any additional text content if it exists beyond the placeholder */}
                                             {msg.content.replace(/\[(IMAGE|VIDEO|DOCUMENT|AUDIO|STICKER)\]/g, '').trim() && (
-                                                <p className="text-sm">{msg.content.replace(/\[(IMAGE|VIDEO|DOCUMENT|AUDIO|STICKER)\]/g, '').trim()}</p>
+                                                <p className="text-sm">
+                                                  {msg.senderRole === 'customer' 
+                                                    ? formatMessageForAdmin(msg.content.replace(/\[(IMAGE|VIDEO|DOCUMENT|AUDIO|STICKER)\]/g, '').trim())
+                                                    : msg.content.replace(/\[(IMAGE|VIDEO|DOCUMENT|AUDIO|STICKER)\]/g, '').trim()}
+                                                </p>
                                             )}
                                         </div>
                                     ) : (
                                         // Regular text message
-                                        <p className="text-sm">{msg.content}</p>
+                                        <p className="text-sm">
+                                          {msg.senderRole === 'customer' ? formatMessageForAdmin(msg.content) : msg.content}
+                                        </p>
                                     )}
                                     
                                     {/* Display real attachments if available */}
