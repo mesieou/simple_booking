@@ -1,8 +1,8 @@
-import { createClient } from "../../lib/database/supabase/server";
+import { createClient } from "../../../lib/database/supabase/server";
 import { redirect } from "next/navigation";
 import ChatInterface from "./components/chat-interface";
 import { Conversation } from "./components/chat-interface";
-import { ChatSession } from "../../lib/database/models/chat-session";
+import { ChatSession } from "../../../lib/database/models/chat-session";
 
 export const dynamic = 'force-dynamic';
 
@@ -45,15 +45,11 @@ export default async function ProtectedPage({
   }));
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-4 flex flex-col">
-      <h1 className="text-2xl font-bold mb-4 text-white">Your Conversations</h1>
-      {/* Container with proper height calculation to avoid footer overlap */}
-      <div className="h-[calc(100vh-200px)] min-h-[500px]">
+    <div className="h-full w-full">
         <ChatInterface
           initialConversations={initialConversations}
           preselectedChannelUserId={conversationData.preselectedChannelUserId}
         />
-      </div>
     </div>
   );
 }

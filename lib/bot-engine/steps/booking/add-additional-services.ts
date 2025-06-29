@@ -108,15 +108,15 @@ export const addAdditionalServicesHandler: IndividualStepHandler = {
       
       if (validatedInput === 'continue_with_services') {
         console.log('[AddAdditionalServices] User wants to continue with selected services');
-        console.log('[AddAdditionalServices] Selected services:', selectedServices.map(s => ({ name: s.name, mobile: s.mobile })));
+        console.log('[AddAdditionalServices] Selected services:', selectedServices.map((s: any) => ({ name: s.name, mobile: s.mobile })));
         
         // Prepare final service data for next steps
         let finalServiceAddress;
         let serviceLocation;
         
         // Check if any service is mobile to determine location handling
-        const hasMobileService = selectedServices.some(service => service.mobile);
-        const hasNonMobileService = selectedServices.some(service => !service.mobile);
+        const hasMobileService = selectedServices.some((service: any) => service.mobile);
+        const hasNonMobileService = selectedServices.some((service: any) => !service.mobile);
         
         console.log('[AddAdditionalServices] Service types - Mobile:', hasMobileService, 'Non-mobile:', hasNonMobileService);
         
@@ -163,7 +163,7 @@ export const addAdditionalServicesHandler: IndividualStepHandler = {
     // Handle additional service selection
     if (addServicesState === 'selecting' && validatedInput) {
       console.log('[AddAdditionalServices] Processing additional service selection:', validatedInput);
-      console.log('[AddAdditionalServices] Current selectedServices before adding:', selectedServices.map(s => s.name));
+      console.log('[AddAdditionalServices] Current selectedServices before adding:', selectedServices.map((s: any) => s.name));
       
       const filteredServices = ServiceDataProcessor.filterAvailableServices(availableServices, selectedServices);
       const selectedServiceData = ServiceDataProcessor.findServiceById(validatedInput, filteredServices);
@@ -176,7 +176,7 @@ export const addAdditionalServicesHandler: IndividualStepHandler = {
           ServiceDataProcessor.extractServiceDetails(selectedServiceData)
         ];
         
-        console.log('[AddAdditionalServices] New selectedServices after adding:', newSelectedServices.map(s => s.name));
+        console.log('[AddAdditionalServices] New selectedServices after adding:', newSelectedServices.map((s: any) => s.name));
         
         // Create confirmation message showing all selected services
         const servicesList = ServiceDataProcessor.formatSelectedServicesList(newSelectedServices, chatContext);
@@ -184,7 +184,7 @@ export const addAdditionalServicesHandler: IndividualStepHandler = {
           servicesList: servicesList
         }) + '\n\n' + getLocalizedText(chatContext, 'MESSAGES.ADD_MORE_SERVICES');
         
-        console.log('[AddAdditionalServices] Returning data with services:', newSelectedServices.map(s => s.name));
+        console.log('[AddAdditionalServices] Returning data with services:', newSelectedServices.map((s: any) => s.name));
         
         return {
           ...currentGoalData,
@@ -222,7 +222,7 @@ export const addAdditionalServicesHandler: IndividualStepHandler = {
       }
       
       const buttons = BookingButtonGenerator.createServiceButtons(filteredServices);
-      console.log('[AddAdditionalServices] Created buttons:', buttons.map(b => ({ text: b.buttonText, desc: b.buttonDescription })));
+      console.log('[AddAdditionalServices] Created buttons:', buttons.map((b: any) => ({ text: b.buttonText, desc: b.buttonDescription })));
       return buttons;
     }
     

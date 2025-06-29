@@ -5,7 +5,7 @@ import { getWhatsappHeaders } from "./whatsapp-headers";
 const WHATSAPP_CONFIG = {
   API_VERSION: process.env.WHATSAPP_API_VERSION || "v23.0",
   PHONE_NUMBER_ID: process.env.WHATSAPP_PHONE_NUMBER_ID,
-  ACCESS_TOKEN: process.env.WHATSAPP_VERIFY_TOKEN, // Updated to use permanent token
+  ACCESS_TOKEN: process.env.WHATSAPP_PERMANENT_TOKEN, // Use permanent token for API calls
   
   // WhatsApp API limits
   LIMITS: {
@@ -77,7 +77,7 @@ export class WhatsappSender implements IMessageSender {
   // Se mantiene igual, pero ahora valida el token permanente
   private validateConfiguration(): void {
     if (!WHATSAPP_CONFIG.ACCESS_TOKEN) {
-      throw new Error("WHATSAPP_ACCESS_TOKEN environment variable is required");
+      throw new Error("WHATSAPP_PERMANENT_TOKEN environment variable is required");
     }
     // Ya no necesitamos validar PHONE_NUMBER_ID aquí
   }

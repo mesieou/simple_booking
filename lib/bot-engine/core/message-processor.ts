@@ -6,6 +6,7 @@ import {
   ButtonConfig,
   ChatConversationSession,
 } from "@/lib/bot-engine/types";
+import { ChatMessage } from "@/lib/database/models/chat-session";
 import { BotResponse } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
 import { getOrCreateChatContext } from "@/lib/bot-engine/session/session-manager";
 import { persistSessionState } from "@/lib/bot-engine/session/state-persister";
@@ -24,7 +25,8 @@ export class MessageProcessor {
 
   async processIncomingMessage(
     incomingUserMessage: string,
-    currentUser: ConversationalParticipant
+    currentUser: ConversationalParticipant,
+    historyForLLM?: ChatMessage[]
   ): Promise<BotResponse> {
     if (!incomingUserMessage || incomingUserMessage.trim() === "") {
       return { text: "" };
@@ -68,7 +70,7 @@ export class MessageProcessor {
                     // Extract booking details from quote if available
                     const quoteData = {
                         proposedDateTime: quote.proposedDateTime,
-                        serviceId: quote.serviceId,
+                        serviceIds: quote.serviceIds, // Multi-service support - now an array
                         dropOff: quote.dropOff,
                         pickUp: quote.pickUp,
                         userId: quote.userId
@@ -95,18 +97,46 @@ export class MessageProcessor {
                         }
                     }
                     
-                    if (quoteData.serviceId) {
+                    // Handle service restoration (both single and multi-service)
+                    if (quoteData.serviceIds && quoteData.serviceIds.length > 0) {
                         const { Service } = await import('@/lib/database/models/service');
-                        const service = await Service.getById(quoteData.serviceId);
-                        if (service) {
-                            const serviceData = service.getData();
-                            collectedDataFromQuote.selectedService = {
-                                id: serviceData.id,
-                                name: serviceData.name,
-                                mobile: serviceData.mobile,
-                                price: serviceData.fixedPrice,
-                                duration: serviceData.durationEstimate
-                            };
+                        
+                        if (quoteData.serviceIds.length === 1) {
+                            // Single service - restore as selectedService for backward compatibility
+                            const service = await Service.getById(quoteData.serviceIds[0]);
+                            if (service) {
+                                const serviceData = service.getData();
+                                collectedDataFromQuote.selectedService = {
+                                    id: serviceData.id,
+                                    name: serviceData.name,
+                                    mobile: serviceData.mobile,
+                                    price: serviceData.fixedPrice,
+                                    duration: serviceData.durationEstimate
+                                };
+                            }
+                        } else {
+                            // Multi-service - restore as selectedServices array
+                            const services = await Promise.all(
+                                quoteData.serviceIds.map(id => Service.getById(id))
+                            );
+                            const servicesData = services
+                                .filter(service => service !== null)
+                                .map(service => {
+                                    const serviceData = service.getData();
+                                    return {
+                                        id: serviceData.id,
+                                        name: serviceData.name,
+                                        mobile: serviceData.mobile,
+                                        price: serviceData.fixedPrice,
+                                        duration: serviceData.durationEstimate
+                                    };
+                                });
+                            
+                            if (servicesData.length > 0) {
+                                collectedDataFromQuote.selectedServices = servicesData;
+                                collectedDataFromQuote.selectedService = servicesData[0]; // Primary service
+                                collectedDataFromQuote.addServicesState = 'completed';
+                            }
                         }
                     }
                     
@@ -174,8 +204,17 @@ export class MessageProcessor {
     }
     // =================================================================
 
-    const { context: currentContext, sessionId, userContext, customerUser } =
-      await getOrCreateChatContext(currentUser);
+    const {
+      context: currentContext,
+      sessionId,
+      userContext,
+      historyForLLM: fetchedHistory,
+      customerUser,
+    } = await getOrCreateChatContext(currentUser);
+
+    // Use the history passed from the webhook if available, otherwise use the freshly fetched one.
+    const messageHistoryToUse = historyForLLM || fetchedHistory;
+
     let activeSession: ChatConversationSession =
       currentContext.currentConversationSession!;
     if (!activeSession) {
@@ -186,8 +225,7 @@ export class MessageProcessor {
     let userCurrentGoal: UserGoal | undefined = activeSession.activeGoals.find(
       (g) => g.goalStatus === "inProgress"
     );
-    let responseToUser: string;
-    let uiButtonsToDisplay: ButtonConfig[] | undefined;
+    let botResponse: BotResponse;
 
     await LanguageDetectionService.detectAndUpdateLanguage(
       incomingUserMessage,
@@ -213,6 +251,23 @@ export class MessageProcessor {
         currentUser.type,
         currentContext
       );
+      
+      // --- FIX: Preserve existing message history ---
+      if (messageHistoryToUse && messageHistoryToUse.length > 0) {
+        userCurrentGoal.messageHistory = messageHistoryToUse.map((msg) => ({
+          speakerRole: msg.role === "user" ? "user" : "chatbot",
+          content:
+            typeof msg.content === "string"
+              ? msg.content
+              : (msg.content as any).text || "[Interactive Message]",
+          messageTimestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
+        }));
+        console.log(
+          `[MessageProcessor] Preserved ${userCurrentGoal.messageHistory.length} messages from existing history.`
+        );
+      }
+      // --- END FIX ---
+
       activeSession.activeGoals = [userCurrentGoal];
 
       const result = await this.executeFirstStep(
@@ -220,8 +275,10 @@ export class MessageProcessor {
         currentContext,
         incomingUserMessage
       );
-      responseToUser = result.responseToUser;
-      uiButtonsToDisplay = result.uiButtonsToDisplay;
+      botResponse = {
+        text: result.responseToUser,
+        buttons: result.uiButtonsToDisplay,
+      };
     } else if (!userCurrentGoal) {
       const llmGoalDetectionResult = await this.llmService.detectIntention(
         incomingUserMessage,
@@ -240,22 +297,36 @@ export class MessageProcessor {
           currentContext,
           incomingUserMessage
         );
-        responseToUser = result.responseToUser;
-        uiButtonsToDisplay = result.uiButtonsToDisplay;
+        botResponse = {
+          text: result.responseToUser,
+          buttons: result.uiButtonsToDisplay,
+        };
       } else {
-        responseToUser =
-          "Could you tell me more clearly what you'd like to do?";
+        botResponse = {
+          text: "Could you tell me more clearly what you'd like to do?",
+          buttons: undefined,
+        };
       }
     } else {
       const result = await this.processExistingGoalIntelligent(
         userCurrentGoal,
         currentContext,
         incomingUserMessage,
+        messageHistoryToUse,
         customerUser
       );
-      responseToUser = result.responseToUser;
-      uiButtonsToDisplay = result.uiButtonsToDisplay;
+      botResponse = {
+        text: result.responseToUser,
+        buttons: result.uiButtonsToDisplay,
+      };
     }
+
+    // --- FIX: Persist the full BotResponse object ---
+    const finalResponse = {
+      ...botResponse,
+      listActionText: userCurrentGoal?.collectedData.listActionText,
+      listSectionTitle: userCurrentGoal?.collectedData.listSectionTitle,
+    };
 
     await persistSessionState(
       sessionId,
@@ -263,16 +334,12 @@ export class MessageProcessor {
       activeSession,
       userCurrentGoal,
       incomingUserMessage,
-      responseToUser
+      finalResponse, // Pass the complete object
+      messageHistoryToUse
     );
 
     return this.finalizeAndTranslateResponse(
-      {
-        text: responseToUser,
-        buttons: uiButtonsToDisplay,
-        listActionText: userCurrentGoal?.collectedData.listActionText,
-        listSectionTitle: userCurrentGoal?.collectedData.listSectionTitle,
-      },
+      finalResponse,
       currentContext
     );
   }
@@ -504,42 +571,53 @@ export class MessageProcessor {
     userCurrentGoal: UserGoal,
     currentContext: ChatContext,
     incomingUserMessage: string,
+    historyForLLM?: ChatMessage[],
     customerUser?: { firstName: string; lastName: string; id: string }
   ): Promise<{ responseToUser: string; uiButtonsToDisplay?: ButtonConfig[] }> {
-    const knownButtonValues = [
-      "choose_another_day",
-      "open_calendar",
-      "confirm_quote",
-      "edit_quote",
-      "edit_service",
-      "edit_time",
-      "tomorrow_7am",
-      "tomorrow_9am",
-    ];
-
-    const isButtonClick =
-      knownButtonValues.includes(incomingUserMessage) ||
-      incomingUserMessage.startsWith("slot_") ||
-      incomingUserMessage.startsWith("day_") ||
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-        incomingUserMessage
-      );
-
-    if (isButtonClick) {
-      return this.processOriginalFlowWithIntelligentEnhancement(
-        userCurrentGoal,
-        currentContext,
-        incomingUserMessage,
-        undefined,
-        customerUser
-      );
-    }
-
     const messageHistory = userCurrentGoal.messageHistory.map((msg) => ({
       role: msg.speakerRole === "user" ? ("user" as const) : ("assistant" as const),
       content: msg.content,
       timestamp: msg.messageTimestamp,
     }));
+
+    // CRITICAL FIX: Skip LLM analysis for system button IDs to prevent misinterpretation
+    const systemButtonIds = [
+      'add_another_service',
+      'continue_with_services', 
+      'confirm_quote',
+      'edit_quote',
+      'confirm_address',
+      'enter_different_address',
+      'start_booking_flow',
+      'choose_another_day',
+      'open_calendar',
+      'edit_service',
+      'edit_time',
+      'tomorrow_7am',
+      'tomorrow_9am'
+    ];
+    
+    const isSystemButtonAction = systemButtonIds.includes(incomingUserMessage.toLowerCase().trim()) ||
+      incomingUserMessage.startsWith("slot_") ||
+      incomingUserMessage.startsWith("day_") ||
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(incomingUserMessage);
+    
+    if (isSystemButtonAction) {
+      console.log(`[MessageProcessor] Bypassing LLM analysis for system button: ${incomingUserMessage}`);
+      // Process directly with the current step handler
+      return this.processOriginalFlowWithIntelligentEnhancement(
+        userCurrentGoal,
+        currentContext,
+        incomingUserMessage,
+        undefined, // No conversation decision - let step handler process it
+        historyForLLM,
+        customerUser
+      );
+    }
+
+    console.log(
+      `[MessageProcessor] Using intelligent flow analysis with ${messageHistory.length} messages`
+    );
 
     try {
       const conversationDecision = await this.llmService.analyzeConversationFlow(
@@ -602,6 +680,7 @@ export class MessageProcessor {
         currentContext,
         incomingUserMessage,
         conversationDecision,
+        historyForLLM,
         customerUser
       );
     } catch (error) {
@@ -622,6 +701,7 @@ export class MessageProcessor {
     currentContext: ChatContext,
     incomingUserMessage: string,
     conversationDecision?: any,
+    historyForLLM?: ChatMessage[],
     customerUser?: { firstName: string; lastName: string; id: string }
   ): Promise<{ responseToUser: string; uiButtonsToDisplay?: ButtonConfig[] }> {
     userCurrentGoal.messageHistory.push({
@@ -1070,8 +1150,9 @@ export class MessageProcessor {
 
 export async function processIncomingMessage(
   incomingUserMessage: string,
-  currentUser: ConversationalParticipant
+  currentUser: ConversationalParticipant,
+  historyForLLM?: ChatMessage[]
 ): Promise<BotResponse> {
   const processor = new MessageProcessor();
-  return processor.processIncomingMessage(incomingUserMessage, currentUser);
+  return processor.processIncomingMessage(incomingUserMessage, currentUser, historyForLLM);
 }
