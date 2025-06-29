@@ -1,5 +1,6 @@
 import { WebhookAPIBody, Message } from "./whatsapp-message-logger"; // Ensure these are correctly exported
 import { ParsedMessage } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
+import { downloadAndStoreWhatsappMedia } from "../../utils/media-storage";
 
 /**
  * Represents a concise, parsed status update from a WhatsApp webhook.
@@ -35,7 +36,7 @@ export async function processWhatsappPayload<T>(
   payload: WebhookAPIBody,
   handlers: WhatsappPayloadHandlers<T>
 ): Promise<T | null> {
-  const parseResult = parseWhatsappMessage(payload);
+  const parseResult = await parseWhatsappMessage(payload);
 
   if (!parseResult) {
     return null; // Payload was not actionable.
@@ -56,7 +57,7 @@ export async function processWhatsappPayload<T>(
  * @param payload The raw WebhookAPIBody from WhatsApp.
  * @returns A ParsedMessage for user messages, a ParsedStatusUpdate for status changes, or null.
  */
-export function parseWhatsappMessage(payload: WebhookAPIBody): ParsedMessage | ParsedStatusUpdate | null {
+export async function parseWhatsappMessage(payload: WebhookAPIBody): Promise<ParsedMessage | ParsedStatusUpdate | null> {
   if (payload.object !== "whatsapp_business_account") {
     return null;
   }
@@ -103,6 +104,10 @@ export function parseWhatsappMessage(payload: WebhookAPIBody): ParsedMessage | P
     let textContent: string | undefined;
     const attachments: ParsedMessage['attachments'] = [];
 
+    // We'll need these for media storage
+    const businessId = extractBusinessIdFromPayload(payload);
+    const sessionId = `temp_${waMessage.from}_${Date.now()}`; // Temporary session ID for storage
+
     switch (waMessage.type) {
       case 'text':
         textContent = waMessage.text?.body;
@@ -110,30 +115,131 @@ export function parseWhatsappMessage(payload: WebhookAPIBody): ParsedMessage | P
         console.log("[WhatsappParser] Parsed text message:", textContent);
         break;
       case 'image':
-        attachments.push({ type: 'image', payload: waMessage.image, caption: waMessage.image?.caption });
+        if (waMessage.image?.id) {
+          // Download and store the image
+          const storedImage = await downloadAndStoreWhatsappMedia(
+            waMessage.image.id,
+            'image',
+            businessId,
+            sessionId
+          );
+          
+          if (storedImage) {
+            attachments.push({ 
+              type: 'image', 
+              payload: { 
+                ...waMessage.image, 
+                storedUrl: storedImage.url,
+                originalUrl: waMessage.image.id // Keep reference to original
+              }, 
+              caption: waMessage.image?.caption 
+            });
+          } else {
+            // Fallback to placeholder if storage fails
+            attachments.push({ type: 'image', payload: waMessage.image, caption: waMessage.image?.caption });
+          }
+        }
         textContent = waMessage.image?.caption; // Also treat caption as text if present
         console.log(`==============================================`);
         console.log("[WhatsappParser] Parsed image message. Caption:", textContent);
         break;
       case 'audio':
-        attachments.push({ type: 'audio', payload: waMessage.audio });
+        if (waMessage.audio?.id) {
+          const storedAudio = await downloadAndStoreWhatsappMedia(
+            waMessage.audio.id,
+            'audio',
+            businessId,
+            sessionId
+          );
+          
+          if (storedAudio) {
+            attachments.push({ 
+              type: 'audio', 
+              payload: { 
+                ...waMessage.audio, 
+                storedUrl: storedAudio.url 
+              } 
+            });
+          } else {
+            attachments.push({ type: 'audio', payload: waMessage.audio });
+          }
+        }
         console.log(`==============================================`);
         console.log("[WhatsappParser] Parsed audio message.");
         break;
       case 'video':
-        attachments.push({ type: 'video', payload: waMessage.video, caption: waMessage.video?.caption });
+        if (waMessage.video?.id) {
+          const storedVideo = await downloadAndStoreWhatsappMedia(
+            waMessage.video.id,
+            'video',
+            businessId,
+            sessionId
+          );
+          
+          if (storedVideo) {
+            attachments.push({ 
+              type: 'video', 
+              payload: { 
+                ...waMessage.video, 
+                storedUrl: storedVideo.url 
+              }, 
+              caption: waMessage.video?.caption 
+            });
+          } else {
+            attachments.push({ type: 'video', payload: waMessage.video, caption: waMessage.video?.caption });
+          }
+        }
         textContent = waMessage.video?.caption;
         console.log(`==============================================`);
         console.log("[WhatsappParser] Parsed video message. Caption:", textContent);
         break;
       case 'document':
-        attachments.push({ type: 'document', payload: waMessage.document, caption: waMessage.document?.caption });
+        if (waMessage.document?.id) {
+          const storedDocument = await downloadAndStoreWhatsappMedia(
+            waMessage.document.id,
+            'document',
+            businessId,
+            sessionId
+          );
+          
+          if (storedDocument) {
+            attachments.push({ 
+              type: 'document', 
+              payload: { 
+                ...waMessage.document, 
+                storedUrl: storedDocument.url 
+              }, 
+              caption: waMessage.document?.caption 
+            });
+          } else {
+            attachments.push({ type: 'document', payload: waMessage.document, caption: waMessage.document?.caption });
+          }
+        }
         textContent = waMessage.document?.caption;
         console.log(`==============================================`);
         console.log("[WhatsappParser] Parsed document message. Caption:", textContent);
         break;
       case 'sticker':
-        attachments.push({ type: 'sticker', payload: waMessage.sticker });
+        if (waMessage.sticker?.id) {
+          const storedSticker = await downloadAndStoreWhatsappMedia(
+            waMessage.sticker.id,
+            'sticker',
+            businessId,
+            sessionId
+          );
+          
+          if (storedSticker) {
+            attachments.push({ 
+              type: 'sticker', 
+              payload: { 
+                ...waMessage.sticker, 
+                storedUrl: storedSticker.url 
+              } 
+            });
+          } else {
+            attachments.push({ type: 'sticker', payload: waMessage.sticker });
+          }
+        }
         console.log(`==============================================`);
         console.log("[WhatsappParser] Parsed sticker message.");
         break;
@@ -205,6 +311,22 @@ export function parseWhatsappMessage(payload: WebhookAPIBody): ParsedMessage | P
       return null;
     }
 
+    // For media messages, always include placeholder regardless of caption
+    if (attachments && attachments.length > 0) {
+      const mediaType = attachments[0].type;
+      const placeholder = `[${mediaType.toUpperCase()}]`;
+      
+      if (textContent && textContent.trim()) {
+        // Combine placeholder with caption for escalation detection
+        textContent = `${placeholder} ${textContent}`;
+        console.log(`[WhatsappParser] Media message with caption detected. Combined: ${textContent}`);
+      } else {
+        // Just placeholder if no caption
+        textContent = placeholder;
+        console.log(`[WhatsappParser] Media message without caption detected. Using placeholder: ${textContent}`);
+      }
+    }
+
     return {
       ...baseParsedMessage,
       text: textContent,
@@ -213,4 +335,14 @@ export function parseWhatsappMessage(payload: WebhookAPIBody): ParsedMessage | P
   }
 
   return null;
+}
+
+/**
+ * Helper function to extract business ID from WhatsApp payload
+ * For now, we'll use a placeholder - this should be mapped to actual business logic
+ */
+function extractBusinessIdFromPayload(payload: WebhookAPIBody): string {
+  // TODO: Map phone number ID to business ID using your business logic
+  const phoneNumberId = payload.entry?.[0]?.changes?.[0]?.value?.metadata?.phone_number_id;
+  return `business_${phoneNumberId || 'unknown'}`;
 } 
