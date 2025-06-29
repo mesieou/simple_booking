@@ -16,11 +16,20 @@ import { GoalManager } from "./goal-manager";
 import { botTasks } from "@/lib/bot-engine/config/tasks";
 import { conversationFlowBlueprints } from "@/lib/bot-engine/config/blueprints";
 import { START_BOOKING_PAYLOAD } from "@/lib/bot-engine/config/constants";
+import { extractIdForBotLogic } from "@/lib/bot-engine/utils/message-converter";
 
 export class MessageProcessor {
   private llmService = new IntelligentLLMService();
   private flowController = new FlowController();
   private goalManager = new GoalManager();
+
+  /**
+   * Helper function to extract technical ID from user message for bot logic processing
+   * Handles formatted messages like "ID|title" and preserves backward compatibility
+   */
+  private extractBotProcessingInput(userMessage: string): string {
+    return extractIdForBotLogic(userMessage);
+  }
 
   async processIncomingMessage(
     incomingUserMessage: string,
@@ -291,7 +300,12 @@ export class MessageProcessor {
       activeSession,
       userCurrentGoal,
       incomingUserMessage,
-      responseToUser
+      responseToUser,
+      undefined, // fullHistory
+      undefined, // parsedMessage  
+      uiButtonsToDisplay, // Pass bot buttons for history
+      userCurrentGoal?.collectedData.listActionText, // Pass list action text
+      userCurrentGoal?.collectedData.listSectionTitle // Pass list section title
     );
 
     return this.finalizeAndTranslateResponse(
@@ -557,20 +571,24 @@ export class MessageProcessor {
       'tomorrow_9am'
     ];
     
-    const isSystemButtonAction = systemButtonIds.includes(incomingUserMessage.toLowerCase().trim()) ||
-      incomingUserMessage.startsWith("slot_") ||
-      incomingUserMessage.startsWith("day_") ||
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(incomingUserMessage);
+    // Extract technical ID for bot logic processing while preserving original message for history
+    const botProcessingInput = this.extractBotProcessingInput(incomingUserMessage);
+    
+    const isSystemButtonAction = systemButtonIds.includes(botProcessingInput.toLowerCase().trim()) ||
+      botProcessingInput.startsWith("slot_") ||
+      botProcessingInput.startsWith("day_") ||
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(botProcessingInput);
     
     if (isSystemButtonAction) {
-      console.log(`[MessageProcessor] Bypassing LLM analysis for system button: ${incomingUserMessage}`);
-      // Process directly with the current step handler
+      console.log(`[MessageProcessor] Bypassing LLM analysis for system button. Original: "${incomingUserMessage}" -> Processing: "${botProcessingInput}"`);
+      // Process with extracted ID for bot logic, but keep original message for history
       return this.processOriginalFlowWithIntelligentEnhancement(
         userCurrentGoal,
         currentContext,
-        incomingUserMessage,
+        incomingUserMessage, // Keep original for history
         undefined, // No conversation decision - let step handler process it
-        customerUser
+        customerUser,
+        botProcessingInput // Pass extracted ID for bot logic
       );
     }
 
@@ -639,7 +657,8 @@ export class MessageProcessor {
         currentContext,
         incomingUserMessage,
         conversationDecision,
-        customerUser
+        customerUser,
+        this.extractBotProcessingInput(incomingUserMessage) // Extract ID for bot logic consistency
       );
     } catch (error) {
       console.error(
@@ -659,11 +678,12 @@ export class MessageProcessor {
     currentContext: ChatContext,
     incomingUserMessage: string,
     conversationDecision?: any,
-    customerUser?: { firstName: string; lastName: string; id: string }
+    customerUser?: { firstName: string; lastName: string; id: string },
+    botProcessingInput?: string
   ): Promise<{ responseToUser: string; uiButtonsToDisplay?: ButtonConfig[] }> {
     userCurrentGoal.messageHistory.push({
       speakerRole: "user",
-      content: incomingUserMessage,
+      content: incomingUserMessage, // Always save original message to history
       messageTimestamp: new Date(),
     });
 
@@ -675,8 +695,13 @@ export class MessageProcessor {
       throw new Error("No handler found for current step");
     }
 
+    // Use botProcessingInput for validation and processing, fallback to original if not provided
+    const inputForBotLogic = botProcessingInput || this.extractBotProcessingInput(incomingUserMessage);
+    
+    console.log(`[MessageProcessor] Processing step "${stepName}". History: "${incomingUserMessage}" -> Logic: "${inputForBotLogic}"`);
+
     const validationResult = await currentStepHandler.validateUserInput(
-      incomingUserMessage,
+      inputForBotLogic, // Use extracted ID for validation
       userCurrentGoal.collectedData,
       currentContext
     );
@@ -697,7 +722,7 @@ export class MessageProcessor {
     let uiButtonsToDisplay: ButtonConfig[] | undefined;
 
     if (isInputValid) {
-      const inputToProcess = transformedInput || incomingUserMessage;
+      const inputToProcess = transformedInput || inputForBotLogic; // Use bot logic input, not original message
       const processingResult = await currentStepHandler.processAndExtractData(
         inputToProcess,
         userCurrentGoal.collectedData,
@@ -991,6 +1016,9 @@ export class MessageProcessor {
     const currentSteps = conversationFlowBlueprints[userCurrentGoal.flowKey];
     this.flowController.advanceAndSkipStep(userCurrentGoal);
 
+    // Extract ID for bot logic processing
+    const inputForBotLogic = this.extractBotProcessingInput(incomingUserMessage);
+
     if (userCurrentGoal.currentStepIndex >= currentSteps.length) {
       userCurrentGoal.goalStatus = "completed";
       const responseToUser = "Great! Your booking request has been processed.";
@@ -1005,7 +1033,7 @@ export class MessageProcessor {
       const nextStepHandler = botTasks[nextStepName];
       if (nextStepHandler) {
         const nextValidationResult = await nextStepHandler.validateUserInput(
-          incomingUserMessage,
+          inputForBotLogic, // Use extracted ID for validation
           userCurrentGoal.collectedData,
           currentContext
         );
@@ -1016,7 +1044,7 @@ export class MessageProcessor {
 
         if (nextIsInputValid) {
           const nextStepResult = await nextStepHandler.processAndExtractData(
-            incomingUserMessage,
+            inputForBotLogic, // Use extracted ID for processing
             userCurrentGoal.collectedData,
             currentContext
           );

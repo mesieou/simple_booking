@@ -264,18 +264,25 @@ export async function parseWhatsappMessage(payload: WebhookAPIBody): Promise<Par
           // Handle button replies (≤3 options)
           if (interactiveType === 'button_reply' && waMessage.interactive.button_reply) {
             attachments.push({ type: 'interactive_reply', payload: waMessage.interactive.button_reply });
-            textContent = waMessage.interactive.button_reply.id;
-            console.log("[WhatsappParser] Parsed interactive button_reply. ID:", textContent, "Title:", waMessage.interactive.button_reply.title);
+            // Format: "ID|Title" for readable history while preserving ID for bot logic
+            const id = waMessage.interactive.button_reply.id;
+            const title = waMessage.interactive.button_reply.title.trim();
+            textContent = `${id}|${title}`;
+            console.log("[WhatsappParser] Parsed interactive button_reply. Formatted:", textContent);
           }
           // Handle list replies (>3 options)  
           else if (interactiveType === 'list_reply' && waMessage.interactive.list_reply) {
             attachments.push({ type: 'interactive_reply', payload: waMessage.interactive.list_reply });
-            textContent = waMessage.interactive.list_reply.id;
-            console.log("[WhatsappParser] Parsed interactive list_reply. ID:", textContent, "Title:", waMessage.interactive.list_reply.title);
+            // Format: "ID|Title" for readable history while preserving ID for bot logic
+            const id = waMessage.interactive.list_reply.id;
+            const title = waMessage.interactive.list_reply.title.trim();
+            textContent = `${id}|${title}`;
+            console.log("[WhatsappParser] Parsed interactive list_reply. Formatted:", textContent);
           }
           // Handle NFM (Native Flow Message) replies
           else if (interactiveType === 'nfm_reply' && waMessage.interactive.nfm_reply) {
             attachments.push({ type: 'interactive_reply', payload: waMessage.interactive.nfm_reply, caption: waMessage.interactive.nfm_reply.name });
+            // For NFM, body is already user-friendly
             textContent = waMessage.interactive.nfm_reply.body;
             console.log("[WhatsappParser] Parsed interactive nfm_reply. Body:", textContent);
           }
@@ -285,9 +292,15 @@ export async function parseWhatsappMessage(payload: WebhookAPIBody): Promise<Par
             const replyData = waMessage.interactive[`${interactiveType}`];
             if (replyData && typeof replyData === 'object') {
               attachments.push({ type: 'interactive_reply', payload: replyData });
-              // Try to extract ID or value from common properties
-              textContent = replyData.id || replyData.value || replyData.body || replyData.title;
-              console.log(`[WhatsappParser] Parsed generic interactive ${interactiveType}. Extracted content:`, textContent);
+              // Try to extract ID and title, fallback to single value
+              const id = replyData.id || replyData.value;
+              const title = replyData.title || replyData.text || replyData.body;
+              if (id && title && id !== title) {
+                textContent = `${id}|${title}`;
+              } else {
+                textContent = id || title || 'Unknown';
+              }
+              console.log(`[WhatsappParser] Parsed generic interactive ${interactiveType}. Formatted:`, textContent);
             } else {
               console.warn("[WhatsappParser] Interactive message type received but couldn't extract data:", interactiveType);
               attachments.push({ type: 'interactive_reply', payload: waMessage.interactive });

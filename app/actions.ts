@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/database/supabase/server";
 import { redirect } from "next/navigation";
+import { extractFriendlyTextForDisplay } from "@/lib/bot-engine/utils/message-converter";
 
 export async function signUpAction(formData: FormData) {
   const email = formData.get("email") as string;
@@ -190,7 +191,7 @@ export async function getMessagesForSession(sessionId: string): Promise<ChatMess
   // Transform the stored messages into the format the UI component expects
   return storedMessages.map((msg, index) => ({
     id: `${sessionId}-${index}`, // Create a stable key for React
-    content: msg.content,
+    content: extractFriendlyTextForDisplay(msg.content), // Show friendly text instead of technical IDs
     createdAt: msg.timestamp || new Date().toISOString(), // Provide a fallback for the timestamp
     // Map the 'role' from the DB to the 'senderRole' the UI expects
     senderRole: msg.role === 'user' ? 'customer' : msg.role as 'agent' | 'bot' | 'staff',
@@ -254,7 +255,7 @@ export async function getMessagesForUser(channelUserId: string): Promise<ChatMes
     // Transform the stored messages into the format the UI component expects
     return allMessages.map((msg, index) => ({
         id: `msg-${channelUserId}-${index}`, // Create a stable key
-        content: msg.content,
+        content: extractFriendlyTextForDisplay(msg.content), // Show friendly text instead of technical IDs
         createdAt: msg.timestamp || new Date().toISOString(),
         senderRole: msg.role === 'user' ? 'customer' : msg.role as 'agent' | 'bot' | 'staff',
         // Include attachments if they exist

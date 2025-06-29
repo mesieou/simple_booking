@@ -1,6 +1,7 @@
 import {
   UserGoal,
   ChatConversationSession,
+  ButtonConfig,
 } from "@/lib/bot-engine/types";
 import { persistSessionState as persistState } from "@/lib/shared/llm/functions/save-history-and-context";
 import { UserContext } from "@/lib/database/models/user-context";
@@ -17,7 +18,10 @@ export async function persistSessionState(
   userMessage: string,
   botResponse: string,
   fullHistory?: ChatMessage[],
-  parsedMessage?: ParsedMessage // NEW: Include original parsed message for attachments
+  parsedMessage?: ParsedMessage, // Include original parsed message for attachments
+  botButtons?: ButtonConfig[], // NEW: Include bot buttons for history
+  listActionText?: string, // NEW: Include list action text
+  listSectionTitle?: string // NEW: Include list section title
 ): Promise<void> {
   try {
     let updatedContext: any;
@@ -146,13 +150,21 @@ export async function persistSessionState(
 
       // Only add bot response if it's not empty (avoid ghost messages)
       if (botResponse && botResponse.trim() !== "") {
+        // Combine bot response with options in a single message
+        let fullBotMessage = botResponse;
+        const optionsText = formatBotOptionsAsText(botButtons, listActionText, listSectionTitle);
+        if (optionsText) {
+          fullBotMessage += `\n\n${optionsText}`;
+          console.log(`[StatePersister] Including bot options in same message`);
+        }
+
         chatMessages.push({
           role: "bot",
-          content: botResponse,
+          content: fullBotMessage,
           timestamp: currentTimestamp,
         });
         console.log(
-          `[StatePersister] Adding message pair: user="${userMessage}", bot="${botResponse}"`
+          `[StatePersister] Adding bot message with options: "${fullBotMessage.substring(0, 100)}..."`
         );
       } else {
         console.log(
@@ -169,4 +181,45 @@ export async function persistSessionState(
   } catch (error) {
     console.error(`[StatePersister] Error persisting session state:`, error);
   }
+}
+
+/**
+ * Formats bot buttons and list options as plain text for history visibility
+ */
+function formatBotOptionsAsText(
+  buttons?: ButtonConfig[],
+  listActionText?: string,
+  listSectionTitle?: string
+): string | null {
+  if (!buttons || buttons.length === 0) {
+    return null;
+  }
+
+  const parts: string[] = [];
+
+  // Add list section title if present
+  if (listSectionTitle) {
+    parts.push(`📋 ${listSectionTitle}`);
+  }
+
+  // Add list action text if present
+  if (listActionText) {
+    parts.push(`🔘 ${listActionText}`);
+  }
+
+  // Format buttons as numbered list
+  parts.push("Available options:");
+  buttons.forEach((button, index) => {
+    const number = index + 1;
+    let buttonText = `${number}. ${button.buttonText}`;
+    
+    // Add description if available
+    if (button.buttonDescription) {
+      buttonText += ` - ${button.buttonDescription}`;
+    }
+    
+    parts.push(buttonText);
+  });
+
+  return parts.join('\n');
 } 
