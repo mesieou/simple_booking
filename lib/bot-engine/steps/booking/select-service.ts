@@ -1,27 +1,28 @@
 import type { IndividualStepHandler } from '@/lib/bot-engine/types';
 import { getLocalizedText, ServiceDataProcessor, BookingButtonGenerator, BookingValidator } from './booking-utils';
-import { Business } from '@/lib/database/models/business';
 
-// Combined service display and selection - single responsibility
+// Initial service selection handler - selects first service only
 export const selectServiceHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: 'Service selection', // This will be overridden by confirmationMessage
+  defaultChatbotPrompt: 'Please select a service from the list below:',
   
-  // Use booking validator for intelligent matching
+  // Validate service selection
   validateUserInput: async (userInput, currentGoalData, chatContext) => {
     console.log('[SelectService] Validating input:', userInput);
-    return BookingValidator.validateServiceSelection(userInput, currentGoalData.availableServices, chatContext);
+    
+    const availableServices = currentGoalData.availableServices || [];
+    return BookingValidator.validateServiceSelection(userInput, availableServices, chatContext);
   },
   
-  // Fetch services on first display, or process selection
+  // Handle initial service selection
   processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
-    const { businessId, availableServices } = {
-      businessId: chatContext.currentParticipant.associatedBusinessId,
-      availableServices: currentGoalData.availableServices || []
-    };
+    const businessId = chatContext.currentParticipant.associatedBusinessId;
+    const availableServices = currentGoalData.availableServices || [];
 
-    // If first display (validatedInput is empty), fetch and/or display services
+    console.log('[SelectService] Processing initial service selection');
+    console.log('[SelectService] Validated input:', validatedInput);
+
+    // Handle first display - fetch services if needed
     if (validatedInput === "") {
-      // If services aren't loaded yet, fetch them.
       if (availableServices.length === 0) {
         console.log('[SelectService] First time display - fetching services');
         const { services, error } = await ServiceDataProcessor.fetchServicesForBusiness(businessId as string, chatContext);
@@ -39,71 +40,56 @@ export const selectServiceHandler: IndividualStepHandler = {
         };
       }
       
-      // If services are already loaded, just return them for display.
+      // Services already loaded, show them
       return {
         ...currentGoalData,
         confirmationMessage: getLocalizedText(chatContext, 'MESSAGES.SELECT_SERVICE'),
         listActionText: getLocalizedText(chatContext, 'BUTTONS.SELECT'),
         listSectionTitle: getLocalizedText(chatContext, 'LIST_SECTIONS.SERVICES')
-      }
-    }
-    
-    // Process validated service selection (which is an ID from the validator)
-    console.log('[SelectService] Processing validated selection:', validatedInput);
-    const selectedServiceData = ServiceDataProcessor.findServiceById(validatedInput, availableServices);
-    
-    if (selectedServiceData) {
-      console.log('[SelectService] Service found:', selectedServiceData.name);
-      
-      let finalServiceAddress;
-      let serviceLocation;
-      
-      if (!selectedServiceData.mobile) {
-        // For non-mobile services, fetch actual business address
-        const businessId = chatContext.currentParticipant.associatedBusinessId;
-        let businessAddress = 'Our salon location';
-        
-        if (businessId) {
-          try {
-            const business = await Business.getById(businessId);
-            businessAddress = business.businessAddress || business.name || 'Our salon location';
-          } catch (error) {
-            console.error('[SelectService] Error fetching business address:', error);
-          }
-        }
-        
-        finalServiceAddress = businessAddress;
-        serviceLocation = 'business_address';
-      }
-      
-      return {
-        ...currentGoalData,
-        selectedService: ServiceDataProcessor.extractServiceDetails(selectedServiceData),
-        finalServiceAddress,
-        serviceLocation,
       };
     }
+    
+    // Handle service selection
+    if (validatedInput) {
+      console.log('[SelectService] Processing service selection:', validatedInput);
+      const selectedServiceData = ServiceDataProcessor.findServiceById(validatedInput, availableServices);
+      
+      if (selectedServiceData) {
+        console.log('[SelectService] Service found:', selectedServiceData.name);
+        
+        const extractedService = ServiceDataProcessor.extractServiceDetails(selectedServiceData);
+        
+        return {
+          ...currentGoalData,
+          selectedServices: [extractedService], // Initialize array with first service
+          selectedService: extractedService, // Keep for backward compatibility
+          confirmationMessage: `Great! You've selected ${selectedServiceData.name}.`
+        };
+      }
+    }
 
-    console.log('[SelectService] Service not found after validation, should not happen');
+    console.log('[SelectService] Fallback - returning error state');
     return { 
       ...currentGoalData, 
       serviceError: getLocalizedText(chatContext, 'ERROR_MESSAGES.SERVICE_SELECTION_ERROR')
     };
   },
   
-  // Generate service buttons from fetched data
+  // Generate service selection buttons
   fixedUiButtons: async (currentGoalData, chatContext) => {
     if (currentGoalData.serviceError) {
       return BookingButtonGenerator.createErrorButtons(currentGoalData.serviceError, chatContext);
     }
     
-    if (!currentGoalData.availableServices) {
-      return []; // No buttons if services not loaded yet
+    const availableServices = currentGoalData.availableServices || [];
+    
+    if (availableServices.length > 0) {
+      console.log('[SelectService] Creating service buttons for:', availableServices.length, 'services');
+      const buttons = BookingButtonGenerator.createServiceButtons(availableServices);
+      console.log('[SelectService] Created buttons:', buttons.map(b => ({ text: b.buttonText, desc: b.buttonDescription })));
+      return buttons;
     }
     
-    console.log('[SelectService] Creating service buttons for:', currentGoalData.availableServices.length, 'services');
-    const buttons = BookingButtonGenerator.createServiceButtons(currentGoalData.availableServices);
-    console.log('[SelectService] Created buttons:', buttons.map(b => ({ text: b.buttonText, desc: b.buttonDescription })));
-    return buttons;
+    return []; // No buttons if services not loaded yet
   }
 };

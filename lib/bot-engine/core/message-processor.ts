@@ -68,7 +68,7 @@ export class MessageProcessor {
                     // Extract booking details from quote if available
                     const quoteData = {
                         proposedDateTime: quote.proposedDateTime,
-                        serviceId: quote.serviceId,
+                        serviceIds: quote.serviceIds, // Multi-service support - now an array
                         dropOff: quote.dropOff,
                         pickUp: quote.pickUp,
                         userId: quote.userId
@@ -95,18 +95,46 @@ export class MessageProcessor {
                         }
                     }
                     
-                    if (quoteData.serviceId) {
+                    // Handle service restoration (both single and multi-service)
+                    if (quoteData.serviceIds && quoteData.serviceIds.length > 0) {
                         const { Service } = await import('@/lib/database/models/service');
-                        const service = await Service.getById(quoteData.serviceId);
-                        if (service) {
-                            const serviceData = service.getData();
-                            collectedDataFromQuote.selectedService = {
-                                id: serviceData.id,
-                                name: serviceData.name,
-                                mobile: serviceData.mobile,
-                                price: serviceData.fixedPrice,
-                                duration: serviceData.durationEstimate
-                            };
+                        
+                        if (quoteData.serviceIds.length === 1) {
+                            // Single service - restore as selectedService for backward compatibility
+                            const service = await Service.getById(quoteData.serviceIds[0]);
+                            if (service) {
+                                const serviceData = service.getData();
+                                collectedDataFromQuote.selectedService = {
+                                    id: serviceData.id,
+                                    name: serviceData.name,
+                                    mobile: serviceData.mobile,
+                                    price: serviceData.fixedPrice,
+                                    duration: serviceData.durationEstimate
+                                };
+                            }
+                        } else {
+                            // Multi-service - restore as selectedServices array
+                            const services = await Promise.all(
+                                quoteData.serviceIds.map(id => Service.getById(id))
+                            );
+                            const servicesData = services
+                                .filter(service => service !== null)
+                                .map(service => {
+                                    const serviceData = service.getData();
+                                    return {
+                                        id: serviceData.id,
+                                        name: serviceData.name,
+                                        mobile: serviceData.mobile,
+                                        price: serviceData.fixedPrice,
+                                        duration: serviceData.durationEstimate
+                                    };
+                                });
+                            
+                            if (servicesData.length > 0) {
+                                collectedDataFromQuote.selectedServices = servicesData;
+                                collectedDataFromQuote.selectedService = servicesData[0]; // Primary service
+                                collectedDataFromQuote.addServicesState = 'completed';
+                            }
                         }
                     }
                     
@@ -506,40 +534,49 @@ export class MessageProcessor {
     incomingUserMessage: string,
     customerUser?: { firstName: string; lastName: string; id: string }
   ): Promise<{ responseToUser: string; uiButtonsToDisplay?: ButtonConfig[] }> {
-    const knownButtonValues = [
-      "choose_another_day",
-      "open_calendar",
-      "confirm_quote",
-      "edit_quote",
-      "edit_service",
-      "edit_time",
-      "tomorrow_7am",
-      "tomorrow_9am",
-    ];
-
-    const isButtonClick =
-      knownButtonValues.includes(incomingUserMessage) ||
-      incomingUserMessage.startsWith("slot_") ||
-      incomingUserMessage.startsWith("day_") ||
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-        incomingUserMessage
-      );
-
-    if (isButtonClick) {
-      return this.processOriginalFlowWithIntelligentEnhancement(
-        userCurrentGoal,
-        currentContext,
-        incomingUserMessage,
-        undefined,
-        customerUser
-      );
-    }
-
     const messageHistory = userCurrentGoal.messageHistory.map((msg) => ({
       role: msg.speakerRole === "user" ? ("user" as const) : ("assistant" as const),
       content: msg.content,
       timestamp: msg.messageTimestamp,
     }));
+
+    // CRITICAL FIX: Skip LLM analysis for system button IDs to prevent misinterpretation
+    const systemButtonIds = [
+      'add_another_service',
+      'continue_with_services', 
+      'confirm_quote',
+      'edit_quote',
+      'confirm_address',
+      'enter_different_address',
+      'start_booking_flow',
+      'choose_another_day',
+      'open_calendar',
+      'edit_service',
+      'edit_time',
+      'tomorrow_7am',
+      'tomorrow_9am'
+    ];
+    
+    const isSystemButtonAction = systemButtonIds.includes(incomingUserMessage.toLowerCase().trim()) ||
+      incomingUserMessage.startsWith("slot_") ||
+      incomingUserMessage.startsWith("day_") ||
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(incomingUserMessage);
+    
+    if (isSystemButtonAction) {
+      console.log(`[MessageProcessor] Bypassing LLM analysis for system button: ${incomingUserMessage}`);
+      // Process directly with the current step handler
+      return this.processOriginalFlowWithIntelligentEnhancement(
+        userCurrentGoal,
+        currentContext,
+        incomingUserMessage,
+        undefined, // No conversation decision - let step handler process it
+        customerUser
+      );
+    }
+
+    console.log(
+      `[MessageProcessor] Using intelligent flow analysis with ${messageHistory.length} messages`
+    );
 
     try {
       const conversationDecision = await this.llmService.analyzeConversationFlow(

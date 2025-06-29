@@ -148,7 +148,10 @@ export class StripePaymentService {
       const quote = await Quote.getById(quoteId);
       const business = await Business.getById(quote.businessId);
       const user = await User.getById(quote.userId);
-      const service = await Service.getById(quote.serviceId);
+      
+      // Get primary service for the payment link description
+      const primaryServiceId = quote.getPrimaryServiceId();
+      const service = await Service.getById(primaryServiceId);
 
       // Calculate deposit amount if not already calculated
       const depositAmount = await quote.calculateDepositAmount();
@@ -163,11 +166,16 @@ export class StripePaymentService {
       
       const totalAmount = depositAmount + 4; // Add 4 AUD Skedy fee
 
+      // Create service description for payment
+      const serviceDescription = quote.isMultiService() 
+        ? `${service.name} + ${quote.serviceIds.length - 1} more services`
+        : service.name;
+
       const paymentData: PaymentLinkData = {
         quoteId: quote.id!,
         customerId: user.id!,
         businessId: business.id!,
-        serviceDescription: service.name,
+        serviceDescription,
         businessName: business.name,
         customerName: `${user.firstName} ${user.lastName || ''}`.trim(),
         depositAmount,
@@ -184,8 +192,6 @@ export class StripePaymentService {
     }
   }
 
-
-
   /**
    * Handles successful payment completion
    */
@@ -197,24 +203,53 @@ export class StripePaymentService {
         return;
       }
 
-      // Update quote status to indicate payment completed
-      const quote = await Quote.getById(quoteId);
-      await Quote.update(quoteId, {
-        id: quote.id,
-        userId: quote.userId,
-        pickUp: quote.pickUp,
-        dropOff: quote.dropOff,
-        businessId: quote.businessId,
-        serviceId: quote.serviceId,
-        travelTimeEstimate: quote.travelTimeEstimate,
-        totalJobDurationEstimation: quote.totalJobDurationEstimation,
-        travelCostEstimate: quote.travelCostEstimate,
-        totalJobCostEstimation: quote.totalJobCostEstimation,
-        depositAmount: quote.depositAmount,
-        status: 'payment_completed',
-      });
+      console.log(`[Stripe Webhook] Processing payment completion for quote: ${quoteId}`);
 
-      console.log(`Payment completed for quote: ${quoteId}`);
+      // Get quote using service role client to bypass RLS
+      const { getServiceRoleClient } = await import('@/lib/database/supabase/service-role');
+      const supa = getServiceRoleClient();
+      
+      // First, fetch the existing quote
+      const { data: existingQuote, error: fetchError } = await supa
+        .from('quotes')
+        .select('*')
+        .eq('id', quoteId)
+        .single();
+
+      if (fetchError) {
+        console.error(`[Stripe Webhook] Error fetching quote ${quoteId}:`, fetchError);
+        throw new Error(`Failed to fetch quote: ${fetchError.message}`);
+      }
+
+      if (!existingQuote) {
+        console.error(`[Stripe Webhook] Quote ${quoteId} not found`);
+        throw new Error(`Quote ${quoteId} not found`);
+      }
+
+      console.log(`[Stripe Webhook] Found quote ${quoteId}, updating status to payment_completed`);
+
+      // Update quote status using service role client
+      const { data: updatedQuote, error: updateError } = await supa
+        .from('quotes')
+        .update({
+          status: 'payment_completed',
+          updatedAt: new Date().toISOString()
+        })
+        .eq('id', quoteId)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error(`[Stripe Webhook] Error updating quote ${quoteId}:`, updateError);
+        throw new Error(`Failed to update quote: ${updateError.message}`);
+      }
+
+      if (!updatedQuote) {
+        console.error(`[Stripe Webhook] Quote ${quoteId} update returned no data`);
+        throw new Error(`Quote update returned no data`);
+      }
+
+      console.log(`[Stripe Webhook] Successfully updated quote ${quoteId} status to payment_completed`);
     } catch (error) {
       console.error('Error handling payment completion:', error);
       throw error;
