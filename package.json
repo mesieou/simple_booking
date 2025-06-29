@@ -6,7 +6,7 @@
     "dev": "next dev",
     "dev:mock": "MOCK_GPT=true next dev & npx next-video sync -w",
     "build": "next build",
-    "postbuild": "next-sitemap",
+    "postbuild": "npx next-sitemap",
     "start": "next start",
     "seed": "node -r dotenv/config scripts/seed.ts",
     "test": "jest",

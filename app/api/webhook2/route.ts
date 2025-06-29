@@ -9,7 +9,9 @@ import { WhatsappSender } from "@/lib/bot-engine/channels/whatsapp/whatsapp-mess
 import { type ParsedMessage, type BotResponse } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
 import { 
     handleEscalationOrAdminCommand, 
+    hasStickerContent,
 } from "@/lib/bot-engine/escalation/handler";
+import { handleAudioTranscription } from "@/lib/bot-engine/audio-transcription/audio-transcription-handler";
 import { getOrCreateChatContext } from "@/lib/bot-engine/session/session-manager";
 import { persistSessionState } from "@/lib/bot-engine/session/state-persister";
 import { handleFaqOrChitchat } from "@/lib/bot-engine/steps/faq/faq-handler";
@@ -138,11 +140,18 @@ export async function POST(req: NextRequest) {
     }
 
     const payload = JSON.parse(rawBody) as WebhookAPIBody;
-    const parsedEvent = parseWhatsappMessage(payload);
+    const parsedEvent = await parseWhatsappMessage(payload);
 
     if (parsedEvent && "text" in parsedEvent && parsedEvent.senderId && parsedEvent.text && parsedEvent.text.trim()) {
       const parsedMessage = parsedEvent;
       console.log(`${LOG_PREFIX} Successfully parsed message from ${parsedMessage.senderId}: "${parsedMessage.text}"`);
+
+      // Handle media attachments - convert message to preserve attachments
+      let hasAttachments = false;
+      if (parsedMessage.attachments && parsedMessage.attachments.length > 0) {
+        console.log(`${LOG_PREFIX} Message contains ${parsedMessage.attachments.length} attachment(s) - will preserve in persistent flow`);
+        hasAttachments = true;
+      }
 
       const participant: ConversationalParticipant = {
         id: parsedMessage.senderId,
@@ -194,8 +203,9 @@ export async function POST(req: NextRequest) {
                         chatContext.currentConversationSession, 
                         undefined, // No active goal
                         parsedMessage.text || '', 
-                        waitingMessage, // Save the waiting message to history
-                        historyForLLM // Preserve full history during escalation
+                        { text: waitingMessage }, // Pass as BotResponse object
+                        historyForLLM, // Preserve full history during escalation
+                        parsedMessage // Pass original message for attachments
                     );
                 }
 
@@ -213,7 +223,8 @@ export async function POST(req: NextRequest) {
                         undefined, // No active goal
                         parsedMessage.text || '', 
                         '', // No bot response during staff assistance
-                        historyForLLM // Preserve full history during escalation - dont delete
+                        historyForLLM, // Preserve full history during escalation - dont delete
+                        parsedMessage // Pass original message for attachments
                     );
                 }
 
@@ -232,6 +243,28 @@ export async function POST(req: NextRequest) {
           console.log(`${LOG_PREFIX} Language detection: ${languageResult.reason}`);
         }
         // --- End Language Detection ---
+
+        // --- Special Handling for Stickers (save to history but don't escalate or respond) ---
+        if (hasStickerContent(parsedMessage.text)) {
+            console.log(`${LOG_PREFIX} Sticker detected in message: "${parsedMessage.text}". Saving to history but not escalating or responding.`);
+            
+            // Save ONLY the user's sticker message to history (no bot response)
+            if (chatContext.currentConversationSession) {
+                await persistSessionState(
+                    sessionId, 
+                    userContext, 
+                    chatContext.currentConversationSession, 
+                    undefined, // No active goal
+                    parsedMessage.text || '', 
+                    '', // No bot response for stickers
+                    historyForLLM, // Preserve full history
+                    parsedMessage // Pass original message for attachments (sticker will be preserved)
+                );
+            }
+
+            console.log(`${LOG_PREFIX} Sticker saved to history for session ${sessionId}. Bot remains silent.`);
+            return NextResponse.json({ status: 'ok', message: 'Sticker received and saved to history.' });
+        }
 
         // --- Step 1: Check for Escalation ---
         if (chatContext.currentConversationSession && !escalationStatus) {
@@ -260,26 +293,72 @@ export async function POST(req: NextRequest) {
                         chatContext.currentConversationSession, 
                         undefined, 
                         parsedMessage.text || '', 
-                        escalationResult.response.text || '',
-                        historyForLLM // Pass full history
+                        escalationResult.response, // Pass the full BotResponse object
+                        historyForLLM, // Pass full history
+                        parsedMessage // Pass original message for attachments
                     );
                 }
                 return NextResponse.json({ status: "success - handled by escalation system" }, { status: 200 });
             }
         }
         
+        // --- Step 1.5: Audio Transcription (if not escalated) ---
+        const audioTranscriptionResult = await handleAudioTranscription(
+            parsedMessage.text || '', 
+            parsedMessage.attachments, 
+            chatContext
+        );
+        
+        if (audioTranscriptionResult.wasProcessed) {
+            console.log(`${LOG_PREFIX} Audio transcription processed. Original: "${audioTranscriptionResult.originalMessage}" -> Transcribed: "${audioTranscriptionResult.transcribedMessage}"`);
+            
+            // If transcription failed (error message), send it directly to user
+            if (audioTranscriptionResult.error) {
+                console.log(`${LOG_PREFIX} Audio transcription failed, sending error message to user`);
+                const sender = new WhatsappSender();
+                await sender.sendMessage(parsedMessage.senderId, { text: audioTranscriptionResult.transcribedMessage }, parsedMessage.recipientId);
+                
+                // Save error message to history
+                if (chatContext.currentConversationSession) {
+                    await persistSessionState(
+                        sessionId, 
+                        userContext, 
+                        chatContext.currentConversationSession, 
+                        undefined,
+                        parsedMessage.text || '', 
+                        { text: audioTranscriptionResult.transcribedMessage }, // Pass as BotResponse
+                        historyForLLM,
+                        parsedMessage // Pass original message to preserve audio in attachments
+                    );
+                }
+                
+                return NextResponse.json({ status: "success - audio transcription error sent" }, { status: 200 });
+            }
+            
+            // Update the message text with transcribed content for bot processing
+            parsedMessage.text = audioTranscriptionResult.transcribedMessage;
+            console.log(`${LOG_PREFIX} Audio successfully transcribed, updated message text for bot processing: "${parsedMessage.text}"`);
+        }
+        
         // --- Step 2: If not escalated, decide between FAQ/Chitchat and Booking Flow ---
         let botManagerResponse: BotResponse | null = null;
         const userCurrentGoal = chatContext.currentConversationSession?.activeGoals.find(g => g.goalStatus === 'inProgress');
 
-        if (parsedMessage.text.toUpperCase() === START_BOOKING_PAYLOAD.toUpperCase() || (userCurrentGoal && userCurrentGoal.goalType === 'serviceBooking')) {
+        // Check if message contains the booking payload (handles [INTERACTIVE_REPLY] prefix)
+        const messageContainsBookingPayload = parsedMessage.text.toUpperCase().includes(START_BOOKING_PAYLOAD.toUpperCase());
+        
+        if (messageContainsBookingPayload || (userCurrentGoal && userCurrentGoal.goalType === 'serviceBooking')) {
             console.log(`${LOG_PREFIX} User is starting or continuing a booking flow. Routing to main engine.`);
             
-            if (parsedMessage.text.toUpperCase() === START_BOOKING_PAYLOAD.toUpperCase() && userCurrentGoal) {
+            if (messageContainsBookingPayload && userCurrentGoal) {
                 userCurrentGoal.goalStatus = 'completed';
             }
 
-            botManagerResponse = await processIncomingMessage(parsedMessage.text, participant);
+            botManagerResponse = await processIncomingMessage(
+              parsedMessage.text, 
+              participant, 
+              historyForLLM
+            );
             
         } else {
             console.log(`${LOG_PREFIX} No active booking goal. Routing to FAQ/Chitchat handler.`);
@@ -295,8 +374,9 @@ export async function POST(req: NextRequest) {
                     chatContext.currentConversationSession, 
                     undefined,
                     parsedMessage.text, 
-                    botManagerResponse.text,
-                    historyForLLM // Pass full history
+                    botManagerResponse, // Pass the full BotResponse object
+                    historyForLLM, // Pass full history
+                    parsedMessage // Pass original message for attachments
                 );
             }
         }
@@ -410,3 +490,5 @@ async function translateBotResponse(response: BotResponse, targetLanguage: strin
         return response; // Return original on error
     }
 } 
+
+ 

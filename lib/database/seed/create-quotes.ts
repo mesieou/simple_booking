@@ -41,7 +41,7 @@ export async function createQuotes(
       dropOff: faker.location.streetAddress(),
       userId: client.id!,
       businessId: business.id!,
-      serviceId: service.id!,
+      serviceIds: [service.id!],
       travelTimeEstimate,
       totalJobDurationEstimation,
       travelCostEstimate,

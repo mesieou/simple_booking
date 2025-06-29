@@ -222,6 +222,30 @@ export class ServiceDataProcessor {
       return `${index + 1}. ${serviceName}${detailsText}`;
     }).join('\n');
   }
+
+  // Calculate total duration from multiple selected services
+  static calculateTotalServiceDuration(currentGoalData: any): number {
+    const selectedServices = currentGoalData.selectedServices || [];
+    const selectedService = currentGoalData.selectedService;
+    
+    // If we have multiple services, calculate total duration
+    if (selectedServices.length > 0) {
+      const totalDuration = selectedServices.reduce((total: number, service: any) => {
+        return total + (service.durationEstimate || 0);
+      }, 0);
+      
+      console.log(`[ServiceDataProcessor] Calculated total duration from ${selectedServices.length} services: ${totalDuration} minutes`);
+      console.log(`[ServiceDataProcessor] Services: ${selectedServices.map((s: any) => `${s.name} (${s.durationEstimate}min)`).join(', ')}`);
+      
+      return totalDuration;
+    }
+    
+    // Fallback to single service duration
+    const singleServiceDuration = selectedService?.durationEstimate || 0;
+    console.log(`[ServiceDataProcessor] Using single service duration: ${singleServiceDuration} minutes`);
+    
+    return singleServiceDuration;
+  }
 }
 
 export class BookingButtonGenerator {
@@ -522,13 +546,34 @@ export class AvailabilityService {
       availabilityData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
       
       for (const dayData of availabilityData) {
+        // Check if provider works on this day of the week before processing slots
+        // Extract just the date part (YYYY-MM-DD) from the date string
+        const dateOnly = dayData.date.split('T')[0]; // Get just "2025-06-30" part
+        const targetDate = new Date(dateOnly + 'T00:00:00.000Z');
+        const dayOfWeek = targetDate.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
+        const dayNames = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+        const dayKey = dayNames[dayOfWeek] as keyof CalendarSettings["workingHours"];
+        
+        // Add debugging for the day calculation
+        console.log(`[AvailabilityService] Date: ${dayData.date} -> ${dateOnly}, dayOfWeek: ${dayOfWeek}, dayKey: ${dayKey}`);
+        console.log(`[AvailabilityService] targetDate: ${targetDate.toISOString()}, isValid: ${!isNaN(targetDate.getTime())}`);
+        
+        const workingHours = calendarSettings?.workingHours[dayKey];
+
+        if (!workingHours) {
+          console.log(`[AvailabilityService] Provider doesn't work on ${dayKey} (${dayData.date}), skipping day`);
+          console.log(`[AvailabilityService] Calendar settings:`, calendarSettings?.workingHours);
+          continue;
+        }
+
         const slotsForDuration = dayData.slots[durationKey] || [];
         
         for (const timeSlot of slotsForDuration) {
           const [hours, minutes] = timeSlot.split(':');
           
           if (minutes === '00') {
-            const datePart = dayData.date.substring(0, 10);
+            // Use the same dateOnly extraction for consistency
+            const datePart = dateOnly; // Already extracted above
             const slotDateTime = DateTime.fromISO(`${datePart}T${timeSlot}`, { zone: providerTimezone });
             
             if (slotDateTime.isValid && slotDateTime > nowInProviderTz) {
@@ -648,6 +693,49 @@ export class AvailabilityService {
     chatContext: ChatContext
   ): Promise<boolean> {
     try {
+      // First, check if the provider works on this day of the week
+      const userIdOfBusinessOwner = await this.findUserIdByBusinessWhatsappNumber(businessWhatsappNumber, chatContext);
+      if (!userIdOfBusinessOwner) {
+        console.error('[ValidateCustomDate] No business owner found for this WhatsApp number');
+        return false;
+      }
+
+      const businessId = chatContext.currentParticipant.associatedBusinessId;
+      if (!businessId) {
+        console.error('[ValidateCustomDate] No associated business ID found in context for calendar settings lookup.');
+        return false;
+      }
+
+      // Get calendar settings to check working hours
+      const calendarSettings = await CalendarSettings.getByUserAndBusiness(userIdOfBusinessOwner, businessId);
+      if (!calendarSettings) {
+        console.error('[ValidateCustomDate] No calendar settings found for provider');
+        return false;
+      }
+
+      // Check if provider works on this day of the week
+      // Extract just the date part (YYYY-MM-DD) from the date string
+      const dateOnly = date.split('T')[0]; // Get just "2025-06-30" part  
+      const targetDate = new Date(dateOnly + 'T00:00:00.000Z');
+      const dayOfWeek = targetDate.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
+      const dayNames = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+      const dayKey = dayNames[dayOfWeek] as keyof CalendarSettings["workingHours"];
+      
+      // Add debugging for the day calculation
+      console.log(`[ValidateCustomDate] Date: ${date} -> ${dateOnly}, dayOfWeek: ${dayOfWeek}, dayKey: ${dayKey}`);
+      console.log(`[ValidateCustomDate] targetDate: ${targetDate.toISOString()}, isValid: ${!isNaN(targetDate.getTime())}`);
+      
+      const workingHours = calendarSettings.workingHours[dayKey];
+
+      console.log(`[ValidateCustomDate] Date: ${date}, Day of week: ${dayOfWeek} (${dayKey}), Working hours: ${workingHours ? `${workingHours.start}-${workingHours.end}` : 'NOT WORKING'}`);
+      console.log(`[ValidateCustomDate] Calendar settings:`, calendarSettings.workingHours);
+
+      if (!workingHours) {
+        console.log(`[ValidateCustomDate] Provider doesn't work on ${dayKey}, rejecting date ${date}`);
+        return false;
+      }
+
+      // If provider works on this day, check if there are available slots
       const availableHoursForThisBusinessAndDate = await AvailabilityService.getAvailableHoursForDateByBusinessWhatsapp(businessWhatsappNumber, date, serviceDuration, chatContext);
       console.log(`[ValidateCustomDate] Date: ${date}, Service Duration: ${serviceDuration}, Available Hours: [${availableHoursForThisBusinessAndDate.join(', ')}], Has Availability: ${availableHoursForThisBusinessAndDate.length > 0}`);
       return availableHoursForThisBusinessAndDate.length > 0;

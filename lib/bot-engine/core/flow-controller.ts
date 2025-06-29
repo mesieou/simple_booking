@@ -55,6 +55,14 @@ export class FlowController {
     
     if (goalData.browseModeSelected) {
       console.log('[FlowController] Browse mode active - using normal sequential flow');
+      
+      // CRITICAL FIX: First check if the current step still needs data, even in browse mode
+      const currentStepName = currentSteps[currentStepIndex];
+      if (currentStepName && this.stepNeedsData(currentStepName, goalData)) {
+        console.log(`[FlowController] Browse mode: Current step ${currentStepName} still needs data - staying on current step`);
+        return currentStepName;
+      }
+      
       let nextStepIndex = currentStepIndex + 1;
       
       while (nextStepIndex < currentSteps.length && shouldSkipStep(currentSteps[nextStepIndex], goalData)) {
@@ -119,41 +127,113 @@ export class FlowController {
   private stepNeedsData(stepName: string, collectedData: Record<string, any>): boolean {
     const stepLower = stepName.toLowerCase();
     
-    // Check for initial service selection step
+    // ===================================================================
+    // STEPS THAT NEED USER INPUT (explicit whitelist approach)
+    // ===================================================================
+    
+    // Service selection steps
     if (stepLower === 'selectservice') {
-      // Only needs data if no service selected yet
       return !collectedData.selectedService;
     }
     
-    // Check for additional services step
     if (stepLower === 'addadditionalservices') {
-      // Needs data if not completed
       return collectedData.addServicesState !== 'completed';
     }
     
-    // Check for address/location steps
-    if (stepLower.includes('address') && !collectedData.customerAddress) return true;
-    
-    // FIXED: confirmLocation just needs services to determine location, not finalServiceAddress
-    if (stepLower === 'confirmlocation') {
-      // Check if we have services to process (either selectedServices array or single selectedService)
-      const hasServices = (collectedData.selectedServices && collectedData.selectedServices.length > 0) || 
-                         collectedData.selectedService;
-      return !hasServices;
+    // Time/Date selection steps (but only non-auto-advance ones)
+    if (stepLower === 'showavailabletimes') {
+      // Always needs to be shown to display time options
+      return true;
     }
     
-    if ((stepLower.includes('time') || stepLower.includes('date') || stepLower.includes('day') || stepLower.includes('hour')) && (!collectedData.selectedDate || !collectedData.selectedTime)) return true;
-    if ((stepLower.includes('user') || stepLower.includes('name')) && !collectedData.userId && !collectedData.existingUserFound) return true;
-    if ((stepLower.includes('quote') || stepLower.includes('summary')) && (!collectedData.selectedService || !collectedData.selectedDate || !collectedData.selectedTime || !collectedData.finalServiceAddress)) return true;
+    if (stepLower === 'showdaybrowser') {
+      return !collectedData.selectedDate;
+    }
     
-    if (stepLower.includes('createbooking') || stepLower.includes('booking')) {
-      if (collectedData.paymentLinkGenerated && !collectedData.paymentCompleted) {
-        console.log('[FlowController] Booking creation blocked - payment required but not completed');
+    if (stepLower === 'selectspecificday') {
+      return !collectedData.selectedDate;
+    }
+    
+    if (stepLower === 'showhoursforday') {
+      return !collectedData.selectedTime;
+    }
+    
+    if (stepLower === 'selectspecifictime') {
+      return !collectedData.selectedTime;
+    }
+    
+    // Address/Location steps that need user input
+    if (stepLower === 'askaddress') {
+      return !collectedData.customerAddress;
+    }
+    
+    if (stepLower === 'validateaddress') {
+      return !collectedData.addressConfirmed && !collectedData.isAddressValidated;
+    }
+    
+    // User information steps that need input
+    if (stepLower === 'askusername') {
+      return !collectedData.existingUserFound && !collectedData.customerName;
+    }
+
+    if (stepLower === 'createnewuser') {
+      // This step needs to "run" if we have a customer name but no ID yet.
+      // This will halt the flow here until this step is processed and we get a userId.
+      return !collectedData.existingUserFound && !!collectedData.customerName && !collectedData.userId;
+    }
+    
+    if (stepLower === 'askemail') {
+      return !collectedData.customerEmail;
+    }
+    
+    // Quote and booking choice steps
+    if (stepLower === 'quotesummary') {
+      // Needs data if we don't have all required booking information
+      return !(
+        collectedData.selectedService && 
+        collectedData.selectedDate && 
+        collectedData.selectedTime && 
+        collectedData.finalServiceAddress
+      );
+    }
+    
+    if (stepLower === 'handlequotechoice') {
+      // Needs user choice ONLY if a quote has actually been presented.
+      const quotePresented = !!collectedData.persistedQuote || !!collectedData.bookingSummary;
+      if (!quotePresented) {
         return false;
       }
+
+      // If a quote is presented, it needs a choice, unless payment is done or quote is confirmed.
+      const paymentCompleted = collectedData.paymentCompleted;
+      const quoteConfirmed = collectedData.quoteConfirmedFromSummary;
+      if (paymentCompleted || quoteConfirmed) {
+        return false; // Choice has been made, so we can advance.
+      }
+      
+      // If we are waiting for a payment link to be clicked, we should wait.
+      const paymentLinkGenerated = collectedData.paymentLinkGenerated;
+      if (paymentLinkGenerated && !paymentCompleted) {
+        return true; // Waiting for payment, so we need to stay.
+      }
+      
+      // Default case: a quote is presented and needs a choice.
+      return true;
     }
     
-    return true;
+    // ===================================================================
+    // DEFAULT: AUTO-ADVANCE STEPS DON'T NEED DATA (safe default)
+    // ===================================================================
+    
+    // All other steps are auto-advance and complete after execution:
+    // - checkExistingUser
+    // - handleUserStatus  
+    // - confirmLocation
+    // - handleTimeChoice
+    // - createBooking
+    // - bookingConfirmation
+    // - validateAddress (when auto-confirming)
+    return false;
   }
 
   private mapToActualStep(suggestedStep: string, flowKey: string): string | undefined {
@@ -213,6 +293,7 @@ export class FlowController {
       collectedData.bookingSummary = undefined;
       collectedData.persistedQuote = undefined;
       collectedData.quoteId = undefined;
+      collectedData.browseModeSelected = undefined;
     }
     
     if (stepLower === 'addadditionalservices') {

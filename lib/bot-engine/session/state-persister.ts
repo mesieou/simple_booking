@@ -5,6 +5,8 @@ import {
 import { persistSessionState as persistState } from "@/lib/shared/llm/functions/save-history-and-context";
 import { UserContext } from "@/lib/database/models/user-context";
 import { ChatMessage } from "@/lib/database/models/chat-session";
+import { ParsedMessage, BotResponse } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
+import { convertParsedMessageToChatMessage } from "@/lib/bot-engine/utils/message-converter";
 
 // Persists the updated conversation state to the database
 export async function persistSessionState(
@@ -13,8 +15,9 @@ export async function persistSessionState(
   activeSession: ChatConversationSession,
   currentGoal: UserGoal | undefined,
   userMessage: string,
-  botResponse: string,
-  fullHistory?: ChatMessage[]
+  botResponse: string | BotResponse,
+  fullHistory?: ChatMessage[],
+  parsedMessage?: ParsedMessage // NEW: Include original parsed message for attachments
 ): Promise<void> {
   try {
     let updatedContext: any;
@@ -81,29 +84,87 @@ export async function persistSessionState(
       .slice()
       .reverse()
       .find((msg) => msg.role === "user");
-    const isNewMessage =
-      !lastUserMessage || lastUserMessage.content !== userMessage;
+    
+    let isNewMessage = true;
+    
+    if (lastUserMessage) {
+      // For messages with attachments, be more intelligent about duplicates
+      if (parsedMessage && parsedMessage.attachments && parsedMessage.attachments.length > 0) {
+        // For media messages, only consider it duplicate if:
+        // 1. Same content AND
+        // 2. Same exact timestamp (within 5 seconds) AND 
+        // 3. Same messageId (if available)
+        const timeDiff = Math.abs(
+          new Date().getTime() - new Date(lastUserMessage.timestamp || 0).getTime()
+        );
+        const isSameMessageId = parsedMessage.messageId && 
+          lastUserMessage.content === userMessage && 
+          timeDiff < 5000; // Within 5 seconds
+        
+        isNewMessage = !isSameMessageId;
+        
+        if (!isNewMessage) {
+          console.log(`[StatePersister] Detected true duplicate media message (same ID/timestamp): "${userMessage}"`);
+        } else {
+          console.log(`[StatePersister] Media message with same content but different context - treating as new message`);
+        }
+      } else {
+        // For text messages, use original logic but with time consideration
+        const timeDiff = Math.abs(
+          new Date().getTime() - new Date(lastUserMessage.timestamp || 0).getTime()
+        );
+        const isRecentDuplicate = lastUserMessage.content === userMessage && timeDiff < 5000; // Within 5 seconds
+        
+        isNewMessage = !isRecentDuplicate;
+        
+        if (!isNewMessage) {
+          console.log(`[StatePersister] Detected recent duplicate text message: "${userMessage}"`);
+        }
+      }
+    }
 
     if (isNewMessage) {
       const currentTimestamp = new Date().toISOString();
 
-      // Always add the user message
-      chatMessages.push({
-        role: "user",
-        content: userMessage,
-        timestamp: currentTimestamp,
-      });
-
-      // Only add bot response if it's not empty (avoid ghost messages)
-      if (botResponse && botResponse.trim() !== "") {
+      // Check if we have a ParsedMessage with attachments
+      if (parsedMessage && parsedMessage.attachments && parsedMessage.attachments.length > 0) {
+        console.log(`[StatePersister] Converting ParsedMessage with ${parsedMessage.attachments.length} attachments`);
+        
+        // Use the converter to preserve attachments
+        const userMessageWithAttachments = convertParsedMessageToChatMessage(parsedMessage, 'user');
+        chatMessages.push(userMessageWithAttachments);
+        
+        console.log(`[StatePersister] Added user message with attachments: "${userMessage}"`);
+      } else {
+        // Regular message without attachments
         chatMessages.push({
-          role: "bot",
-          content: botResponse,
+          role: "user",
+          content: userMessage,
           timestamp: currentTimestamp,
         });
-        console.log(
-          `[StatePersister] Adding message pair: user="${userMessage}", bot="${botResponse}"`
-        );
+      }
+
+      // Only add bot response if it's not empty (avoid ghost messages)
+      if (botResponse) {
+        if (typeof botResponse === 'string' && botResponse.trim() !== "") {
+          // Handle plain text bot response
+          chatMessages.push({
+            role: "bot",
+            content: botResponse,
+            displayType: 'text',
+            timestamp: currentTimestamp,
+          });
+          console.log(`[StatePersister] Adding message pair: user="${userMessage}", bot="${botResponse}"`);
+        } else if (typeof botResponse === 'object' && botResponse.text && botResponse.text.trim() !== "") {
+          // Handle rich BotResponse object
+          chatMessages.push({
+            role: "bot",
+            content: botResponse, // Store the entire object
+            displayType: 'interactive',
+            timestamp: currentTimestamp,
+          });
+          console.log(`[StatePersister] Adding message pair: user="${userMessage}", bot="[Interactive Message]"`);
+        }
       } else {
         console.log(
           `[StatePersister] Adding user message only: user="${userMessage}" (bot silent)`

@@ -6,8 +6,29 @@ import { getServiceRoleClient } from "../supabase/service-role";
 // Represents a single message within the allMessages array
 export interface ChatMessage {
   role: 'user' | 'bot' | 'staff';
-  content: string;
+  content: string | BotResponseMessage; // Can be simple text or a rich response object
   timestamp?: string; // ISO date string, when the message was recorded in allMessages
+  displayType?: 'text' | 'interactive'; // Helps frontend decide how to render
+  attachments?: Array<{
+    type: 'image' | 'video' | 'document' | 'audio' | 'sticker';
+    url: string;
+    caption?: string;
+    originalFilename?: string;
+    mimeType?: string;
+    size?: number;
+  }>; // Optional field for media content
+}
+
+// Represents the interactive message format from the bot
+export interface BotResponseMessage {
+  text?: string;
+  buttons?: Array<{ 
+    buttonText: string;
+    buttonValue: string;
+    buttonDescription?: string;
+  }>;
+  listActionText?: string;
+  listSectionTitle?: string;
 }
 
 // Interface for the actual database schema of the chatSessions table
