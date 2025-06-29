@@ -155,7 +155,9 @@ async function analyzeFrustrationPattern(
       // Check previous messages (in reverse order) for consecutive frustration
       for (let i = messagesToAnalyze.length - 1; i >= 0; i--) {
         const msg = messagesToAnalyze[i];
-        if (msg.role === 'user' && msg.content !== currentMessage) {
+        
+        // Only analyze user messages that are strings
+        if (msg.role === 'user' && typeof msg.content === 'string' && msg.content !== currentMessage) {
           const msgSentiment = await analyzeSentiment(msg.content);
           if (msgSentiment && msgSentiment.category === 'frustrated') {
             consecutiveFrustratedCount++;

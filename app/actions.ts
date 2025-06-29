@@ -2,6 +2,9 @@
 
 import { createClient } from "@/lib/database/supabase/server";
 import { redirect } from "next/navigation";
+import { getServiceRoleClient } from "@/lib/database/supabase/service-role";
+import { type BotResponse } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
+import { ChatSession } from "@/lib/database/models/chat-session";
 
 export async function signUpAction(formData: FormData) {
   const email = formData.get("email") as string;
@@ -101,12 +104,26 @@ export async function resetPasswordAction(formData: FormData) {
   redirect("/sign-in?message=Password updated successfully");
 }
 
-// Define the shape of a chat message that the UI components expect
+// Represents the interactive message format from the bot for the frontend
+export interface BotResponseMessage {
+  text?: string;
+  buttons?: Array<{ 
+    buttonText: string;
+    buttonValue: string;
+    buttonDescription?: string;
+  }>;
+  listActionText?: string;
+  listSectionTitle?: string;
+}
+
 export type ChatMessage = {
-  id: string; // For React key
-  content: string;
+  id: string;
+  role: 'user' | 'bot' | 'staff';
+  senderRole: 'customer' | 'bot' | 'staff';
+  content: string | BotResponseMessage;
+  timestamp?: string;
   createdAt: string;
-  senderRole: 'customer' | 'agent' | 'bot' | 'staff';
+  displayType?: 'text' | 'interactive';
   attachments?: Array<{
     type: 'image' | 'video' | 'document' | 'audio' | 'sticker';
     url: string;
@@ -117,20 +134,14 @@ export type ChatMessage = {
   }>;
 };
 
-// This represents the shape of a message as it's stored in the DB's JSONB column
+// This type represents the structure as it's stored in Supabase JSONB
 type StoredChatMessage = {
-  role: 'user' | 'bot' | 'agent' | 'staff';
-  content: string;
+  role: 'user' | 'bot' | 'staff';
+  content: string | BotResponseMessage; // Matches the DB schema
   timestamp?: string;
-  attachments?: Array<{
-    type: 'image' | 'video' | 'document' | 'audio' | 'sticker';
-    url: string;
-    caption?: string;
-    originalFilename?: string;
-    mimeType?: string;
-    size?: number;
-  }>;
-}
+  displayType?: 'text' | 'interactive';
+  attachments?: any; // Keep as 'any' for flexibility with DB a
+};
 
 /**
  * @deprecated Use getMessagesForUser instead. This function fetches messages from a single session only.
@@ -160,7 +171,6 @@ export async function getMessagesForSession(sessionId: string): Promise<ChatMess
   }
 
   // Use service role client for consistent behavior
-  const { getServiceRoleClient } = await import("@/lib/database/supabase/service-role");
   const serviceSupabase = getServiceRoleClient();
 
   // Fetch session with business validation for security
@@ -184,18 +194,23 @@ export async function getMessagesForSession(sessionId: string): Promise<ChatMess
     return [];
   }
 
-  // Cast the fetched messages to our stored type
+  // The 'allMessages' field is of type jsonb and contains an array of StoredChatMessage
   const storedMessages = data.allMessages as StoredChatMessage[];
 
-  // Transform the stored messages into the format the UI component expects
-  return storedMessages.map((msg, index) => ({
-    id: `${sessionId}-${index}`, // Create a stable key for React
+  if (!storedMessages) {
+    return [];
+  }
+
+  // No need for complex mapping if frontend ChatMessage matches StoredChatMessage
+  return storedMessages.map((msg: StoredChatMessage, index) => ({
+    ...msg,
+    id: `${sessionId}-${index}`, // Add a stable key for React
     content: msg.content,
-    createdAt: msg.timestamp || new Date().toISOString(), // Provide a fallback for the timestamp
-    // Map the 'role' from the DB to the 'senderRole' the UI expects
-    senderRole: msg.role === 'user' ? 'customer' : msg.role as 'agent' | 'bot' | 'staff',
-    // Include attachments if they exist
-    attachments: msg.attachments
+    createdAt: msg.timestamp || new Date().toISOString(),
+    senderRole: msg.role === 'user' ? 'customer' : msg.role, // Map back to senderRole
+    timestamp: msg.timestamp,
+    displayType: msg.displayType,
+    attachments: msg.attachments,
   }));
 }
 
@@ -221,7 +236,6 @@ export async function getMessagesForUser(channelUserId: string): Promise<ChatMes
     }
 
     // Import service role client for consistent behavior with conversations
-    const { getServiceRoleClient } = await import("@/lib/database/supabase/service-role");
     const serviceSupabase = getServiceRoleClient();
 
     // Fetch sessions with business validation for security
@@ -241,24 +255,30 @@ export async function getMessagesForUser(channelUserId: string): Promise<ChatMes
         return [];
     }
 
-    // Flatten all message arrays from all sessions into one array
+    // The 'allMessages' in each session is of type jsonb
     const allMessages: StoredChatMessage[] = sessions.flatMap(s => s.allMessages || []);
 
-    // Sort the combined messages by timestamp to ensure chronological order
+    if (!allMessages) {
+        return [];
+    }
+
+    // Re-add sorting to ensure chronological order
     allMessages.sort((a, b) => {
-        const dateA = new Date(a.timestamp || 0).getTime();
-        const dateB = new Date(b.timestamp || 0).getTime();
-        return dateA - dateB;
+      const dateA = new Date(a.timestamp || 0).getTime();
+      const dateB = new Date(b.timestamp || 0).getTime();
+      return dateA - dateB;
     });
 
-    // Transform the stored messages into the format the UI component expects
-    return allMessages.map((msg, index) => ({
-        id: `msg-${channelUserId}-${index}`, // Create a stable key
+    // No need for complex mapping if frontend ChatMessage matches StoredChatMessage
+    return allMessages.map((msg: StoredChatMessage, index) => ({
+        ...msg,
+        id: `msg-${channelUserId}-${index}`, // Add a stable key for React
         content: msg.content,
         createdAt: msg.timestamp || new Date().toISOString(),
-        senderRole: msg.role === 'user' ? 'customer' : msg.role as 'agent' | 'bot' | 'staff',
-        // Include attachments if they exist
-        attachments: msg.attachments
+        senderRole: msg.role === 'user' ? 'customer' : msg.role, // Map back to senderRole
+        timestamp: msg.timestamp,
+        displayType: msg.displayType,
+        attachments: msg.attachments,
     }));
 }
 
@@ -340,16 +360,84 @@ export async function getDashboardNotifications(): Promise<Array<{
     return notifications;
 }
 
-// TODO: move this to model
-export async function markNotificationAsRead(notificationId: string): Promise<void> {
-    const supabase = createClient();
-    
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-        throw new Error("Not authenticated");
-    }
+export async function markNotificationAsRead(notificationId: string) {
+  const supabase = createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-    // For now, we'll just store this in localStorage since we don't have notification_reads table yet
-    // This is a temporary solution until we implement the database table
-    console.log(`[Actions] Marking notification ${notificationId} as read for user ${user.id}`);
+  if (!user) {
+    console.error("[Actions] Attempted to mark notification as read without a user.");
+    return;
+  }
+
+  // This is a temporary solution until we implement the database table
+  console.log(`[Actions] Marking notification ${notificationId} as read for user ${user.id}`);
+}
+
+export async function getBusinessConversationsData(userId: string, preselectedSessionId?: string) {
+  // ... existing code ...
+}
+
+export async function getChannelUserIdBySessionId(sessionId: string): Promise<string | null> {
+  const businessId = await getUserBusinessId();
+  if (!businessId) {
+    console.error(`[Actions] Could not determine businessId for current user.`);
+    return null;
+  }
+  
+  try {
+    const channelUserId = await ChatSession.getChannelUserIdBySessionId(sessionId, businessId);
+    return channelUserId;
+  } catch (error) {
+    console.error(`[Actions] Error fetching channelUserId for session ${sessionId}:`, error);
+    return null;
+  }
+}
+
+export async function finishAssistance(sessionId: string) {
+  const supa = createClient();
+
+  const { error } = await supa.functions.invoke('finish-assistance', {
+    body: { sessionId },
+  });
+
+  if (error) {
+    console.error('Error finishing assistance:', error);
+    throw new Error('Could not finish assistance');
+  }
+
+  console.log(`[Actions] Assistance finished for session ${sessionId}`);
+  redirect('/protected');
+}
+
+export async function takeControl(sessionId: string) {
+  const supa = createClient();
+
+  const { error } = await supa.functions.invoke('take-control', {
+    body: { sessionId },
+  });
+
+  if (error) {
+    console.error('Error taking control:', error);
+    throw new Error('Could not take control');
+  }
+
+  console.log(`[Actions] Took control of session ${sessionId}`);
+  redirect('/protected');
+}
+
+export async function sendStaffReply(sessionId: string, message: string) {
+  const supa = createClient();
+
+  const { error } = await supa.functions.invoke('staff-reply', {
+    body: { sessionId, message },
+  });
+
+  if (error) {
+    console.error('Error sending staff reply:', error);
+    throw new Error('Could not send reply');
+  }
+
+  console.log(`[Actions] Staff reply sent for session ${sessionId}`);
 } 

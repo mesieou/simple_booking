@@ -175,6 +175,12 @@ export class FlowController {
     if (stepLower === 'askusername') {
       return !collectedData.existingUserFound && !collectedData.customerName;
     }
+
+    if (stepLower === 'createnewuser') {
+      // This step needs to "run" if we have a customer name but no ID yet.
+      // This will halt the flow here until this step is processed and we get a userId.
+      return !collectedData.existingUserFound && !!collectedData.customerName && !collectedData.userId;
+    }
     
     if (stepLower === 'askemail') {
       return !collectedData.customerEmail;
@@ -192,20 +198,27 @@ export class FlowController {
     }
     
     if (stepLower === 'handlequotechoice') {
-      // Needs user choice unless payment completed or quote confirmed
+      // Needs user choice ONLY if a quote has actually been presented.
+      const quotePresented = !!collectedData.persistedQuote || !!collectedData.bookingSummary;
+      if (!quotePresented) {
+        return false;
+      }
+
+      // If a quote is presented, it needs a choice, unless payment is done or quote is confirmed.
       const paymentCompleted = collectedData.paymentCompleted;
       const quoteConfirmed = collectedData.quoteConfirmedFromSummary;
-      const paymentLinkGenerated = collectedData.paymentLinkGenerated;
-      
       if (paymentCompleted || quoteConfirmed) {
-        return false; // Choice has been made
+        return false; // Choice has been made, so we can advance.
       }
       
+      // If we are waiting for a payment link to be clicked, we should wait.
+      const paymentLinkGenerated = collectedData.paymentLinkGenerated;
       if (paymentLinkGenerated && !paymentCompleted) {
-        return true; // Waiting for payment
+        return true; // Waiting for payment, so we need to stay.
       }
       
-      return true; // Needs user to make a choice
+      // Default case: a quote is presented and needs a choice.
+      return true;
     }
     
     // ===================================================================
@@ -215,7 +228,6 @@ export class FlowController {
     // All other steps are auto-advance and complete after execution:
     // - checkExistingUser
     // - handleUserStatus  
-    // - createNewUser
     // - confirmLocation
     // - handleTimeChoice
     // - createBooking

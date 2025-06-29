@@ -5,7 +5,7 @@ import { createClient } from '@/lib/database/supabase/client';
 import { RealtimeChannel } from '@supabase/supabase-js';
 
 type UseRealtimeChatProps = {
-  userBusinessId?: string;
+  userBusinessId: string | null;
   selectedUserId?: string;
   onMessagesUpdate: (channelUserId: string) => void;
   onConversationsUpdate: () => void;
@@ -89,11 +89,20 @@ export function useRealtimeChat({
   }, [userBusinessId, supabase]);
 
   useEffect(() => {
-    if (!userBusinessId) return;
+    // Wait until we have a valid business ID before subscribing
+    if (!userBusinessId) {
+      // If there's an active channel, clean it up
+      if (channelRef.current) {
+        console.log('[Realtime] Business ID is null, cleaning up existing channel.');
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+      return;
+    }
     
     // Prevent multiple simultaneous connections
-    if (isConnectingRef.current) {
-      console.log('[Realtime] Connection already in progress, skipping...');
+    if (channelRef.current?.state === 'joined') {
+      console.log('[Realtime] Connection already established, skipping...');
       return;
     }
 

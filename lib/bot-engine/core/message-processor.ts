@@ -6,6 +6,7 @@ import {
   ButtonConfig,
   ChatConversationSession,
 } from "@/lib/bot-engine/types";
+import { ChatMessage } from "@/lib/database/models/chat-session";
 import { BotResponse } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
 import { getOrCreateChatContext } from "@/lib/bot-engine/session/session-manager";
 import { persistSessionState } from "@/lib/bot-engine/session/state-persister";
@@ -24,7 +25,8 @@ export class MessageProcessor {
 
   async processIncomingMessage(
     incomingUserMessage: string,
-    currentUser: ConversationalParticipant
+    currentUser: ConversationalParticipant,
+    historyForLLM?: ChatMessage[]
   ): Promise<BotResponse> {
     if (!incomingUserMessage || incomingUserMessage.trim() === "") {
       return { text: "" };
@@ -202,8 +204,17 @@ export class MessageProcessor {
     }
     // =================================================================
 
-    const { context: currentContext, sessionId, userContext, customerUser } =
-      await getOrCreateChatContext(currentUser);
+    const {
+      context: currentContext,
+      sessionId,
+      userContext,
+      historyForLLM: fetchedHistory,
+      customerUser,
+    } = await getOrCreateChatContext(currentUser);
+
+    // Use the history passed from the webhook if available, otherwise use the freshly fetched one.
+    const messageHistoryToUse = historyForLLM || fetchedHistory;
+
     let activeSession: ChatConversationSession =
       currentContext.currentConversationSession!;
     if (!activeSession) {
@@ -214,8 +225,7 @@ export class MessageProcessor {
     let userCurrentGoal: UserGoal | undefined = activeSession.activeGoals.find(
       (g) => g.goalStatus === "inProgress"
     );
-    let responseToUser: string;
-    let uiButtonsToDisplay: ButtonConfig[] | undefined;
+    let botResponse: BotResponse;
 
     await LanguageDetectionService.detectAndUpdateLanguage(
       incomingUserMessage,
@@ -241,6 +251,23 @@ export class MessageProcessor {
         currentUser.type,
         currentContext
       );
+      
+      // --- FIX: Preserve existing message history ---
+      if (messageHistoryToUse && messageHistoryToUse.length > 0) {
+        userCurrentGoal.messageHistory = messageHistoryToUse.map((msg) => ({
+          speakerRole: msg.role === "user" ? "user" : "chatbot",
+          content:
+            typeof msg.content === "string"
+              ? msg.content
+              : (msg.content as any).text || "[Interactive Message]",
+          messageTimestamp: msg.timestamp ? new Date(msg.timestamp) : new Date(),
+        }));
+        console.log(
+          `[MessageProcessor] Preserved ${userCurrentGoal.messageHistory.length} messages from existing history.`
+        );
+      }
+      // --- END FIX ---
+
       activeSession.activeGoals = [userCurrentGoal];
 
       const result = await this.executeFirstStep(
@@ -248,8 +275,10 @@ export class MessageProcessor {
         currentContext,
         incomingUserMessage
       );
-      responseToUser = result.responseToUser;
-      uiButtonsToDisplay = result.uiButtonsToDisplay;
+      botResponse = {
+        text: result.responseToUser,
+        buttons: result.uiButtonsToDisplay,
+      };
     } else if (!userCurrentGoal) {
       const llmGoalDetectionResult = await this.llmService.detectIntention(
         incomingUserMessage,
@@ -268,22 +297,36 @@ export class MessageProcessor {
           currentContext,
           incomingUserMessage
         );
-        responseToUser = result.responseToUser;
-        uiButtonsToDisplay = result.uiButtonsToDisplay;
+        botResponse = {
+          text: result.responseToUser,
+          buttons: result.uiButtonsToDisplay,
+        };
       } else {
-        responseToUser =
-          "Could you tell me more clearly what you'd like to do?";
+        botResponse = {
+          text: "Could you tell me more clearly what you'd like to do?",
+          buttons: undefined,
+        };
       }
     } else {
       const result = await this.processExistingGoalIntelligent(
         userCurrentGoal,
         currentContext,
         incomingUserMessage,
+        messageHistoryToUse,
         customerUser
       );
-      responseToUser = result.responseToUser;
-      uiButtonsToDisplay = result.uiButtonsToDisplay;
+      botResponse = {
+        text: result.responseToUser,
+        buttons: result.uiButtonsToDisplay,
+      };
     }
+
+    // --- FIX: Persist the full BotResponse object ---
+    const finalResponse = {
+      ...botResponse,
+      listActionText: userCurrentGoal?.collectedData.listActionText,
+      listSectionTitle: userCurrentGoal?.collectedData.listSectionTitle,
+    };
 
     await persistSessionState(
       sessionId,
@@ -291,16 +334,12 @@ export class MessageProcessor {
       activeSession,
       userCurrentGoal,
       incomingUserMessage,
-      responseToUser
+      finalResponse, // Pass the complete object
+      messageHistoryToUse
     );
 
     return this.finalizeAndTranslateResponse(
-      {
-        text: responseToUser,
-        buttons: uiButtonsToDisplay,
-        listActionText: userCurrentGoal?.collectedData.listActionText,
-        listSectionTitle: userCurrentGoal?.collectedData.listSectionTitle,
-      },
+      finalResponse,
       currentContext
     );
   }
@@ -532,6 +571,7 @@ export class MessageProcessor {
     userCurrentGoal: UserGoal,
     currentContext: ChatContext,
     incomingUserMessage: string,
+    historyForLLM?: ChatMessage[],
     customerUser?: { firstName: string; lastName: string; id: string }
   ): Promise<{ responseToUser: string; uiButtonsToDisplay?: ButtonConfig[] }> {
     const messageHistory = userCurrentGoal.messageHistory.map((msg) => ({
@@ -570,6 +610,7 @@ export class MessageProcessor {
         currentContext,
         incomingUserMessage,
         undefined, // No conversation decision - let step handler process it
+        historyForLLM,
         customerUser
       );
     }
@@ -639,6 +680,7 @@ export class MessageProcessor {
         currentContext,
         incomingUserMessage,
         conversationDecision,
+        historyForLLM,
         customerUser
       );
     } catch (error) {
@@ -659,6 +701,7 @@ export class MessageProcessor {
     currentContext: ChatContext,
     incomingUserMessage: string,
     conversationDecision?: any,
+    historyForLLM?: ChatMessage[],
     customerUser?: { firstName: string; lastName: string; id: string }
   ): Promise<{ responseToUser: string; uiButtonsToDisplay?: ButtonConfig[] }> {
     userCurrentGoal.messageHistory.push({
@@ -1107,8 +1150,9 @@ export class MessageProcessor {
 
 export async function processIncomingMessage(
   incomingUserMessage: string,
-  currentUser: ConversationalParticipant
+  currentUser: ConversationalParticipant,
+  historyForLLM?: ChatMessage[]
 ): Promise<BotResponse> {
   const processor = new MessageProcessor();
-  return processor.processIncomingMessage(incomingUserMessage, currentUser);
+  return processor.processIncomingMessage(incomingUserMessage, currentUser, historyForLLM);
 }

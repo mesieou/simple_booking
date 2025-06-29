@@ -5,7 +5,8 @@ import { ChatLayout } from "./chat-layout";
 import { ChatList } from "./chat-list";
 import { ChatWindow } from "./chat-window";
 import { NotificationPanel } from "./notification-panel";
-import { getMessagesForUser, ChatMessage, getUserBusinessId, getBusinessConversations } from "../../actions";
+import { RightMenuPanel } from "./right-menu-panel";
+import { getMessagesForUser, ChatMessage, getUserBusinessId, getBusinessConversations } from "../../../actions";
 import { useRealtimeChat } from "../hooks/useRealtimeChat";
 
 // Represents a unique conversation with a user, aggregated from one or more sessions.
@@ -35,6 +36,8 @@ export default function ChatInterface({
   const [userBusinessId, setUserBusinessId] = useState<string | null>(null);
   const [chatStatusRefreshTrigger, setChatStatusRefreshTrigger] = useState<number>(0);
   const [notificationRefreshTrigger, setNotificationRefreshTrigger] = useState<number>(0);
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // Initialize business ID
   useEffect(() => {
@@ -111,7 +114,7 @@ export default function ChatInterface({
 
   // Setup realtime subscriptions
   const { isConnected } = useRealtimeChat({
-    userBusinessId: userBusinessId || undefined,
+    userBusinessId: userBusinessId,
     selectedUserId: selectedUserId || undefined,
     onMessagesUpdate: refreshMessages,
     onConversationsUpdate: refreshConversations,
@@ -161,6 +164,10 @@ export default function ChatInterface({
     setSelectedUserId(userId);
   };
 
+  const handleBack = () => {
+      setSelectedUserId(null);
+  }
+
   const handleMessageSent = useCallback(() => {
     // When a message is sent, this will be called by ChatWindow
     // The realtime subscription will automatically update the messages
@@ -170,9 +177,12 @@ export default function ChatInterface({
 
   const handleNotificationClick = useCallback((channelUserId: string, sessionId: string) => {
     console.log('[ChatInterface] Notification clicked for:', channelUserId, 'sessionId:', sessionId);
-    // Always just select the user - the conversation list will be updated by realtime
     setSelectedUserId(channelUserId);
-  }, []); // Remove dependencies to prevent re-creation
+    // Open the panel if it's closed on desktop
+    if (!isPanelOpen) {
+      setIsPanelOpen(true);
+    }
+  }, [isPanelOpen]);
   
   const selectedConversation = conversations.find(c => c.channelUserId === selectedUserId);
 
@@ -192,11 +202,19 @@ export default function ChatInterface({
         <ChatLayout
           selectedUserId={selectedUserId}
           hasNotifications={conversations.some(c => c.hasEscalation)}
+          onBack={handleBack}
+          isPanelOpen={isPanelOpen}
+          setIsPanelOpen={setIsPanelOpen}
+          isMenuOpen={isMenuOpen}
+          setIsMenuOpen={setIsMenuOpen}
           notificationPanel={
             <NotificationPanel
               onNotificationClick={handleNotificationClick}
               refreshTrigger={notificationRefreshTrigger}
             />
+          }
+          rightMenuPanel={
+            <RightMenuPanel onClose={() => setIsMenuOpen(false)} />
           }
           chatList={
             <ChatList
@@ -214,6 +232,7 @@ export default function ChatInterface({
                 sessionId={selectedSessionId || undefined}
                 onMessageSent={handleMessageSent}
                 chatStatusRefreshTrigger={chatStatusRefreshTrigger}
+                onBack={handleBack}
             />
           }
         />

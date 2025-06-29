@@ -5,7 +5,7 @@ import {
 import { persistSessionState as persistState } from "@/lib/shared/llm/functions/save-history-and-context";
 import { UserContext } from "@/lib/database/models/user-context";
 import { ChatMessage } from "@/lib/database/models/chat-session";
-import { ParsedMessage } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
+import { ParsedMessage, BotResponse } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
 import { convertParsedMessageToChatMessage } from "@/lib/bot-engine/utils/message-converter";
 
 // Persists the updated conversation state to the database
@@ -15,7 +15,7 @@ export async function persistSessionState(
   activeSession: ChatConversationSession,
   currentGoal: UserGoal | undefined,
   userMessage: string,
-  botResponse: string,
+  botResponse: string | BotResponse,
   fullHistory?: ChatMessage[],
   parsedMessage?: ParsedMessage // NEW: Include original parsed message for attachments
 ): Promise<void> {
@@ -145,15 +145,26 @@ export async function persistSessionState(
       }
 
       // Only add bot response if it's not empty (avoid ghost messages)
-      if (botResponse && botResponse.trim() !== "") {
-        chatMessages.push({
-          role: "bot",
-          content: botResponse,
-          timestamp: currentTimestamp,
-        });
-        console.log(
-          `[StatePersister] Adding message pair: user="${userMessage}", bot="${botResponse}"`
-        );
+      if (botResponse) {
+        if (typeof botResponse === 'string' && botResponse.trim() !== "") {
+          // Handle plain text bot response
+          chatMessages.push({
+            role: "bot",
+            content: botResponse,
+            displayType: 'text',
+            timestamp: currentTimestamp,
+          });
+          console.log(`[StatePersister] Adding message pair: user="${userMessage}", bot="${botResponse}"`);
+        } else if (typeof botResponse === 'object' && botResponse.text && botResponse.text.trim() !== "") {
+          // Handle rich BotResponse object
+          chatMessages.push({
+            role: "bot",
+            content: botResponse, // Store the entire object
+            displayType: 'interactive',
+            timestamp: currentTimestamp,
+          });
+          console.log(`[StatePersister] Adding message pair: user="${userMessage}", bot="[Interactive Message]"`);
+        }
       } else {
         console.log(
           `[StatePersister] Adding user message only: user="${userMessage}" (bot silent)`
