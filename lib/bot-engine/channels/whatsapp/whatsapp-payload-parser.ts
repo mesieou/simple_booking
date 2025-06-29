@@ -312,18 +312,23 @@ export async function parseWhatsappMessage(payload: WebhookAPIBody): Promise<Par
     }
 
     // For media messages, always include placeholder regardless of caption
+    // BUT exclude interactive_reply - those should be processed as pure text
     if (attachments && attachments.length > 0) {
       const mediaType = attachments[0].type;
-      const placeholder = `[${mediaType.toUpperCase()}]`;
       
-      if (textContent && textContent.trim()) {
-        // Combine placeholder with caption for escalation detection
-        textContent = `${placeholder} ${textContent}`;
-        console.log(`[WhatsappParser] Media message with caption detected. Combined: ${textContent}`);
-      } else {
-        // Just placeholder if no caption
-        textContent = placeholder;
-        console.log(`[WhatsappParser] Media message without caption detected. Using placeholder: ${textContent}`);
+      // Only add placeholder for actual media types, not interactive replies
+      if (mediaType !== 'interactive_reply') {
+        const placeholder = `[${mediaType.toUpperCase()}]`;
+        
+        if (textContent && textContent.trim()) {
+          // Combine placeholder with caption for escalation detection
+          textContent = `${placeholder} ${textContent}`;
+          console.log(`[WhatsappParser] Media message with caption detected. Combined: ${textContent}`);
+        } else {
+          // Just placeholder if no caption
+          textContent = placeholder;
+          console.log(`[WhatsappParser] Media message without caption detected. Using placeholder: ${textContent}`);
+        }
       }
     }
 

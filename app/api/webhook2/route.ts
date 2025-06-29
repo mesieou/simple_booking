@@ -344,10 +344,13 @@ export async function POST(req: NextRequest) {
         let botManagerResponse: BotResponse | null = null;
         const userCurrentGoal = chatContext.currentConversationSession?.activeGoals.find(g => g.goalStatus === 'inProgress');
 
-        if (parsedMessage.text.toUpperCase() === START_BOOKING_PAYLOAD.toUpperCase() || (userCurrentGoal && userCurrentGoal.goalType === 'serviceBooking')) {
+        // Check if message contains the booking payload (handles [INTERACTIVE_REPLY] prefix)
+        const messageContainsBookingPayload = parsedMessage.text.toUpperCase().includes(START_BOOKING_PAYLOAD.toUpperCase());
+        
+        if (messageContainsBookingPayload || (userCurrentGoal && userCurrentGoal.goalType === 'serviceBooking')) {
             console.log(`${LOG_PREFIX} User is starting or continuing a booking flow. Routing to main engine.`);
             
-            if (parsedMessage.text.toUpperCase() === START_BOOKING_PAYLOAD.toUpperCase() && userCurrentGoal) {
+            if (messageContainsBookingPayload && userCurrentGoal) {
                 userCurrentGoal.goalStatus = 'completed';
             }
 
