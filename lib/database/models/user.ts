@@ -31,6 +31,26 @@ class PhoneNumberUtils {
         const normalized = phone.replace(/[^\d]/g, '');
         return `+${normalized}`;
     }
+
+    /**
+     * Formats normalized phone number for display
+     * @param normalizedPhone - Normalized phone number (digits only)
+     * @returns Formatted phone number with + and spaces
+     */
+    static formatForDisplay(normalizedPhone: string): string {
+        if (!normalizedPhone) return '';
+        
+        // Add + prefix
+        const withPlus = `+${normalizedPhone}`;
+        
+        // Format based on length (basic formatting)
+        if (normalizedPhone.length >= 10) {
+            // International format: +XX XXX XXX XXX
+            return withPlus.replace(/(\+\d{2})(\d{3})(\d{3})(\d{3})/, '$1 $2 $3 $4');
+        }
+        
+        return withPlus;
+    }
 }
 
 /**
@@ -45,18 +65,27 @@ export class User {
     lastName: string;
     role: UserRole;
     businessId: string;
+    email?: string;
+    phoneNormalized?: string; // Store phone numbers as digits only
+    whatsAppNumberNormalized?: string;
 
     constructor(
         firstName: string,
         lastName: string,
         role: UserRole,
         businessId: string,
+        email?: string,
+        phoneNormalized?: string,
+        whatsAppNumberNormalized?: string
     ) {
         this.id = uuidv4();
         this.firstName = firstName;
         this.lastName = lastName;
         this.role = role;
         this.businessId = businessId;
+        this.email = email;
+        this.phoneNormalized = phoneNormalized;
+        this.whatsAppNumberNormalized = whatsAppNumberNormalized;
     }
 
     //creates a user in supa
@@ -127,6 +156,8 @@ export class User {
             lastName: this.lastName,
             role: this.role,
             businessId: this.businessId,
+            email: this.email || options?.email || email, // Store provider email
+            phoneNormalized: this.phoneNormalized, // Store normalized phone (digits only)
         };
         
         // Add WhatsApp number fields if provided
@@ -183,7 +214,15 @@ export class User {
             handleModelError(`User with id ${id} not found`, new Error("User not found"));
         }
         
-        const user = new User(data.firstName, data.lastName, data.role, data.businessId);
+        const user = new User(
+            data.firstName, 
+            data.lastName, 
+            data.role, 
+            data.businessId,
+            data.email,
+            data.phoneNormalized,
+            data.whatsAppNumberNormalized
+        );
         user.id = data.id; // Set the actual database ID
         return user;
     }
@@ -202,7 +241,15 @@ export class User {
         }
         
         return data.map(userData => {
-            const user = new User(userData.firstName, userData.lastName, userData.role, userData.businessId);
+            const user = new User(
+                userData.firstName, 
+                userData.lastName, 
+                userData.role, 
+                userData.businessId,
+                userData.email,
+                userData.phoneNormalized,
+                userData.whatsAppNumberNormalized
+            );
             user.id = userData.id; // Set the actual database ID
             return user;
         });
@@ -218,7 +265,15 @@ export class User {
         }
         
         return data.map(userData => {
-            const user = new User(userData.firstName, userData.lastName, userData.role, userData.businessId);
+            const user = new User(
+                userData.firstName, 
+                userData.lastName, 
+                userData.role, 
+                userData.businessId,
+                userData.email,
+                userData.phoneNormalized,
+                userData.whatsAppNumberNormalized
+            );
             user.id = userData.id; // Set the actual database ID
             return user;
         });
@@ -237,7 +292,15 @@ export class User {
         }
         
         return data.map(userData => {
-            const user = new User(userData.firstName, userData.lastName, userData.role, userData.businessId);
+            const user = new User(
+                userData.firstName, 
+                userData.lastName, 
+                userData.role, 
+                userData.businessId,
+                userData.email,
+                userData.phoneNormalized,
+                userData.whatsAppNumberNormalized
+            );
             user.id = userData.id; // Set the actual database ID
             return user;
         });
@@ -281,7 +344,15 @@ export class User {
             
             console.log(`[User] Selected provider: ${ownerData.id} (${ownerData.firstName} ${ownerData.lastName}, role: ${ownerData.role})`);
             
-            const user = new User(ownerData.firstName, ownerData.lastName, ownerData.role, ownerData.businessId);
+            const user = new User(
+                ownerData.firstName, 
+                ownerData.lastName, 
+                ownerData.role, 
+                ownerData.businessId,
+                ownerData.email,
+                ownerData.phoneNormalized,
+                ownerData.whatsAppNumberNormalized
+            );
             user.id = ownerData.id;
             return user;
 
@@ -366,7 +437,15 @@ export class User {
             const userRecord = userData[0];
             console.log(`[User] Found user who owns the business, user ID: ${userRecord.id}`);
             
-            const user = new User(userRecord.firstName, userRecord.lastName, userRecord.role, userRecord.businessId);
+            const user = new User(
+                userRecord.firstName, 
+                userRecord.lastName, 
+                userRecord.role, 
+                userRecord.businessId,
+                userRecord.email,
+                userRecord.phoneNormalized,
+                userRecord.whatsAppNumberNormalized
+            );
             user.id = userRecord.id; // Set the actual database ID
             return user;
         } catch (error) {
@@ -418,7 +497,15 @@ export class User {
             
             console.log(`[User] Found user record for customer with WhatsApp number, user ID: ${userData.id}`);
             
-            const user = new User(userData.firstName, userData.lastName, userData.role, userData.businessId);
+            const user = new User(
+                userData.firstName, 
+                userData.lastName, 
+                userData.role, 
+                userData.businessId,
+                userData.email,
+                userData.phoneNormalized,
+                userData.whatsAppNumberNormalized
+            );
             user.id = userData.id; // Set the actual database ID
             return user;
 
@@ -462,7 +549,15 @@ export class User {
             handleModelError("Failed to update user: No data returned", new Error("No data returned from update"));
         }
 
-        const updatedUser = new User(data.firstName, data.lastName, data.role, data.businessId);
+        const updatedUser = new User(
+            data.firstName, 
+            data.lastName, 
+            data.role, 
+            data.businessId,
+            data.email,
+            data.phoneNormalized,
+            data.whatsAppNumberNormalized
+        );
         updatedUser.id = data.id; // Set the actual database ID
         return updatedUser;
     }
