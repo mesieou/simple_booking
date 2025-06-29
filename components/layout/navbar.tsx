@@ -28,9 +28,16 @@ export const Navbar = () => {
     if (user) {
       return (
         <div className="flex items-center gap-4">
-          <span className="text-sm text-muted-foreground font-medium">
+          <Link 
+            href="/protected"
+            className="text-sm text-muted-foreground font-medium hover:text-primary transition-colors cursor-pointer px-2 py-1 rounded hover:bg-accent/50 group relative"
+            title="Click to go to Admin Dashboard"
+          >
             {user.email}
-          </span>
+            <span className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity text-xs">
+              📊
+            </span>
+          </Link>
           <Button 
             variant="ghost" 
             onClick={signOut}
@@ -76,9 +83,16 @@ export const Navbar = () => {
     if (user) {
       return (
         <div className="flex flex-col gap-3 w-full px-4 mt-2">
-          <div className="text-center text-sm text-muted-foreground font-medium py-2">
-            {user.email}
-          </div>
+          <Link 
+            href="/protected"
+            className="text-center text-sm text-muted-foreground font-medium py-2 hover:text-primary transition-colors cursor-pointer px-3 rounded hover:bg-accent/50 group"
+            title="Click to go to Admin Dashboard"
+          >
+            {user.email} 
+            <span className="ml-1 opacity-70 group-hover:opacity-100 transition-opacity text-xs">
+              📊
+            </span>
+          </Link>
           <Button 
             variant="ghost" 
             onClick={signOut}

@@ -107,6 +107,14 @@ export type ChatMessage = {
   content: string;
   createdAt: string;
   senderRole: 'customer' | 'agent' | 'bot' | 'staff';
+  attachments?: Array<{
+    type: 'image' | 'video' | 'document' | 'audio' | 'sticker';
+    url: string;
+    caption?: string;
+    originalFilename?: string;
+    mimeType?: string;
+    size?: number;
+  }>;
 };
 
 // This represents the shape of a message as it's stored in the DB's JSONB column
@@ -114,6 +122,14 @@ type StoredChatMessage = {
   role: 'user' | 'bot' | 'agent' | 'staff';
   content: string;
   timestamp?: string;
+  attachments?: Array<{
+    type: 'image' | 'video' | 'document' | 'audio' | 'sticker';
+    url: string;
+    caption?: string;
+    originalFilename?: string;
+    mimeType?: string;
+    size?: number;
+  }>;
 }
 
 /**
@@ -177,7 +193,9 @@ export async function getMessagesForSession(sessionId: string): Promise<ChatMess
     content: msg.content,
     createdAt: msg.timestamp || new Date().toISOString(), // Provide a fallback for the timestamp
     // Map the 'role' from the DB to the 'senderRole' the UI expects
-    senderRole: msg.role === 'user' ? 'customer' : msg.role as 'agent' | 'bot' | 'staff', 
+    senderRole: msg.role === 'user' ? 'customer' : msg.role as 'agent' | 'bot' | 'staff',
+    // Include attachments if they exist
+    attachments: msg.attachments
   }));
 }
 
@@ -239,6 +257,8 @@ export async function getMessagesForUser(channelUserId: string): Promise<ChatMes
         content: msg.content,
         createdAt: msg.timestamp || new Date().toISOString(),
         senderRole: msg.role === 'user' ? 'customer' : msg.role as 'agent' | 'bot' | 'staff',
+        // Include attachments if they exist
+        attachments: msg.attachments
     }));
 }
 
