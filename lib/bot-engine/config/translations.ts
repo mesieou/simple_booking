@@ -125,7 +125,7 @@ export const BOOKING_TRANSLATIONS = {
       CONTACT_INFO: '📞 *Contact Information:*',
       ARRIVAL_INSTRUCTIONS: '🗺️ *How to Arrive:*',
       MOBILE_INSTRUCTIONS: 'We will arrive at your location at the scheduled time. Please ensure someone is available to receive our service.',
-      SALON_INSTRUCTIONS: 'Please arrive 5-10 minutes early. If you need to reschedule or have any questions, please contact us.',
+      SALON_INSTRUCTIONS: 'Please arrive 5-10 minutes early to find parking and locate our salon. Once you arrive, please contact Luisa to let her know you\'re here. If you need directions or have any questions, feel free to reach out!',
       BOOKING_ID: '📄 Booking ID:',
       LOOKING_FORWARD: 'We look forward to seeing you! You can ask me anything else if you have more questions.'
     }
@@ -256,7 +256,7 @@ export const BOOKING_TRANSLATIONS = {
       CONTACT_INFO: '📞 *Información de Contacto:*',
       ARRIVAL_INSTRUCTIONS: '🗺️ *Cómo Llegar:*',
       MOBILE_INSTRUCTIONS: 'Llegaremos a tu ubicación a la hora programada. Por favor asegúrate de que alguien esté disponible para recibir nuestro servicio.',
-      SALON_INSTRUCTIONS: 'Por favor llega 5-10 minutos antes. Si necesitas reprogramar o tienes preguntas, por favor contáctanos.',
+      SALON_INSTRUCTIONS: 'Por favor llega 5-10 minutos antes para encontrar estacionamiento y ubicar nuestro salón. Una vez que llegues, contacta a Luisa para que sepa que estás aquí. Si necesitas indicaciones o tienes preguntas, ¡no dudes en comunicarte!',
       BOOKING_ID: '📄 ID de Reserva:',
       LOOKING_FORWARD: '¡Esperamos verte! Puedes preguntarme cualquier otra cosa si tienes más preguntas.'
     }
