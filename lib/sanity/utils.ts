@@ -24,6 +24,10 @@ import {
  */
 export const fetchAllDocuments = async <T>(documentType: string): Promise<T[]> => {
   try {
+    if (!sanityClient) {
+      console.warn('Sanity client not available - returning empty array')
+      return []
+    }
     const query = getAllDocuments(documentType)
     return await sanityClient.fetch<T[]>(query)
   } catch (error) {
@@ -37,6 +41,10 @@ export const fetchAllDocuments = async <T>(documentType: string): Promise<T[]> =
  */
 export const fetchDocumentById = async <T>(documentType: string, id: string): Promise<T | null> => {
   try {
+    if (!sanityClient) {
+      console.warn('Sanity client not available - returning null')
+      return null
+    }
     const query = getDocumentById(documentType, id)
     return await sanityClient.fetch<T>(query)
   } catch (error) {
@@ -46,7 +54,7 @@ export const fetchDocumentById = async <T>(documentType: string, id: string): Pr
 }
 
 /**
- * Fetch documents with pagination
+ * Fetch paginated documents
  */
 export const fetchPaginatedDocuments = async <T>(
   documentType: string, 
@@ -54,6 +62,10 @@ export const fetchPaginatedDocuments = async <T>(
   offset: number = 0
 ): Promise<T[]> => {
   try {
+    if (!sanityClient) {
+      console.warn('Sanity client not available - returning empty array')
+      return []
+    }
     const query = getPaginatedDocuments(documentType, limit, offset)
     return await sanityClient.fetch<T[]>(query)
   } catch (error) {
@@ -63,23 +75,31 @@ export const fetchPaginatedDocuments = async <T>(
 }
 
 /**
- * Get total count of documents
+ * Get document count
  */
 export const fetchDocumentCount = async (documentType: string): Promise<number> => {
   try {
+    if (!sanityClient) {
+      console.warn('Sanity client not available - returning 0')
+      return 0
+    }
     const query = getDocumentCount(documentType)
     return await sanityClient.fetch<number>(query)
   } catch (error) {
-    console.error(`Error fetching ${documentType} count:`, error)
+    console.error(`Error fetching ${documentType} document count:`, error)
     return 0
   }
 }
 
 /**
- * Fetch documents with image references resolved
+ * Fetch documents with images
  */
 export const fetchDocumentsWithImages = async <T>(documentType: string): Promise<T[]> => {
   try {
+    if (!sanityClient) {
+      console.warn('Sanity client not available - returning empty array')
+      return []
+    }
     const query = getDocumentsWithImages(documentType)
     return await sanityClient.fetch<T[]>(query)
   } catch (error) {
@@ -96,6 +116,10 @@ export const fetchDocumentsWithOptimizedImages = async <T>(
   imageWidth: number = 800
 ): Promise<T[]> => {
   try {
+    if (!sanityClient) {
+      console.warn('Sanity client not available - returning empty array')
+      return []
+    }
     const query = getDocumentsWithOptimizedImages(documentType, imageWidth)
     return await sanityClient.fetch<T[]>(query)
   } catch (error) {
@@ -109,6 +133,10 @@ export const fetchDocumentsWithOptimizedImages = async <T>(
  */
 export const fetchDocumentsWithResponsiveImages = async <T>(documentType: string): Promise<T[]> => {
   try {
+    if (!sanityClient) {
+      console.warn('Sanity client not available - returning empty array')
+      return []
+    }
     const query = getDocumentsWithResponsiveImages(documentType)
     return await sanityClient.fetch<T[]>(query)
   } catch (error) {
@@ -125,6 +153,10 @@ export const fetchDocumentsWithReferences = async <T>(
   referenceFields: string[]
 ): Promise<T[]> => {
   try {
+    if (!sanityClient) {
+      console.warn('Sanity client not available - returning empty array')
+      return []
+    }
     const query = getDocumentsWithReferences(documentType, referenceFields)
     return await sanityClient.fetch<T[]>(query)
   } catch (error) {
@@ -138,6 +170,10 @@ export const fetchDocumentsWithReferences = async <T>(
  */
 export const fetchDocumentsWithSlug = async <T>(documentType: string): Promise<T[]> => {
   try {
+    if (!sanityClient) {
+      console.warn('Sanity client not available - returning empty array')
+      return []
+    }
     const query = getDocumentsWithSlug(documentType)
     return await sanityClient.fetch<T[]>(query)
   } catch (error) {
@@ -151,6 +187,10 @@ export const fetchDocumentsWithSlug = async <T>(documentType: string): Promise<T
  */
 export const fetchDocumentBySlug = async <T>(documentType: string, slug: string): Promise<T | null> => {
   try {
+    if (!sanityClient) {
+      console.warn('Sanity client not available - returning null')
+      return null
+    }
     const query = getDocumentBySlug(documentType, slug)
     return await sanityClient.fetch<T>(query)
   } catch (error) {
@@ -167,6 +207,10 @@ export const searchDocumentsByTerm = async <T>(
   searchTerm: string
 ): Promise<T[]> => {
   try {
+    if (!sanityClient) {
+      console.warn('Sanity client not available - returning empty array')
+      return []
+    }
     const query = searchDocuments(documentType, searchTerm)
     return await sanityClient.fetch<T[]>(query)
   } catch (error) {
@@ -184,6 +228,10 @@ export const fetchDocumentsByDateRange = async <T>(
   endDate: string
 ): Promise<T[]> => {
   try {
+    if (!sanityClient) {
+      console.warn('Sanity client not available - returning empty array')
+      return []
+    }
     const query = getDocumentsByDateRange(documentType, startDate, endDate)
     return await sanityClient.fetch<T[]>(query)
   } catch (error) {
@@ -201,6 +249,10 @@ export const fetchOrderedDocuments = async <T>(
   orderDirection: 'asc' | 'desc' = 'desc'
 ): Promise<T[]> => {
   try {
+    if (!sanityClient) {
+      console.warn('Sanity client not available - returning empty array')
+      return []
+    }
     const query = getOrderedDocuments(documentType, orderBy, orderDirection)
     return await sanityClient.fetch<T[]>(query)
   } catch (error) {
@@ -217,6 +269,10 @@ export const fetchDocumentsWithSpecificFields = async <T>(
   fields: string[]
 ): Promise<T[]> => {
   try {
+    if (!sanityClient) {
+      console.warn('Sanity client not available - returning empty array')
+      return []
+    }
     const query = getDocumentsWithSpecificFields(documentType, fields)
     return await sanityClient.fetch<T[]>(query)
   } catch (error) {
@@ -233,6 +289,10 @@ export const fetchDocumentsWithArrayReferences = async <T>(
   arrayField: string
 ): Promise<T[]> => {
   try {
+    if (!sanityClient) {
+      console.warn('Sanity client not available - returning empty array')
+      return []
+    }
     const query = getDocumentsWithArrayReferences(documentType, arrayField)
     return await sanityClient.fetch<T[]>(query)
   } catch (error) {
@@ -246,6 +306,10 @@ export const fetchDocumentsWithArrayReferences = async <T>(
  */
 export const executeCustomQuery = async <T>(query: string, params?: Record<string, any>): Promise<T> => {
   try {
+    if (!sanityClient) {
+      console.warn('Sanity client not available - throwing error')
+      throw new Error('Sanity client not configured')
+    }
     if (params) {
       return await sanityClient.fetch<T>(query, params)
     } else {
@@ -271,6 +335,12 @@ export const isSanityConfigured = (): boolean => {
   
   if (!dataset) {
     console.warn('NEXT_PUBLIC_SANITY_DATASET is not configured')
+    return false
+  }
+  
+  // Also check if the client was successfully created
+  if (!sanityClient) {
+    console.warn('Sanity client was not created - configuration may be invalid')
     return false
   }
   
