@@ -82,7 +82,7 @@ export function convertParsedMessageToChatMessage(
   return chatMessage;
 }
 
-/**
+/** 
  * Extracts media URLs from attachments for display purposes
  */
 export function extractMediaUrls(message: ChatMessage): Array<{
