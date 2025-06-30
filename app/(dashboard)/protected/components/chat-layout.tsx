@@ -6,6 +6,11 @@ import React, { useState } from "react";
 import { Button } from '@/components/ui/button';
 import { Bell, ChevronLeft, Menu } from 'lucide-react';
 import { RightMenuPanelProps } from './right-menu-panel';
+import {
+    ResizableHandle,
+    ResizablePanel,
+    ResizablePanelGroup,
+} from "@/components/ui/resizable"
 
 type ChatLayoutProps = {
     notificationPanel: React.ReactNode;
@@ -125,32 +130,34 @@ export function ChatLayout({
                         : <Bell className="h-8 w-8 text-gray-400 group-hover:text-white" />}
                 </Button>
 
-                {/* Right Menu Toggle Button */}
-                {!isMenuOpen && (
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="absolute top-4 right-4 z-50 text-gray-300 hover:text-white transition-opacity duration-300"
-                        onClick={() => setIsMenuOpen(true)}
-                    >
-                        <Menu className="h-7 w-7" />
-                    </Button>
-                )}
-
                 <div
                     className={`flex-1 h-full transition-all duration-300 ease-in-out ${
                         isPanelOpen ? 'ml-[320px]' : 'ml-0'
                     }`}
                 >
                     <div className="flex h-full w-full">
-                        <div className="flex-1 flex gap-4 p-4">
-                            <main className="w-[380px] flex-shrink-0 h-full max-h-full">
-                                {chatList}
-                            </main>
-                            <section className="flex-1 h-full max-h-full min-w-0">{chatWindow}</section>
-                        </div>
+                        <ResizablePanelGroup 
+                            direction="horizontal" 
+                            className="flex-1"
+                        >
+                            <ResizablePanel defaultSize={30} minSize={20} maxSize={40}>
+                                <div className="p-1 h-full max-h-full">
+                                    <main className="h-full max-h-full bg-slate-900/40 rounded-lg border border-white/10">
+                                        {chatList}
+                                    </main>
+                                </div>
+                            </ResizablePanel>
+                            <ResizableHandle withHandle className="bg-transparent" />
+                            <ResizablePanel defaultSize={70} minSize={30}>
+                                <div className="p-1 h-full max-h-full">
+                                    <section className="h-full max-h-full min-w-0 bg-slate-900/40 rounded-lg border border-white/10 overflow-hidden">
+                                        {chatWindow}
+                                    </section>
+                                </div>
+                            </ResizablePanel>
+                        </ResizablePanelGroup>
                         {/* Right Menu Panel */}
-                        <aside className={`h-full bg-slate-900/90 backdrop-blur-sm transition-all duration-300 ease-in-out overflow-hidden ${isMenuOpen ? 'w-[300px]' : 'w-0'}`}>
+                        <aside className={`fixed top-0 right-0 h-screen bg-slate-900/90 backdrop-blur-sm transition-all duration-300 ease-in-out overflow-hidden z-50 ${isMenuOpen ? 'w-[300px]' : 'w-0'}`}>
                             <div className="w-[300px] h-full">
                                 {rightMenuPanel}
                             </div>
