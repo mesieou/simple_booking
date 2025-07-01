@@ -15,9 +15,12 @@ export function LayoutSwitcher({ children }: { children: React.ReactNode }) {
     // Render a minimal, full-screen layout for the dashboard routes.
     // It takes up the entire viewport and doesn't have the standard page decorations.
     return (
-      <main className="h-screen w-screen overflow-hidden bg-background">
-        {children}
-      </main>
+      <>
+        <AnimatedBackground />
+        <main className="h-screen w-screen overflow-hidden">
+          {children}
+        </main>
+      </>
     );
   }
 
