@@ -5,6 +5,7 @@ import {
   ValuesSection,
   CTASection
 } from "@/components/sections/about"
+import { PageWithBreadcrumb } from "@/components/layout/page-with-breadcrumb"
 
 // Metadata para SEO
 export const metadata = {
@@ -20,17 +21,19 @@ export const metadata = {
 
 const AboutPage = () => {
   return (
-    <main className="min-h-screen relative">
-      <div className="pt-20 pb-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <HeroSection />
-          <MissionSection />
-          <FeaturesSection />
-          <ValuesSection />
-          <CTASection />
+    <PageWithBreadcrumb>
+      <main className="relative">
+        <div className="pt-20 pb-16">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <HeroSection />
+            <MissionSection />
+            <FeaturesSection />
+            <ValuesSection />
+            <CTASection />
+          </div>
         </div>
-      </div>
-    </main>
+      </main>
+    </PageWithBreadcrumb>
   )
 }
 
