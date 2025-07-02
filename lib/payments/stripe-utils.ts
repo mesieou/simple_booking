@@ -206,8 +206,8 @@ export class StripePaymentService {
       console.log(`[Stripe Webhook] Processing payment completion for quote: ${quoteId}`);
 
       // Get quote using service role client to bypass RLS
-      const { getServiceRoleClient } = await import('@/lib/database/supabase/service-role');
-      const supa = getServiceRoleClient();
+      const { getEnvironmentServiceRoleClient } = await import('@/lib/database/supabase/environment');
+      const supa = getEnvironmentServiceRoleClient();
       
       // First, fetch the existing quote
       const { data: existingQuote, error: fetchError } = await supa

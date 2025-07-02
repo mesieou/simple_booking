@@ -1,6 +1,7 @@
 "use client";
 
-import { createClient } from "@/lib/database/supabase/client";
+import { getEnvironmentBrowserClient } from "@/lib/database/supabase/environment";
+import { signInAction } from "@/app/actions";
 import { useAuth } from "@/app/context/auth-context";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -27,7 +28,7 @@ export default function SignIn() {
     setLoading(true);
 
     try {
-      const supabase = createClient();
+      const supabase = getEnvironmentBrowserClient();
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,

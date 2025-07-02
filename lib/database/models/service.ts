@@ -1,5 +1,4 @@
-import { createClient } from "../supabase/server";
-import { getServiceRoleClient } from "../supabase/service-role";
+import { getEnvironmentServerClient, getEnvironmentServiceRoleClient } from "../supabase/environment";
 import { v4 as uuidv4 } from 'uuid';
 import { handleModelError } from '@/lib/general-helpers/error';
 
@@ -67,7 +66,7 @@ export class Service {
     async add(options?: { useServiceRole?: boolean; supabaseClient?: any }): Promise<ServiceData> {
         // Use provided client, service role client, or regular client
         // This bypasses RLS for scenarios like seeding where no user auth context exists
-        const supa = options?.supabaseClient || (options?.useServiceRole ? getServiceRoleClient() : await createClient());
+        const supa = options?.supabaseClient || (options?.useServiceRole ? getEnvironmentServiceRoleClient() : await getEnvironmentServerClient());
         
         const service = {
             "id": this.data.id || uuidv4(),
@@ -101,7 +100,7 @@ export class Service {
     }
 
     static async getById(id: string): Promise<Service> {
-        const supa = createClient();
+        const supa = getEnvironmentServerClient();
         const { data, error } = await supa.from("services").select("*").eq("id", id).single();
         if (error) {
             handleModelError("Failed to fetch service", error);
@@ -113,7 +112,7 @@ export class Service {
     }
 
     static async getByBusiness(businessId: string): Promise<Service[]> {
-        const supa = createClient();
+        const supa = getEnvironmentServerClient();
         const { data, error } = await supa.from("services").select("*").eq("businessId", businessId);
         if (error) {
             handleModelError("Failed to fetch services by business", error);
@@ -122,7 +121,7 @@ export class Service {
     }
 
     static async getAllServices(): Promise<Service[]> {
-        const supa = createClient();
+        const supa = getEnvironmentServerClient();
         const { data, error } = await supa.from("services").select("*");
         if (error) {
             handleModelError("Failed to fetch all services", error);
@@ -131,7 +130,7 @@ export class Service {
     }
 
     static async update(id: string, serviceData: ServiceData): Promise<Service> {
-        const supa = createClient();
+        const supa = getEnvironmentServerClient();
         const service = {
             "businessId": serviceData.businessId,
             "name": serviceData.name,
@@ -157,7 +156,7 @@ export class Service {
     }
 
     static async delete(id: string): Promise<void> {
-        const supa = createClient();
+        const supa = getEnvironmentServerClient();
         const { error } = await supa.from("services").delete().eq("id", id);
         if (error) {
             handleModelError("Failed to delete service", error);

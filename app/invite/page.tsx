@@ -1,6 +1,6 @@
 "use client";
 
-import { createClient } from '@/lib/database/supabase/client';
+import { getEnvironmentBrowserClient } from '@/lib/database/supabase/environment';
 import { type Session } from '@supabase/supabase-js';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -11,7 +11,7 @@ import { useToast } from '@/lib/rename-categorise-better/utils/use-toast';
 import Link from 'next/link';
 
 export default function InvitePage() {
-  const supabase = createClient();
+  const supabase = getEnvironmentBrowserClient();
   const searchParams = useSearchParams();
   const router = useRouter();
   const businessId = searchParams.get('businessId');
