@@ -28,6 +28,25 @@ export async function POST(request: NextRequest) {
           onboardingUrl: onboardingResult.url
         });
 
+      case 'create_production_onboarding_link':
+        // Force production environment for real Stripe onboarding
+        console.log('[PRODUCTION ONBOARDING] Creating real onboarding link for business:', businessId);
+        console.log('[PRODUCTION ONBOARDING] Using production Stripe keys from Vercel');
+        
+        const productionOnboardingResult = await StripePaymentService.createOnboardingLink(businessId);
+        if (!productionOnboardingResult.success) {
+          return NextResponse.json(
+            { error: productionOnboardingResult.error },
+            { status: 400 }
+          );
+        }
+        return NextResponse.json({
+          success: true,
+          onboardingUrl: productionOnboardingResult.url,
+          environment: 'production',
+          message: 'Real onboarding link created with production Stripe keys'
+        });
+
       case 'check_status':
         const statusResult = await StripePaymentService.updateAccountStatus(businessId);
         if (!statusResult.success) {
@@ -69,7 +88,7 @@ export async function POST(request: NextRequest) {
 
       default:
         return NextResponse.json(
-          { error: 'Invalid action. Use: create_onboarding_link, check_status, create_account, or create_fresh_account' },
+          { error: 'Invalid action. Use: create_onboarding_link, create_production_onboarding_link, check_status, create_account, or create_fresh_account' },
           { status: 400 }
         );
     }
