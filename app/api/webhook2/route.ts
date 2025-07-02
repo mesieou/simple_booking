@@ -38,11 +38,11 @@ const MESSAGE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
 // Clean up old entries from deduplication cache
 function cleanupMessageCache() {
   const now = Date.now();
-  for (const [messageId, timestamp] of processedMessages.entries()) {
+  processedMessages.forEach((timestamp, messageId) => {
     if (now - timestamp > MESSAGE_CACHE_TTL) {
       processedMessages.delete(messageId);
     }
-  }
+  });
 }
 
 // Check if message has already been processed
@@ -170,15 +170,19 @@ export async function POST(req: NextRequest) {
       const parsedMessage = parsedEvent;
       console.log(`${LOG_PREFIX} Successfully parsed message from ${parsedMessage.senderId}: "${parsedMessage.text}"`);
 
-      // Check for duplicate message processing
-      if (isMessageAlreadyProcessed(parsedMessage.messageId)) {
+      // Check for duplicate message processing (only if messageId exists)
+      if (parsedMessage.messageId && isMessageAlreadyProcessed(parsedMessage.messageId)) {
         console.log(`${LOG_PREFIX} Message ${parsedMessage.messageId} already processed - skipping duplicate`);
         return NextResponse.json({ status: "success - duplicate message ignored" }, { status: 200 });
       }
 
-      // Mark message as processed to prevent duplicates
-      markMessageAsProcessed(parsedMessage.messageId);
-      console.log(`${LOG_PREFIX} Processing new message ${parsedMessage.messageId}`);
+      // Mark message as processed to prevent duplicates (only if messageId exists)
+      if (parsedMessage.messageId) {
+        markMessageAsProcessed(parsedMessage.messageId);
+        console.log(`${LOG_PREFIX} Processing new message ${parsedMessage.messageId}`);
+      } else {
+        console.log(`${LOG_PREFIX} Processing message without messageId from ${parsedMessage.senderId}`);
+      }
 
       // Check for media attachments
       if (parsedMessage.attachments && parsedMessage.attachments.length > 0) {

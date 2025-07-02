@@ -63,7 +63,7 @@ export async function handleFaqOrChitchat(
       
       // Use personalized booking availability message
       const { BOOKING_TRANSLATIONS } = await import('@/lib/bot-engine/config/translations');
-      const translations = BOOKING_TRANSLATIONS[userLanguage];
+      const translations = BOOKING_TRANSLATIONS[userLanguage as keyof typeof BOOKING_TRANSLATIONS] || BOOKING_TRANSLATIONS['en'];
       
       if (translations?.MESSAGES?.BOOKING_AVAILABILITY_PERSONALIZED) {
         chatbotResponseText = translations.MESSAGES.BOOKING_AVAILABILITY_PERSONALIZED

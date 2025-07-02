@@ -7,6 +7,7 @@ import {
   ChatConversationSession,
 } from "@/lib/bot-engine/types";
 import { ChatMessage } from "@/lib/database/models/chat-session";
+import { UserContext } from "@/lib/database/models/user-context";
 import { BotResponse } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
 import { getOrCreateChatContext } from "@/lib/bot-engine/session/session-manager";
 import { persistSessionState } from "@/lib/bot-engine/session/state-persister";
