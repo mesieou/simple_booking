@@ -81,7 +81,7 @@ export async function getOrCreateChatContext(
   // 1. Identificar dinámicamente el negocio a través del número de WhatsApp.
   if (!participant.businessWhatsappNumber) {
     throw new Error(
-      "[getOrCreateChatContext] Critical: businessWhatsappNumber is missing from participant.."
+      "[getOrCreateChatContext] Critical: businessWhatsappNumber is missing from participant."
     );
   }
 
