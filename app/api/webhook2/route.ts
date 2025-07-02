@@ -31,6 +31,31 @@ const WEBHOOK_ENABLED = process.env.USE_WABA_WEBHOOK === "true";         // Enab
 // Environment-aware logging
 const LOG_PREFIX = `[Webhook ${CURRENT_ENVIRONMENT.toUpperCase()}]`;
 
+// Message deduplication cache - prevents processing the same message multiple times
+const processedMessages = new Map<string, number>();
+const MESSAGE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+// Clean up old entries from deduplication cache
+function cleanupMessageCache() {
+  const now = Date.now();
+  for (const [messageId, timestamp] of processedMessages.entries()) {
+    if (now - timestamp > MESSAGE_CACHE_TTL) {
+      processedMessages.delete(messageId);
+    }
+  }
+}
+
+// Check if message has already been processed
+function isMessageAlreadyProcessed(messageId: string): boolean {
+  cleanupMessageCache(); // Clean up old entries first
+  return processedMessages.has(messageId);
+}
+
+// Mark message as processed
+function markMessageAsProcessed(messageId: string): void {
+  processedMessages.set(messageId, Date.now());
+}
+
 // Log environment configuration on startup
 console.log(`${LOG_PREFIX} Environment Configuration:`, {
   environment: CURRENT_ENVIRONMENT,
@@ -144,6 +169,16 @@ export async function POST(req: NextRequest) {
     if (parsedEvent && "text" in parsedEvent && parsedEvent.senderId && parsedEvent.text && parsedEvent.text.trim()) {
       const parsedMessage = parsedEvent;
       console.log(`${LOG_PREFIX} Successfully parsed message from ${parsedMessage.senderId}: "${parsedMessage.text}"`);
+
+      // Check for duplicate message processing
+      if (isMessageAlreadyProcessed(parsedMessage.messageId)) {
+        console.log(`${LOG_PREFIX} Message ${parsedMessage.messageId} already processed - skipping duplicate`);
+        return NextResponse.json({ status: "success - duplicate message ignored" }, { status: 200 });
+      }
+
+      // Mark message as processed to prevent duplicates
+      markMessageAsProcessed(parsedMessage.messageId);
+      console.log(`${LOG_PREFIX} Processing new message ${parsedMessage.messageId}`);
 
       // Check for media attachments
       if (parsedMessage.attachments && parsedMessage.attachments.length > 0) {

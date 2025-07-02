@@ -2,7 +2,7 @@ import type { IndividualStepHandler } from '@/lib/bot-engine/types';
 import { getLocalizedTextWithVars, getLocalizedText } from './booking-utils';
 
 export const handleUserStatusHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: 'Checking your account status...',
+  defaultChatbotPrompt: 'Let me check your account status...',
   autoAdvance: true,
   
   validateUserInput: async () => ({ isValidInput: true }),
@@ -17,7 +17,7 @@ export const handleUserStatusHandler: IndividualStepHandler = {
     
     return {
       ...currentGoalData,
-      confirmationMessage: getLocalizedText(chatContext, 'MESSAGES.NOT_IN_SYSTEM')
+      confirmationMessage: getLocalizedText(chatContext, 'MESSAGES.NEW_USER_WELCOME')
     };
   }
 };

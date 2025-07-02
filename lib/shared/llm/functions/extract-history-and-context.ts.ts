@@ -90,6 +90,21 @@ export async function extractSessionHistoryAndContext(
       channelUserId: channelUserId,
       businessId: businessId,
     });
+    console.log(`[HistoryExtractor] DEBUG - Created new UserContext:`, {
+      id: userContext.id,
+      channelUserId: userContext.channelUserId,
+      businessId: userContext.businessId,
+      hasCurrentGoal: !!userContext.currentGoal
+    });
+  } else {
+    console.log(`[HistoryExtractor] DEBUG - Found existing UserContext:`, {
+      id: userContext.id,
+      channelUserId: userContext.channelUserId,
+      businessId: userContext.businessId,
+      hasCurrentGoal: !!userContext.currentGoal,
+      currentGoalType: userContext.currentGoal?.goalType,
+      currentGoalStatus: userContext.currentGoal?.goalStatus
+    });
   }
 
   // Step 3: Build the historical context based on the resolved session.

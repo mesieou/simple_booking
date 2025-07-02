@@ -312,19 +312,55 @@ export class ConversationFlowHandler {
     const userCurrentGoal = chatContext.currentConversationSession?.activeGoals.find(g => g.goalStatus === 'inProgress');
     const messageContainsBookingPayload = (parsedMessage.text || '').toUpperCase().includes(START_BOOKING_PAYLOAD.toUpperCase());
     
+    // Check if message contains a UUID (service selection, button clicks, etc.)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const messageContainsUUID = uuidRegex.test(parsedMessage.text || '');
+    
+    // Check if message contains booking-related payloads (confirmation, edit, payment, etc.)
+    const bookingRelatedPayloads = [
+      'confirm_quote', 'edit_quote', 'edit_service', 'edit_time', 
+      'add_another_service', 'continue_with_services',
+      'quick_booking', 'browse_available'
+    ];
+    const messageContainsBookingRelatedPayload = bookingRelatedPayloads.some(payload => 
+      (parsedMessage.text || '').includes(payload)
+    );
+    
+    // Check if message is payment completion
+    const messageIsPaymentCompletion = (parsedMessage.text || '').startsWith('PAYMENT_COMPLETED_');
+    
+    const isBookingRelated = messageContainsBookingPayload || 
+                           messageContainsUUID || 
+                           messageContainsBookingRelatedPayload ||
+                           messageIsPaymentCompletion ||
+                           (userCurrentGoal && userCurrentGoal.goalType === 'serviceBooking');
+    
+    // DEBUG: Log goal state for debugging
+    console.log(`${LOG_PREFIX} Goal state check - Message: "${parsedMessage.text?.substring(0, 50)}..." | HasBookingGoal: ${!!userCurrentGoal} | GoalType: ${userCurrentGoal?.goalType} | ContainsPayload: ${messageContainsBookingPayload} | ContainsUUID: ${messageContainsUUID} | ContainsBookingPayload: ${messageContainsBookingRelatedPayload} | IsPaymentCompletion: ${messageIsPaymentCompletion}`);
+    
     let botResponse: BotResponse | null = null;
     
-    if (messageContainsBookingPayload || (userCurrentGoal && userCurrentGoal.goalType === 'serviceBooking')) {
+    if (isBookingRelated) {
       console.log(`${LOG_PREFIX} User is starting or continuing a booking flow. Routing to main engine.`);
       
       if (messageContainsBookingPayload && userCurrentGoal) {
         userCurrentGoal.goalStatus = 'completed';
       }
 
+      // Create the existing context object to pass to processIncomingMessage
+      const existingContext = {
+        context: chatContext,
+        sessionId: sessionId,
+        userContext: userContext,
+        historyForLLM: [], // Will be reconstructed internally
+        customerUser: context.customerUser
+      };
+
       botResponse = await processIncomingMessage(
         parsedMessage.text || '', 
         participant, 
-        undefined // Will use the history from the session context internally
+        undefined, // Will use the history from the session context internally
+        existingContext // Pass the existing context to prevent creating a new one
       );
       
     } else {
@@ -333,6 +369,7 @@ export class ConversationFlowHandler {
       botResponse = faqResponse;
       
       if (botResponse.text && chatContext.currentConversationSession) {
+        console.log(`${LOG_PREFIX} FAQ persisting session state with undefined goal - THIS MIGHT OVERWRITE BOOKING GOALS`);
         await persistSessionState(
           sessionId, 
           userContext, 
@@ -350,7 +387,7 @@ export class ConversationFlowHandler {
       shouldContinue: true,
       response: botResponse || undefined,
       wasHandled: true,
-      handlerType: messageContainsBookingPayload || userCurrentGoal ? 'booking_flow' : 'faq_chitchat'
+      handlerType: isBookingRelated ? 'booking_flow' : 'faq_chitchat'
     };
   }
 }

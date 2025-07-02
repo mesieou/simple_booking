@@ -20,6 +20,23 @@ export async function persistSessionState(
   parsedMessage?: ParsedMessage // NEW: Include original parsed message for attachments
 ): Promise<void> {
   try {
+    // DEBUG: Log the incoming userContext to check businessId
+    console.log(`[StatePersister] DEBUG - Incoming userContext:`, {
+      channelUserId: userContext.channelUserId,
+      businessId: userContext.businessId,
+      hasCurrentGoal: !!userContext.currentGoal,
+      currentGoalType: userContext.currentGoal?.goalType
+    });
+    
+    console.log(`[StatePersister] DEBUG - Current goal being processed:`, {
+      goalType: currentGoal?.goalType,
+      goalStatus: currentGoal?.goalStatus,
+      stepIndex: currentGoal?.currentStepIndex
+    });
+
+    // DEBUG: Log session userData
+    console.log(`[StatePersister] DEBUG - Session userData:`, activeSession.userData);
+
     let updatedContext: any;
 
     if (currentGoal && currentGoal.goalStatus === "completed") {
@@ -39,6 +56,8 @@ export async function persistSessionState(
         )
           ? userContext.frequentlyDiscussedTopics.join(", ")
           : userContext.frequentlyDiscussedTopics || null,
+        // Preserve session userData
+        sessionData: activeSession.userData || null,
       };
     } else {
       updatedContext = {
@@ -58,8 +77,20 @@ export async function persistSessionState(
         )
           ? userContext.frequentlyDiscussedTopics.join(", ")
           : userContext.frequentlyDiscussedTopics || null,
+        // Preserve session userData
+        sessionData: activeSession.userData || null,
       };
     }
+
+    // DEBUG: Log the updatedContext to verify businessId is preserved
+    console.log(`[StatePersister] DEBUG - Updated context:`, {
+      channelUserId: updatedContext.channelUserId,
+      businessId: updatedContext.businessId,
+      hasCurrentGoal: !!updatedContext.currentGoal,
+      currentGoalType: updatedContext.currentGoal?.goalType,
+      currentGoalStep: updatedContext.currentGoal?.currentStepIndex,
+      hasSessionData: !!updatedContext.sessionData
+    });
 
     let chatMessages: ChatMessage[] = [];
 
