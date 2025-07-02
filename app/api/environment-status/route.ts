@@ -17,13 +17,13 @@ export async function GET(req: NextRequest) {
     // Test Supabase connection
     let supabaseTest = {
       success: false,
-      error: null,
-      connectionUrl: null,
+      error: null as string | null,
+      connectionUrl: null as string | null,
       phoneNumberIdQuery: {
         success: false,
-        error: null,
+        error: null as string | null,
         found: false,
-        businessName: null
+        businessName: null as string | null
       }
     };
 

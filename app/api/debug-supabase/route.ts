@@ -20,10 +20,10 @@ export async function GET(req: NextRequest) {
       devServiceKey: process.env.SUPABASE_DEV_SERVICE_ROLE_KEY ? `${process.env.SUPABASE_DEV_SERVICE_ROLE_KEY.substring(0, 30)}...` : 'MISSING'
     },
     tests: {
-      serverClient: { success: false, error: null, details: null },
-      serviceRoleClient: { success: false, error: null, details: null },
-      businessQuery: { success: false, error: null, found: false, businessName: null },
-      allBusinesses: { success: false, error: null, count: 0, samples: [] }
+      serverClient: { success: false, error: null as string | null, details: null as any },
+      serviceRoleClient: { success: false, error: null as string | null, details: null as any },
+      businessQuery: { success: false, error: null as string | null, found: false, businessName: null as string | null },
+      allBusinesses: { success: false, error: null as string | null, count: 0, samples: [] as any[] }
     }
   };
 
