@@ -743,16 +743,16 @@ Return ONLY JSON:
     console.log(`[LLMService] getFallbackIntention called with participantType: ${participantType}`);
     
     if (participantType === 'customer') {
-      const result = {
-        detectedUserGoalType: 'serviceBooking',
-        detectedGoalAction: 'create',
+      const result: LLMProcessingResult = {
+        detectedUserGoalType: 'serviceBooking' as const,
+        detectedGoalAction: 'create' as const,
         confidenceScore: 0.3
       };
       console.log(`[LLMService] Customer fallback:`, result);
       return result;
     }
     
-    const result = {};
+    const result: LLMProcessingResult = {};
     console.log(`[LLMService] Non-customer fallback:`, result);
     return result;
   }

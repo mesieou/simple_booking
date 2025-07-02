@@ -1,5 +1,5 @@
 import { Redis } from 'ioredis';
-import { UserGoal, ChatContext, ChatConversationSession } from '@/lib/bot-engine/types';
+import { UserGoal, ChatContext, ChatConversationSession, ConversationalParticipant } from '@/lib/bot-engine/types';
 import { UserContext } from '@/lib/database/models/user-context';
 
 interface CachedSession {
@@ -165,7 +165,9 @@ export class ScalableSessionManager {
     // Set in local cache with size limit
     if (this.localCache.size >= this.CACHE_SIZE_LIMIT) {
       const oldestKey = this.localCache.keys().next().value;
-      this.localCache.delete(oldestKey);
+      if (oldestKey) {
+        this.localCache.delete(oldestKey);
+      }
     }
     this.localCache.set(key, session);
   }
@@ -173,7 +175,6 @@ export class ScalableSessionManager {
   private async loadSessionFromDatabase(participantId: string, businessId: string): Promise<CachedSession> {
     // Import here to avoid circular dependencies
     const { getOrCreateChatContext } = await import('./session-manager');
-    const { ConversationalParticipant } = await import('@/lib/bot-engine/types');
     
     const participant: ConversationalParticipant = {
       id: participantId,

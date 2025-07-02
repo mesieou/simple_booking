@@ -135,7 +135,7 @@ export class ScalableMessageProcessor {
     if (!isValid) {
       const errorMessage = typeof validationResult === 'object' 
         ? validationResult.validationErrorMessage 
-        : stepHandler.defaultValidationErrorMessage || "Invalid input. Please try again.";
+        : "Invalid input. Please try again.";
       
       return { text: errorMessage };
     }

@@ -184,6 +184,7 @@ export async function getOrCreateChatContext(
         previousGoal: null,
         participantPreferences: null,
         frequentlyDiscussedTopics: null,
+        sessionData: null,
       },
     };
   }
