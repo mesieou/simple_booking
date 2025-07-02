@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getEnvironmentBrowserClient } from '@/lib/database/supabase/environment';
 import { useAuth } from '@/app/context/auth-context';
+import { createClient } from '@/lib/database/supabase/client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -18,7 +18,7 @@ export function RightMenuPanel({ onClose, showCloseButton = true }: RightMenuPan
   const router = useRouter();
 
   const handleSignOut = async () => {
-    const supabase = getEnvironmentBrowserClient();
+    const supabase = createClient();
     await supabase.auth.signOut();
     router.push('/sign-in');
   };

@@ -4,7 +4,7 @@ import { useProvider } from '../context/ProviderContext';
 import { useEffect, useState } from 'react';
 import ProviderTitle from '../context/ProviderTitle';
 import { use } from 'react';
-import { getEnvironmentBrowserClient } from '@/lib/database/supabase/environment';
+import { createClient } from '@/lib/database/supabase/client';
 import { useFormContext } from '@/lib/rename-categorise-better/utils/FormContext';
 import { useRouter } from 'next/navigation';
 
@@ -86,7 +86,7 @@ export default function ProviderPage({ params }: { params: Promise<{ providerId:
   useEffect(() => {
     const fetchBusinessData = async () => {
       if (!providerId) return;
-      const supabase = getEnvironmentBrowserClient();
+      const supabase = createClient();
       // Find the user and get the businessId
       const { data: user, error: userError } = await supabase
         .from('users')
