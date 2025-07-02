@@ -28,13 +28,13 @@ function clearGlobalEmbeddingState(): void {
 
 /**
  * Extracts the PDF name from a PDF URL string.
- * e.g., "pdf:my-document.pdf#page=1" -> "my-document.pdf"
+ * e.g., "pdf-my-document.pdf#page=1" -> "my-document.pdf"
  */
 const extractPdfNameFromPdfUrl = (pdfUrl: string | undefined): string | null => {
-    if (typeof pdfUrl !== 'string' || !pdfUrl.startsWith('pdf:')) return null;
+    if (typeof pdfUrl !== 'string' || !pdfUrl.startsWith('pdf-')) return null;
     const hashIndex = pdfUrl.indexOf('#');
     const nameEndIndex = hashIndex !== -1 ? hashIndex : undefined;
-    // Remove 'pdf:' prefix and content after '#'
+    // Remove 'pdf-' prefix and content after '#'
     return pdfUrl.substring(4, nameEndIndex);
 };
 
@@ -47,7 +47,7 @@ const getSourceKey = (url: string | undefined): string => {
     return 'unknown_source_key'; 
   }
   const pdfName = extractPdfNameFromPdfUrl(url);
-  if (pdfName) return `pdf:${pdfName}`; // Ensure PDF source keys are distinct
+  if (pdfName) return `pdf-${pdfName}`; // Ensure PDF source keys are distinct
   return url; 
 };
 
@@ -278,7 +278,7 @@ function _prepareInitialDocumentsFromChunks(
     
     const categoryName = llmChunk.category ? (CATEGORY_DISPLAY_NAMES[llmChunk.category] || 'Uncategorized') : 'Uncategorized';
     const sourceKey = getSourceKey(llmChunk.sourceUrl);
-    const isPdfChunk = llmChunk.sourceUrl?.startsWith('pdf:') || false;
+    const isPdfChunk = llmChunk.sourceUrl?.startsWith('pdf-') || false;
 
     _updateManifestForChunk(llmChunk, contentHash, categoryName, isPdfChunk, sourceKey, state.manifestDataBySource);
 
