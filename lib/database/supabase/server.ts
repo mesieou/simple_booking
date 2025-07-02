@@ -50,9 +50,19 @@ export const createDevServerClient = () => {
 
 // Prod environment server client
 export const createProdServerClient = () => {
+  const url = process.env.SUPABASE_PROD_URL;
+  const key = process.env.SUPABASE_PROD_ANON_KEY;
+  
+  console.log(`[Server Client] Creating prod client with URL: ${url ? url.substring(0, 30) + '...' : 'UNDEFINED'}`);
+  console.log(`[Server Client] Creating prod client with Key: ${key ? key.substring(0, 30) + '...' : 'UNDEFINED'}`);
+  
+  if (!url || !key) {
+    throw new Error(`Missing Supabase production server credentials: URL=${!!url}, KEY=${!!key}`);
+  }
+  
   return createServerClient(
-    process.env.SUPABASE_PROD_URL!,
-    process.env.SUPABASE_PROD_ANON_KEY!,
+    url,
+    key,
     {
       cookies: {
         get: async (name: string) => {

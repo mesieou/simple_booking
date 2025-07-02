@@ -46,9 +46,19 @@ export const getDevServiceRoleClient = (): SupabaseClient => {
  */
 export const getProdServiceRoleClient = (): SupabaseClient => {
   if (!prodSupabase) {
+    const url = process.env.SUPABASE_PROD_URL;
+    const key = process.env.SUPABASE_PROD_SERVICE_ROLE_KEY;
+    
+    console.log(`[Service Role Client] Creating prod client with URL: ${url ? url.substring(0, 30) + '...' : 'UNDEFINED'}`);
+    console.log(`[Service Role Client] Creating prod client with Key: ${key ? key.substring(0, 30) + '...' : 'UNDEFINED'}`);
+    
+    if (!url || !key) {
+      throw new Error(`Missing Supabase production credentials: URL=${!!url}, KEY=${!!key}`);
+    }
+    
     prodSupabase = createClient(
-      process.env.SUPABASE_PROD_URL!,
-      process.env.SUPABASE_PROD_SERVICE_ROLE_KEY!,
+      url,
+      key,
       { auth: { 
           persistSession: false,
           autoRefreshToken: false,
