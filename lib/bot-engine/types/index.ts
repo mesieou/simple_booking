@@ -33,6 +33,13 @@ export interface ChatConversationSession {
     locationInformation?: string;
     languagePreference?: string;
   };
+  userData?: {
+    userId?: string;
+    customerName?: string;
+    existingUserFound?: boolean;
+    awaitingName?: boolean;
+    originalQuestion?: string;
+  };
 }
 
 export interface UserGoal {

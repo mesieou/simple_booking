@@ -31,6 +31,7 @@ export interface UserContextDBSchema {
   previousGoal?: UserGoal | null;    // Nullable
   participantPreferences?: ParticipantPreferences | null; // Nullable
   frequentlyDiscussedTopics?: string | null; // Nullable (stored as comma-separated text)
+  sessionData?: Record<string, any> | null; // Nullable (stores session-specific data like user creation state)
 }
 
 // Type for creating a new context record. channelUserId is the only required field.
@@ -53,6 +54,7 @@ export class UserContext {
   previousGoal: UserGoal | null;
   participantPreferences: ParticipantPreferences | null;
   frequentlyDiscussedTopics: string | null;
+  sessionData: Record<string, any> | null;
 
   private constructor(data: UserContextDBSchema) {
     this.id = data.id;
@@ -64,6 +66,7 @@ export class UserContext {
     this.previousGoal = data.previousGoal ?? null;
     this.participantPreferences = data.participantPreferences ?? null;
     this.frequentlyDiscussedTopics = data.frequentlyDiscussedTopics ?? null;
+    this.sessionData = data.sessionData ?? null;
   }
 
   private static isValidUUID(id: string): boolean {
@@ -89,6 +92,7 @@ export class UserContext {
       previousGoal: input.previousGoal,
       participantPreferences: input.participantPreferences,
       frequentlyDiscussedTopics: input.frequentlyDiscussedTopics,
+      sessionData: input.sessionData,
       createdAt: now,
       updatedAt: now,
     };
@@ -103,28 +107,6 @@ export class UserContext {
       handleModelError('Failed to create user context', error);
     }
     return new UserContext(data as UserContextDBSchema);
-  }
-
-  /**
-   * Retrieves a user context by their unique channel identifier (e.g., WhatsApp number).
-   * This is the primary method for fetching context during a conversation.
-   */
-  static async getByChannelUserId(channelUserId: string): Promise<UserContext | null> {
-    if (!channelUserId) {
-      console.warn('[UserContextModel] channelUserId is required for getByChannelUserId');
-      return null;
-    }
-    const supa = getEnvironmentServiceRoleClient();
-    const { data, error } = await supa
-      .from('userContexts')
-      .select('*')
-      .eq('channelUserId', channelUserId)
-      .maybeSingle();
-
-    if (error) {
-      handleModelError(`Failed to fetch user context for channelUserId ${channelUserId}`, error);
-    }
-    return data ? new UserContext(data as UserContextDBSchema) : null;
   }
 
   /**
@@ -151,12 +133,16 @@ export class UserContext {
   }
 
   /**
-   * Updates an existing user context record based on its unique channel identifier.
-   * This will be called after every turn to persist the new state.
+   * Updates an existing user context record based on channel ID AND business ID.
+   * This is the preferred method for multi-tenant environments to ensure proper isolation.
    */
-  static async updateByChannelUserId(channelUserId: string, input: UserContextUpdateInput): Promise<UserContext | null> {
-    if (!channelUserId) {
-      console.warn('[UserContextModel] channelUserId is required for updateByChannelUserId');
+  static async updateByChannelUserIdAndBusinessId(
+    channelUserId: string, 
+    businessId: string, 
+    input: UserContextUpdateInput
+  ): Promise<UserContext | null> {
+    if (!channelUserId || !businessId) {
+      console.warn('[UserContextModel] channelUserId and businessId are required for updateByChannelUserIdAndBusinessId');
       return null;
     }
     const supa = getEnvironmentServiceRoleClient();
@@ -172,15 +158,16 @@ export class UserContext {
       .from('userContexts')
       .update(dataToUpdate)
       .eq('channelUserId', channelUserId)
+      .eq('businessId', businessId)
       .select('*')
       .single();
 
     if (error) {
       if (error.code === 'PGRST116') return null; // Not found, which is a possible outcome.
-      handleModelError(`Failed to update user context for channelUserId ${channelUserId}`, error);
+      handleModelError(`Failed to update user context for channelUserId ${channelUserId} and businessId ${businessId}`, error);
     }
     if (!data) {
-        console.warn(`[UserContextModel] Update for user context ${channelUserId} returned no data, record might not exist.`);
+        console.warn(`[UserContextModel] Update for user context ${channelUserId} and business ${businessId} returned no data, record might not exist.`);
         return null;
     }
     return new UserContext(data as UserContextDBSchema);

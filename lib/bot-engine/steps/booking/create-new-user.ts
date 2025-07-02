@@ -1,5 +1,4 @@
 import type { IndividualStepHandler } from '@/lib/bot-engine/types';
-import { User } from '@/lib/database/models/user';
 import { getLocalizedTextWithVars, getLocalizedText } from './booking-utils';
 
 export const createNewUserHandler: IndividualStepHandler = {
@@ -19,21 +18,19 @@ export const createNewUserHandler: IndividualStepHandler = {
     }
     
     try {
-      const newUser = new User(
-        currentGoalData.customerName,
-        '', // lastName
-        'customer',
-        chatContext.currentParticipant.associatedBusinessId || ''
-      );
+      // Use the new GoalManager method for user creation
+      const { GoalManager } = await import('@/lib/bot-engine/core/goal-manager');
+      const goalManager = new GoalManager();
       
-      await newUser.add({
-        whatsappNumber: chatContext.currentParticipant.customerWhatsappNumber
-      });
+      const userCreationResult = await goalManager.createUserForBookingGoal(
+        currentGoalData.customerName,
+        chatContext
+      );
       
       return {
         ...currentGoalData,
-        userId: newUser.id,
-        confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.ACCOUNT_CREATED', { name: newUser.firstName })
+        userId: userCreationResult.userId,
+        confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.ACCOUNT_CREATED', { name: userCreationResult.customerName })
       };
       
     } catch (error) {

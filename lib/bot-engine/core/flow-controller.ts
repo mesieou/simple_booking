@@ -400,14 +400,19 @@ export class FlowController {
   public async handleRestart(userCurrentGoal: UserGoal, currentContext: ChatContext, executeFirstStep: Function): Promise<{ responseToUser: string; uiButtonsToDisplay?: ButtonConfig[] }> {
     userCurrentGoal.currentStepIndex = 0;
     userCurrentGoal.collectedData = {
-      availableServices: userCurrentGoal.collectedData.availableServices
+      availableServices: userCurrentGoal.collectedData.availableServices,
+      // Preserve user information across restarts since it's established during goal creation
+      userId: userCurrentGoal.collectedData.userId,
+      customerName: userCurrentGoal.collectedData.customerName,
+      existingUserFound: userCurrentGoal.collectedData.existingUserFound
     };
     return executeFirstStep(userCurrentGoal, currentContext, "restart");
   }
 
   public async handleOriginalRestartFlow(userCurrentGoal: UserGoal, currentContext: ChatContext) {
     const selectedService = userCurrentGoal.collectedData.selectedService;
-    let targetStep = selectedService?.mobile ? 'askAddress' : 'confirmLocation';
+    // Since user creation now happens first, restart should jump to the appropriate step after user creation
+    let targetStep = selectedService?.mobile ? 'askAddress' : 'selectService';
     
     userCurrentGoal.collectedData.restartBookingFlow = false;
     this.navigateBackToStep(userCurrentGoal, targetStep);
