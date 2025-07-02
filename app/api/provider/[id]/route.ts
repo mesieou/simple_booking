@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/database/supabase/server';
+import { getEnvironmentServerClient } from '@/lib/database/supabase/environment';
 import { NextResponse } from 'next/server';
 
 export async function GET(
@@ -7,7 +7,7 @@ export async function GET(
 ) {
   try {
     const { id } = await context.params;
-    const supabase = await createClient();
+    const supabase = await getEnvironmentServerClient();
     const { data, error } = await supabase
       .from('users')
       .select('firstName, lastName')

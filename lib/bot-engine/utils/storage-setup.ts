@@ -1,13 +1,13 @@
-import { getServiceRoleClient } from '@/lib/database/supabase/server';
+import { getEnvironmentServiceRoleClient } from '@/lib/database/supabase/environment';
 
-const LOG_PREFIX = '[StorageSetup]';
+const LOG_PREFIX = '[Storage Setup]';
 
 /**
  * Ensures the chat-attachments bucket exists in Supabase Storage
  */
 export async function ensureChatAttachmentsBucket(): Promise<boolean> {
   try {
-    const supabase = getServiceRoleClient();
+    const supabase = getEnvironmentServiceRoleClient();
 
     // Check if bucket exists
     const { data: buckets, error: listError } = await supabase.storage.listBuckets();
