@@ -38,7 +38,8 @@ export async function computeInitialAvailability(
   user: User,
   fromDate: Date,
   days: number,
-  business: Business
+  business: Business,
+  options?: { supabaseClient?: any }
 ): Promise<AvailabilitySlots[]> {
   const slots: AvailabilitySlots[] = [];
 
@@ -64,7 +65,8 @@ export async function computeInitialAvailability(
     // Get calendar settings
     const calendarSettings = await CalendarSettings.getByUserAndBusiness(
       user.id,
-      user.businessId
+      user.businessId,
+      options
     );
     
     if (!calendarSettings) {

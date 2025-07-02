@@ -1,4 +1,5 @@
 import { createClient } from "../supabase/server";
+import { getServiceRoleClient, getProdServiceRoleClient } from "../supabase/service-role";
 import { handleModelError } from '@/lib/general-helpers/error';
 import { v4 as uuidv4 } from 'uuid';
 import { Document, DocumentData } from './documents';
@@ -27,8 +28,23 @@ export class CrawlSession {
     this.sessionData = data;
   }
 
-  static async add(data: CrawlSessionData): Promise<CrawlSession> {
-    const supabase = await createClient();
+  static async add(data: CrawlSessionData, options?: { useServiceRole?: boolean }): Promise<CrawlSession> {
+    // Use service role client for crawler operations or when explicitly requested
+    // This bypasses RLS for scenarios like crawling where no user auth context exists
+    let supabase;
+    if (options?.useServiceRole) {
+      // Check if PDF crawler should target production database
+      if (process.env.PDF_CRAWLER_TARGET_PRODUCTION === "true") {
+        supabase = getProdServiceRoleClient();
+        console.log('[CrawlSession.add] Using production service role client (PDF crawler production mode)');
+      } else {
+        supabase = getServiceRoleClient();
+        console.log('[CrawlSession.add] Using local service role client (bypasses RLS for crawl session creation)');
+      }
+    } else {
+      supabase = await createClient();
+    }
+    
     const insertData = {
       businessId: data.businessId,
       startTime: data.startTime,
@@ -41,6 +57,11 @@ export class CrawlSession {
       missingInformation: data.missingInformation,
       id: data.id || uuidv4()
     };
+    
+    if (options?.useServiceRole) {
+      console.log('[CrawlSession.add] Using service role client (bypasses RLS for crawl session creation)');
+    }
+    
     console.log('Attempting to insert crawl session:', insertData);
     const { data: result, error } = await supabase
       .from('crawlSessions')
@@ -92,12 +113,27 @@ export class CrawlSession {
    */
   static async addSessionWithDocumentsAndEmbeddings(
     sessionData: CrawlSessionData,
-    documentsData: Omit<DocumentData, 'id' | 'sessionId'>[]
+    documentsData: Omit<DocumentData, 'id' | 'sessionId'>[],
+    options?: { useServiceRole?: boolean }
   ): Promise<{
     session: CrawlSession;
     savedDocuments: DocumentData[];
   }> {
-    const supabase = await createClient();
+    // Use service role client for crawler operations or when explicitly requested
+    // This bypasses RLS for scenarios like crawling where no user auth context exists
+    let supabase;
+    if (options?.useServiceRole) {
+      // Check if PDF crawler should target production database
+      if (process.env.PDF_CRAWLER_TARGET_PRODUCTION === "true") {
+        supabase = getProdServiceRoleClient();
+        console.log('[CrawlSession.addSessionWithDocumentsAndEmbeddings] Using production service role client (PDF crawler production mode)');
+      } else {
+        supabase = getServiceRoleClient();
+        console.log('[CrawlSession.addSessionWithDocumentsAndEmbeddings] Using local service role client (bypasses RLS for crawl session and documents creation)');
+      }
+    } else {
+      supabase = await createClient();
+    }
 
     // 1. Insert session data directly
     const sessionToInsert = { ...sessionData, id: sessionData.id || uuidv4() };

@@ -1,5 +1,4 @@
-import { createClient } from '../supabase/server';
-import { getServiceRoleClient } from '../supabase/service-role';
+import { createClient, getServiceRoleClient } from '../supabase/server';
 import { type Business } from './business';
 import { type ChatSession } from './chat-session';
 

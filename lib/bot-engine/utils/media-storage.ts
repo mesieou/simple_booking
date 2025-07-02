@@ -1,4 +1,4 @@
-import { getServiceRoleClient } from '@/lib/database/supabase/service-role';
+import { getServiceRoleClient } from '@/lib/database/supabase/server';
 import { getWhatsappHeaders } from '../channels/whatsapp/whatsapp-headers';
 import { ensureChatAttachmentsBucket } from './storage-setup';
 

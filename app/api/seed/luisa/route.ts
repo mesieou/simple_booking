@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 // Correcting import path to be relative for potentially better module resolution
-import { createLuisaTestBusiness, type LuisaTestBusinessSeedResult } from '@/lib/database/seed/create-luisa-test-business';
+import { createLuisaTestBusinessForProduction, type LuisaTestBusinessSeedResult } from '@/lib/database/seed/create-luisa-test-business';
 // Supabase client is not strictly needed here as createLuisaTestBusiness uses models 
 // that internally call createClient(), but it's good practice for API routes to manage clients if needed.
 // import { createClient } from '@/lib/database/supabase/server';
@@ -9,7 +9,7 @@ export async function POST(request: Request) {
   try {
     // const supabase = createClient(); // If you were to pass it to createLuisaTestBusiness
     console.log("[SEED] Starting Luisa's test business seeding process...");
-    const result: LuisaTestBusinessSeedResult = await createLuisaTestBusiness();
+    const result: LuisaTestBusinessSeedResult = await createLuisaTestBusinessForProduction();
     
     console.log("[SEED] Successfully seeded Luisa's test business:", {
       businessId: result.businessId,

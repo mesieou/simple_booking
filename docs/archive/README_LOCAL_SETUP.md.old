@@ -1,0 +1,75 @@
+# 🚀 Quick Start - Local Development Setup
+
+**New to this project?** Follow these steps to get your local WhatsApp bot development environment running.
+
+## ⚡ TL;DR - Quick Setup
+
+```bash
+# 1. Install dependencies
+npm install
+
+# 2. Setup environment
+npm run setup:quick
+# Edit .env.local with your OpenAI API key
+
+# 3. Start local database
+supabase start
+
+# 4. Load database schema
+psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -f supabase/migrations_backup/20250702024633_remote_schema.sql
+
+# 5. Start development
+npm run dev
+```
+
+## 📋 Prerequisites Check
+
+Run this to check if your machine has everything needed:
+
+```bash
+npm run setup:check
+```
+
+This will verify:
+- ✅ Node.js, Docker, Supabase CLI installed
+- ✅ Local Supabase running
+- ✅ Database schema loaded
+- ✅ Vector search capabilities
+
+## 📖 Full Documentation
+
+👉 **[Complete Setup Guide](./LOCAL_DEVELOPMENT_SETUP.md)** - Detailed instructions for first-time setup
+
+## 🔗 Quick Links
+
+- **Local App**: http://localhost:3000
+- **Database Studio**: http://127.0.0.1:54323
+- **API Endpoint**: http://127.0.0.1:54321
+- **Webhook URL**: http://localhost:3000/api/webhook2
+
+## 🛠️ Common Commands
+
+```bash
+# Environment
+npm run setup:check          # Check setup status
+npm run dev                  # Start development server
+
+# Database
+npm run db:help             # Show all database commands
+npm run db:schema-apply-dev # Deploy schema to development
+supabase start              # Start local database
+supabase status             # Check database status
+
+# Testing
+curl -X POST http://localhost:3000/api/webhook2  # Test webhook
+```
+
+## 🆘 Need Help?
+
+1. **Setup issues**: Check the [Full Setup Guide](./LOCAL_DEVELOPMENT_SETUP.md)
+2. **Environment issues**: Run `npm run setup:check`
+3. **Database issues**: Run `supabase status` and `supabase logs`
+
+---
+
+**Ready to develop?** Your WhatsApp bot with vector search is ready for local testing! 🎉 

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ChatSession } from '@/lib/database/models/chat-session';
-import { createClient } from '@/lib/database/supabase/server';
-import { getServiceRoleClient } from '@/lib/database/supabase/service-role';
+import { createClient, getServiceRoleClient } from '@/lib/database/supabase/server';
 import { WhatsappSender } from '@/lib/bot-engine/channels/whatsapp/whatsapp-message-sender';
 import { Business } from '@/lib/database/models/business';
 

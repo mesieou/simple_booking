@@ -10,6 +10,7 @@ import { UserContext } from "@/lib/database/models/user-context";
 import { ChatMessage } from "@/lib/database/models/chat-session";
 import { User } from "@/lib/database/models/user";
 import { Business } from "@/lib/database/models/business";
+import { getCurrentEnvironment } from "@/lib/database/supabase/environment";
 
 // Converts database models to internal session format
 function convertToInternalSession(
@@ -72,6 +73,11 @@ export async function getOrCreateChatContext(
   historyForLLM: ChatMessage[];
   customerUser?: any;
 }> {
+  const currentEnvironment = getCurrentEnvironment();
+  const LOG_PREFIX = `[SessionManager ${currentEnvironment.toUpperCase()}]`;
+  
+  console.log(`${LOG_PREFIX} Creating chat context for participant: ${participant.id}`);
+  
   // 1. Identificar dinámicamente el negocio a través del número de WhatsApp.
   if (!participant.businessWhatsappNumber) {
     throw new Error(

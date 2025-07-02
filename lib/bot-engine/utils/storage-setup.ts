@@ -1,4 +1,4 @@
-import { getServiceRoleClient } from '@/lib/database/supabase/service-role';
+import { getServiceRoleClient } from '@/lib/database/supabase/server';
 
 const LOG_PREFIX = '[StorageSetup]';
 

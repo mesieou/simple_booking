@@ -1,4 +1,5 @@
 import { createClient } from "../supabase/server";
+import { getServiceRoleClient } from "../supabase/service-role";
 import { handleModelError } from '@/lib/general-helpers/error';
 import { DateTime } from 'luxon';
 
@@ -23,14 +24,20 @@ export class AvailabilitySlots {
     }
 
     // Add new availability slots
-    async add(): Promise<AvailabilitySlotsData> {
-        const supa = await createClient();
+    async add(options?: { useServiceRole?: boolean; supabaseClient?: any }): Promise<AvailabilitySlotsData> {
+        // Use provided client, service role client, or regular client
+        // This bypasses RLS for scenarios like seeding where no user auth context exists
+        const supa = options?.supabaseClient || (options?.useServiceRole ? getServiceRoleClient() : await createClient());
 
         const availabilitySlots = {
             "providerId": this.data.providerId,
             "date": this.data.date,
             "slots": this.data.slots,
             "createdAt": new Date().toISOString()
+        }
+        
+        if (options?.useServiceRole) {
+            console.log('[AvailabilitySlots.add] Using service role client (bypasses RLS for availability creation)');
         }
 
         const { data, error } = await supa

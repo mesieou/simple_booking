@@ -10,21 +10,36 @@ export const POST = async (req: NextRequest) => {
   const file = formData.get("file") as File;
   const buffer = Buffer.from(await file.arrayBuffer());
   
-  // Use hardcoded business ID for testing
-  const businessId = TEST_BUSINESS_ID;
+  // Use businessId from formData if provided, otherwise fallback to hardcoded one
+  const businessId = (formData.get("businessId") as string) || TEST_BUSINESS_ID;
+  
+  // Check if this should target production database
+  const targetProduction = formData.get("targetProduction") === "true";
   
   // Get the original filename from the uploaded file
   const pdfName = file.name;
   
-  // Create config using the helper function
-  const config = createPdfConfig(businessId, [pdfName]);
+  // Set environment flag for production targeting if requested
+  if (targetProduction) {
+    process.env.PDF_CRAWLER_TARGET_PRODUCTION = "true";
+  }
+  
+  try {
+    // Create config using the helper function
+    const config = createPdfConfig(businessId, [pdfName]);
 
-  // Process the PDF using the crawler
-  const result = await crawlAndProcessPdfs(config, [buffer]);
+    // Process the PDF using the crawler
+    const result = await crawlAndProcessPdfs(config, [buffer]);
 
-  return NextResponse.json({ 
-    message: 'PDF processed successfully',
-    result,
-    pdfName
-  });
+    return NextResponse.json({ 
+      message: 'PDF processed successfully',
+      result,
+      pdfName
+    });
+  } finally {
+    // Clean up the environment flag
+    if (targetProduction) {
+      delete process.env.PDF_CRAWLER_TARGET_PRODUCTION;
+    }
+  }
 }; 

@@ -1,7 +1,6 @@
-import { createClient } from "../supabase/server";
+import { createClient, getServiceRoleClient } from "../supabase/server";
 import { v4 as uuidv4 } from 'uuid';
 import { handleModelError } from '@/lib/general-helpers/error';
-import { getServiceRoleClient } from "../supabase/service-role";
 
 // Represents a single message within the allMessages array
 export interface ChatMessage {

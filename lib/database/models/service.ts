@@ -1,4 +1,5 @@
 import { createClient } from "../supabase/server";
+import { getServiceRoleClient } from "../supabase/service-role";
 import { v4 as uuidv4 } from 'uuid';
 import { handleModelError } from '@/lib/general-helpers/error';
 
@@ -63,8 +64,11 @@ export class Service {
         return { ...this.data };
     }
 
-    async add(): Promise<ServiceData> {
-        const supa = createClient();
+    async add(options?: { useServiceRole?: boolean; supabaseClient?: any }): Promise<ServiceData> {
+        // Use provided client, service role client, or regular client
+        // This bypasses RLS for scenarios like seeding where no user auth context exists
+        const supa = options?.supabaseClient || (options?.useServiceRole ? getServiceRoleClient() : await createClient());
+        
         const service = {
             "id": this.data.id || uuidv4(),
             "businessId": this.data.businessId,
@@ -80,6 +84,10 @@ export class Service {
             "createdAt": new Date().toISOString(),
             "updatedAt": new Date().toISOString()
         };
+        
+        if (options?.useServiceRole) {
+            console.log('[Service.add] Using service role client (bypasses RLS for service creation)');
+        }
         const { data, error } = await supa.from("services").insert(service).select().single();
         if (error) {
             handleModelError("Failed to create service", error);

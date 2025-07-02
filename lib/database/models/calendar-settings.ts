@@ -1,4 +1,5 @@
 import { createClient } from "../supabase/server";
+import { getServiceRoleClient } from "../supabase/service-role";
 import { handleModelError } from '@/lib/general-helpers/error';
 
 export type WorkingHours = {
@@ -43,12 +44,18 @@ export class CalendarSettings {
   }
 
   // Save or update calendar settings
-  static async save(id: string | undefined, settings: CalendarSettingsData): Promise<CalendarSettings> {
-    const supabase = await createClient()
+  static async save(id: string | undefined, settings: CalendarSettingsData, options?: { useServiceRole?: boolean; supabaseClient?: any }): Promise<CalendarSettings> {
+    // Use provided client, service role client, or regular client
+    // This bypasses RLS for scenarios like seeding where no user auth context exists
+    const supabase = options?.supabaseClient || (options?.useServiceRole ? getServiceRoleClient() : await createClient());
     
     const dataToSave = {
       ...settings,
       updatedAt: new Date().toISOString()
+    }
+    
+    if (options?.useServiceRole) {
+      console.log('[CalendarSettings.save] Using service role client (bypasses RLS for calendar settings creation)');
     }
 
     // If we have an ID, use update, otherwise insert
@@ -103,7 +110,7 @@ export class CalendarSettings {
   }
 
   // Get calendar settings for a specific user in a business
-  static async getByUserAndBusiness(userId: string, businessId: string): Promise<CalendarSettings | null> {
+  static async getByUserAndBusiness(userId: string, businessId: string, options?: { supabaseClient?: any }): Promise<CalendarSettings | null> {
     if (!CalendarSettings.isValidUUID(userId)) {
       handleModelError("Invalid user ID format", new Error("Invalid UUID format"));
     }
@@ -111,7 +118,7 @@ export class CalendarSettings {
       handleModelError("Invalid business ID format", new Error("Invalid UUID format"));
     }
 
-    const supabase = await createClient()
+    const supabase = options?.supabaseClient || await createClient()
     
     const { data, error } = await supabase
       .from('calendarSettings')
