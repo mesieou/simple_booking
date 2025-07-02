@@ -1,4 +1,4 @@
-import { createClient } from "../supabase/server";
+import { getEnvironmentServerClient } from "../supabase/environment";
 import { v4 as uuidv4 } from 'uuid';
 import { handleModelError } from '@/lib/general-helpers/error';
 
@@ -54,7 +54,7 @@ export class Interaction {
   }
 
   static async create(input: InteractionCreateInput): Promise<Interaction> {
-    const supa = await createClient();
+    const supa = await getEnvironmentServerClient();
     const newId = uuidv4();
     const now = new Date().toISOString();
 
@@ -84,7 +84,7 @@ export class Interaction {
       console.warn(`[InteractionModel] Attempted to fetch with invalid UUID: ${id}`);
       return null;
     }
-    const supa = await createClient();
+    const supa = await getEnvironmentServerClient();
     const { data, error } = await supa
       .from('interactions')
       .select('*')
@@ -106,7 +106,7 @@ export class Interaction {
       console.warn(`[InteractionModel] Attempted to fetch by session with invalid UUID: ${chatSessionId}`);
       return [];
     }
-    const supa = await createClient();
+    const supa = await getEnvironmentServerClient();
     
     let queryBuilder = supa
       .from('interactions')
@@ -136,7 +136,7 @@ export class Interaction {
       console.warn(`[InteractionModel] Attempted to update with invalid UUID: ${id}`);
       return null;
     }
-    const supa = await createClient();
+    const supa = await getEnvironmentServerClient();
     // If your interactions table has an `updatedAt` column, set it here:
     // const dataToUpdate = { ...input, updatedAt: new Date().toISOString() };
     const dataToUpdate = { ...input }; 
@@ -164,7 +164,7 @@ export class Interaction {
       handleModelError('Invalid UUID for delete Interaction', new Error('Invalid UUID for delete'));
       return;
     }
-    const supa = await createClient();
+    const supa = await getEnvironmentServerClient();
     const { error } = await supa.from('interactions').delete().eq('id', id);
 
     if (error) {

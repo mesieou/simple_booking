@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/database/supabase/server';
+import { getEnvironmentServerClient } from '@/lib/database/supabase/environment';
 import { CrawlConfig } from '@/lib/general-config/general-config';
 import { crawlAndProcess } from '@/lib/backend-actions/content-crawler/html-crawler';
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient();
+    const supabase = getEnvironmentServerClient();
     const body = await request.json();
     const { type, businessId, websiteUrl } = body;
 

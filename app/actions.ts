@@ -15,7 +15,7 @@ export async function signUpAction(formData: FormData) {
     throw new Error("Passwords do not match");
   }
 
-  const supabase = createClient();
+  const supabase = getEnvironmentServerClient();
 
   const { data, error } = await supabase.auth.signUp({
     email,
@@ -41,7 +41,7 @@ export async function signInAction(formData: FormData) {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
 
-  const supabase = createClient();
+  const supabase = getEnvironmentServerClient();
 
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
@@ -61,14 +61,14 @@ export async function signInAction(formData: FormData) {
 }
 
 export async function signOutAction() {
-  const supabase = createClient();
+  const supabase = getEnvironmentServerClient();
   await supabase.auth.signOut();
   redirect("/sign-in");
 }
 
 export async function forgotPasswordAction(formData: FormData) {
   const email = formData.get("email") as string;
-  const supabase = createClient();
+  const supabase = getEnvironmentServerClient();
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://skedy.io'}/protected/reset-password`,
@@ -90,7 +90,7 @@ export async function resetPasswordAction(formData: FormData) {
     throw new Error("Passwords do not match");
   }
 
-  const supabase = createClient();
+  const supabase = getEnvironmentServerClient();
 
   const { error } = await supabase.auth.updateUser({
     password: password,
@@ -148,7 +148,7 @@ type StoredChatMessage = {
  */
 // TODO: move this to model
 export async function getMessagesForSession(sessionId: string): Promise<ChatMessage[]> {
-  const supabase = createClient();
+  const supabase = getEnvironmentServerClient();
 
   const {
     data: { user },
@@ -216,7 +216,7 @@ export async function getMessagesForSession(sessionId: string): Promise<ChatMess
 
 // TODO: move this to model
 export async function getMessagesForUser(channelUserId: string): Promise<ChatMessage[]> {
-    const supabase = createClient();
+    const supabase = getEnvironmentServerClient();
     
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -284,7 +284,7 @@ export async function getMessagesForUser(channelUserId: string): Promise<ChatMes
 
 // TODO: move this to model
 export async function getUserBusinessId(): Promise<string | null> {
-    const supabase = createClient();
+    const supabase = getEnvironmentServerClient();
 
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -312,7 +312,7 @@ export async function getBusinessConversations(): Promise<Array<{
   escalationStatus: string | null;
   sessionId: string;
 }>> {
-    const supabase = createClient();
+    const supabase = getEnvironmentServerClient();
     
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -340,7 +340,7 @@ export async function getDashboardNotifications(): Promise<Array<{
   chatSessionId: string;
   channelUserId: string;
 }>> {
-    const supabase = createClient();
+    const supabase = getEnvironmentServerClient();
     
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
@@ -361,7 +361,7 @@ export async function getDashboardNotifications(): Promise<Array<{
 }
 
 export async function markNotificationAsRead(notificationId: string) {
-  const supabase = createClient();
+  const supabase = getEnvironmentServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -396,7 +396,7 @@ export async function getChannelUserIdBySessionId(sessionId: string): Promise<st
 }
 
 export async function finishAssistance(sessionId: string) {
-  const supa = createClient();
+  const supa = getEnvironmentServerClient();
 
   const { error } = await supa.functions.invoke('finish-assistance', {
     body: { sessionId },
@@ -412,7 +412,7 @@ export async function finishAssistance(sessionId: string) {
 }
 
 export async function takeControl(sessionId: string) {
-  const supa = createClient();
+  const supa = getEnvironmentServerClient();
 
   const { error } = await supa.functions.invoke('take-control', {
     body: { sessionId },
@@ -428,7 +428,7 @@ export async function takeControl(sessionId: string) {
 }
 
 export async function sendStaffReply(sessionId: string, message: string) {
-  const supa = createClient();
+  const supa = getEnvironmentServerClient();
 
   const { error } = await supa.functions.invoke('staff-reply', {
     body: { sessionId, message },

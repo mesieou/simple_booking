@@ -1,5 +1,4 @@
-import { createClient } from "../supabase/server";
-import { getServiceRoleClient, getProdServiceRoleClient } from "../supabase/service-role";
+import { getEnvironmentServerClient, getEnvironmentServiceRoleClient } from "../supabase/environment";
 import { handleModelError } from '@/lib/general-helpers/error';
 import { v4 as uuidv4 } from 'uuid';
 import { Document, DocumentData } from './documents';
@@ -35,14 +34,14 @@ export class CrawlSession {
     if (options?.useServiceRole) {
       // Check if PDF crawler should target production database
       if (process.env.PDF_CRAWLER_TARGET_PRODUCTION === "true") {
-        supabase = getProdServiceRoleClient();
+        supabase = getEnvironmentServiceRoleClient();
         console.log('[CrawlSession.add] Using production service role client (PDF crawler production mode)');
       } else {
-        supabase = getServiceRoleClient();
+        supabase = getEnvironmentServiceRoleClient();
         console.log('[CrawlSession.add] Using local service role client (bypasses RLS for crawl session creation)');
       }
     } else {
-      supabase = await createClient();
+      supabase = await getEnvironmentServerClient();
     }
     
     const insertData = {
@@ -82,7 +81,7 @@ export class CrawlSession {
   }
 
   static async getById(id: string): Promise<CrawlSession> {
-    const supabase = await createClient();
+    const supabase = await getEnvironmentServerClient();
     const { data, error } = await supabase
       .from('crawlSessions')
       .select('*')
@@ -94,7 +93,7 @@ export class CrawlSession {
   }
 
   static async getAll(businessId?: string): Promise<CrawlSession[]> {
-    const supabase = await createClient();
+    const supabase = await getEnvironmentServerClient();
     let query = supabase.from('crawlSessions').select('*');
     if (businessId) query = query.eq('businessId', businessId);
     const { data, error } = await query;
@@ -103,7 +102,7 @@ export class CrawlSession {
   }
 
   static async deleteById(id: string): Promise<void> {
-    const supabase = await createClient();
+    const supabase = await getEnvironmentServerClient();
     const { error } = await supabase.from('crawlSessions').delete().eq('id', id);
     if (error) handleModelError('Failed to delete crawl session', error);
   }
@@ -125,14 +124,14 @@ export class CrawlSession {
     if (options?.useServiceRole) {
       // Check if PDF crawler should target production database
       if (process.env.PDF_CRAWLER_TARGET_PRODUCTION === "true") {
-        supabase = getProdServiceRoleClient();
+        supabase = getEnvironmentServiceRoleClient();
         console.log('[CrawlSession.addSessionWithDocumentsAndEmbeddings] Using production service role client (PDF crawler production mode)');
       } else {
-        supabase = getServiceRoleClient();
+        supabase = getEnvironmentServiceRoleClient();
         console.log('[CrawlSession.addSessionWithDocumentsAndEmbeddings] Using local service role client (bypasses RLS for crawl session and documents creation)');
       }
     } else {
-      supabase = await createClient();
+      supabase = await getEnvironmentServerClient();
     }
 
     // 1. Insert session data directly

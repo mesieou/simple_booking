@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient, getServiceRoleClient } from "@/lib/database/supabase/server";
+import { getEnvironmentServerClient, getEnvironmentServiceRoleClient } from "@/lib/database/supabase/environment";
 import { WhatsappSender } from "@/lib/bot-engine/channels/whatsapp/whatsapp-message-sender";
 import { Business } from "@/lib/database/models/business";
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = getEnvironmentServerClient();
     
     // Verify user authentication with server verification
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Get chat session data and verify ownership
-    const supaServiceRole = getServiceRoleClient();
+    const supaServiceRole = getEnvironmentServiceRoleClient();
     const { data: sessionData, error: sessionError } = await supaServiceRole
       .from("chatSessions")
       .select("businessId, channelUserId, allMessages")

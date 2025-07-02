@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/database/supabase/client";
+import { signInAction } from "@/app/actions";
 import { useAuth } from "@/app/context/auth-context";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";

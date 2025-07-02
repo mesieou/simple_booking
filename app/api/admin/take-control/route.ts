@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/database/supabase/server";
+import { getEnvironmentServerClient } from "@/lib/database/supabase/environment";
 import { Notification } from "@/lib/database/models/notification";
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = getEnvironmentServerClient();
     
     // Verify user authentication with server verification
     const { data: { user }, error: authError } = await supabase.auth.getUser();

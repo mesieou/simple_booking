@@ -1,4 +1,4 @@
-import { createClient } from "../supabase/server";
+import { getEnvironmentServerClient } from "../supabase/environment";
 import { handleModelError } from '@/lib/general-helpers/error';
 import { CONFIDENCE_CONFIG } from '@/lib/general-config/general-config';
 
@@ -67,7 +67,7 @@ export class Document {
       }
     }
 
-    const supabase = await createClient();
+    const supabase = await getEnvironmentServerClient();
     const insertData = {
       ...data,
       createdAt: new Date().toISOString(),
@@ -102,7 +102,7 @@ export class Document {
   }
 
   static async getById(id: string): Promise<DocumentData> {
-    const supabase = await createClient();
+    const supabase = await getEnvironmentServerClient();
     const { data, error } = await supabase.from("documents").select("*").eq("id", id).single();
     if (error) handleModelError("Failed to fetch document", error);
     if (!data) handleModelError("Document not found", new Error("Document not found"));
@@ -110,7 +110,7 @@ export class Document {
   }
 
   static async getAll(businessId?: string): Promise<DocumentData[]> {
-    const supa = await createClient();
+    const supa = await getEnvironmentServerClient();
     let query = supa.from("documents").select("*");
     if (businessId) query = query.eq("businessId", businessId);
     const { data, error } = await query;
@@ -121,7 +121,7 @@ export class Document {
   }
 
   static async update(id: string, data: Partial<DocumentData>): Promise<DocumentData> {
-    const supabase = await createClient();
+    const supabase = await getEnvironmentServerClient();
     const updateData = {
       ...data,
       updatedAt: new Date().toISOString(),
@@ -133,26 +133,26 @@ export class Document {
   }
 
   static async delete(id: string): Promise<void> {
-    const supabase = await createClient();
+    const supabase = await getEnvironmentServerClient();
     const { error } = await supabase.from("documents").delete().eq("id", id);
     if (error) handleModelError("Failed to delete document", error);
   }
 
   static async getBySessionId(sessionId: string): Promise<DocumentData[]> {
-    const supabase = await createClient();
+    const supabase = await getEnvironmentServerClient();
     const { data, error } = await supabase.from("documents").select("*").eq("sessionId", sessionId);
     if (error) handleModelError("Failed to fetch documents by sessionId", error);
     return data || [];
   }
 
   static async deleteBySessionId(sessionId: string): Promise<void> {
-    const supabase = await createClient();
+    const supabase = await getEnvironmentServerClient();
     const { error } = await supabase.from("documents").delete().eq("sessionId", sessionId);
     if (error) handleModelError("Failed to delete documents by sessionId", error);
   }
 
   static async findByServiceId(serviceId: string): Promise<DocumentData | null> {
-    const supabase = await createClient();
+    const supabase = await getEnvironmentServerClient();
     const { data, error } = await supabase
       .from("documents")
       .select("*")
