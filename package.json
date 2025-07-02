@@ -26,7 +26,7 @@
     "db:push-dev": "node scripts/db-sync.js push-dev",
     "db:push-prod": "node scripts/db-sync.js push-prod",
     "db:schema-diff-dev": "node scripts/db-sync.js schema-diff-dev",
-    "db:schema-diff-prod": "node scripts/db-sync.js schema-diff-prod", 
+    "db:schema-diff-prod": "node scripts/db-sync.js schema-diff-prod",
     "db:schema-apply-dev": "node scripts/db-sync.js schema-apply-dev",
     "db:schema-apply-prod": "node scripts/db-sync.js schema-apply-prod",
     "db:new-migration": "node scripts/db-sync.js new-migration",
