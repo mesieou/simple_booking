@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useCallback } from 'react';
-import { createClient } from '@/lib/database/supabase/client';
 import { RealtimeChannel } from '@supabase/supabase-js';
+import { getEnvironmentBrowserClient } from '@/lib/database/supabase/environment';
 
 type UseRealtimeChatProps = {
   userBusinessId: string | null;
@@ -23,7 +23,7 @@ export function useRealtimeChat({
 }: UseRealtimeChatProps) {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const selectedUserIdRef = useRef<string | undefined>(selectedUserId);
-  const supabase = createClient();
+  const supabase = getEnvironmentBrowserClient();
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isConnectingRef = useRef<boolean>(false);
 

@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient, getServiceRoleClient } from '@/lib/database/supabase/server';
+import { getServiceRoleClient } from '@/lib/database/supabase/server';
+import { getEnvironmentServerClient } from '@/lib/database/supabase/environment';
 
 export async function GET(req: NextRequest) {
   try {
     console.log('🔍 [DEBUG] Testing notifications table access...');
 
     // Get current user for security validation
-    const supabase = createClient();
+    const supabase = getEnvironmentServerClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {

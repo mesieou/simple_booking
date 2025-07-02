@@ -1,5 +1,4 @@
-import { createClient } from "../supabase/server";
-import { getServiceRoleClient } from "../supabase/service-role";
+import { getEnvironmentServerClient, getEnvironmentServiceRoleClient } from "../supabase/environment";
 import { Business } from "./business";
 import { v4 as uuidv4 } from 'uuid';
 import { handleModelError } from '@/lib/general-helpers/error';
@@ -98,7 +97,7 @@ export class User {
   }) {
     // Use provided client or default service role for ALL operations in user creation
     // This avoids RLS context mismatch between auth and database operations
-    const adminSupa = options?.supabaseClient || getServiceRoleClient();
+    const adminSupa = options?.supabaseClient || getEnvironmentServiceRoleClient();
 
         // Validate: prevent multiple providers per business (unless explicitly skipped)
         if (!options?.skipProviderValidation && PROVIDER_ROLES.includes(this.role)) {
@@ -204,7 +203,7 @@ export class User {
             handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
-        const supa = await createClient()
+        const supa = await getEnvironmentServerClient()
         const { data, error } = await supa.from("users").select("*").eq("id", id).single();
         
         if (error) {
@@ -234,7 +233,7 @@ export class User {
             handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
-        const supa = await createClient()
+        const supa = await getEnvironmentServerClient()
         const { data, error } = await supa.from("users").select("*").eq("businessId", businessId);
         
         if (error) {
@@ -258,7 +257,7 @@ export class User {
 
     // Get users by role
     static async getByRole(role: UserRole): Promise<User[]> {
-        const supa = await createClient()
+        const supa = await getEnvironmentServerClient()
         const { data, error } = await supa.from("users").select("*").eq("role", role);
         
         if (error) {
@@ -282,7 +281,7 @@ export class User {
 
     // Get all providers (including admin/providers)
     static async getAllProviders(): Promise<User[]> {
-        const supa = await createClient()
+        const supa = await getEnvironmentServerClient()
         const { data, error } = await supa
             .from("users")
             .select("*")
@@ -314,7 +313,7 @@ export class User {
         }
         
         try {
-            const supa = await createClient();
+            const supa = await getEnvironmentServerClient();
             // Find a user associated with the business who is a provider/admin
             const { data: users, error } = await supa
                 .from('users')
@@ -368,7 +367,7 @@ export class User {
         try {
             console.log(`[User] Finding user by business ${contactType} contact: ${phoneNumber}`);
             
-            const supa = await createClient();
+            const supa = await getEnvironmentServerClient();
             
             // Normalize the input phone number for comparison
             const normalizedInputNumber = PhoneNumberUtils.normalize(phoneNumber);
@@ -471,7 +470,7 @@ export class User {
             console.log(`[User] Finding customer user by WhatsApp number: ${customerWhatsappNumber}`);
             
             // Use the service role client to bypass RLS for this global search
-            const supa = getServiceRoleClient();
+            const supa = getEnvironmentServiceRoleClient();
             
             // Normalize the input WhatsApp number for comparison
             const normalizedInputWhatsappNumber = PhoneNumberUtils.normalize(customerWhatsappNumber);
@@ -522,7 +521,7 @@ export class User {
             handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
-        const supa = await createClient()
+        const supa = await getEnvironmentServerClient()
         const updateData: any = {
             "firstName": userData.firstName,
             "lastName": userData.lastName,
@@ -569,7 +568,7 @@ export class User {
             handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
-        const supa = await createClient()
+        const supa = await getEnvironmentServerClient()
         const { error } = await supa.from("users").delete().eq("id", id);
 
         if (error) {
@@ -592,7 +591,7 @@ export class User {
         }
         
         try {
-            const supa = supabaseClient || await createClient();
+            const supa = supabaseClient || await getEnvironmentServerClient();
             const { data: users, error } = await supa
                 .from('users')
                 .select('id')

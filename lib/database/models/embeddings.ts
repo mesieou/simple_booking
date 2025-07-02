@@ -1,4 +1,4 @@
-import { createClient } from "../supabase/server";
+import { getEnvironmentServerClient } from "../supabase/environment";
 import { handleModelError } from '@/lib/general-helpers/error';
 import { CONFIDENCE_CONFIG } from '@/lib/general-config/general-config';
 
@@ -38,7 +38,7 @@ export class Embedding {
   }
 
   static async add(data: EmbeddingData): Promise<EmbeddingData> {
-    const supa = await createClient();
+    const supa = await getEnvironmentServerClient();
     const insertData = {
       ...data,
       chunkIndex: data.chunkIndex ?? 0,
@@ -79,13 +79,13 @@ export class Embedding {
   }
 
   static async deleteByDocumentId(documentId: string): Promise<void> {
-    const supa = await createClient();
+    const supa = await getEnvironmentServerClient();
     const { error } = await supa.from("embeddings").delete().eq("documentId", documentId);
     if (error) handleModelError("Failed to delete embeddings", error);
   }
 
   static async getByCategory(category: string): Promise<EmbeddingData[]> {
-    const supa = await createClient();
+    const supa = await getEnvironmentServerClient();
     const { data, error } = await supa.from("embeddings").select("*").eq("category", category);
     if (error) handleModelError("Failed to fetch embeddings by category", error);
 
@@ -94,7 +94,7 @@ export class Embedding {
 
   static async getByDocumentIds(documentIds: string[]): Promise<EmbeddingData[]> {
     if (!documentIds.length) return [];
-    const supabase = await createClient();
+    const supabase = await getEnvironmentServerClient();
     const { data, error } = await supabase.from("embeddings").select("*").in("documentId", documentIds);
     if (error) handleModelError("Failed to fetch embeddings by documentIds", error);
     return data || [];

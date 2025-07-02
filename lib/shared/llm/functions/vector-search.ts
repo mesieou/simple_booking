@@ -3,7 +3,7 @@ import { Document } from "@/lib/database/models/documents";
 import { Category, CATEGORY_DISPLAY_NAMES } from "@/lib/general-config/general-config";
 import { executeChatCompletion, OpenAIChatMessage } from "../openai/openai-core";
 import { generateEmbedding } from "@/lib/shared/llm/functions/embeddings";
-import { createClient } from "@/lib/database/supabase/server";
+import { getEnvironmentServerClient } from "@/lib/database/supabase/environment";
 
 /**
  * Vector Search and Conversational Answer Generation
@@ -61,7 +61,7 @@ export async function findBestVectorResult(
   userEmbedding: number[],
   businessId: string
 ): Promise<VectorSearchResult[]> {
-  const supa = await createClient();
+  const supa = getEnvironmentServerClient();
 
   const { data, error } = await supa.rpc('match_documents', {
     business_id_filter: businessId,

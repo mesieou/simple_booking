@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/database/supabase/server";
+import { getEnvironmentServerClient } from "@/lib/database/supabase/environment";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -7,7 +7,7 @@ export async function GET() {
     console.log("URL:", process.env.NEXT_PUBLIC_SUPABASE_URL);
     console.log("Anon Key:", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.substring(0, 10) + "...");
     
-    const supabase = await createClient();
+    const supabase = await getEnvironmentServerClient();
     
     // Intentar obtener la sesión actual
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();

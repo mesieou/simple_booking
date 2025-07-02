@@ -1,4 +1,4 @@
-import { createClient } from "../supabase/server";
+import { getEnvironmentServerClient } from "../supabase/environment";
 import { handleModelError } from '@/lib/general-helpers/error';
 import { updateDayAvailability } from "@/lib/general-helpers/availability";
 import { User } from "./user";
@@ -33,7 +33,7 @@ export class Booking {
 
     //creates a Booking in supa
     async add(): Promise<BookingData> {
-        const supa = await createClient();
+        const supa = await getEnvironmentServerClient();
 
         const booking = {
             "status": this.data.status,
@@ -98,7 +98,7 @@ export class Booking {
             handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
-        const supa = await createClient();
+        const supa = await getEnvironmentServerClient();
         const { data, error } = await supa.from("bookings").select("*").eq("id", id).single();
         
         if (error) {
@@ -121,7 +121,7 @@ export class Booking {
             handleModelError(`Invalid UUID format for ${column}`, new Error("Invalid UUID"));
         }
 
-        const supa = await createClient();
+        const supa = await getEnvironmentServerClient();
         const { data, error } = await supa.from("bookings").select("*").eq(column, value);
         
         if (error) {
@@ -156,7 +156,7 @@ export class Booking {
             handleModelError("Invalid UUID format for providerId", new Error("Invalid UUID"));
         }
 
-        const supa = await createClient();
+        const supa = await getEnvironmentServerClient();
         const { data, error } = await supa
             .from("bookings")
             .select("*")
@@ -177,7 +177,7 @@ export class Booking {
             handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
-        const supa = await createClient();
+        const supa = await getEnvironmentServerClient();
         const booking = {
             "status": bookingData.status,
             "userId": bookingData.userId,
@@ -211,7 +211,7 @@ export class Booking {
             handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
-        const supa = await createClient();
+        const supa = await getEnvironmentServerClient();
         const { error } = await supa.from("bookings").delete().eq("id", id);
 
         if (error) {

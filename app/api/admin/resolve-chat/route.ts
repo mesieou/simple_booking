@@ -1,11 +1,11 @@
 import { type NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/database/supabase/server';
+import { getEnvironmentServerClient } from '@/lib/database/supabase/environment';
 import { Notification } from '@/lib/database/models/notification';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-  const supabase = await createClient();
+  const supabase = await getEnvironmentServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

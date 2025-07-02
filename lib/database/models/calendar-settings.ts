@@ -1,5 +1,4 @@
-import { createClient } from "../supabase/server";
-import { getServiceRoleClient } from "../supabase/service-role";
+import { getEnvironmentServerClient, getEnvironmentServiceRoleClient } from "../supabase/environment";
 import { handleModelError } from '@/lib/general-helpers/error';
 
 export type WorkingHours = {
@@ -47,7 +46,7 @@ export class CalendarSettings {
   static async save(id: string | undefined, settings: CalendarSettingsData, options?: { useServiceRole?: boolean; supabaseClient?: any }): Promise<CalendarSettings> {
     // Use provided client, service role client, or regular client
     // This bypasses RLS for scenarios like seeding where no user auth context exists
-    const supabase = options?.supabaseClient || (options?.useServiceRole ? getServiceRoleClient() : await createClient());
+    const supabase = options?.supabaseClient || (options?.useServiceRole ? getEnvironmentServiceRoleClient() : await getEnvironmentServerClient());
     
     const dataToSave = {
       ...settings,
@@ -91,7 +90,7 @@ export class CalendarSettings {
       handleModelError("Invalid business ID format", new Error("Invalid UUID format"));
     }
 
-    const supabase = await createClient()
+    const supabase = await getEnvironmentServerClient()
     
     const { data, error } = await supabase
       .from('calendarSettings')
@@ -118,7 +117,7 @@ export class CalendarSettings {
       handleModelError("Invalid business ID format", new Error("Invalid UUID format"));
     }
 
-    const supabase = options?.supabaseClient || await createClient()
+    const supabase = options?.supabaseClient || await getEnvironmentServerClient()
     
     const { data, error } = await supabase
       .from('calendarSettings')
@@ -149,7 +148,7 @@ export class CalendarSettings {
       handleModelError("Invalid settings ID format", new Error("Invalid UUID format"));
     }
 
-    const supabase = await createClient()
+    const supabase = await getEnvironmentServerClient()
     
     const { error } = await supabase
       .from('calendarSettings')
