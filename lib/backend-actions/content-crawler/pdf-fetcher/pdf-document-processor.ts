@@ -31,7 +31,7 @@ export async function processPdfBuffersConcurrently(
       yield async () => {
         const buffer = buffers[i];
         const pdfName = config.pdfNames?.[i] || `document-${i + 1}.pdf`;
-        const basePdfSourceUrl = `pdf:${pdfName}`;
+        const basePdfSourceUrl = `pdf-${pdfName}`;
 
         const result: ProcessedPdfResult = await processSinglePdfAndSaveArtifacts(
           buffer,

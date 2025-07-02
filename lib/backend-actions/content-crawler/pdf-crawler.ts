@@ -35,7 +35,7 @@ export async function crawlPdfs(
 
   // Filter out successfully processed PDF page URLs for the main output's URL list.
   const processedPageUrlsForOutput = crawlResults
-    .filter(r => r.status === 'processed' && r.fullUrl.startsWith('pdf:'))
+    .filter(r => r.status === 'processed' && r.fullUrl.startsWith('pdf-'))
     .map(r => r.fullUrl);
 
   // Return structured output including crawl results, a list of processed PDF page URLs,
@@ -88,7 +88,7 @@ export async function processPdfContent(
     r.status === 'processed' && 
     r.cleanedText && 
     r.cleanedText.trim().length > 0 && // Ensure text is not just whitespace.
-    r.fullUrl.startsWith('pdf:')
+    r.fullUrl.startsWith('pdf-')
   );
 
   const determinedSource = _determinePdfSource(config, successfullyProcessedBasePdfs);
