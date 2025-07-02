@@ -328,7 +328,7 @@ export class Business {
     static async findByPhoneNumberId(phoneNumberId: string): Promise<Business | null> {
         try {
             console.log(`[Business] Finding business by Phone Number ID: ${phoneNumberId}`);
-            const supa = await createClient();
+            const supa = getEnvironmentServerClient();
             
             const { data, error } = await supa
                 .from("businesses")
