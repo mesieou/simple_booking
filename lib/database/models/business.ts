@@ -260,7 +260,7 @@ export class Business {
         try {
             console.log(`[Business] Auto-mapping WhatsApp Phone Number ID for ${whatsappNumber} -> ${phoneNumberId}`);
             
-            const supa = getEnvironmentServerClient();
+            const supa = getEnvironmentServiceRoleClient();
             
             // Find business by WhatsApp number and update if Phone Number ID is missing
             const { data, error } = await supa
@@ -328,7 +328,7 @@ export class Business {
     static async findByPhoneNumberId(phoneNumberId: string): Promise<Business | null> {
         try {
             console.log(`[Business] Finding business by Phone Number ID: ${phoneNumberId}`);
-            const supa = getEnvironmentServerClient();
+            const supa = getEnvironmentServiceRoleClient();
             
             const { data, error } = await supa
                 .from("businesses")
