@@ -2,19 +2,15 @@
 
 import { createBrowserClient } from "@supabase/ssr";
 
-// Original working client (uses local/default env vars)
+// Environment-aware client (determines environment and uses appropriate config)
 export function createClient() {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true
-      }
-    }
-  );
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  if (isProduction) {
+    return createProdClient();
+  } else {
+    return createDevClient();
+  }
 }
 
 // Dev environment client

@@ -107,7 +107,7 @@ export class Business {
     // Get business by WhatsApp number (consolidated method with better normalization)
     static async getByWhatsappNumber(whatsappNumber: string): Promise<Business | null> {
         console.log(`[Business] Finding business by WhatsApp number: ${whatsappNumber}`);
-        const supa = await createClient();
+        const supa = getEnvironmentServerClient();
 
         // Normalize the input to handle cases with or without a '+' prefix
         const numberWithoutPlus = whatsappNumber.startsWith('+') ? whatsappNumber.substring(1) : whatsappNumber;
@@ -135,7 +135,7 @@ export class Business {
 
     // Get all businesses
     static async getAll(): Promise<Business[]> {
-        const supa = await createClient();
+        const supa = getEnvironmentServerClient();
         const { data, error } = await supa.from("businesses").select("*");
         
         if (error) {
@@ -151,7 +151,7 @@ export class Business {
             handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
-        const supa = await createClient();
+        const supa = getEnvironmentServerClient();
         const business = {
             "name": businessData.name,
             "email": businessData.email,
@@ -193,7 +193,7 @@ export class Business {
             handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
-        const supa = await createClient();
+        const supa = getEnvironmentServerClient();
         const { error } = await supa.from("businesses").delete().eq("id", id);
 
         if (error) {
@@ -260,7 +260,7 @@ export class Business {
         try {
             console.log(`[Business] Auto-mapping WhatsApp Phone Number ID for ${whatsappNumber} -> ${phoneNumberId}`);
             
-            const supa = await createClient();
+            const supa = getEnvironmentServerClient();
             
             // Find business by WhatsApp number and update if Phone Number ID is missing
             const { data, error } = await supa
@@ -299,7 +299,7 @@ export class Business {
      */
     static async getWhatsappPhoneNumberId(whatsappNumber: string): Promise<string | null> {
         try {
-            const supa = await createClient();
+            const supa = getEnvironmentServerClient();
             
             const { data, error } = await supa
                 .from("businesses")
