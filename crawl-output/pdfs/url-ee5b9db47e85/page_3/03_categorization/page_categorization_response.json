@@ -1,0 +1,15 @@
+{
+  "modelUsed": "gpt-4o",
+  "originalContentCharacterLength": 683,
+  "llmSegmentedChunks": [
+    {
+      "chunkOrder": 1,
+      "chunkText": "No. When asked, she confirmed she only attends in North Melbourne. 12. What if I can’t reach Luisa? Clients sometimes call or message repeatedly when arriving. If there's a delay, it’s best to: ● Message again via WhatsApp ● Wait in the lobby or outside Apt 111 ● Be patient, as she may be attending another client or caring for her child",
+      "category": 5,
+      "categoryName": "faq",
+      "confidence": 0.9,
+      "preChunkSourceIndex": 0
+    }
+  ],
+  "promptUsedLength": 3502
+}

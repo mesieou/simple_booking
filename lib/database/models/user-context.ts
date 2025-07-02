@@ -1,7 +1,7 @@
-import { createClient } from "../supabase/server";
+import { createClient, getServiceRoleClient } from "../supabase/server";
+import { getEnvironmentServiceRoleClient } from "../supabase/environment";
 import { v4 as uuidv4 } from 'uuid';
 import { handleModelError } from '@/lib/general-helpers/error';
-import { getServiceRoleClient } from "../supabase/service-role";
 
 // Corresponds to the structure of the JSONB objects in the userContexts table.
 // These are based on Juan's original bot-manager types.
@@ -76,7 +76,7 @@ export class UserContext {
    * This is typically called on a user's first interaction.
    */
   static async create(input: UserContextCreateInput): Promise<UserContext> {
-    const supa = getServiceRoleClient();
+    const supa = getEnvironmentServiceRoleClient();
     const now = new Date().toISOString();
 
     const newId = uuidv4();
@@ -114,7 +114,7 @@ export class UserContext {
       console.warn('[UserContextModel] channelUserId is required for getByChannelUserId');
       return null;
     }
-    const supa = getServiceRoleClient();
+    const supa = getEnvironmentServiceRoleClient();
     const { data, error } = await supa
       .from('userContexts')
       .select('*')
@@ -136,7 +136,7 @@ export class UserContext {
       console.warn('[UserContextModel] channelUserId and businessId are required for getByChannelUserIdAndBusinessId');
       return null;
     }
-    const supa = getServiceRoleClient();
+    const supa = getEnvironmentServiceRoleClient();
     const { data, error } = await supa
       .from('userContexts')
       .select('*')
@@ -159,7 +159,7 @@ export class UserContext {
       console.warn('[UserContextModel] channelUserId is required for updateByChannelUserId');
       return null;
     }
-    const supa = getServiceRoleClient();
+    const supa = getEnvironmentServiceRoleClient();
     const dataToUpdate: UserContextUpdateInput & { updatedAt: string } = {
       ...input,
       updatedAt: new Date().toISOString(),
@@ -194,7 +194,7 @@ export class UserContext {
       handleModelError('Invalid UUID for delete UserContext', new Error('Invalid UUID for delete'));
       return;
     }
-    const supa = getServiceRoleClient();
+    const supa = getEnvironmentServiceRoleClient();
     const { error } = await supa.from('userContexts').delete().eq('id', id);
 
     if (error) {

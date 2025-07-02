@@ -1,8 +1,8 @@
-import { createClient } from "../supabase/server"
+import { createClient } from "../supabase/server";
+import { getServiceRoleClient } from "../supabase/service-role";
 import { Business } from "./business";
 import { v4 as uuidv4 } from 'uuid';
 import { handleModelError } from '@/lib/general-helpers/error';
-import { getServiceRoleClient } from "../supabase/service-role";
 
 export type UserRole = "admin" | "provider" | "customer" | "admin/provider" | "staff";
 
@@ -88,20 +88,21 @@ export class User {
         this.whatsAppNumberNormalized = whatsAppNumberNormalized;
     }
 
-    //creates a user in supa
-    async add(options?: { 
-        email?: string; 
-        password?: string; 
-        whatsappNumber?: string; 
-        skipProviderValidation?: boolean; // Allow skipping for seed scripts
-    }) {
-        // Use service role for ALL operations in user creation
-        // This avoids RLS context mismatch between auth and database operations
-        const adminSupa = getServiceRoleClient();
+      //creates a user in supa
+  async add(options?: { 
+    email?: string; 
+    password?: string; 
+    whatsappNumber?: string; 
+    skipProviderValidation?: boolean; // Allow skipping for seed scripts
+    supabaseClient?: any; // Allow passing a specific client (for production seeding)
+  }) {
+    // Use provided client or default service role for ALL operations in user creation
+    // This avoids RLS context mismatch between auth and database operations
+    const adminSupa = options?.supabaseClient || getServiceRoleClient();
 
         // Validate: prevent multiple providers per business (unless explicitly skipped)
         if (!options?.skipProviderValidation && PROVIDER_ROLES.includes(this.role)) {
-            const hasExistingProvider = await User.businessHasProvider(this.businessId);
+            const hasExistingProvider = await User.businessHasProvider(this.businessId, adminSupa);
             if (hasExistingProvider) {
                 handleModelError(
                     `Business ${this.businessId} already has a provider. Only one provider per business is allowed.`, 
@@ -129,7 +130,7 @@ export class User {
         const { data: { users }, error: listError } = await adminSupa.auth.admin.listUsers();
         if(listError) handleModelError("Failed to list auth users", listError);
         
-        const existingAuthUser = users.find(u => u.email === email);
+        const existingAuthUser = users.find((u: any) => u.email === email);
 
         if (existingAuthUser) {
             console.log(`[User.add] Found existing auth user with email: ${email}`);
@@ -585,13 +586,13 @@ export class User {
     get updatedAt(): string | undefined { return undefined; }
 
     // Check if a business already has a provider
-    static async businessHasProvider(businessId: string): Promise<boolean> {
+    static async businessHasProvider(businessId: string, supabaseClient?: any): Promise<boolean> {
         if (!User.isValidUUID(businessId)) {
             return false;
         }
         
         try {
-            const supa = await createClient();
+            const supa = supabaseClient || await createClient();
             const { data: users, error } = await supa
                 .from('users')
                 .select('id')

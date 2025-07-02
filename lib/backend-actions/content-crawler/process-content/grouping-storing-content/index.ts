@@ -616,7 +616,8 @@ export async function finalizeContentProcessing(
       // Pass an empty array for the embeddings parameter, as embeddings are now part of collectedDocsData
       const { session: dbSession, savedDocuments } = await CrawlSession.addSessionWithDocumentsAndEmbeddings(
         sessionInstance, 
-        collectedDocsData
+        collectedDocsData,
+        { useServiceRole: true }
       );
       console.log(`[ProcessContentFinalize] Successfully saved session ${dbSession.id} with ${savedDocuments.length} documents.`);
       
@@ -638,7 +639,7 @@ export async function finalizeContentProcessing(
       sessionInstance.errors.push({ url: 'session_save_error', error: `Failed to save session/docs/embeddings: ${dbError.message}`});
       // Attempt to save the session with the error noted
       try {
-        await CrawlSession.add(sessionInstance);
+        await CrawlSession.add(sessionInstance, { useServiceRole: true });
         console.warn(`[ProcessContentFinalize] Saved session ${sessionInstance.id} with error information after primary save failed.`);
       } catch (sessionSaveError: any) {
         console.error(`[ProcessContentFinalize] CRITICAL: Failed to save even the error state for session ${sessionInstance.id}:`, sessionSaveError);
@@ -648,7 +649,7 @@ export async function finalizeContentProcessing(
   } else {
     console.log(`[ProcessContentFinalize] No documents with embeddings to save to the database for session ${sessionInstance.id}. Saving a session entry with current stats.`);
     try {
-        await CrawlSession.add(sessionInstance); 
+        await CrawlSession.add(sessionInstance, { useServiceRole: true }); 
         console.log(`[ProcessContentFinalize] Successfully saved session ${sessionInstance.id} (no new documents/embeddings).`);
     } catch (sessionOnlyError: any) {
         console.error(`[ProcessContentFinalize] Critical error: Failed to save session ${sessionInstance.id} (no new documents/embeddings):`, sessionOnlyError);

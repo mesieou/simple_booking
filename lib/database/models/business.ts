@@ -1,4 +1,6 @@
 import { createClient } from "../supabase/server";
+import { getServiceRoleClient } from "../supabase/service-role";
+import { getEnvironmentServerClient, getEnvironmentServiceRoleClient } from "../supabase/environment";
 import { handleModelError } from '@/lib/general-helpers/error';
 
 export type InterfaceType = 'whatsapp' | 'website';
@@ -11,8 +13,8 @@ export interface BusinessData {
     timeZone: string;
     interfaceType: InterfaceType;
     websiteUrl?: string;
-    whatsappNumber?: string;
-    whatsappPhoneNumberId?: string; // WhatsApp Business API Phone Number ID for sending messages
+    whatsappNumber?: string; // The actual phone number users dial (e.g., "+1234567890")
+    whatsappPhoneNumberId?: string; // WhatsApp Business API Phone Number ID for webhook routing (e.g., "108123456789")
     businessAddress?: string;
     createdAt?: string;
     updatedAt?: string;
@@ -43,8 +45,13 @@ export class Business {
 
     //creates a business in supa
     async add(): Promise<BusinessData> {
-        const supa = await createClient();
+        // Use environment-aware service role client to bypass RLS for business creation (needed for seeding)
+        const supa = getEnvironmentServiceRoleClient();
+        return this.addWithClient(supa);
+    }
 
+    //creates a business in supa with provided client
+    async addWithClient(supaClient: any): Promise<BusinessData> {
         const business = {
             "name": this.data.name,
             "email": this.data.email,
@@ -63,7 +70,7 @@ export class Business {
             "updatedAt": new Date().toISOString()
         }
         
-        const { data, error } = await supa.from("businesses").insert(business).select().single();
+        const { data, error } = await supaClient.from("businesses").insert(business).select().single();
 
         if(error) {
             handleModelError("Failed to create business", error);
@@ -83,7 +90,7 @@ export class Business {
             handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
-        const supa = await createClient();
+        const supa = getEnvironmentServerClient();
         const { data, error } = await supa.from("businesses").select("*").eq("id", id).single();
         
         if (error) {
@@ -97,8 +104,9 @@ export class Business {
         return new Business(data);
     }
 
-    // Get business by WhatsApp number
+    // Get business by WhatsApp number (consolidated method with better normalization)
     static async getByWhatsappNumber(whatsappNumber: string): Promise<Business | null> {
+        console.log(`[Business] Finding business by WhatsApp number: ${whatsappNumber}`);
         const supa = await createClient();
 
         // Normalize the input to handle cases with or without a '+' prefix
@@ -113,13 +121,15 @@ export class Business {
             .single();
 
         if (error) {
-            // It's better to return null if not found, rather than throwing an error
             if (error.code === 'PGRST116') { // PostgREST error for "exact one row not found"
+                console.log(`[Business] No business found with WhatsApp number: ${whatsappNumber}`);
                 return null;
             }
+            console.error(`[Business] Error finding business by WhatsApp number:`, error);
             handleModelError(`Failed to fetch business by WhatsApp number ${whatsappNumber}`, error);
         }
 
+        console.log(`[Business] Found business: ${data ? data.name : 'None'}`);
         return data ? new Business(data) : null;
     }
 
@@ -211,11 +221,11 @@ export class Business {
     get depositPercentage(): number | undefined { return this.data.depositPercentage; }
     get stripeConnectAccountId(): string | undefined { return this.data.stripeConnectAccountId; }
     get stripeAccountStatus(): 'pending' | 'active' | 'disabled' | undefined { return this.data.stripeAccountStatus; }
-    get preferredPaymentMethod(): string | undefined { return this.data.preferredPaymentMethod; }
+        get preferredPaymentMethod(): string | undefined { return this.data.preferredPaymentMethod; }
 
     static async findByWhatsappNumber(whatsappNumber: string): Promise<Business | null> {
         console.log(`[Business] Finding business by WhatsApp number: ${whatsappNumber}`);
-        const supabase = await createClient();
+        const supabase = getEnvironmentServerClient();
         
         const { data, error } = await supabase
             .from('businesses')
@@ -304,6 +314,46 @@ export class Business {
             return data.whatsappPhoneNumberId;
         } catch (error) {
             console.error(`[Business] Error getting WhatsApp Phone Number ID:`, error);
+            return null;
+        }
+    }
+
+    /**
+     * Finds a business by its WhatsApp Phone Number ID (NOT the same as WhatsApp number)
+     * WhatsApp Phone Number ID is the internal API identifier (e.g., "108123456789")
+     * WhatsApp Number is the actual phone number (e.g., "+1234567890")
+     * @param phoneNumberId The WhatsApp Phone Number ID to look up
+     * @returns Promise<Business | null> - the Business or null if not found
+     */
+    static async findByPhoneNumberId(phoneNumberId: string): Promise<Business | null> {
+        try {
+            console.log(`[Business] Finding business by Phone Number ID: ${phoneNumberId}`);
+            const supa = await createClient();
+            
+            const { data, error } = await supa
+                .from("businesses")
+                .select("*")
+                .eq("whatsappPhoneNumberId", phoneNumberId)
+                .single();
+
+            if (error) {
+                if (error.code === 'PGRST116') { // PostgREST error for "No rows found"
+                    console.log(`[Business] No business found with Phone Number ID: ${phoneNumberId}`);
+                    return null;
+                }
+                console.error(`[Business] Error finding business by Phone Number ID:`, error);
+                return null;
+            }
+
+            if (!data) {
+                console.log(`[Business] No business found with Phone Number ID: ${phoneNumberId}`);
+                return null;
+            }
+
+            console.log(`[Business] Found business: ${data.name} (ID: ${data.id})`);
+            return new Business(data);
+        } catch (error) {
+            console.error(`[Business] Exception in findByPhoneNumberId:`, error);
             return null;
         }
     }

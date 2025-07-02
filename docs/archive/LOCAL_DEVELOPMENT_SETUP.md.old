@@ -1,0 +1,341 @@
+# 🚀 Local Development Setup Guide
+
+This guide will help you set up your local machine for WhatsApp bot development and testing with our Supabase backend.
+
+## 📋 Prerequisites
+
+### Required Software
+
+1. **Node.js** (v18 or higher)
+   ```bash
+   # Check if installed
+   node --version
+   npm --version
+   ```
+
+2. **Docker** (via Colima on macOS)
+   ```bash
+   # Install Colima (Docker alternative for macOS)
+   brew install colima
+   
+   # Start Colima
+   colima start
+   
+   # Verify Docker is working
+   docker --version
+   ```
+
+3. **Supabase CLI** (v2.30.4 or higher)
+   ```bash
+   # Install Supabase CLI
+   brew install supabase/tap/supabase
+   
+   # Verify installation
+   supabase --version
+   ```
+
+4. **PostgreSQL Client** (for database operations)
+   ```bash
+   # Install psql
+   brew install postgresql
+   
+   # Verify installation
+   psql --version
+   ```
+
+## 🛠️ Initial Project Setup
+
+### 1. Clone and Install Dependencies
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd simple_booking
+
+# Install dependencies
+npm install
+```
+
+### 2. Environment Configuration
+
+```bash
+# Copy the environment template
+cp env.local.sample .env.local
+
+# Edit .env.local with your credentials
+code .env.local
+```
+
+**Required environment variables:**
+- `OPENAI_API_KEY`: Your OpenAI API key for bot functionality
+- Other variables are pre-configured for local development
+
+### 3. Docker Environment Setup
+
+```bash
+# Ensure Docker/Colima is running
+colima status
+
+# If not running, start it
+colima start
+
+# Set Docker host (add to your ~/.zshrc or ~/.bashrc)
+export DOCKER_HOST=unix:///Users/$(whoami)/.colima/default/docker.sock
+```
+
+## 🗄️ Database Setup
+
+### 1. Start Local Supabase
+
+```bash
+# Start local Supabase instance
+supabase start
+
+# Expected output:
+# ✅ API URL: http://127.0.0.1:54321
+# ✅ DB URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+# ✅ Studio URL: http://127.0.0.1:54323
+```
+
+### 2. Load Database Schema
+
+```bash
+# Load the complete database schema
+psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -f supabase/migrations_backup/20250702024633_remote_schema.sql
+```
+
+**Expected result:** Your local database now has all tables, functions, and policies from production.
+
+### 3. Verify Database Setup
+
+```bash
+# Connect to local database
+psql postgresql://postgres:postgres@127.0.0.1:54322/postgres
+
+# Check if tables exist
+\dt
+
+# Check if vector extension is installed
+SELECT extname, extversion FROM pg_extension WHERE extname = 'vector';
+
+# Exit psql
+\q
+```
+
+## 🧪 Local Testing Setup
+
+### 1. Start Development Server
+
+```bash
+# Start Next.js development server
+npm run dev
+
+# Your app will be available at:
+# 🌐 http://localhost:3000
+```
+
+### 2. Access Local Services
+
+- **Next.js App**: http://localhost:3000
+- **Supabase API**: http://127.0.0.1:54321
+- **Database Studio**: http://127.0.0.1:54323
+- **Database Direct**: `postgresql://postgres:postgres@127.0.0.1:54322/postgres`
+
+### 3. WhatsApp Webhook Testing
+
+Your webhook endpoint for local testing:
+```
+http://localhost:3000/api/webhook2
+```
+
+## 📊 Database Management Commands
+
+### Schema-First Workflow (Recommended)
+
+```bash
+# Generate migration from schema changes
+npm run db:schema-diff-dev      # Compare local schema vs dev
+npm run db:schema-apply-dev     # Deploy schema to development
+npm run db:schema-apply-prod    # Deploy schema to production
+```
+
+### Dashboard-Based Workflow
+
+```bash
+# Pull changes from Supabase dashboard
+npm run db:pull-dev            # Pull from development
+npm run db:pull-prod           # Pull from production
+
+# Deploy changes
+npm run db:push-prod           # Push to production
+```
+
+### Management Commands
+
+```bash
+npm run db:help               # Show all commands
+npm run db:check-env         # Verify environment
+npm run db:link-dev          # Link to dev database
+npm run db:link-prod         # Link to prod database
+```
+
+## 🔄 Development Workflow
+
+### Making Schema Changes
+
+1. **Edit the schema file:**
+   ```bash
+   code supabase/schema.sql
+   ```
+
+2. **Test locally:**
+   ```bash
+   # Apply changes to local database
+   psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -f supabase/schema.sql
+   
+   # Test your changes
+   npm run dev
+   ```
+
+3. **Deploy to development:**
+   ```bash
+   npm run db:schema-apply-dev
+   ```
+
+4. **Deploy to production:**
+   ```bash
+   npm run db:schema-apply-prod
+   ```
+
+### Testing WhatsApp Bot Locally
+
+1. **Start local environment:**
+   ```bash
+   # Terminal 1: Start Supabase
+   supabase start
+   
+   # Terminal 2: Start Next.js
+   npm run dev
+   ```
+
+2. **Use webhook testing tools:**
+   - Use ngrok for external webhook testing
+   - Use Postman/curl for direct API testing
+   - Check webhook logs in terminal
+
+## 🛠️ Troubleshooting
+
+### Common Issues and Solutions
+
+#### Docker/Colima Issues
+
+**Problem**: Vector container fails to start
+```bash
+# Solution: Restart Colima
+colima restart
+
+# Ensure Docker host is set
+export DOCKER_HOST=unix:///Users/$(whoami)/.colima/default/docker.sock
+```
+
+**Problem**: "Argument list too long" error
+```bash
+# Solution: The large migration file is moved to backup
+# This is already handled in the setup
+```
+
+#### Database Issues
+
+**Problem**: Schema loading fails
+```bash
+# Solution: Reset and reload
+supabase stop
+supabase start
+psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -f supabase/migrations_backup/20250702024633_remote_schema.sql
+```
+
+**Problem**: Missing tables or functions
+```bash
+# Check if schema loaded completely
+psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -c "\dt"
+psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -c "\df"
+```
+
+#### Environment Issues
+
+**Problem**: Environment variables not loading
+```bash
+# Verify .env.local exists and has correct format
+ls -la .env.local
+cat .env.local
+```
+
+**Problem**: Supabase connection issues
+```bash
+# Check if local Supabase is running
+supabase status
+
+# Restart if needed
+supabase stop
+supabase start
+```
+
+### Getting Help
+
+1. **Check service status:**
+   ```bash
+   # Supabase status
+   supabase status
+   
+   # Docker status
+   docker ps
+   
+   # Colima status
+   colima status
+   ```
+
+2. **View logs:**
+   ```bash
+   # Supabase logs
+   supabase logs
+   
+   # Next.js logs (in terminal where npm run dev is running)
+   ```
+
+3. **Reset everything:**
+   ```bash
+   # Nuclear option - reset everything
+   supabase stop
+   colima restart
+   supabase start
+   
+   # Reload schema
+   psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -f supabase/migrations_backup/20250702024633_remote_schema.sql
+   ```
+
+## 🎯 Quick Verification Checklist
+
+- [ ] Docker/Colima is running: `colima status`
+- [ ] Supabase is running: `supabase status`
+- [ ] Database has tables: `psql postgresql://postgres:postgres@127.0.0.1:54322/postgres -c "\dt"`
+- [ ] Vector extension installed: Check for vector v0.8.0
+- [ ] Environment file exists: `.env.local` with required variables
+- [ ] Next.js starts: `npm run dev` without errors
+- [ ] Studio accessible: http://127.0.0.1:54323
+
+## 🚀 You're Ready!
+
+Once all checks pass, you have a complete local development environment with:
+
+- ✅ Local Supabase instance
+- ✅ Complete database schema with all tables and functions
+- ✅ Vector search capabilities (pgvector v0.8.0)
+- ✅ WhatsApp webhook endpoint
+- ✅ Schema management workflow
+- ✅ Local testing capabilities
+
+Happy coding! 🎉
+
+---
+
+**Need help?** Ask the team or check the troubleshooting section above. 

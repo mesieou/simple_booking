@@ -1,0 +1,390 @@
+import { type ConversationalParticipant, type ChatContext } from "@/lib/bot-engine/types";
+import { type ParsedMessage, type BotResponse } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
+import { 
+    handleEscalationOrAdminCommand, 
+    hasStickerContent,
+} from "@/lib/bot-engine/escalation/handler";
+import { handleAudioTranscription } from "@/lib/bot-engine/audio-transcription/audio-transcription-handler";
+import { handleFaqOrChitchat } from "@/lib/bot-engine/steps/faq/faq-handler";
+import { processIncomingMessage } from "@/lib/bot-engine/core/message-processor";
+import { LanguageDetectionService } from "@/lib/bot-engine/services/language-service";
+import { Notification } from '@/lib/database/models/notification';
+import { UserContext } from "@/lib/database/models/user-context";
+import { User } from '@/lib/database/models/user';
+import { persistSessionState } from "@/lib/bot-engine/session/state-persister";
+import { WhatsappSender } from "./whatsapp-message-sender";
+import { START_BOOKING_PAYLOAD } from "@/lib/bot-engine/config/constants";
+
+const LOG_PREFIX = "[Message Handlers]";
+
+export interface MessageHandlerContext {
+  parsedMessage: ParsedMessage;
+  participant: ConversationalParticipant;
+  chatContext: ChatContext;
+  userContext: UserContext;
+  historyForLLM: string;
+  customerUser: User | null;
+  sessionId: string;
+}
+
+export interface MessageHandlerResult {
+  shouldContinue: boolean;
+  response?: BotResponse;
+  wasHandled: boolean;
+  handlerType: string;
+  message?: string;
+}
+
+/**
+ * Handles escalation status checks and escalated conversations
+ */
+export class EscalationHandler {
+  static async handle(context: MessageHandlerContext): Promise<MessageHandlerResult> {
+    const { parsedMessage, sessionId, chatContext, userContext, historyForLLM } = context;
+    
+    // Check if bot is in escalation mode
+    const escalationStatus = await Notification.getEscalationStatus(sessionId);
+    if (escalationStatus) {
+      console.log(`${LOG_PREFIX} Bot is in escalation mode for session ${sessionId}. Status: ${escalationStatus}`);
+
+      if (escalationStatus === 'pending') {
+        // Staff hasn't taken control yet - send waiting message
+        const language = chatContext.participantPreferences.language === 'es' ? 'es' : 'en';
+        const waitingMessage = language === 'es' 
+          ? "Un agente ya ha sido notificado y te atenderá en breve. Por favor, espera un momento."
+          : "An agent has been notified and will assist you shortly. Please wait a moment.";
+
+        console.log(`${LOG_PREFIX} Sending waiting message: "${waitingMessage}"`);
+        const sender = new WhatsappSender();
+        await sender.sendMessage(parsedMessage.senderId, { text: waitingMessage }, parsedMessage.recipientId);
+
+        // Save both user's message and bot's waiting response
+        if (chatContext.currentConversationSession) {
+          await persistSessionState(
+            sessionId, 
+            userContext, 
+            chatContext.currentConversationSession, 
+            undefined,
+            parsedMessage.text || '', 
+            { text: waitingMessage },
+            undefined, // fullHistory is optional and will be reconstructed from activeGoals
+            parsedMessage
+          );
+        }
+
+        return {
+          shouldContinue: false,
+          response: { text: waitingMessage },
+          wasHandled: true,
+          handlerType: 'escalation_pending',
+          message: 'Message received and saved during pending escalation'
+        };
+      } else if (escalationStatus === 'attending') {
+        // Staff is attending - save user message but don't respond
+        console.log(`${LOG_PREFIX} Staff is attending session ${sessionId}. Saving user message but bot stays silent.`);
+        
+        if (chatContext.currentConversationSession) {
+          await persistSessionState(
+            sessionId, 
+            userContext, 
+            chatContext.currentConversationSession, 
+            undefined,
+            parsedMessage.text || '', 
+            '',
+            undefined, // fullHistory is optional and will be reconstructed from activeGoals
+            parsedMessage
+          );
+        }
+
+        return {
+          shouldContinue: false,
+          wasHandled: true,
+          handlerType: 'escalation_attending',
+          message: 'User message saved during staff assistance'
+        };
+      }
+    }
+
+    return {
+      shouldContinue: true,
+      wasHandled: false,
+      handlerType: 'escalation_none'
+    };
+  }
+}
+
+/**
+ * Handles language detection and updates
+ */
+export class LanguageHandler {
+  static async handle(context: MessageHandlerContext): Promise<MessageHandlerResult> {
+    const { parsedMessage, chatContext } = context;
+    
+    const languageResult = await LanguageDetectionService.detectAndUpdateLanguage(
+      parsedMessage.text || '', 
+      chatContext, 
+      LOG_PREFIX
+    );
+    
+    if (languageResult.wasChanged) {
+      console.log(`${LOG_PREFIX} Language detection: ${languageResult.reason}`);
+    }
+
+    return {
+      shouldContinue: true,
+      wasHandled: false,
+      handlerType: 'language_detection'
+    };
+  }
+}
+
+/**
+ * Handles sticker messages (special case - save but don't respond)
+ */
+export class StickerHandler {
+  static async handle(context: MessageHandlerContext): Promise<MessageHandlerResult> {
+    const { parsedMessage, sessionId, userContext, chatContext, historyForLLM } = context;
+    
+    if (hasStickerContent(parsedMessage.text || '')) {
+      console.log(`${LOG_PREFIX} Sticker detected: "${parsedMessage.text || ''}". Saving to history but not responding.`);
+      
+      if (chatContext.currentConversationSession) {
+        await persistSessionState(
+          sessionId, 
+          userContext, 
+          chatContext.currentConversationSession, 
+          undefined,
+          parsedMessage.text || '', 
+          '',
+          undefined, // fullHistory is optional and will be reconstructed from activeGoals
+          parsedMessage
+        );
+      }
+
+      return {
+        shouldContinue: false,
+        wasHandled: true,
+        handlerType: 'sticker',
+        message: 'Sticker received and saved to history'
+      };
+    }
+
+    return {
+      shouldContinue: true,
+      wasHandled: false,
+      handlerType: 'sticker_none'
+    };
+  }
+}
+
+/**
+ * Handles escalation commands and admin commands
+ */
+export class EscalationCommandHandler {
+  static async handle(context: MessageHandlerContext): Promise<MessageHandlerResult> {
+    const { parsedMessage, participant, chatContext, userContext, historyForLLM, customerUser } = context;
+    
+    if (chatContext.currentConversationSession) {
+      const escalationResult = await handleEscalationOrAdminCommand(
+        parsedMessage.text || '',
+        participant,
+        chatContext,
+        userContext,
+        [], // Pass empty array since we don't have ChatMessage[] format here
+        customerUser ? {
+          firstName: customerUser.firstName || '',
+          lastName: customerUser.lastName || '',
+          id: customerUser.id
+        } : undefined,
+        parsedMessage.recipientId,
+        parsedMessage.userName
+      );
+
+      if (escalationResult.isEscalated) {
+        console.log(`${LOG_PREFIX} Message handled by escalation system. Reason: ${escalationResult.reason}`);
+        
+        if (escalationResult.response) {
+          const sender = new WhatsappSender();
+          await sender.sendMessage(parsedMessage.senderId, escalationResult.response, parsedMessage.recipientId);
+          
+          chatContext.currentConversationSession.sessionStatus = 'escalated';
+          await persistSessionState(
+            context.sessionId, 
+            userContext, 
+            chatContext.currentConversationSession, 
+            undefined, 
+            parsedMessage.text || '', 
+            escalationResult.response,
+            undefined, // fullHistory is optional and will be reconstructed from activeGoals
+            parsedMessage
+          );
+        }
+
+        return {
+          shouldContinue: false,
+          response: escalationResult.response,
+          wasHandled: true,
+          handlerType: 'escalation_command',
+          message: 'Handled by escalation system'
+        };
+      }
+    }
+
+    return {
+      shouldContinue: true,
+      wasHandled: false,
+      handlerType: 'escalation_command_none'
+    };
+  }
+}
+
+/**
+ * Handles audio transcription
+ */
+export class AudioHandler {
+  static async handle(context: MessageHandlerContext): Promise<MessageHandlerResult> {
+    const { parsedMessage, chatContext, sessionId, userContext, historyForLLM } = context;
+    
+    const audioTranscriptionResult = await handleAudioTranscription(
+      parsedMessage.text || '', 
+      parsedMessage.attachments, 
+      chatContext
+    );
+    
+    if (audioTranscriptionResult.wasProcessed) {
+      console.log(`${LOG_PREFIX} Audio transcription processed. Original: "${audioTranscriptionResult.originalMessage}" -> Transcribed: "${audioTranscriptionResult.transcribedMessage}"`);
+      
+      // If transcription failed, send error message
+      if (audioTranscriptionResult.error) {
+        console.log(`${LOG_PREFIX} Audio transcription failed, sending error message`);
+        const sender = new WhatsappSender();
+        await sender.sendMessage(parsedMessage.senderId, { text: audioTranscriptionResult.transcribedMessage }, parsedMessage.recipientId);
+        
+        if (chatContext.currentConversationSession) {
+          await persistSessionState(
+            sessionId, 
+            userContext, 
+            chatContext.currentConversationSession, 
+            undefined,
+            parsedMessage.text || '', 
+            { text: audioTranscriptionResult.transcribedMessage },
+            undefined, // fullHistory is optional and will be reconstructed from activeGoals
+            parsedMessage
+          );
+        }
+        
+        return {
+          shouldContinue: false,
+          response: { text: audioTranscriptionResult.transcribedMessage },
+          wasHandled: true,
+          handlerType: 'audio_error',
+          message: 'Audio transcription error sent'
+        };
+      }
+      
+      // Update message text with transcribed content
+      parsedMessage.text = audioTranscriptionResult.transcribedMessage;
+      console.log(`${LOG_PREFIX} Audio successfully transcribed, updated message for processing: "${parsedMessage.text}"`);
+      
+      return {
+        shouldContinue: true,
+        wasHandled: true,
+        handlerType: 'audio_transcribed',
+        message: 'Audio transcribed successfully'
+      };
+    }
+
+    return {
+      shouldContinue: true,
+      wasHandled: false,
+      handlerType: 'audio_none'
+    };
+  }
+}
+
+/**
+ * Handles FAQ/Chitchat vs Booking Flow routing
+ */
+export class ConversationFlowHandler {
+  static async handle(context: MessageHandlerContext): Promise<MessageHandlerResult> {
+    const { parsedMessage, participant, chatContext, userContext, historyForLLM, sessionId } = context;
+    
+    const userCurrentGoal = chatContext.currentConversationSession?.activeGoals.find(g => g.goalStatus === 'inProgress');
+    const messageContainsBookingPayload = (parsedMessage.text || '').toUpperCase().includes(START_BOOKING_PAYLOAD.toUpperCase());
+    
+    let botResponse: BotResponse | null = null;
+    
+    if (messageContainsBookingPayload || (userCurrentGoal && userCurrentGoal.goalType === 'serviceBooking')) {
+      console.log(`${LOG_PREFIX} User is starting or continuing a booking flow. Routing to main engine.`);
+      
+      if (messageContainsBookingPayload && userCurrentGoal) {
+        userCurrentGoal.goalStatus = 'completed';
+      }
+
+      botResponse = await processIncomingMessage(
+        parsedMessage.text || '', 
+        participant, 
+        undefined // Will use the history from the session context internally
+      );
+      
+    } else {
+      console.log(`${LOG_PREFIX} No active booking goal. Routing to FAQ/Chitchat handler.`);
+      const faqResponse = await handleFaqOrChitchat(chatContext, parsedMessage.text || '', []);
+      botResponse = faqResponse;
+      
+      if (botResponse.text && chatContext.currentConversationSession) {
+        await persistSessionState(
+          sessionId, 
+          userContext, 
+          chatContext.currentConversationSession, 
+          undefined,
+          parsedMessage.text || '', 
+          botResponse,
+          undefined, // fullHistory is optional and will be reconstructed from activeGoals
+          parsedMessage
+        );
+      }
+    }
+
+    return {
+      shouldContinue: true,
+      response: botResponse || undefined,
+      wasHandled: true,
+      handlerType: messageContainsBookingPayload || userCurrentGoal ? 'booking_flow' : 'faq_chitchat'
+    };
+  }
+}
+
+/**
+ * Main message processing pipeline
+ */
+export class MessageProcessor {
+  static async processMessage(context: MessageHandlerContext): Promise<BotResponse | null> {
+    const handlers = [
+      EscalationHandler,
+      LanguageHandler,
+      StickerHandler,
+      EscalationCommandHandler,
+      AudioHandler,
+      ConversationFlowHandler
+    ];
+
+    for (const handler of handlers) {
+      const result = await handler.handle(context);
+      
+      if (!result.shouldContinue) {
+        console.log(`${LOG_PREFIX} Processing stopped by ${result.handlerType}: ${result.message}`);
+        return result.response || null;
+      }
+      
+      if (result.wasHandled) {
+        console.log(`${LOG_PREFIX} Message processed by ${result.handlerType}`);
+        if (result.response) {
+          return result.response;
+        }
+      }
+    }
+
+    return null;
+  }
+} 
