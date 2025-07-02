@@ -1,6 +1,6 @@
 "use client";
 
-import { getEnvironmentBrowserClient } from "@/lib/database/supabase/environment";
+import { createClient } from "@/lib/database/supabase/client";
 import { Session, User } from "@supabase/supabase-js";
 import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
@@ -29,7 +29,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   const refreshSession = async () => {
-    const supabase = getEnvironmentBrowserClient();
+    const supabase = createClient();
     
     // First verify user with server auth (more secure)
     const { data: { user } } = await supabase.auth.getUser();
@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    const supabase = getEnvironmentBrowserClient();
+    const supabase = createClient();
 
     // Get initial session
     refreshSession();
@@ -82,7 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [router, pathname]);
 
   const signOut = async () => {
-    const supabase = getEnvironmentBrowserClient();
+    const supabase = createClient();
     await supabase.auth.signOut();
     setSession(null);
     setUser(null);

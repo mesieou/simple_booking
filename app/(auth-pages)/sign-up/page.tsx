@@ -1,6 +1,6 @@
 "use client";
 
-import { getEnvironmentBrowserClient } from "@/lib/database/supabase/environment";
+import { createClient } from "@/lib/database/supabase/client";
 import { useAuth } from "@/app/context/auth-context";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
@@ -40,7 +40,7 @@ export default function SignUp() {
     }
 
     try {
-      const supabase = getEnvironmentBrowserClient();
+      const supabase = createClient();
       const { error } = await supabase.auth.signUp({
         email,
         password,

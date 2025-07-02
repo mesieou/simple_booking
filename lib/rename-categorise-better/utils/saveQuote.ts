@@ -1,4 +1,4 @@
-import { getEnvironmentBrowserClient } from "@/lib/database/supabase/environment";
+import { createClient } from "@/lib/database/supabase/client";
 import { FormDataType } from "@/lib/rename-categorise-better/utils/FormContext";
 import { v4 as uuidv4 } from "uuid";
 
@@ -8,7 +8,7 @@ export type SaveQuoteResult = {
 };
 
 export const saveQuoteToSupabase = async (formData: FormDataType): Promise<SaveQuoteResult> => {
-  const supabase = getEnvironmentBrowserClient();
+  const supabase = createClient();
 
   // Mapeo de campos
   const quote = {
