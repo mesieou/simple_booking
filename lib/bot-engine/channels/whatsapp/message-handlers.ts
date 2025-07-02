@@ -341,7 +341,7 @@ export class ConversationFlowHandler {
     let botResponse: BotResponse | null = null;
     
     if (isBookingRelated) {
-      console.log(`${LOG_PREFIX} User is starting or continuing a booking flow. Routing to main engine..`);
+      console.log(`${LOG_PREFIX} User is starting or continuing a booking flow. Routing to main engine.`);
       
       if (messageContainsBookingPayload && userCurrentGoal) {
         userCurrentGoal.goalStatus = 'completed';
