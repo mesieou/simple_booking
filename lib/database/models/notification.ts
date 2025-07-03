@@ -432,4 +432,77 @@ export class Notification {
       return null;
     }
   }
+
+  /**
+   * Gets notifications from all businesses for superadmin
+   * @returns Promise<Array> - notifications from all businesses
+   */
+  static async getAllBusinessesNotifications(): Promise<Array<{
+    id: string;
+    createdAt: string;
+    message: string;
+    status: NotificationStatus;
+    chatSessionId: string;
+    channelUserId: string;
+  }>> {
+    try {
+      const supabase = getEnvironmentServiceRoleClient();
+      
+      // Get all notifications from all businesses
+      const { data: notifications, error: notificationsError } = await supabase
+        .from(this._tableName)
+        .select('*')
+        .order('createdAt', { ascending: false });
+
+      if (notificationsError) {
+        console.error(`[NotificationDB] Error fetching all notifications:`, notificationsError);
+        return [];
+      }
+
+      if (!notifications?.length) {
+        return [];
+      }
+
+      // Get session data for all notifications
+      const sessionIds = notifications.map(n => n.chatSessionId);
+      const { data: sessions, error: sessionsError } = await supabase
+        .from('chatSessions')
+        .select('id, channelUserId')
+        .in('id', sessionIds);
+
+      if (sessionsError) {
+        console.error(`[NotificationDB] Error fetching sessions:`, sessionsError);
+        return [];
+      }
+
+      // Map session data to notifications
+      const sessionMap = new Map((sessions || []).map(s => [s.id, s]));
+      
+      return notifications
+        .map(notification => {
+          const session = sessionMap.get(notification.chatSessionId);
+          if (!session) return null;
+          
+          return {
+            id: notification.id,
+            createdAt: notification.createdAt,
+            message: notification.message,
+            status: notification.status,
+            chatSessionId: notification.chatSessionId,
+            channelUserId: session.channelUserId,
+          };
+        })
+        .filter(Boolean) as Array<{
+          id: string;
+          createdAt: string;
+          message: string;
+          status: NotificationStatus;
+          chatSessionId: string;
+          channelUserId: string;
+        }>;
+    } catch (error) {
+      console.error(`[NotificationDB] Exception fetching all business notifications:`, error);
+      return [];
+    }
+  }
 } 

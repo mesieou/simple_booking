@@ -98,18 +98,22 @@ export default function InvitePage() {
         return;
     }
     setLoading(true);
+    
+    // Use consistent site URL configuration
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://skedy.io';
+    
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: { 
           data: { firstName, lastName, businessId, role: 'provider' },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${siteUrl}/auth/callback?redirectToSignIn=true`,
         },
     });
     if (error) {
         toast({ title: "Sign up failed", description: error.message, variant: "destructive" });
     } else {
-        toast({ title: "Success!", description: 'Please check your email to confirm your account.' });
+        toast({ title: "Success!", description: 'Please check your email to confirm your account. You\'ll be automatically signed in after verification.' });
         setView('invite');
     }
     setLoading(false);
