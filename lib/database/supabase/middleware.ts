@@ -40,9 +40,29 @@ export async function updateSession(request: NextRequest) {
       console.log(`[Middleware] Session found for user: ${user.id}`);
 
       // Create a separate, admin client that can bypass RLS for this specific, safe query.
+      // Use environment-specific variables
+      const isProduction = process.env.NODE_ENV === 'production';
+      
+      const supabaseUrl = isProduction 
+        ? (process.env.SUPABASE_PROD_URL || process.env.NEXT_PUBLIC_SUPABASE_URL)
+        : process.env.NEXT_PUBLIC_SUPABASE_URL;
+        
+      const supabaseServiceKey = isProduction 
+        ? (process.env.SUPABASE_PROD_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY)
+        : process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+      if (!supabaseUrl || !supabaseServiceKey) {
+        console.error('[Middleware] Missing admin client credentials:', {
+          environment: isProduction ? 'production' : 'development',
+          url: !!supabaseUrl,
+          serviceKey: !!supabaseServiceKey
+        });
+        throw new Error(`Missing Supabase admin credentials for ${isProduction ? 'production' : 'development'}`);
+      }
+
       const supabaseAdmin = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        supabaseUrl,
+        supabaseServiceKey,
         {
           auth: {
             autoRefreshToken: false,
