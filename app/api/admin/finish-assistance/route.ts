@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getEnvironmentServerClient } from "@/lib/database/supabase/environment";
+import { getEnvironmentServerClient, getEnvironmentServiceRoleClient } from "@/lib/database/supabase/environment";
 
 export async function POST(req: NextRequest) {
   try {
@@ -31,7 +31,9 @@ export async function POST(req: NextRequest) {
     const userBusinessId = userData?.businessId;
 
     // Verify the chat session belongs to the staff's business
-    const { data: sessionData, error: sessionError } = await supabase
+    // Use service role client to bypass RLS for session queries
+    const supaServiceRole = getEnvironmentServiceRoleClient();
+    const { data: sessionData, error: sessionError } = await supaServiceRole
       .from("chatSessions")
       .select("businessId")
       .eq("id", sessionId)
@@ -54,7 +56,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Find the attending notification for this session
-    const { data: notificationData, error: notificationError } = await supabase
+    const { data: notificationData, error: notificationError } = await supaServiceRole
       .from("notifications")
       .select("*")
       .eq("chatSessionId", sessionId)
@@ -72,7 +74,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Update notification status to 'provided_help' to indicate assistance is complete
-    const { error: updateError } = await supabase
+    const { error: updateError } = await supaServiceRole
       .from("notifications")
       .update({ status: "provided_help" })
       .eq("id", notificationData.id);
