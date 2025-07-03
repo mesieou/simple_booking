@@ -56,7 +56,7 @@ export function ChatList({
                     : "border-l-4 border-green-500 bg-green-900/20"
                   : ""
               }`}
-            >
+            > 
               {/* Mobile Layout */}
               <div className="md:hidden">
                 <div className="flex items-center justify-between mb-1.5">
@@ -153,3 +153,4 @@ export function ChatList({
     </div>
   );
 } 
+// *
