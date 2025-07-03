@@ -374,7 +374,7 @@ export class StripePaymentService {
       }
 
              // Create onboarding link
-       const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://simple-booking-git-main-skedys-projects.vercel.app';
+       const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://skedy.io';
        const accountLink = await getStripe().accountLinks.create({
          account: accountId,
          refresh_url: `${baseUrl}/onboarding?refresh=true&businessId=${businessId}`,
