@@ -120,7 +120,7 @@ interface ChatStatus {
 
 interface FeedbackState {
   isOpen: boolean;
-  messageContent: string;
+  messageContent: string | object;
   feedbackType: 'thumbs_up' | 'thumbs_down' | null;
 }
 
@@ -197,7 +197,7 @@ export function ChatWindow({
   };
 
   // Feedback system handlers
-  const handleFeedbackClick = (messageContent: string, type: 'thumbs_up' | 'thumbs_down') => {
+  const handleFeedbackClick = (messageContent: string | object, type: 'thumbs_up' | 'thumbs_down') => {
     if (type === 'thumbs_up') {
       // For thumbs up, submit immediately without text
       submitFeedback(messageContent, type, '');
@@ -227,7 +227,7 @@ export function ChatWindow({
     setFeedbackText('');
   };
 
-  const submitFeedback = async (messageContent: string, type: 'thumbs_up' | 'thumbs_down', text: string) => {
+  const submitFeedback = async (messageContent: string | object, type: 'thumbs_up' | 'thumbs_down', text: string) => {
     if (!sessionId) {
       console.error('[Feedback] No sessionId available for feedback submission');
       return;
@@ -243,7 +243,7 @@ export function ChatWindow({
     try {
       const feedbackData = {
         sessionId,
-        messageContent,
+        messageContent: getContentKey(messageContent), // Convert to string safely
         feedbackType: type,
         feedbackText: text || null,
         timestamp: new Date().toISOString()
@@ -717,14 +717,24 @@ export function ChatWindow({
                                             const isPlaceholder = typeof msg.content === 'string' && placeholders.includes(msg.content);
 
                                             if (!isPlaceholder) {
-                                              return (
-                                                <p className="text-xs break-all">
-                                                  {msg.senderRole === 'customer' 
-                                                    ? formatMessageForAdmin(msg.content as string) 
-                                                    : msg.content as string
-                                                  }
-                                                </p>
-                                              );
+                                              // Handle different content types safely
+                                              if (typeof msg.content === 'string') {
+                                                return (
+                                                  <p className="text-xs break-all">
+                                                    {msg.senderRole === 'customer' 
+                                                      ? formatMessageForAdmin(msg.content) 
+                                                      : msg.content
+                                                    }
+                                                  </p>
+                                                );
+                                              } else if (typeof msg.content === 'object' && msg.content) {
+                                                // Handle BotResponseMessage objects that weren't caught by displayType check
+                                                return (
+                                                  <p className="text-xs break-all">
+                                                    {msg.content.text || '[Interactive Message]'}
+                                                  </p>
+                                                );
+                                              }
                                             }
                                             return null; // Don't render any text if it's a placeholder
                                         })()}
