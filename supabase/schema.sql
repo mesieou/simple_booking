@@ -13,11 +13,11 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto" WITH SCHEMA "extensions";
 -- Users table
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    "firstName" TEXT,
-    "lastName" TEXT,
+    "firstName" TEXT NULL,
+    "lastName" TEXT NULL,
     email TEXT UNIQUE,
     "phoneNumber" TEXT,
-    role TEXT DEFAULT 'customer',
+    role TEXT NULL DEFAULT 'customer',
     "businessId" UUID REFERENCES businesses(id),
     "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -186,6 +186,10 @@ ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "availabilitySlots" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "chatSessions" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE embeddings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "calendarSettings" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "userContexts" ENABLE ROW LEVEL SECURITY;
 
 -- ================================
 -- BUSINESSES TABLE RLS POLICIES
@@ -228,6 +232,82 @@ CREATE POLICY "admin_businesses_insert" ON "businesses"
   FOR INSERT TO "authenticated" 
   WITH CHECK (get_my_role() = 'admin');
 
+-- Super Admin policies (full access to everything)
+CREATE POLICY "super_admin_businesses_all" ON "businesses" 
+  TO "authenticated" 
+  USING (get_my_role() = 'super_admin') 
+  WITH CHECK (get_my_role() = 'super_admin');
+
+-- ================================
+-- SUPER ADMIN POLICIES FOR ALL TABLES
+-- ================================
+
+-- Users table - Super Admin full access
+CREATE POLICY "super_admin_users_all" ON "users" 
+  TO "authenticated" 
+  USING (get_my_role() = 'super_admin') 
+  WITH CHECK (get_my_role() = 'super_admin');
+
+-- Services table - Super Admin full access
+CREATE POLICY "super_admin_services_all" ON "services" 
+  TO "authenticated" 
+  USING (get_my_role() = 'super_admin') 
+  WITH CHECK (get_my_role() = 'super_admin');
+
+-- Quotes table - Super Admin full access
+CREATE POLICY "super_admin_quotes_all" ON "quotes" 
+  TO "authenticated" 
+  USING (get_my_role() = 'super_admin') 
+  WITH CHECK (get_my_role() = 'super_admin');
+
+-- Bookings table - Super Admin full access
+CREATE POLICY "super_admin_bookings_all" ON "bookings" 
+  TO "authenticated" 
+  USING (get_my_role() = 'super_admin') 
+  WITH CHECK (get_my_role() = 'super_admin');
+
+-- Availability Slots table - Super Admin full access
+CREATE POLICY "super_admin_availability_slots_all" ON "availabilitySlots" 
+  TO "authenticated" 
+  USING (get_my_role() = 'super_admin') 
+  WITH CHECK (get_my_role() = 'super_admin');
+
+-- Chat Sessions table - Super Admin full access
+CREATE POLICY "super_admin_chat_sessions_all" ON "chatSessions" 
+  TO "authenticated" 
+  USING (get_my_role() = 'super_admin') 
+  WITH CHECK (get_my_role() = 'super_admin');
+
+-- Notifications table - Super Admin full access
+CREATE POLICY "super_admin_notifications_all" ON "notifications" 
+  TO "authenticated" 
+  USING (get_my_role() = 'super_admin') 
+  WITH CHECK (get_my_role() = 'super_admin');
+
+-- Documents table - Super Admin full access
+CREATE POLICY "super_admin_documents_all" ON "documents" 
+  TO "authenticated" 
+  USING (get_my_role() = 'super_admin') 
+  WITH CHECK (get_my_role() = 'super_admin');
+
+-- Embeddings table - Super Admin full access
+CREATE POLICY "super_admin_embeddings_all" ON "embeddings" 
+  TO "authenticated" 
+  USING (get_my_role() = 'super_admin') 
+  WITH CHECK (get_my_role() = 'super_admin');
+
+-- Calendar Settings table - Super Admin full access
+CREATE POLICY "super_admin_calendar_settings_all" ON "calendarSettings" 
+  TO "authenticated" 
+  USING (get_my_role() = 'super_admin') 
+  WITH CHECK (get_my_role() = 'super_admin');
+
+-- User Contexts table - Super Admin full access
+CREATE POLICY "super_admin_user_contexts_all" ON "userContexts" 
+  TO "authenticated" 
+  USING (get_my_role() = 'super_admin') 
+  WITH CHECK (get_my_role() = 'super_admin');
+
 -- Helper Functions
 CREATE OR REPLACE FUNCTION get_my_business_id() RETURNS UUID
 LANGUAGE SQL SECURITY DEFINER
@@ -239,4 +319,42 @@ CREATE OR REPLACE FUNCTION get_my_role() RETURNS TEXT
 LANGUAGE SQL SECURITY DEFINER  
 AS $$
   SELECT role FROM users WHERE id = auth.uid();
-$$; 
+$$;
+
+CREATE OR REPLACE FUNCTION customer_has_interaction_with_business(business_id UUID) RETURNS BOOLEAN
+LANGUAGE SQL SECURITY DEFINER
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM quotes q WHERE q."businessId" = business_id AND q."userId" = auth.uid()
+    UNION
+    SELECT 1 FROM bookings b WHERE b."businessId" = business_id AND b."userId" = auth.uid()
+    UNION
+    SELECT 1 FROM "chatSessions" cs WHERE cs."businessId" = business_id AND cs."userId" = auth.uid()
+  );
+$$;
+
+-- ================================
+-- ADDITIONAL RLS POLICIES FOR OTHER TABLES
+-- ================================
+
+-- Documents table policies
+CREATE POLICY "documents_business_access" ON "documents" 
+  FOR SELECT TO "authenticated" 
+  USING (get_my_role() IN ('admin', 'admin/provider', 'provider') AND "businessId" = get_my_business_id());
+
+-- Embeddings table policies
+CREATE POLICY "embeddings_business_access" ON "embeddings" 
+  FOR SELECT TO "authenticated" 
+  USING (get_my_role() IN ('admin', 'admin/provider', 'provider') AND "businessId" = get_my_business_id());
+
+-- Calendar Settings table policies
+CREATE POLICY "calendar_settings_provider_access" ON "calendarSettings" 
+  TO "authenticated" 
+  USING (get_my_role() IN ('admin', 'admin/provider', 'provider') AND "providerId" = auth.uid()) 
+  WITH CHECK (get_my_role() IN ('admin', 'admin/provider', 'provider') AND "providerId" = auth.uid());
+
+-- User Contexts table policies
+CREATE POLICY "user_contexts_business_access" ON "userContexts" 
+  TO "authenticated" 
+  USING (get_my_role() IN ('admin', 'admin/provider', 'provider') AND "businessId" = get_my_business_id()) 
+  WITH CHECK (get_my_role() IN ('admin', 'admin/provider', 'provider') AND "businessId" = get_my_business_id()); 
