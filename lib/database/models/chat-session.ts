@@ -650,7 +650,7 @@ export class ChatSession {
               escalationStatus: escalationInfo?.status || null,
               sessionId: session.id,
               businessId: session.businessId,
-              businessName: session.businesses?.name || 'Unknown Business',
+              businessName: session.businesses?.[0]?.name || 'Unknown Business',
             });
           }
         }
