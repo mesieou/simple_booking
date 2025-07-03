@@ -19,18 +19,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Session ID is required" }, { status: 400 });
     }
 
-    // Get user's business ID to verify they can access this session
+    // Get user's business ID and role to verify they can access this session
     const { data: userData, error: userError } = await supabase
       .from("users")
-      .select("businessId")
+      .select("businessId, role")
       .eq("id", user.id)
       .single();
 
-    if (userError || !userData?.businessId) {
+    if (userError) {
       return NextResponse.json({ error: "Could not identify your business" }, { status: 403 });
     }
+
+    const isSuperAdmin = userData?.role === 'super_admin';
+    const userBusinessId = userData?.businessId;
     
-    console.log(`[TakeControl] User Business ID: ${userData.businessId}`);
+    console.log(`[TakeControl] User Role: ${userData?.role}, isSuperAdmin: ${isSuperAdmin}, Business ID: ${userBusinessId}`);
 
     // Verify the chat session belongs to the staff's business
     const { data: sessionData, error: sessionError } = await supabase
@@ -43,8 +46,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Chat session not found" }, { status: 404 });
     }
 
-    if (sessionData.businessId !== userData.businessId) {
-      return NextResponse.json({ error: "You can only manage chats from your business" }, { status: 403 });
+    // For superadmins, allow access to any session
+    // For regular users, verify the session belongs to their business
+    if (!isSuperAdmin) {
+      if (!userBusinessId) {
+        return NextResponse.json({ error: "Could not identify your business" }, { status: 403 });
+      }
+      
+      if (sessionData.businessId !== userBusinessId) {
+        return NextResponse.json({ error: "You can only manage chats from your business" }, { status: 403 });
+      }
     }
 
     // Find the pending notification for this session

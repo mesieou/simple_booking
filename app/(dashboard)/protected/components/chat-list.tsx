@@ -6,12 +6,14 @@ type ChatListProps = {
   conversations: Conversation[];
   selectedUserId: string | null;
   onConversationSelect: (userId: string) => void;
+  isSuperAdmin?: boolean;
 };
 
 export function ChatList({
   conversations,
   selectedUserId,
   onConversationSelect,
+  isSuperAdmin = false,
 }: ChatListProps) {
     // If there are no active chats, display a message
   if (!conversations || conversations.length === 0) {
@@ -79,6 +81,12 @@ export function ChatList({
                   </span>
                 </div>
                 
+                {isSuperAdmin && convo.businessName && (
+                  <div className="text-xs text-gray-500 mb-1">
+                    {convo.businessName}
+                  </div>
+                )}
+                
                 {convo.hasEscalation && (
                   <div className="flex items-center gap-2">
                     {convo.escalationStatus === 'pending' ? (
@@ -123,6 +131,12 @@ export function ChatList({
                     }`}></div>
                   )}
                 </div>
+                
+                {isSuperAdmin && convo.businessName && (
+                  <div className="text-xs text-gray-500 mb-1">
+                    {convo.businessName}
+                  </div>
+                )}
                 <p className="text-xs text-gray-400 truncate">
                   Last activity:{" "}
                   {new Date(convo.updatedAt).toLocaleTimeString('en-US', { 

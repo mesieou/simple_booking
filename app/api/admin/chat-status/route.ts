@@ -20,11 +20,11 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Session ID is required" }, { status: 400 });
     }
 
-    // Get user's business ID
-    console.log("[ChatStatus] Getting business ID for user:", user.id);
+    // Get user's business ID and role
+    console.log("[ChatStatus] Getting business ID and role for user:", user.id);
     const { data: userData, error: userError } = await supabase
       .from("users")
-      .select("businessId")
+      .select("businessId, role")
       .eq("id", user.id)
       .single();
 
@@ -32,13 +32,11 @@ export async function GET(req: NextRequest) {
       console.error("[ChatStatus] Error fetching user data:", userError);
       return NextResponse.json({ error: "Could not identify your business" }, { status: 403 });
     }
-    
-    if (!userData?.businessId) {
-      console.error("[ChatStatus] User has no businessId:", userData);
-      return NextResponse.json({ error: "Could not identify your business" }, { status: 403 });
-    }
 
-    console.log("[ChatStatus] User businessId:", userData.businessId);
+    const isSuperAdmin = userData?.role === 'super_admin';
+    const userBusinessId = userData?.businessId;
+
+    console.log("[ChatStatus] User role:", userData?.role, "isSuperAdmin:", isSuperAdmin, "businessId:", userBusinessId);
 
     // Verify the chat session belongs to the staff's business
     console.log("[ChatStatus] Verifying session ownership for sessionId:", sessionId);
@@ -60,9 +58,18 @@ export async function GET(req: NextRequest) {
 
     console.log("[ChatStatus] Session businessId:", sessionData.businessId);
 
-    if (sessionData.businessId !== userData.businessId) {
-      console.error("[ChatStatus] Business ID mismatch. User:", userData.businessId, "Session:", sessionData.businessId);
-      return NextResponse.json({ error: "You can only view chats from your business" }, { status: 403 });
+    // For superadmins, allow access to any session
+    // For regular users, verify the session belongs to their business
+    if (!isSuperAdmin) {
+      if (!userBusinessId) {
+        console.error("[ChatStatus] Regular user has no businessId:", userData);
+        return NextResponse.json({ error: "Could not identify your business" }, { status: 403 });
+      }
+      
+      if (sessionData.businessId !== userBusinessId) {
+        console.error("[ChatStatus] Business ID mismatch. User:", userBusinessId, "Session:", sessionData.businessId);
+        return NextResponse.json({ error: "You can only view chats from your business" }, { status: 403 });
+      }
     }
 
     // Check for any notification for this session

@@ -9,6 +9,7 @@ import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
 import { useToast } from "@/lib/rename-categorise-better/utils/use-toast";
 import Link from "next/link";
+import { getSignUpRedirectUrl } from "@/lib/config/auth-config";
 
 export default function SignUp() {
   const [email, setEmail] = useState("");
@@ -41,6 +42,10 @@ export default function SignUp() {
 
     try {
       const supabase = createClient();
+      
+      // Use consistent site URL configuration
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://skedy.io';
+      
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -51,8 +56,8 @@ export default function SignUp() {
             role: 'customer',
           },
           emailRedirectTo: returnUrl 
-            ? `${window.location.origin}/auth/callback?returnUrl=${encodeURIComponent(returnUrl)}`
-            : `${window.location.origin}/auth/callback`,
+            ? `${siteUrl}/auth/callback?returnUrl=${encodeURIComponent(returnUrl)}&redirectToSignIn=true`
+            : `${siteUrl}/auth/callback?redirectToSignIn=true`,
         },
       });
 
@@ -66,7 +71,7 @@ export default function SignUp() {
       // Show success message
       toast({
         title: "Sign up successful",
-        description: "Please check your email to complete the registration",
+        description: "Please check your email to complete the registration. You'll be automatically signed in after verification.",
       });
 
       // The middleware will handle the redirect

@@ -3,10 +3,13 @@ import { Business } from "./business";
 import { v4 as uuidv4 } from 'uuid';
 import { handleModelError } from '@/lib/general-helpers/error';
 
-export type UserRole = "admin" | "provider" | "customer" | "admin/provider" | "staff";
+export type UserRole = "super_admin" | "admin" | "provider" | "customer" | "admin/provider" | "staff";
 
 // Provider roles that can have availability
 export const PROVIDER_ROLES: UserRole[] = ["provider", "admin/provider", "admin", "staff"];
+
+// Superadmin roles that have access to all businesses
+export const SUPERADMIN_ROLES: UserRole[] = ["super_admin", "admin"];
 
 /**
  * Phone number normalization utility
