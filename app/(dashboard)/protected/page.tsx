@@ -42,6 +42,8 @@ export default async function ProtectedPage({
     hasEscalation: conv.hasEscalation,
     escalationStatus: conv.escalationStatus,
     sessionId: conv.sessionId,
+    businessId: conv.businessId,
+    businessName: conv.businessName,
   }));
 
   return (
@@ -49,6 +51,7 @@ export default async function ProtectedPage({
         <ChatInterface
           initialConversations={initialConversations}
           preselectedChannelUserId={conversationData.preselectedChannelUserId}
+          isSuperAdmin={conversationData.isSuperAdmin}
         />
     </div>
   );

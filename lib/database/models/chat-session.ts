@@ -433,6 +433,8 @@ export class ChatSession {
   /**
    * High-level method to get all conversation data needed for the chat interface
    * Combines user business lookup, conversations fetching, session preselection, and escalation status
+   * For admin users: returns ALL conversations from ALL businesses
+   * For other users: returns only conversations from their business
    */
   static async getBusinessConversationsData(
     userId: string,
@@ -444,49 +446,105 @@ export class ChatSession {
       hasEscalation: boolean;
       escalationStatus: string | null;
       sessionId: string;
+      businessId?: string; // Add businessId for super admin context
+      businessName?: string; // Add business name for super admin context
     }>;
     preselectedChannelUserId?: string;
+    isSuperAdmin?: boolean; // Flag to indicate super admin access
   } | null> {
     try {
       const supa = getEnvironmentServiceRoleClient();
 
-      // First, get the businessId of the logged-in user
+      // First, get the user data including role and businessId
       const { data: userData, error: userError } = await supa
         .from("users")
-        .select("businessId")
+        .select("businessId, role")
         .eq("id", userId)
         .single();
 
-      if (userError || !userData?.businessId) {
-        console.error("Error fetching user's businessId:", userError);
+      if (userError || !userData) {
+        console.error("Error fetching user data:", userError);
         return null;
       }
 
+      const isAdmin = userData.role === 'admin';
       const businessId = userData.businessId;
 
-      // Get all chat sessions for this business
-      const { data: chatSessions, error: sessionsError } = await supa
-        .from("chatSessions")
-        .select("id, channelUserId, updatedAt")
-        .eq("businessId", businessId)
-        .order("updatedAt", { ascending: false });
-
-      if (sessionsError) {
-        console.error("Error fetching chat sessions:", sessionsError);
+      // For non-admin users, require businessId
+      if (!isAdmin && !businessId) {
+        console.error("Non-admin user has no businessId:", userId);
         return null;
       }
 
-      // Get active notifications for this business
-      const { data: notifications, error: notificationsError } = await supa
-        .from("notifications")
-        .select("chatSessionId, status")
-        .eq("businessId", businessId)
-        .in("status", ["pending", "attending"])
-        .order("createdAt", { ascending: false });
+      let chatSessions: any[] = [];
+      let notifications: any[] = [];
+      
+      if (isAdmin) {
+        // Admin gets ALL sessions from ALL businesses
+        console.log(`[ChatSession] Super admin access: fetching all conversations for user ${userId}`);
+        
+        const { data: allSessions, error: sessionsError } = await supa
+          .from("chatSessions")
+          .select(`
+            id, 
+            channelUserId, 
+            updatedAt, 
+            businessId,
+            businesses(name)
+          `)
+          .order("updatedAt", { ascending: false });
 
-      if (notificationsError) {
-        console.error("Error fetching notifications:", notificationsError);
-        // Continue without escalation data rather than failing completely
+        if (sessionsError) {
+          console.error("Error fetching all chat sessions for admin:", sessionsError);
+          return null;
+        }
+
+        chatSessions = allSessions || [];
+
+        // Get ALL notifications for admin
+        const { data: allNotifications, error: notificationsError } = await supa
+          .from("notifications")
+          .select("chatSessionId, status, businessId")
+          .in("status", ["pending", "attending"])
+          .order("createdAt", { ascending: false });
+
+        if (notificationsError) {
+          console.error("Error fetching all notifications for admin:", notificationsError);
+          // Continue without escalation data rather than failing completely
+        }
+
+        notifications = allNotifications || [];
+      } else {
+        // Regular business-scoped access
+        console.log(`[ChatSession] Business-scoped access: fetching conversations for business ${businessId}`);
+        
+        const { data: businessSessions, error: sessionsError } = await supa
+          .from("chatSessions")
+          .select("id, channelUserId, updatedAt, businessId")
+          .eq("businessId", businessId)
+          .order("updatedAt", { ascending: false });
+
+        if (sessionsError) {
+          console.error("Error fetching chat sessions:", sessionsError);
+          return null;
+        }
+
+        chatSessions = businessSessions || [];
+
+        // Get notifications for this business only
+        const { data: businessNotifications, error: notificationsError } = await supa
+          .from("notifications")
+          .select("chatSessionId, status")
+          .eq("businessId", businessId)
+          .in("status", ["pending", "attending"])
+          .order("createdAt", { ascending: false });
+
+        if (notificationsError) {
+          console.error("Error fetching notifications:", notificationsError);
+          // Continue without escalation data rather than failing completely
+        }
+
+        notifications = businessNotifications || [];
       }
 
       // Create a map of sessionId -> escalation info
@@ -508,19 +566,35 @@ export class ChatSession {
         hasEscalation: boolean;
         escalationStatus: string | null;
         sessionId: string;
+        businessId?: string;
+        businessName?: string;
       }>();
       
       if (chatSessions) {
         for (const session of chatSessions) {
-          if (!conversationsMap.has(session.channelUserId)) {
+          // For admin, use a composite key to handle multiple businesses
+          // For regular users, just use channelUserId as before
+          const conversationKey = isAdmin 
+            ? `${session.channelUserId}-${session.businessId}` 
+            : session.channelUserId;
+            
+          if (!conversationsMap.has(conversationKey)) {
             const escalationInfo = escalationMap.get(session.id);
-            conversationsMap.set(session.channelUserId, {
+            const conversation: any = {
               channelUserId: session.channelUserId,
               updatedAt: session.updatedAt,
               hasEscalation: !!escalationInfo,
               escalationStatus: escalationInfo?.status || null,
               sessionId: session.id,
-            });
+            };
+
+            // Add business context for admin users
+            if (isAdmin) {
+              conversation.businessId = session.businessId;
+              conversation.businessName = session.businesses?.name || 'Unknown Business';
+            }
+
+            conversationsMap.set(conversationKey, conversation);
           }
         }
       }
@@ -558,6 +632,7 @@ export class ChatSession {
       return {
         conversations,
         preselectedChannelUserId,
+        isSuperAdmin: isAdmin,
       };
 
     } catch (error) {

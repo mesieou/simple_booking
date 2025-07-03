@@ -18,16 +18,20 @@ export type Conversation = {
   hasEscalation: boolean;
   escalationStatus: string | null;
   sessionId: string;
+  businessId?: string; // For super admin context
+  businessName?: string; // For super admin context
 };
 
 type ChatInterfaceProps = {
   initialConversations: Conversation[];
   preselectedChannelUserId?: string;
+  isSuperAdmin?: boolean; // Flag to indicate super admin access
 };
 
 export default function ChatInterface({ 
   initialConversations, 
-  preselectedChannelUserId 
+  preselectedChannelUserId,
+  isSuperAdmin = false // Default to false for regular users
 }: ChatInterfaceProps) {
   const [conversations, setConversations] = useState<Conversation[]>(initialConversations);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -231,6 +235,7 @@ export default function ChatInterface({
               conversations={conversations}
               selectedUserId={selectedUserId}
               onConversationSelect={handleConversationSelect}
+              isSuperAdmin={isSuperAdmin}
             />
           }
           chatWindow={
