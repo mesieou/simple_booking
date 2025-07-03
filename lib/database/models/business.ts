@@ -151,7 +151,7 @@ export class Business {
             handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
-        const supa = getEnvironmentServerClient();
+        const supa = getEnvironmentServiceRoleClient();
         const business = {
             "name": businessData.name,
             "email": businessData.email,
