@@ -43,6 +43,9 @@ export default function SignUp() {
     try {
       const supabase = createClient();
       
+      // Use consistent site URL configuration
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://skedy.io';
+      
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -52,7 +55,9 @@ export default function SignUp() {
             lastName,
             role: 'customer',
           },
-          emailRedirectTo: getSignUpRedirectUrl(returnUrl || undefined),
+          emailRedirectTo: returnUrl 
+            ? `${siteUrl}/auth/callback?returnUrl=${encodeURIComponent(returnUrl)}&redirectToSignIn=true`
+            : `${siteUrl}/auth/callback?redirectToSignIn=true`,
         },
       });
 
@@ -66,7 +71,7 @@ export default function SignUp() {
       // Show success message
       toast({
         title: "Sign up successful",
-        description: "Please check your email to complete the registration",
+        description: "Please check your email to complete the registration. You'll be automatically signed in after verification.",
       });
 
       // The middleware will handle the redirect
