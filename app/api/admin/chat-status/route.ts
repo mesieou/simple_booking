@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getEnvironmentServerClient } from "@/lib/database/supabase/environment";
+import { getEnvironmentServerClient, getEnvironmentServiceRoleClient } from "@/lib/database/supabase/environment";
 
 export async function GET(req: NextRequest) {
   try {
@@ -40,7 +40,9 @@ export async function GET(req: NextRequest) {
 
     // Verify the chat session belongs to the staff's business
     console.log("[ChatStatus] Verifying session ownership for sessionId:", sessionId);
-    const { data: sessionData, error: sessionError } = await supabase
+    // Use service role client to bypass RLS for session queries (consistent with other admin endpoints)
+    const supaServiceRole = getEnvironmentServiceRoleClient();
+    const { data: sessionData, error: sessionError } = await supaServiceRole
       .from("chatSessions")
       .select("businessId")
       .eq("id", sessionId)
@@ -74,7 +76,7 @@ export async function GET(req: NextRequest) {
 
     // Check for any notification for this session
     console.log("[ChatStatus] Checking notifications for sessionId:", sessionId);
-    const { data: notificationData, error: notificationError } = await supabase
+    const { data: notificationData, error: notificationError } = await supaServiceRole
       .from("notifications")
       .select("*")
       .eq("chatSessionId", sessionId)

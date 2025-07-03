@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getEnvironmentServerClient } from "@/lib/database/supabase/environment";
+import { getEnvironmentServerClient, getEnvironmentServiceRoleClient } from "@/lib/database/supabase/environment";
 import { User } from "@/lib/database/models/user";
 import { Notification } from "@/lib/database/models/notification";
 import { ChatSession } from "@/lib/database/models/chat-session";
@@ -31,10 +31,11 @@ export async function GET(request: NextRequest) {
         } else {
             // 2. Try to find linked user through chat sessions
             try {
-                const supabase = getEnvironmentServerClient();
+                // Use service role client to bypass RLS for session queries
+                const supaServiceRole = getEnvironmentServiceRoleClient();
                 
                 // Query for WhatsApp chat sessions with this phone number
-                const { data: chatSessions, error } = await supabase
+                const { data: chatSessions, error } = await supaServiceRole
                     .from('chatSessions')
                     .select('id, userId, createdAt')
                     .eq('channel', 'whatsapp')
