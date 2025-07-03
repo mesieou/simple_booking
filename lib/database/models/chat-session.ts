@@ -565,4 +565,135 @@ export class ChatSession {
       return null;
     }
   }
+
+  /**
+   * High-level method to get all conversation data for superadmin
+   * Returns conversations from ALL businesses
+   */
+  static async getAllBusinessesConversationsData(
+    preselectedSessionId?: string
+  ): Promise<{
+    conversations: Array<{ 
+      channelUserId: string; 
+      updatedAt: string; 
+      hasEscalation: boolean;
+      escalationStatus: string | null;
+      sessionId: string;
+      businessId: string;
+      businessName: string;
+    }>;
+    preselectedChannelUserId?: string;
+  } | null> {
+    try {
+      const supa = getEnvironmentServiceRoleClient();
+
+      // Get all chat sessions from all businesses
+      const { data: chatSessions, error: sessionsError } = await supa
+        .from("chatSessions")
+        .select(`
+          id, 
+          channelUserId, 
+          updatedAt, 
+          businessId,
+          businesses!inner(name)
+        `)
+        .order("updatedAt", { ascending: false });
+
+      if (sessionsError) {
+        console.error("Error fetching chat sessions:", sessionsError);
+        return null;
+      }
+
+      // Get all active notifications from all businesses
+      const { data: notifications, error: notificationsError } = await supa
+        .from("notifications")
+        .select("chatSessionId, status")
+        .in("status", ["pending", "attending"])
+        .order("createdAt", { ascending: false });
+
+      if (notificationsError) {
+        console.error("Error fetching notifications:", notificationsError);
+        // Continue without escalation data rather than failing completely
+      }
+
+      // Create a map of sessionId -> escalation info
+      const escalationMap = new Map<string, { status: string }>();
+      if (notifications) {
+        for (const notification of notifications) {
+          if (!escalationMap.has(notification.chatSessionId)) {
+            escalationMap.set(notification.chatSessionId, {
+              status: notification.status
+            });
+          }
+        }
+      }
+
+      // Group sessions by channelUserId to create unique conversations with escalation data
+      const conversationsMap = new Map<string, { 
+        channelUserId: string; 
+        updatedAt: string; 
+        hasEscalation: boolean;
+        escalationStatus: string | null;
+        sessionId: string;
+        businessId: string;
+        businessName: string;
+      }>();
+      
+      if (chatSessions) {
+        for (const session of chatSessions) {
+          if (!conversationsMap.has(session.channelUserId)) {
+            const escalationInfo = escalationMap.get(session.id);
+            conversationsMap.set(session.channelUserId, {
+              channelUserId: session.channelUserId,
+              updatedAt: session.updatedAt,
+              hasEscalation: !!escalationInfo,
+              escalationStatus: escalationInfo?.status || null,
+              sessionId: session.id,
+              businessId: session.businessId,
+              businessName: session.businesses?.[0]?.name || 'Unknown Business',
+            });
+          }
+        }
+      }
+
+      // Convert to array and sort with escalations first
+      const conversations = Array.from(conversationsMap.values()).sort((a, b) => {
+        // Prioritize escalations: pending first, then attending, then non-escalated
+        const getEscalationPriority = (conv: typeof a) => {
+          if (conv.escalationStatus === 'pending') return 0;
+          if (conv.escalationStatus === 'attending') return 1;
+          return 2;
+        };
+
+        const priorityA = getEscalationPriority(a);
+        const priorityB = getEscalationPriority(b);
+
+        if (priorityA !== priorityB) {
+          return priorityA - priorityB;
+        }
+
+        // If same escalation priority, sort by most recent activity
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+      });
+
+      let preselectedChannelUserId: string | undefined = undefined;
+
+      // If a session ID is specified, find its corresponding channelUserId
+      if (preselectedSessionId && chatSessions) {
+        const targetSession = chatSessions.find(session => session.id === preselectedSessionId);
+        if (targetSession) {
+          preselectedChannelUserId = targetSession.channelUserId;
+        }
+      }
+
+      return {
+        conversations,
+        preselectedChannelUserId,
+      };
+
+    } catch (error) {
+      console.error("Error in getAllBusinessesConversationsData:", error);
+      return null;
+    }
+  }
 }
