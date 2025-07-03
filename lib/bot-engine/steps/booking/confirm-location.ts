@@ -36,12 +36,13 @@ export const confirmLocationHandler: IndividualStepHandler = {
     if (hasMobileService) {
       // For mobile services, use the validated customer address
       const finalAddress = currentGoalData.finalServiceAddress || currentGoalData.customerAddress;
+      const customerName = currentGoalData.customerName || '{name}';
       
       return {
         ...currentGoalData,
         finalServiceAddress: finalAddress,
         serviceLocation: 'customer_address',
-        confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.MOBILE_SERVICE_LOCATION', { address: finalAddress })
+        confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.MOBILE_SERVICE_LOCATION', { address: finalAddress, name: customerName })
       };
     }
     

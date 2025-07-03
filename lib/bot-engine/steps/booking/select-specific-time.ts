@@ -99,18 +99,20 @@ export const selectSpecificTimeHandler: IndividualStepHandler = {
             });
             
             console.log('[SelectSpecificTime] Loaded and formatted hours:', formattedHoursForDisplay.length);
+            const customerName = currentGoalData.customerName || '{name}';
             return {
               ...currentGoalData,
               availableHours,
               formattedAvailableHours: formattedHoursForDisplay,
-              confirmationMessage: getLocalizedText(chatContext, 'MESSAGES.SELECT_TIME')
+              confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.SELECT_TIME', { name: customerName })
             };
             
           } catch (error) {
             console.error('[SelectSpecificTime] Error loading hours:', error);
+            const customerName = currentGoalData.customerName || '{name}';
             return {
               ...currentGoalData,
-              confirmationMessage: getLocalizedText(chatContext, 'MESSAGES.ERROR_LOADING_AVAILABLE_TIMES')
+              confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.ERROR_LOADING_AVAILABLE_TIMES', { name: customerName })
             };
           }
         }
@@ -118,16 +120,18 @@ export const selectSpecificTimeHandler: IndividualStepHandler = {
       
       // If hours are already loaded or no date selected, just return current data
       if (formattedHours.length === 0) {
+        const customerName = currentGoalData.customerName || '{name}';
         return {
           ...currentGoalData,
-          confirmationMessage: getLocalizedText(chatContext, 'MESSAGES.SELECT_DATE_FIRST')
+          confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.SELECT_DATE_FIRST', { name: customerName })
         };
       }
       
       // Hours are loaded, display them
+      const customerName = currentGoalData.customerName || '{name}';
       return {
         ...currentGoalData,
-        confirmationMessage: getLocalizedText(chatContext, 'MESSAGES.SELECT_TIME')
+        confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.SELECT_TIME', { name: customerName })
       };
     }
     

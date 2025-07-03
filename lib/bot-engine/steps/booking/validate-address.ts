@@ -26,7 +26,7 @@ export const validateAddressHandler: IndividualStepHandler = {
         finalServiceAddress: undefined,
         isAddressValidated: false,
         addressValidationError: undefined,
-        confirmationMessage: getLocalizedText(chatContext, 'MESSAGES.PROVIDE_ADDRESS')
+        confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.PROVIDE_ADDRESS', { name: currentGoalData.customerName || '{name}' })
       };
     }
     

@@ -1,6 +1,6 @@
 import type { IndividualStepHandler } from '@/lib/bot-engine/types';
 import { Booking, type BookingData, BookingStatus } from '@/lib/database/models/booking';
-import { getLocalizedText } from './booking-utils';
+import { getLocalizedText, getLocalizedTextWithVars } from './booking-utils';
 import { Quote } from '@/lib/database/models/quote';
 import { Service } from '@/lib/database/models/service';
 import { Business } from '@/lib/database/models/business';
@@ -339,13 +339,14 @@ export const createBookingHandler: IndividualStepHandler = {
       
       console.log(`[CreateBooking] Generated full confirmation for booking ${bookingConfirmationDetails.bookingId}. Goal completed.`);
       
+      const customerName = currentGoalData.customerName || '{name}';
       return {
         ...currentGoalData,
         goalStatus: 'completed', // Complete the goal since this is the final step
         persistedBooking: savedBooking,
         bookingConfirmationDetails: bookingConfirmationDetails,
         paymentCompleted: isPaymentCompletion,
-        confirmationMessage
+        confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.BOOKING_PROBLEM', { name: customerName })
       };
 
     } catch (error) {
@@ -353,7 +354,7 @@ export const createBookingHandler: IndividualStepHandler = {
       return {
         ...currentGoalData,
         bookingError: 'Failed to save booking. Please try again.',
-        confirmationMessage: getLocalizedText(chatContext, 'MESSAGES.BOOKING_PROBLEM')
+        confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.BOOKING_PROBLEM', { name: customerName })
       };
     }
   }

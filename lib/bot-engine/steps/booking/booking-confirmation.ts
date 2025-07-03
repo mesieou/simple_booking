@@ -100,6 +100,7 @@ export const bookingConfirmationHandler: IndividualStepHandler = {
       ? getLocalizedText(chatContext, 'BOOKING_CONFIRMATION.SERVICES')
       : getLocalizedText(chatContext, 'BOOKING_CONFIRMATION.SERVICE');
     
+    const customerName = currentGoalData.customerName || '{name}';
     let confirmationMessage = `${getLocalizedText(chatContext, 'BOOKING_CONFIRMATION.TITLE')}\n\n`;
     confirmationMessage += `${serviceLabel}\n   ${servicesDisplay}\n`;
     confirmationMessage += bookingSummary.travelCost && parseFloat(bookingSummary.travelCost.replace('$', '')) > 0 
@@ -133,7 +134,7 @@ export const bookingConfirmationHandler: IndividualStepHandler = {
     
     return {
       ...currentGoalData,
-      confirmationMessage
+      confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.BOOKING_CONFIRMATION', { name: customerName })
     };
   }
 };

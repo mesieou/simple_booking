@@ -1,5 +1,5 @@
 import type { IndividualStepHandler } from '@/lib/bot-engine/types';
-import { getLocalizedText } from './booking-utils';
+import { getLocalizedText, getLocalizedTextWithVars } from './booking-utils';
 import { StripePaymentService } from '@/lib/payments/stripe-utils';
 import { Business } from '@/lib/database/models/business';
 
@@ -129,6 +129,7 @@ export const handleQuoteChoiceHandler: IndividualStepHandler = {
             }
           }
           
+          const customerName = currentGoalData.customerName || '{name}';
           const paymentMessage = language === 'es' 
             ? `💳 *¡Listo para Reservar!*\n\n` +
               `Para asegurar tu cita, por favor completa el pago del depósito de reserva:\n\n` +
@@ -163,7 +164,7 @@ export const handleQuoteChoiceHandler: IndividualStepHandler = {
             paymentLink: paymentResult.paymentLink,
             paymentError: false, // Clear any previous payment errors
             shouldAutoAdvance: false, // Don't auto-advance, wait for payment
-            confirmationMessage: paymentMessage
+            confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.QUOTE_CONFIRMED', { name: customerName })
           };
 
         } catch (error) {
