@@ -53,7 +53,7 @@ export async function updateSession(request: NextRequest) {
 
       const { data: userProfile, error: profileError } = await supabaseAdmin
         .from("users")
-        .select("businessId")
+        .select("businessId, role")
         .eq("id", user.id)
         .single();
       
@@ -63,19 +63,21 @@ export async function updateSession(request: NextRequest) {
       console.log("[Middleware] User profile from DB:", userProfile);
 
       const hasBusiness = !!userProfile?.businessId;
-      console.log(`[Middleware] Calculated hasBusiness: ${hasBusiness}`);
+      const isSuperAdmin = userProfile?.role === 'super_admin';
+      console.log(`[Middleware] Calculated hasBusiness: ${hasBusiness}, isSuperAdmin: ${isSuperAdmin}`);
 
       const isOnboardingOrInvite = pathname.startsWith("/onboarding") || pathname.startsWith("/invite");
 
       // Case 1: User is not onboarded (no business) and is not on an onboarding page.
-      if (!hasBusiness && !isOnboardingOrInvite) {
+      // BUT superadmins don't need a business association
+      if (!hasBusiness && !isSuperAdmin && !isOnboardingOrInvite) {
         console.log("[Middleware] Redirecting to /onboarding because user has no business and is not on an onboarding page.");
         return NextResponse.redirect(new URL("/onboarding", request.url));
       }
 
-      // Case 2: User IS onboarded and is trying to access a page they shouldn't be on.
-      if (hasBusiness && (pathname === "/" || pathname.startsWith("/sign-in") || pathname.startsWith("/sign-up") || pathname.startsWith("/onboarding"))) {
-        console.log("[Middleware] Redirecting to /protected because user has a business and is on a public/onboarding page.");
+      // Case 2: User IS onboarded (or is superadmin) and is trying to access a page they shouldn't be on.
+      if ((hasBusiness || isSuperAdmin) && (pathname === "/" || pathname.startsWith("/sign-in") || pathname.startsWith("/sign-up") || pathname.startsWith("/onboarding"))) {
+        console.log("[Middleware] Redirecting to /protected because user has a business (or is superadmin) and is on a public/onboarding page.");
         return NextResponse.redirect(new URL("/protected", request.url));
       }
     }

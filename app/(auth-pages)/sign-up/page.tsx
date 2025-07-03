@@ -9,6 +9,7 @@ import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
 import { useToast } from "@/lib/rename-categorise-better/utils/use-toast";
 import Link from "next/link";
+import { getSignUpRedirectUrl } from "@/lib/config/auth-config";
 
 export default function SignUp() {
   const [email, setEmail] = useState("");
@@ -41,6 +42,7 @@ export default function SignUp() {
 
     try {
       const supabase = createClient();
+      
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -50,9 +52,7 @@ export default function SignUp() {
             lastName,
             role: 'customer',
           },
-          emailRedirectTo: returnUrl 
-            ? `${window.location.origin}/auth/callback?returnUrl=${encodeURIComponent(returnUrl)}`
-            : `${window.location.origin}/auth/callback`,
+          emailRedirectTo: getSignUpRedirectUrl(returnUrl || undefined),
         },
       });
 

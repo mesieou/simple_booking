@@ -16,6 +16,32 @@ export type RightMenuPanelProps = {
 export function RightMenuPanel({ onClose, showCloseButton = true }: RightMenuPanelProps) {
   const { user } = useAuth();
   const router = useRouter();
+  const [userRole, setUserRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      if (!user) return;
+
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+
+        if (error) {
+          console.error('Error fetching user role:', error);
+        } else {
+          setUserRole(data.role);
+        }
+      } catch (error) {
+        console.error('Error fetching user role:', error);
+      }
+    };
+
+    fetchUserRole();
+  }, [user]);
 
   const handleSignOut = async () => {
     const supabase = createClient();
@@ -58,13 +84,28 @@ export function RightMenuPanel({ onClose, showCloseButton = true }: RightMenuPan
 
       <div className="mt-auto">
         <div className="border-t border-white/10 pt-6">
-          <div className="flex items-center gap-4 mb-4 p-2 rounded-lg">
-            <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center">
-              <User className="h-6 w-6 text-gray-400" />
+          <div className={`flex items-center gap-4 mb-4 p-2 rounded-lg ${
+            userRole === 'super_admin' ? 'bg-purple-600/20 border border-purple-500/30' : ''
+          }`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+              userRole === 'super_admin' ? 'bg-purple-600' : 'bg-slate-700'
+            }`}>
+              <User className={`h-6 w-6 ${
+                userRole === 'super_admin' ? 'text-purple-200' : 'text-gray-400'
+              }`} />
             </div>
-            <p className="text-sm font-medium truncate">
-              {user?.email ?? 'Loading...'}
-            </p>
+            <div className="flex flex-col min-w-0">
+              <p className="text-sm font-medium truncate">
+                {user?.email ?? 'Loading...'}
+              </p>
+              {userRole && (
+                <p className={`text-xs truncate capitalize ${
+                  userRole === 'super_admin' ? 'text-purple-300' : 'text-gray-400'
+                }`}>
+                  {userRole === 'super_admin' ? '🔑 Super Admin' : userRole.replace('_', ' ')}
+                </p>
+              )}
+            </div>
           </div>
           <Button
             variant="secondary"

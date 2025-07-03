@@ -5,6 +5,7 @@ import { getEnvironmentServerClient, getEnvironmentServiceRoleClient } from "@/l
 import { redirect } from "next/navigation";
 import { type BotResponse } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
 import { ChatSession } from "@/lib/database/models/chat-session";
+import { getAuthRedirectUrl, getPasswordResetUrl } from "@/lib/config/auth-config";
 
 export async function signUpAction(formData: FormData) {
   const email = formData.get("email") as string;
@@ -21,7 +22,7 @@ export async function signUpAction(formData: FormData) {
     email,
     password,
     options: {
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://skedy.io'}/auth/callback`,
+      emailRedirectTo: getAuthRedirectUrl(),
     },
   });
 
@@ -71,7 +72,7 @@ export async function forgotPasswordAction(formData: FormData) {
   const supabase = getEnvironmentServerClient();
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://skedy.io'}/protected/reset-password`,
+    redirectTo: getPasswordResetUrl(),
   });
 
   if (error) {
@@ -223,28 +224,41 @@ export async function getMessagesForUser(channelUserId: string): Promise<ChatMes
       throw new Error("Not authenticated");
     }
 
-    // Get user's business ID first for security validation
+    // Get user's business ID and role first for security validation
     const { data: userData, error: userError } = await supabase
         .from("users")
-        .select("businessId")
+        .select("businessId, role")
         .eq("id", user.id)
         .single();
 
-    if (userError || !userData?.businessId) {
-        console.error("Error fetching user's businessId:", userError);
+    if (userError) {
+        console.error("Error fetching user's data:", userError);
         throw new Error("Could not identify your business");
     }
+
+    const isSuperAdmin = userData?.role === 'super_admin';
+    const businessId = userData?.businessId;
 
     // Import service role client for consistent behavior with conversations
     const serviceSupabase = getServiceRoleClient();
 
     // Fetch sessions with business validation for security
-    const { data: sessions, error } = await serviceSupabase
+    let query = serviceSupabase
         .from("chatSessions")
         .select("allMessages, createdAt, businessId")
         .eq("channelUserId", channelUserId)
-        .eq("businessId", userData.businessId) // Security: only sessions from user's business
         .order("createdAt", { ascending: true });
+
+    // For superadmins, get all sessions for the channelUserId
+    // For regular users, only get sessions from their business
+    if (!isSuperAdmin) {
+        if (!businessId) {
+            throw new Error("Could not identify your business");
+        }
+        query = query.eq("businessId", businessId);
+    }
+
+    const { data: sessions, error } = await query;
     
     if (error) {
         console.error("Error fetching sessions for user:", error);
@@ -293,12 +307,22 @@ export async function getUserBusinessId(): Promise<string | null> {
 
     const { data: userData, error } = await supabase
         .from("users")
-        .select("businessId")
+        .select("businessId, role")
         .eq("id", user.id)
         .single();
 
-    if (error || !userData?.businessId) {
-        console.error("Error fetching user's businessId:", error);
+    if (error) {
+        console.error("Error fetching user's data:", error);
+        return null;
+    }
+
+    // Superadmins don't need a businessId
+    if (userData?.role === 'super_admin') {
+        return null;
+    }
+
+    if (!userData?.businessId) {
+        console.error("User is not superadmin and has no businessId");
         return null;
     }
 
@@ -319,10 +343,29 @@ export async function getBusinessConversations(): Promise<Array<{
         return [];
     }
 
+    // Get user role to determine which method to use
+    const { data: userData, error } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+    if (error) {
+        console.error("Error fetching user role:", error);
+        return [];
+    }
+
+    const isSuperAdmin = userData?.role === 'super_admin';
+
     // Import ChatSession here to avoid circular dependencies
     const { ChatSession } = await import("@/lib/database/models/chat-session");
     
-    const conversationData = await ChatSession.getBusinessConversationsData(user.id);
+    let conversationData;
+    if (isSuperAdmin) {
+        conversationData = await ChatSession.getAllBusinessesConversationsData();
+    } else {
+        conversationData = await ChatSession.getBusinessConversationsData(user.id);
+    }
     
     if (!conversationData) {
         return [];
@@ -347,15 +390,34 @@ export async function getDashboardNotifications(): Promise<Array<{
         return [];
     }
 
-    const businessId = await getUserBusinessId();
-    if (!businessId) {
+    // Get user role to determine which method to use
+    const { data: userData, error } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+    if (error) {
+        console.error("Error fetching user role:", error);
         return [];
     }
+
+    const isSuperAdmin = userData?.role === 'super_admin';
 
     // Import Notification here to avoid circular dependencies
     const { Notification } = await import("@/lib/database/models/notification");
     
-    const notifications = await Notification.getDashboardNotificationsSimple(businessId);
+    let notifications;
+    if (isSuperAdmin) {
+        // For superadmins, get notifications from all businesses
+        notifications = await Notification.getAllBusinessesNotifications();
+    } else {
+        const businessId = await getUserBusinessId();
+        if (!businessId) {
+            return [];
+        }
+        notifications = await Notification.getDashboardNotificationsSimple(businessId);
+    }
     
     return notifications;
 }
