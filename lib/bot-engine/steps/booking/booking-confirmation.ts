@@ -1,5 +1,5 @@
 import type { IndividualStepHandler } from '@/lib/bot-engine/types';
-import { getLocalizedText } from './booking-utils';
+import { getLocalizedText, getLocalizedTextWithVars } from './booking-utils';
 
 // Simple phone number formatting utility
 const formatPhoneForDisplay = (normalizedPhone: string): string => {

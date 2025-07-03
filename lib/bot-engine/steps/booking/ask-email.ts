@@ -16,7 +16,7 @@ export const askEmailHandler: IndividualStepHandler = {
     };
   },
   
-  processAndExtractData: async (validatedInput, currentGoalData) => {
+  processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
     const customerName = currentGoalData.customerName || '{name}';
     return {
       ...currentGoalData,

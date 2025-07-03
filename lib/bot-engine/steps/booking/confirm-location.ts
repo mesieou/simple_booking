@@ -1,5 +1,5 @@
 import type { IndividualStepHandler } from '@/lib/bot-engine/types';
-import { getLocalizedTextWithVars } from './booking-utils';
+import { getLocalizedText, getLocalizedTextWithVars } from './booking-utils';
 import { Business } from '@/lib/database/models/business';
 
 export const confirmLocationHandler: IndividualStepHandler = {

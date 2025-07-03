@@ -351,6 +351,7 @@ export const createBookingHandler: IndividualStepHandler = {
 
     } catch (error) {
       console.error('[CreateBooking] Error during booking creation process:', error);
+      const customerName = currentGoalData.customerName || '{name}';
       return {
         ...currentGoalData,
         bookingError: 'Failed to save booking. Please try again.',

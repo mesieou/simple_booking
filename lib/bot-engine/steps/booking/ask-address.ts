@@ -1,5 +1,5 @@
 import type { IndividualStepHandler } from '@/lib/bot-engine/types';
-import { getLocalizedText, AddressValidator } from './booking-utils';
+import { getLocalizedText, getLocalizedTextWithVars, AddressValidator } from './booking-utils';
 
 export const askAddressHandler: IndividualStepHandler = {
   defaultChatbotPrompt: '📍 To show you accurate pricing and availability, I need your address first.',
@@ -10,7 +10,7 @@ export const askAddressHandler: IndividualStepHandler = {
     return AddressValidator.validateAddress(userInput, chatContext);
   },
   
-  processAndExtractData: async (validatedInput, currentGoalData) => {
+  processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
     const customerName = currentGoalData.customerName || '{name}';
     return {
       ...currentGoalData,
