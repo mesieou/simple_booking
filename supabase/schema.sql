@@ -32,6 +32,7 @@ CREATE TABLE businesses (
     email TEXT,
     address TEXT,
     "businessType" TEXT,
+    "businessCategory" TEXT,  -- 🆕 NEW FIELD ADDED! For structured business categorization
     "stripeAccountId" TEXT,
     "onboardingCompleted" BOOLEAN DEFAULT false,
     "requiresDeposit" BOOLEAN DEFAULT false,
