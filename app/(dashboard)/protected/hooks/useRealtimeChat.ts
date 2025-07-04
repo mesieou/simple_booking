@@ -115,13 +115,13 @@ export function useRealtimeChat({
       .on(
         'postgres_changes',
         {
-          event: 'UPDATE',
+          event: '*',
           schema: 'public',
           table: 'chatSessions',
           filter: `businessId=eq.${userBusinessId}`
         },
         (payload) => {
-          console.log('[Realtime] ChatSession updated:', payload);
+          console.log('[Realtime] ChatSession change detected (any event):', payload);
           const updatedSession = payload.new as any;
           
           // Always update conversations list to show latest activity
