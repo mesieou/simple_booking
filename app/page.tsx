@@ -4,6 +4,7 @@ import WaitlistForm from '@/components/sections/waitlist-form';
 import ZeroFeesSection from '@/components/sections/ZeroFeesSection';
 import Questions from '@/components/sections/questions';
 import { Pricing } from '@/components/sections/pricing';
+import HowItWorks from '@/components/sections/how-it-works';
 
 const LandingPage = () => {
   return (
@@ -22,6 +23,7 @@ const LandingPage = () => {
           <HeroVideo />
         </div>
       </main>
+      <HowItWorks />
       <ZeroFeesSection />
       <Questions />
       <Pricing />

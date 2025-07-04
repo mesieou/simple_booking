@@ -1,5 +1,6 @@
 import { Metadata } from 'next'
 import { BlogLayout } from '@/components/blog'
+import { PageWithBreadcrumb } from "@/components/layout/page-with-breadcrumb"
 import { 
   fetchAllDocuments, 
   fetchDocumentsWithReferences, 
@@ -60,31 +61,33 @@ export default async function BlogPage() {
     const featuredPost = posts.length > 0 ? posts[0] : undefined
 
     return (
-      <div className="min-h-screen bg-background/20">
-        {/* Blog header */}
-        <div className="border-b">
-          <div className="container mx-auto px-4 py-12">
-            <div className="text-center">
-              <h1 className="text-4xl md:text-5xl font-bold mb-4">
-                Our Blog
-              </h1>
-              <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-                Discover the latest news, tips and articles about bookings, 
-                appointment management and best practices for your business.
-              </p>
+      <PageWithBreadcrumb>
+        <div className="min-h-screen bg-background/20">
+          {/* Blog header */}
+          <div className="border-b">
+            <div className="container mx-auto px-4 py-12">
+              <div className="text-center">
+                <h1 className="text-4xl md:text-5xl font-bold mb-4">
+                  Our Blog
+                </h1>
+                <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+                  Discover the latest news, tips and articles about bookings, 
+                  appointment management and best practices for your business.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Main blog layout */}
-        <BlogLayout
-          posts={posts}
-          categories={categories}
-          featuredPost={featuredPost}
-          recentPosts={recentPosts}
-          popularPosts={popularPosts}
-        />
-      </div>
+          {/* Main blog layout */}
+          <BlogLayout
+            posts={posts}
+            categories={categories}
+            featuredPost={featuredPost}
+            recentPosts={recentPosts}
+            popularPosts={popularPosts}
+          />
+        </div>
+      </PageWithBreadcrumb>
     )
   } catch (error) {
     console.error('Error loading blog data:', error)

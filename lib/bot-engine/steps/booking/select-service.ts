@@ -38,7 +38,7 @@ export const selectServiceHandler: IndividualStepHandler = {
         if (customerName) {
           confirmationMessage = getLocalizedTextWithVars(chatContext, 'MESSAGES.SELECT_SERVICE_PERSONALIZED', { name: customerName });
         } else {
-          confirmationMessage = getLocalizedText(chatContext, 'MESSAGES.SELECT_SERVICE');
+          confirmationMessage = getLocalizedTextWithVars(chatContext, 'MESSAGES.SELECT_SERVICE_PERSONALIZED', { name: '{name}' });
         }
         
         return { 
@@ -55,7 +55,7 @@ export const selectServiceHandler: IndividualStepHandler = {
       if (customerName) {
         confirmationMessage = getLocalizedTextWithVars(chatContext, 'MESSAGES.SELECT_SERVICE_PERSONALIZED', { name: customerName });
       } else {
-        confirmationMessage = getLocalizedText(chatContext, 'MESSAGES.SELECT_SERVICE');
+        confirmationMessage = getLocalizedTextWithVars(chatContext, 'MESSAGES.SELECT_SERVICE_PERSONALIZED', { name: '{name}' });
       }
       
       return {
@@ -99,7 +99,7 @@ export const selectServiceHandler: IndividualStepHandler = {
     console.log('[SelectService] Fallback - returning error state');
     return { 
       ...currentGoalData, 
-      serviceError: getLocalizedText(chatContext, 'ERROR_MESSAGES.SERVICE_SELECTION_ERROR')
+      serviceError: getLocalizedTextWithVars(chatContext, 'ERROR_MESSAGES.SERVICE_SELECTION_ERROR', { name: customerName || '{name}' })
     };
   },
   

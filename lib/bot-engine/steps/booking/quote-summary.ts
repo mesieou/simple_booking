@@ -321,11 +321,12 @@ export const quoteSummaryHandler: IndividualStepHandler = {
         console.log('[QuoteSummary] Using English fallback translations');
         
         // Create simple summary message without full translations
+        const customerName = currentGoalData.customerName || '{name}';
         const servicesDisplay = servicesToProcess.length > 1 
           ? `💼 Services:\n   ${formatServicesWithPricing(serviceDetails, 'en')}`
           : `💼 Service:\n   ${formatServicesWithPricing(serviceDetails, 'en')}`;
           
-        let summaryMessage = `📋 Booking Quote Summary\n\n` +
+        let summaryMessage = `📋 ${customerName}, here's your Booking Quote Summary\n\n` +
           `${servicesDisplay}\n` +
           `${quoteEstimation.travelCost > 0 ? `🚗 Travel: $${quoteEstimation.travelCost.toFixed(2)}\n` : ''}` +
           `💰 Total Cost: $${quoteEstimation.totalJobCost.toFixed(2)}\n\n` +
@@ -382,11 +383,12 @@ export const quoteSummaryHandler: IndividualStepHandler = {
       }
       
       // detectedLanguage is already declared above, no need to redeclare
+      const customerName = currentGoalData.customerName || '{name}';
       const servicesDisplayLocalized = servicesToProcess.length > 1 
         ? `${t.QUOTE_SUMMARY.SERVICES}\n   ${formatServicesWithPricing(serviceDetails, detectedLanguage)}`
         : `${t.QUOTE_SUMMARY.SERVICE}\n   ${formatServicesWithPricing(serviceDetails, detectedLanguage)}`;
         
-      let summaryMessage = `${t.QUOTE_SUMMARY.TITLE}\n\n` +
+      let summaryMessage = `${t.QUOTE_SUMMARY.TITLE.replace('{name}', customerName)}\n\n` +
         `${servicesDisplayLocalized}\n` +
         `${quoteEstimation.travelCost > 0 ? `🚗 ${t.QUOTE_SUMMARY.TRAVEL_COST} $${quoteEstimation.travelCost.toFixed(2)}\n` : ''}` +
         `💰 ${t.QUOTE_SUMMARY.TOTAL_COST} $${quoteEstimation.totalJobCost.toFixed(2)}\n\n` +

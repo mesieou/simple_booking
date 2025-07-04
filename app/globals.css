@@ -104,6 +104,14 @@
     background-image: linear-gradient(var(--secondary), var(--primary));
     color: var(--secondary-foreground);
   }
+
+  /* Grid Pattern Background */
+  .bg-grid-pattern {
+    background-image: 
+      linear-gradient(rgba(147, 51, 234, 0.1) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(147, 51, 234, 0.1) 1px, transparent 1px);
+    background-size: 50px 50px;
+  }
 }
 
 

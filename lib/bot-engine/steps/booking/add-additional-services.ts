@@ -48,16 +48,19 @@ export const addAdditionalServicesHandler: IndividualStepHandler = {
       
       // Create confirmation message showing selected services
       const servicesList = ServiceDataProcessor.formatSelectedServicesList(selectedServices, chatContext);
+      const customerName = currentGoalData.customerName || '{name}';
       let confirmationMessage;
       
       if (selectedServices.length === 1) {
         confirmationMessage = getLocalizedTextWithVars(chatContext, 'MESSAGES.SERVICE_SELECTED', {
+          name: customerName,
           serviceName: selectedServices[0].name
-        }) + '\n\n' + getLocalizedText(chatContext, 'MESSAGES.ADD_MORE_SERVICES');
+        }) + '\n\n' + getLocalizedTextWithVars(chatContext, 'MESSAGES.ADD_MORE_SERVICES', { name: customerName });
       } else {
         confirmationMessage = getLocalizedTextWithVars(chatContext, 'MESSAGES.SERVICES_SELECTED', {
+          name: customerName,
           servicesList: servicesList
-        }) + '\n\n' + getLocalizedText(chatContext, 'MESSAGES.ADD_MORE_SERVICES');
+        }) + '\n\n' + getLocalizedTextWithVars(chatContext, 'MESSAGES.ADD_MORE_SERVICES', { name: customerName });
       }
       
       return {
@@ -70,10 +73,11 @@ export const addAdditionalServicesHandler: IndividualStepHandler = {
     // Handle return to selection state (when showing available services)
     if (validatedInput === "" && addServicesState === 'selecting') {
       const filteredServices = ServiceDataProcessor.filterAvailableServices(availableServices, selectedServices);
+      const customerName = currentGoalData.customerName || '{name}';
       return {
         ...currentGoalData,
         addServicesState: 'selecting',
-        confirmationMessage: getLocalizedText(chatContext, 'MESSAGES.SELECT_SERVICE'),
+        confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.SELECT_SERVICE_PERSONALIZED', { name: customerName }),
         listActionText: getLocalizedText(chatContext, 'BUTTONS.SELECT'),
         listSectionTitle: getLocalizedText(chatContext, 'LIST_SECTIONS.SERVICES')
       };
@@ -87,20 +91,23 @@ export const addAdditionalServicesHandler: IndividualStepHandler = {
         
         if (filteredServices.length === 0) {
           // No more services available - keep in confirmation state
+          const customerName = currentGoalData.customerName || '{name}';
           return {
             ...currentGoalData,
             addServicesState: 'confirming',
             confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.MULTIPLE_SERVICES_CONFIRMED', {
+              name: customerName,
               count: selectedServices.length.toString()
             })
           };
         }
         
         // Switch to selection state to show remaining services
+        const customerName = currentGoalData.customerName || '{name}';
         return {
           ...currentGoalData,
           addServicesState: 'selecting',
-          confirmationMessage: getLocalizedText(chatContext, 'MESSAGES.SELECT_SERVICE'),
+          confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.SELECT_SERVICE_PERSONALIZED', { name: customerName }),
           listActionText: getLocalizedText(chatContext, 'BUTTONS.SELECT'),
           listSectionTitle: getLocalizedText(chatContext, 'LIST_SECTIONS.SERVICES')
         };
@@ -154,6 +161,7 @@ export const addAdditionalServicesHandler: IndividualStepHandler = {
           serviceLocation,
           addServicesState: 'completed', // Mark as completed
           confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.MULTIPLE_SERVICES_CONFIRMED', {
+            name: currentGoalData.customerName || '{name}',
             count: selectedServices.length.toString()
           })
         };
@@ -180,9 +188,11 @@ export const addAdditionalServicesHandler: IndividualStepHandler = {
         
         // Create confirmation message showing all selected services
         const servicesList = ServiceDataProcessor.formatSelectedServicesList(newSelectedServices, chatContext);
+        const customerName = currentGoalData.customerName || '{name}';
         const confirmationMessage = getLocalizedTextWithVars(chatContext, 'MESSAGES.SERVICES_SELECTED', {
+          name: customerName,
           servicesList: servicesList
-        }) + '\n\n' + getLocalizedText(chatContext, 'MESSAGES.ADD_MORE_SERVICES');
+        }) + '\n\n' + getLocalizedTextWithVars(chatContext, 'MESSAGES.ADD_MORE_SERVICES', { name: customerName });
         
         console.log('[AddAdditionalServices] Returning data with services:', newSelectedServices.map((s: any) => s.name));
         
