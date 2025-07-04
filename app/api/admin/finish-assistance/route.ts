@@ -56,11 +56,20 @@ export async function POST(req: NextRequest) {
     }
 
     // Find the attending notification for this session
-    const { data: notificationData, error: notificationError } = await supaServiceRole
+    // Use conditional filtering based on user role for security
+    let notificationQuery = supaServiceRole
       .from("notifications")
       .select("*")
       .eq("chatSessionId", sessionId)
-      .eq("status", "attending")
+      .eq("status", "attending");
+
+    // For regular users, add business filter for security
+    // For superadmins, allow access to notifications from any business
+    if (!isSuperAdmin) {
+      notificationQuery = notificationQuery.eq("businessId", userBusinessId);
+    }
+
+    const { data: notificationData, error: notificationError } = await notificationQuery
       .order("createdAt", { ascending: false })
       .limit(1)
       .maybeSingle();
