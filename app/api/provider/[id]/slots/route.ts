@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/database/supabase/server';
+import { getEnvironmentServerClient } from '@/lib/database/supabase/environment';
 
 export async function GET(
   req: NextRequest,
@@ -18,7 +18,7 @@ export async function GET(
       return NextResponse.json({ error: 'date is required' }, { status: 400 });
     }
 
-    const supabase = await createClient();
+    const supabase = await getEnvironmentServerClient();
     const { data, error } = await supabase
       .from('availabilitySlots')
       .select('slots')

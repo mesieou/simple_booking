@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
-import { createClient } from '@/lib/database/supabase/client';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { RealtimeChannel } from '@supabase/supabase-js';
+import { createClient } from '@/lib/database/supabase/client';
 
 type UseRealtimeChatProps = {
   userBusinessId: string | null;

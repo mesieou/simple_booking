@@ -1,7 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { StripePaymentService } from "@/lib/payments/stripe-utils";
+import { getCurrentEnvironment, getEnvironmentInfo } from "@/lib/database/supabase/environment";
 
 export const dynamic = "force-dynamic";
+
+// Environment Detection for Payment Processing
+const CURRENT_ENVIRONMENT = getCurrentEnvironment();
+const ENVIRONMENT_INFO = getEnvironmentInfo();
+const LOG_PREFIX = `[Stripe Webhook ${CURRENT_ENVIRONMENT.toUpperCase()}]`;
+
+// Log environment configuration for payment processing
+console.log(`${LOG_PREFIX} Payment Environment Configuration:`, {
+  environment: CURRENT_ENVIRONMENT,
+  nodeEnv: ENVIRONMENT_INFO.nodeEnv,
+  hasDevConfig: ENVIRONMENT_INFO.hasDevConfig,
+  hasProdConfig: ENVIRONMENT_INFO.hasProdConfig,
+  stripeConfigured: !!process.env.STRIPE_SECRET_KEY
+});
 
 export async function POST(req: NextRequest) {
   try {

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/database/supabase/server';
+import { getEnvironmentServerClient } from '@/lib/database/supabase/environment';
 import { clearExistingData } from '@/lib/database/seed/clear-database';
 import { createBusinesses } from '@/lib/database/seed/create-businesses';
 import { createAllUsers } from '@/lib/database/seed/create-all-users';
@@ -14,7 +14,7 @@ import { createEmbeddings } from '@/lib/database/seed/create-embeddings';
 export async function POST(request: Request) {
   try {
     // Create a Supabase client with service role key
-    const supabase = createClient();
+    const supabase = getEnvironmentServerClient();
     
     // Clear existing data
     await clearExistingData(supabase);

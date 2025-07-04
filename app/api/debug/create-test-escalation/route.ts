@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/database/supabase/server';
-import { getServiceRoleClient } from '@/lib/database/supabase/service-role';
+import { getServiceRoleClient } from '@/lib/database/supabase/server';
+import { getEnvironmentServerClient } from '@/lib/database/supabase/environment';
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Get current user for security validation
-    const supabase = createClient();
+    const supabase = getEnvironmentServerClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {

@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/database/supabase/server";
+import { getEnvironmentServerClient } from "@/lib/database/supabase/environment";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request) {
@@ -10,9 +10,10 @@ export async function GET(request: Request) {
   const origin = requestUrl.origin;
   const redirectTo = requestUrl.searchParams.get("redirect_to")?.toString();
   const returnUrl = requestUrl.searchParams.get("returnUrl")?.toString();
+  const redirectToSignIn = requestUrl.searchParams.get("redirectToSignIn")?.toString();
 
   if (code) {
-    const supabase = createClient();
+    const supabase = getEnvironmentServerClient();
     await supabase.auth.exchangeCodeForSession(code);
   }
 
@@ -25,6 +26,12 @@ export async function GET(request: Request) {
     // Decode the return URL and redirect to it
     const decodedReturnUrl = decodeURIComponent(returnUrl);
     return NextResponse.redirect(`${origin}${decodedReturnUrl}`);
+  }
+
+  // If redirectToSignIn is specified, it means this is coming from email verification
+  // Since the user is now authenticated after exchangeCodeForSession, redirect directly to protected area
+  if (redirectToSignIn === 'true') {
+    return NextResponse.redirect(new URL("/protected", request.url));
   }
 
   // URL to redirect to after sign in process completes

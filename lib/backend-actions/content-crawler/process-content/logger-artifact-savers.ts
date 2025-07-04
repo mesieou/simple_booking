@@ -13,7 +13,7 @@ export const DIR_MARKDOWN_PRE_CHUNKS = '01a_markdown_pre_chunks';
 export function getUrlIdentifier(name: string, maxLength: number = 200): string {
     // For PDF pages, combine PDF name and page number
     if (name.includes('#page=')) {
-        const pdfMatch = name.match(/^pdf:([^#]+)#page=(\d+)/);
+        const pdfMatch = name.match(/^pdf-([^#]+)#page=(\d+)/);
         if (pdfMatch && pdfMatch[1] && pdfMatch[2]) {
             const baseName = pdfMatch[1].replace(/\.pdf$/i, '');
             return `pdf-${baseName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-page-${pdfMatch[2]}`;
@@ -21,8 +21,8 @@ export function getUrlIdentifier(name: string, maxLength: number = 200): string 
     }
     
     // For PDF files, extract just the base name without extension
-    if (name.startsWith('pdf:')) {
-        const pdfMatch = name.match(/^pdf:([^#]+)/);
+    if (name.startsWith('pdf-')) {
+        const pdfMatch = name.match(/^pdf-([^#]+)/);
         if (pdfMatch && pdfMatch[1]) {
             const baseName = pdfMatch[1].replace(/\.pdf$/i, '');
             return `pdf-${baseName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
@@ -46,8 +46,8 @@ function _getDomainFromUrl(url: string): string {
         return 'unknown_domain'; 
     }
     // If it's a PDF URL, extract the base PDF name as the "domain" for grouping
-    if (url.startsWith('pdf:')) {
-        const match = url.match(/^pdf:([^#]+)/);
+    if (url.startsWith('pdf-')) {
+        const match = url.match(/^pdf-([^#]+)/);
         return match ? getUrlIdentifier(match[1].replace(/\.pdf$/i, '')) : 'unknown_pdf_document';
     }
     try {
@@ -87,8 +87,8 @@ function _getPdfPagePath(pdfName: string, pageNumber: number): string {
 
 function _getUrlPath(domainInput: string, url: string): string {
     // Check if it's a PDF page URL
-    if (url.startsWith('pdf:') && url.includes('#page=')) {
-        const pdfNameMatch = url.match(/^pdf:([^#]+)#page=(\d+)/);
+    if (url.startsWith('pdf-') && url.includes('#page=')) {
+        const pdfNameMatch = url.match(/^pdf-([^#]+)#page=(\d+)/);
         if (pdfNameMatch && pdfNameMatch[1] && pdfNameMatch[2]) {
             const pdfName = pdfNameMatch[1];
             const pageNumber = parseInt(pdfNameMatch[2], 10);

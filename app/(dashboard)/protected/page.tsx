@@ -1,8 +1,9 @@
-import { createClient } from "../../../lib/database/supabase/server";
+import { getEnvironmentServerClient } from "../../../lib/database/supabase/environment";
 import { redirect } from "next/navigation";
 import ChatInterface from "./components/chat-interface";
 import { Conversation } from "./components/chat-interface";
 import { ChatSession } from "../../../lib/database/models/chat-session";
+import { User, SUPERADMIN_ROLES } from "../../../lib/database/models/user";
 
 export const dynamic = 'force-dynamic';
 
@@ -11,7 +12,7 @@ export default async function ProtectedPage({
 }: {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const supabase = createClient();
+  const supabase = getEnvironmentServerClient();
 
   const {
     data: { user },
@@ -25,11 +26,31 @@ export default async function ProtectedPage({
   const resolvedSearchParams = await searchParams;
   const sessionIdFromUrl = resolvedSearchParams?.sessionId as string | undefined;
 
-  // Use centralized method to get all conversation data
-  const conversationData = await ChatSession.getBusinessConversationsData(
-    user.id,
-    sessionIdFromUrl
-  );
+  // Get user data to check role
+  const { data: userData, error: userError } = await supabase
+    .from("users")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+
+  if (userError || !userData) {
+    return <p className="p-4 text-red-500">Could not load user data.</p>;
+  }
+
+  const isSuperAdmin = SUPERADMIN_ROLES.includes(userData.role as any);
+
+  // Use different method based on user role
+  let conversationData;
+  if (isSuperAdmin) {
+    // Superadmin can see all conversations from all businesses
+    conversationData = await ChatSession.getAllBusinessesConversationsData(sessionIdFromUrl);
+  } else {
+    // Regular users can only see their business conversations
+    conversationData = await ChatSession.getBusinessConversationsData(
+      user.id,
+      sessionIdFromUrl
+    );
+  }
 
   if (!conversationData) {
     return <p className="p-4 text-red-500">Could not load your conversations.</p>;
@@ -42,6 +63,11 @@ export default async function ProtectedPage({
     hasEscalation: conv.hasEscalation,
     escalationStatus: conv.escalationStatus,
     sessionId: conv.sessionId,
+    // Add business info for superadmin
+    ...(isSuperAdmin && {
+      businessId: (conv as any).businessId,
+      businessName: (conv as any).businessName,
+    }),
   }));
 
   return (
@@ -49,6 +75,7 @@ export default async function ProtectedPage({
         <ChatInterface
           initialConversations={initialConversations}
           preselectedChannelUserId={conversationData.preselectedChannelUserId}
+          isSuperAdmin={isSuperAdmin}
         />
     </div>
   );

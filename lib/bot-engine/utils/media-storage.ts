@@ -1,4 +1,4 @@
-import { getServiceRoleClient } from '@/lib/database/supabase/service-role';
+import { getEnvironmentServiceRoleClient } from '@/lib/database/supabase/environment';
 import { getWhatsappHeaders } from '../channels/whatsapp/whatsapp-headers';
 import { ensureChatAttachmentsBucket } from './storage-setup';
 
@@ -128,7 +128,7 @@ async function uploadToSupabaseStorage(
   mediaId: string
 ): Promise<StoredMediaFile | null> {
   try {
-    const supabase = getServiceRoleClient();
+    const supabase = getEnvironmentServiceRoleClient();
 
     // Create filename with timestamp to avoid conflicts
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');

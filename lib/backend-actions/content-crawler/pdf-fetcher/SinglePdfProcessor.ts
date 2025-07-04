@@ -14,7 +14,7 @@ interface ProcessedPdfPage {
 }
 
 export interface ProcessedPdfResult {
-  basePdfSourceUrl: string; // e.g., pdf:document-1.pdf
+  basePdfSourceUrl: string; // e.g., pdf-document-1.pdf
   pdfName: string;
   status: 'success' | 'extraction_failed' | 'all_pages_empty_or_low_value';
   totalPagesFromExtraction: number;
@@ -27,7 +27,7 @@ export const processSinglePdfAndSaveArtifacts = async (
   pdfName: string, // Original name for identification and artifact saving
   config: CrawlConfig
 ): Promise<ProcessedPdfResult> => {
-  const basePdfSourceUrl = `pdf:${pdfName}`;
+  const basePdfSourceUrl = `pdf-${pdfName}`;
 
   let extractionResult: PdfExtractionResult;
   try {

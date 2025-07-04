@@ -562,13 +562,25 @@ Using the comprehensive knowledge base above, answer the user's question with sp
    * Detects user intention from message content with context awareness
    */
   async detectIntention(userMessage: string, context: ChatContext): Promise<LLMProcessingResult> {
+    console.log('===== LLM SERVICE DETECT INTENTION DEBUG =====');
+    console.log(`[LLMService] detectIntention called with:`);
+    console.log(`  - userMessage: "${userMessage}"`);
+    console.log(`  - participantType: ${context.currentParticipant.type}`);
+    
     const message = userMessage.toLowerCase();
     const participantType = context.currentParticipant.type;
     
     // If there's an active goal, analyze within that context
     const activeGoal = context.currentConversationSession?.activeGoals?.find(g => g.goalStatus === 'inProgress');
+    console.log(`[LLMService] Active goal check:`, activeGoal ? {
+      goalType: activeGoal.goalType,
+      goalAction: activeGoal.goalAction,
+      goalStatus: activeGoal.goalStatus,
+      currentStepIndex: activeGoal.currentStepIndex
+    } : 'No active goal found');
     
     if (activeGoal) {
+      console.log(`[LLMService] Found active goal - using conversation flow analysis`);
       // Use conversation flow analysis for existing goals
       const messageHistory = activeGoal.messageHistory.map(msg => ({
         role: msg.speakerRole === 'user' ? 'user' as const : 'assistant' as const,
@@ -577,33 +589,47 @@ Using the comprehensive knowledge base above, answer the user's question with sp
       }));
       
       const decision = await this.analyzeConversationFlow(userMessage, activeGoal, context, messageHistory);
+      console.log(`[LLMService] Conversation flow decision:`, decision);
       
       if (decision.action === 'switch_topic' && decision.newGoalType) {
-        return {
+        const result = {
           detectedUserGoalType: decision.newGoalType as any,
           detectedGoalAction: decision.newGoalAction as any,
           confidenceScore: decision.confidence,
           extractedInformation: decision.extractedData
         };
+        console.log(`[LLMService] Returning switch_topic result:`, result);
+        return result;
       }
       
       // For continue/advance/go_back, return current goal
-      return {
+      const result = {
         detectedUserGoalType: activeGoal.goalType,
         detectedGoalAction: activeGoal.goalAction,
         confidenceScore: decision.confidence,
         extractedInformation: decision.extractedData
       };
+      console.log(`[LLMService] Returning existing goal result:`, result);
+      return result;
     }
     
+    console.log(`[LLMService] No active goal - calling detectNewIntention`);
     // No active goal - use intent detection (including after completed goals)
-    return this.detectNewIntention(userMessage, participantType);
+    const result = await this.detectNewIntention(userMessage, participantType);
+    console.log(`[LLMService] detectNewIntention result:`, result);
+    console.log('==============================================');
+    return result;
   }
 
   /**
    * Enhanced intention detection for new conversations
    */
   private async detectNewIntention(userMessage: string, participantType: string): Promise<LLMProcessingResult> {
+    console.log('===== DETECT NEW INTENTION DEBUG =====');
+    console.log(`[LLMService] detectNewIntention called with:`);
+    console.log(`  - userMessage: "${userMessage}"`);
+    console.log(`  - participantType: ${participantType}`);
+    
     const systemPrompt = `You are an expert intent classifier for a booking system. Analyze the user's message and classify their intention.
 
 PARTICIPANT TYPE: ${participantType}
@@ -628,7 +654,11 @@ Return ONLY JSON:
   "extractedInformation": {}
 }`;
 
+    console.log(`[LLMService] System prompt:`, systemPrompt);
+    console.log(`[LLMService] User prompt: "Classify this message: "${userMessage}""`);
+
     try {
+      console.log(`[LLMService] Calling LLM with gpt-4o...`);
       const response = await executeChatCompletion(
         [
           { role: 'system', content: systemPrompt },
@@ -640,21 +670,36 @@ Return ONLY JSON:
       );
 
       const resultText = response.choices[0]?.message?.content?.trim();
+      console.log(`[LLMService] Raw LLM response:`, resultText);
+      
       if (!resultText) {
-        return this.getFallbackIntention(participantType);
+        console.log(`[LLMService] No result text, using fallback`);
+        const fallback = this.getFallbackIntention(participantType);
+        console.log(`[LLMService] Fallback result:`, fallback);
+        return fallback;
       }
 
+      console.log(`[LLMService] Parsing JSON response...`);
       const parsedResult = JSON.parse(resultText);
-      return {
+      console.log(`[LLMService] Parsed JSON:`, parsedResult);
+      
+      const finalResult = {
         detectedUserGoalType: parsedResult.detectedUserGoalType,
         detectedGoalAction: parsedResult.detectedGoalAction || 'create',
         confidenceScore: parsedResult.confidenceScore || 0.7,
         extractedInformation: parsedResult.extractedInformation || {}
       };
+      
+      console.log(`[LLMService] Final processed result:`, finalResult);
+      console.log('=====================================');
+      return finalResult;
 
     } catch (error) {
-      console.error('[IntelligentLLMService] Error in intent detection:', error);
-      return this.getFallbackIntention(participantType);
+      console.error('[LLMService] Error in intent detection:', error);
+      const fallback = this.getFallbackIntention(participantType);
+      console.log(`[LLMService] Error fallback result:`, fallback);
+      console.log('=====================================');
+      return fallback;
     }
   }
 
@@ -695,14 +740,21 @@ Return ONLY JSON:
    * Provides fallback intention when detection fails
    */
   private getFallbackIntention(participantType: string): LLMProcessingResult {
+    console.log(`[LLMService] getFallbackIntention called with participantType: ${participantType}`);
+    
     if (participantType === 'customer') {
-      return {
-        detectedUserGoalType: 'serviceBooking',
-        detectedGoalAction: 'create',
+      const result: LLMProcessingResult = {
+        detectedUserGoalType: 'serviceBooking' as const,
+        detectedGoalAction: 'create' as const,
         confidenceScore: 0.3
       };
+      console.log(`[LLMService] Customer fallback:`, result);
+      return result;
     }
-    return {};
+    
+    const result: LLMProcessingResult = {};
+    console.log(`[LLMService] Non-customer fallback:`, result);
+    return result;
   }
 
   /**

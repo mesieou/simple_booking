@@ -1,5 +1,5 @@
 import type { IndividualStepHandler } from '@/lib/bot-engine/types';
-import { getLocalizedText, ServiceDataProcessor, BookingButtonGenerator, BookingValidator } from './booking-utils';
+import { getLocalizedText, getLocalizedTextWithVars, ServiceDataProcessor, BookingButtonGenerator, BookingValidator } from './booking-utils';
 
 // Initial service selection handler - selects first service only
 export const selectServiceHandler: IndividualStepHandler = {
@@ -17,9 +17,11 @@ export const selectServiceHandler: IndividualStepHandler = {
   processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
     const businessId = chatContext.currentParticipant.associatedBusinessId;
     const availableServices = currentGoalData.availableServices || [];
+    const customerName = currentGoalData.customerName;
 
     console.log('[SelectService] Processing initial service selection');
     console.log('[SelectService] Validated input:', validatedInput);
+    console.log('[SelectService] Customer name available:', customerName);
 
     // Handle first display - fetch services if needed
     if (validatedInput === "") {
@@ -31,19 +33,34 @@ export const selectServiceHandler: IndividualStepHandler = {
           return { ...currentGoalData, serviceError: error };
         }
         
+        // Create personalized message if customer name is available
+        let confirmationMessage;
+        if (customerName) {
+          confirmationMessage = getLocalizedTextWithVars(chatContext, 'MESSAGES.SELECT_SERVICE_PERSONALIZED', { name: customerName });
+        } else {
+          confirmationMessage = getLocalizedTextWithVars(chatContext, 'MESSAGES.SELECT_SERVICE_PERSONALIZED', { name: '{name}' });
+        }
+        
         return { 
           ...currentGoalData, 
           availableServices: services,
-          confirmationMessage: getLocalizedText(chatContext, 'MESSAGES.SELECT_SERVICE'),
+          confirmationMessage,
           listActionText: getLocalizedText(chatContext, 'BUTTONS.SELECT'),
           listSectionTitle: getLocalizedText(chatContext, 'LIST_SECTIONS.SERVICES')
         };
       }
       
-      // Services already loaded, show them
+      // Services already loaded, show them with personalized message
+      let confirmationMessage;
+      if (customerName) {
+        confirmationMessage = getLocalizedTextWithVars(chatContext, 'MESSAGES.SELECT_SERVICE_PERSONALIZED', { name: customerName });
+      } else {
+        confirmationMessage = getLocalizedTextWithVars(chatContext, 'MESSAGES.SELECT_SERVICE_PERSONALIZED', { name: '{name}' });
+      }
+      
       return {
         ...currentGoalData,
-        confirmationMessage: getLocalizedText(chatContext, 'MESSAGES.SELECT_SERVICE'),
+        confirmationMessage,
         listActionText: getLocalizedText(chatContext, 'BUTTONS.SELECT'),
         listSectionTitle: getLocalizedText(chatContext, 'LIST_SECTIONS.SERVICES')
       };
@@ -59,11 +76,22 @@ export const selectServiceHandler: IndividualStepHandler = {
         
         const extractedService = ServiceDataProcessor.extractServiceDetails(selectedServiceData);
         
+        // Create personalized confirmation message
+        let confirmationMessage;
+        if (customerName) {
+          confirmationMessage = getLocalizedTextWithVars(chatContext, 'MESSAGES.SERVICE_SELECTED_PERSONALIZED', { 
+            name: customerName, 
+            serviceName: selectedServiceData.name 
+          });
+        } else {
+          confirmationMessage = `Great! You've selected ${selectedServiceData.name}.`;
+        }
+        
         return {
           ...currentGoalData,
           selectedServices: [extractedService], // Initialize array with first service
           selectedService: extractedService, // Keep for backward compatibility
-          confirmationMessage: `Great! You've selected ${selectedServiceData.name}.`
+          confirmationMessage
         };
       }
     }
@@ -71,7 +99,7 @@ export const selectServiceHandler: IndividualStepHandler = {
     console.log('[SelectService] Fallback - returning error state');
     return { 
       ...currentGoalData, 
-      serviceError: getLocalizedText(chatContext, 'ERROR_MESSAGES.SERVICE_SELECTION_ERROR')
+      serviceError: getLocalizedTextWithVars(chatContext, 'ERROR_MESSAGES.SERVICE_SELECTION_ERROR', { name: customerName || '{name}' })
     };
   },
   

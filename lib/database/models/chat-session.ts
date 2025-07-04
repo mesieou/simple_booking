@@ -1,7 +1,6 @@
-import { createClient } from "../supabase/server";
+import { getEnvironmentServerClient, getEnvironmentServiceRoleClient } from "../supabase/environment";
 import { v4 as uuidv4 } from 'uuid';
 import { handleModelError } from '@/lib/general-helpers/error';
-import { getServiceRoleClient } from "../supabase/service-role";
 
 // Represents a single message within the allMessages array
 export interface ChatMessage {
@@ -103,7 +102,7 @@ export class ChatSession {
   }
 
   static async create(input: ChatSessionCreateInput): Promise<ChatSession> {
-    const supa = getServiceRoleClient(); // Use service role client to bypass RLS for creation
+    const supa = getEnvironmentServiceRoleClient(); // Use service role client to bypass RLS for creation
     const newId = uuidv4();
     const now = new Date().toISOString();
 
@@ -143,7 +142,7 @@ export class ChatSession {
       console.warn(`[ChatSessionModel] Attempted to fetch with invalid UUID: ${id}`);
       return null;
     }
-    const supa = getServiceRoleClient(); // Use service role client for all backend operations
+    const supa = getEnvironmentServiceRoleClient(); // Use service role client for all backend operations
     const { data, error } = await supa
       .from('chatSessions')
       .select('*')
@@ -170,7 +169,7 @@ export class ChatSession {
         // For a getter, returning null might be more expected by callers if parameters are invalid.
         return null; 
     }
-    const supa = getServiceRoleClient(); // Use service role client for all backend operations
+    const supa = getEnvironmentServiceRoleClient(); // Use service role client for all backend operations
     const threshold = new Date(Date.now() - sessionTimeoutHours * 60 * 60 * 1000).toISOString();
 
     const { data, error } = await supa
@@ -195,7 +194,7 @@ export class ChatSession {
       console.warn(`[ChatSessionModel] Attempted to update with invalid UUID: ${id}`);
       return null;
     }
-    const supa = getServiceRoleClient(); // Use service role client for all backend operations
+    const supa = getEnvironmentServiceRoleClient(); // Use service role client for all backend operations
     const dataToUpdate: ChatSessionUpdateInput & { updatedAt: string } = {
       ...input,
       updatedAt: new Date().toISOString(), // Always update the timestamp
@@ -236,7 +235,7 @@ export class ChatSession {
       console.warn("[ChatSessionModel] Channel, channelUserId, and currentSessionCreatedAt are required to get previous session.");
       return null;
     }
-    const supa = getServiceRoleClient(); // Use service role client for all backend operations
+    const supa = getEnvironmentServiceRoleClient(); // Use service role client for all backend operations
     try {
       const { data, error } = await supa
         .from('chatSessions')
@@ -269,7 +268,7 @@ export class ChatSession {
       console.warn("[ChatSessionModel] Channel and channelUserId are required to end inactive sessions.");
       return;
     }
-    const supa = getServiceRoleClient(); // Use service role client for all backend operations
+    const supa = getEnvironmentServiceRoleClient(); // Use service role client for all backend operations
     const threshold = new Date(Date.now() - sessionTimeoutHours * 60 * 60 * 1000).toISOString();
 
     // Fire-and-forget query to close any lingering sessions for this user that have expired
@@ -293,7 +292,7 @@ export class ChatSession {
       handleModelError('Invalid UUID for delete ChatSession', new Error('Invalid UUID for delete'));
       return; 
     }
-    const supa = getServiceRoleClient(); // Use service role client for all backend operations
+    const supa = getEnvironmentServiceRoleClient(); // Use service role client for all backend operations
     const { error } = await supa.from('chatSessions').delete().eq('id', id);
 
     if (error) {
@@ -305,7 +304,7 @@ export class ChatSession {
     sessionId: string,
     status: 'active' | 'completed' | 'expired' | 'escalated'
   ): Promise<ChatSession> {
-    const supa = getServiceRoleClient(); // Use service role client for all backend operations
+    const supa = getEnvironmentServiceRoleClient(); // Use service role client for all backend operations
     const { data, error } = await supa
       .from('chatSessions')
       .update({ status: status, updated_at: new Date().toISOString() })
@@ -325,7 +324,7 @@ export class ChatSession {
   }
 
   static async getAll(): Promise<ChatSession[]> {
-    const supa = getServiceRoleClient(); // Use service role client for all backend operations
+    const supa = getEnvironmentServiceRoleClient(); // Use service role client for all backend operations
     const { data, error } = await supa
       .from('chatSessions')
       .select('*');
@@ -346,7 +345,7 @@ export class ChatSession {
       return [];
     }
     
-    const supa = getServiceRoleClient();
+    const supa = getEnvironmentServiceRoleClient();
     const { data, error } = await supa
       .from('chatSessions')
       .select('*')
@@ -372,7 +371,7 @@ export class ChatSession {
       return [];
     }
     
-    const supa = getServiceRoleClient();
+    const supa = getEnvironmentServiceRoleClient();
     const { data, error } = await supa
       .from('chatSessions')
       .select('channelUserId, updatedAt')
@@ -414,7 +413,7 @@ export class ChatSession {
       return null;
     }
 
-    const supa = getServiceRoleClient();
+    const supa = getEnvironmentServiceRoleClient();
     const { data, error } = await supa
       .from('chatSessions')
       .select('channelUserId')
@@ -449,7 +448,7 @@ export class ChatSession {
     preselectedChannelUserId?: string;
   } | null> {
     try {
-      const supa = getServiceRoleClient();
+      const supa = getEnvironmentServiceRoleClient();
 
       // First, get the businessId of the logged-in user
       const { data: userData, error: userError } = await supa
@@ -563,6 +562,137 @@ export class ChatSession {
 
     } catch (error) {
       console.error("Error in getBusinessConversationsData:", error);
+      return null;
+    }
+  }
+
+  /**
+   * High-level method to get all conversation data for superadmin
+   * Returns conversations from ALL businesses
+   */
+  static async getAllBusinessesConversationsData(
+    preselectedSessionId?: string
+  ): Promise<{
+    conversations: Array<{ 
+      channelUserId: string; 
+      updatedAt: string; 
+      hasEscalation: boolean;
+      escalationStatus: string | null;
+      sessionId: string;
+      businessId: string;
+      businessName: string;
+    }>;
+    preselectedChannelUserId?: string;
+  } | null> {
+    try {
+      const supa = getEnvironmentServiceRoleClient();
+
+      // Get all chat sessions from all businesses
+      const { data: chatSessions, error: sessionsError } = await supa
+        .from("chatSessions")
+        .select(`
+          id, 
+          channelUserId, 
+          updatedAt, 
+          businessId,
+          businesses!inner(name)
+        `)
+        .order("updatedAt", { ascending: false });
+
+      if (sessionsError) {
+        console.error("Error fetching chat sessions:", sessionsError);
+        return null;
+      }
+
+      // Get all active notifications from all businesses
+      const { data: notifications, error: notificationsError } = await supa
+        .from("notifications")
+        .select("chatSessionId, status")
+        .in("status", ["pending", "attending"])
+        .order("createdAt", { ascending: false });
+
+      if (notificationsError) {
+        console.error("Error fetching notifications:", notificationsError);
+        // Continue without escalation data rather than failing completely
+      }
+
+      // Create a map of sessionId -> escalation info
+      const escalationMap = new Map<string, { status: string }>();
+      if (notifications) {
+        for (const notification of notifications) {
+          if (!escalationMap.has(notification.chatSessionId)) {
+            escalationMap.set(notification.chatSessionId, {
+              status: notification.status
+            });
+          }
+        }
+      }
+
+      // Group sessions by channelUserId to create unique conversations with escalation data
+      const conversationsMap = new Map<string, { 
+        channelUserId: string; 
+        updatedAt: string; 
+        hasEscalation: boolean;
+        escalationStatus: string | null;
+        sessionId: string;
+        businessId: string;
+        businessName: string;
+      }>();
+      
+      if (chatSessions) {
+        for (const session of chatSessions) {
+          if (!conversationsMap.has(session.channelUserId)) {
+            const escalationInfo = escalationMap.get(session.id);
+            conversationsMap.set(session.channelUserId, {
+              channelUserId: session.channelUserId,
+              updatedAt: session.updatedAt,
+              hasEscalation: !!escalationInfo,
+              escalationStatus: escalationInfo?.status || null,
+              sessionId: session.id,
+              businessId: session.businessId,
+              businessName: session.businesses?.[0]?.name || 'Unknown Business',
+            });
+          }
+        }
+      }
+
+      // Convert to array and sort with escalations first
+      const conversations = Array.from(conversationsMap.values()).sort((a, b) => {
+        // Prioritize escalations: pending first, then attending, then non-escalated
+        const getEscalationPriority = (conv: typeof a) => {
+          if (conv.escalationStatus === 'pending') return 0;
+          if (conv.escalationStatus === 'attending') return 1;
+          return 2;
+        };
+
+        const priorityA = getEscalationPriority(a);
+        const priorityB = getEscalationPriority(b);
+
+        if (priorityA !== priorityB) {
+          return priorityA - priorityB;
+        }
+
+        // If same escalation priority, sort by most recent activity
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+      });
+
+      let preselectedChannelUserId: string | undefined = undefined;
+
+      // If a session ID is specified, find its corresponding channelUserId
+      if (preselectedSessionId && chatSessions) {
+        const targetSession = chatSessions.find(session => session.id === preselectedSessionId);
+        if (targetSession) {
+          preselectedChannelUserId = targetSession.channelUserId;
+        }
+      }
+
+      return {
+        conversations,
+        preselectedChannelUserId,
+      };
+
+    } catch (error) {
+      console.error("Error in getAllBusinessesConversationsData:", error);
       return null;
     }
   }

@@ -10,6 +10,7 @@ import { UserContext } from "@/lib/database/models/user-context";
 import { ChatMessage } from "@/lib/database/models/chat-session";
 import { User } from "@/lib/database/models/user";
 import { Business } from "@/lib/database/models/business";
+import { getCurrentEnvironment } from "@/lib/database/supabase/environment";
 
 // Converts database models to internal session format
 function convertToInternalSession(
@@ -18,11 +19,27 @@ function convertToInternalSession(
 ): ChatConversationSession {
   const activeGoals: UserGoal[] = [];
 
+  console.log(`[SessionManager] DEBUG - convertToInternalSession called:`, {
+    hasUserContext: !!historyAndContext.userContext,
+    hasCurrentGoal: !!historyAndContext.userContext?.currentGoal,
+    currentGoalType: historyAndContext.userContext?.currentGoal?.goalType,
+    currentGoalStatus: historyAndContext.userContext?.currentGoal?.goalStatus,
+    participantId: participant.id,
+    businessId: participant.associatedBusinessId,
+    hasSessionData: !!historyAndContext.userContext?.sessionData
+  });
+
   if (
     historyAndContext.userContext.currentGoal &&
     historyAndContext.userContext.currentGoal.goalStatus === "inProgress"
   ) {
     const currentGoal = historyAndContext.userContext.currentGoal;
+    console.log(`[SessionManager] DEBUG - Found inProgress goal, adding to activeGoals:`, {
+      goalType: currentGoal.goalType,
+      goalStatus: currentGoal.goalStatus,
+      currentStepIndex: currentGoal.currentStepIndex,
+      flowKey: currentGoal.flowKey
+    });
 
     const messageHistory = historyAndContext.historyForLLM.map(
       (msg: ChatMessage) => ({
@@ -43,6 +60,20 @@ function convertToInternalSession(
     };
 
     activeGoals.push(userGoal);
+    console.log(`[SessionManager] DEBUG - Successfully added goal to activeGoals. Total goals: ${activeGoals.length}`);
+  } else {
+    console.log(`[SessionManager] DEBUG - No inProgress goal found. Reasons:`, {
+      noCurrentGoal: !historyAndContext.userContext.currentGoal,
+      goalStatus: historyAndContext.userContext.currentGoal?.goalStatus,
+      expectedStatus: "inProgress"
+    });
+  }
+
+  // Restore userData from persisted sessionData
+  let userData = undefined;
+  if (historyAndContext.userContext.sessionData) {
+    userData = historyAndContext.userContext.sessionData;
+    console.log(`[SessionManager] DEBUG - Restored userData from sessionData:`, userData);
   }
 
   return {
@@ -59,6 +90,7 @@ function convertToInternalSession(
         historyAndContext.userContext.participantPreferences?.language ||
         BOT_CONFIG.DEFAULT_LANGUAGE,
     },
+    userData: userData, // Restore the userData field
   };
 }
 
@@ -72,6 +104,11 @@ export async function getOrCreateChatContext(
   historyForLLM: ChatMessage[];
   customerUser?: any;
 }> {
+  const currentEnvironment = getCurrentEnvironment();
+  const LOG_PREFIX = `[SessionManager ${currentEnvironment.toUpperCase()}]`;
+  
+  console.log(`${LOG_PREFIX} Creating chat context for participant: ${participant.id}`);
+  
   // 1. Identificar dinámicamente el negocio a través del número de WhatsApp.
   if (!participant.businessWhatsappNumber) {
     throw new Error(
@@ -147,6 +184,7 @@ export async function getOrCreateChatContext(
         previousGoal: null,
         participantPreferences: null,
         frequentlyDiscussedTopics: null,
+        sessionData: null,
       },
     };
   }

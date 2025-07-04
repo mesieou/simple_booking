@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/database/supabase/server";
-import { getServiceRoleClient } from "@/lib/database/supabase/service-role";
+import { getEnvironmentServerClient, getEnvironmentServiceRoleClient } from "@/lib/database/supabase/environment";
 import { WhatsappSender } from "@/lib/bot-engine/channels/whatsapp/whatsapp-message-sender";
 import { Business } from "@/lib/database/models/business";
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = createClient();
+    const supabase = getEnvironmentServerClient();
     
     // Verify user authentication with server verification
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -19,19 +18,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Session ID and message are required" }, { status: 400 });
     }
 
-    // Get user's business ID
+    // Get user's business ID and role
     const { data: userData, error: userError } = await supabase
       .from("users")
-      .select("businessId")
+      .select("businessId, role")
       .eq("id", user.id)
       .single();
 
-    if (userError || !userData?.businessId) {
+    if (userError) {
       return NextResponse.json({ error: "Could not identify your business" }, { status: 403 });
     }
 
+    const isSuperAdmin = userData?.role === 'super_admin';
+    const userBusinessId = userData?.businessId;
+
     // Get chat session data and verify ownership (removed businessPhoneNumberId from query)
-    const supaServiceRole = getServiceRoleClient();
+    const supaServiceRole = getEnvironmentServiceRoleClient();
     const { data: sessionData, error: sessionError } = await supaServiceRole
       .from("chatSessions")
       .select("businessId, channelUserId, allMessages")
@@ -42,8 +44,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Chat session not found" }, { status: 404 });
     }
 
-    if (sessionData.businessId !== userData.businessId) {
-      return NextResponse.json({ error: "You can only manage chats from your business" }, { status: 403 });
+    // For superadmins, allow access to any session
+    // For regular users, verify the session belongs to their business
+    if (!isSuperAdmin) {
+      if (!userBusinessId) {
+        return NextResponse.json({ error: "Could not identify your business" }, { status: 403 });
+      }
+      
+      if (sessionData.businessId !== userBusinessId) {
+        return NextResponse.json({ error: "You can only manage chats from your business" }, { status: 403 });
+      }
     }
 
     // Verify that staff is currently attending this session

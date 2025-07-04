@@ -1,7 +1,6 @@
 import { Business } from "./business";
 import { User } from "./user";
-import { createClient } from "../supabase/server"
-import { getServiceRoleClient } from "../supabase/service-role";
+import { getEnvironmentServerClient, getEnvironmentServiceRoleClient } from "../supabase/environment";
 import { v4 as uuidv4 } from 'uuid';
 import { handleModelError } from '@/lib/general-helpers/error';
 
@@ -97,7 +96,7 @@ export class Quote {
 
         // Use service role client for bot operations or when explicitly requested
         // This bypasses RLS for scenarios like bot-created quotes where no user auth context exists
-        const supa = options?.useServiceRole ? getServiceRoleClient() : await createClient();
+        const supa = options?.useServiceRole ? getEnvironmentServiceRoleClient() : await getEnvironmentServerClient();
         
         const quote = {
             "id": this.data.id || uuidv4(),
@@ -139,7 +138,7 @@ export class Quote {
             handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
-        const supa = await createClient();
+        const supa = await getEnvironmentServerClient();
         const { data, error } = await supa.from("quotes").select("*").eq("id", id).single();
         
         if (error) {
@@ -159,7 +158,7 @@ export class Quote {
             handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
-        const supa = await createClient();
+        const supa = await getEnvironmentServerClient();
         const { data, error } = await supa.from("quotes").select("*").eq("userId", userId);
         
         if (error) {
@@ -175,7 +174,7 @@ export class Quote {
             handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
-        const supa = await createClient();
+        const supa = await getEnvironmentServerClient();
         const { data, error } = await supa.from("quotes").select("*").eq("businessId", businessId);
         
         if (error) {
@@ -191,7 +190,7 @@ export class Quote {
             handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
-        const supa = await createClient();
+        const supa = await getEnvironmentServerClient();
         const quote = {
             "pickUp": quoteData.pickUp,
             "dropOff": quoteData.dropOff,
@@ -224,7 +223,7 @@ export class Quote {
             handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
-        const supa = await createClient();
+        const supa = await getEnvironmentServerClient();
         const { error } = await supa.from("quotes").delete().eq("id", id);
 
         if (error) {

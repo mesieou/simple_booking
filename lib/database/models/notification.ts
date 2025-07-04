@@ -1,5 +1,4 @@
-import { createClient } from '../supabase/server';
-import { getServiceRoleClient } from '../supabase/service-role';
+import { getEnvironmentServerClient, getEnvironmentServiceRoleClient } from '../supabase/environment';
 import { type Business } from './business';
 import { type ChatSession } from './chat-session';
 
@@ -63,7 +62,7 @@ export class Notification {
     message: string;
     status: NotificationStatus;
   }): Promise<Notification> {
-    const supabase = getServiceRoleClient();
+    const supabase = getEnvironmentServiceRoleClient();
     const { data: row, error } = await supabase
       .from(this._tableName)
       .insert({
@@ -84,7 +83,7 @@ export class Notification {
   }
   
   static async getById(id: string): Promise<Notification | null> {
-    const supabase = await createClient();
+    const supabase = getEnvironmentServerClient();
     const { data, error } = await supabase
       .from(this._tableName)
       .select('*')
@@ -113,7 +112,7 @@ export class Notification {
     }
 
     // 1. Update the notification status
-    const supabase = await createClient();
+    const supabase = getEnvironmentServerClient();
     const { data: updatedRow, error: updateError } = await supabase
       .from(this._tableName)
       .update({ status: newStatus })
@@ -148,7 +147,7 @@ export class Notification {
    */
   static async hasPendingEscalation(chatSessionId: string): Promise<boolean> {
     try {
-      const supabase = getServiceRoleClient();
+      const supabase = getEnvironmentServiceRoleClient();
       const { data, error } = await supabase
         .from(this._tableName)
         .select('id')
@@ -180,7 +179,7 @@ export class Notification {
    */
   static async getEscalationStatus(chatSessionId: string): Promise<NotificationStatus | null> {
     try {
-      const supabase = getServiceRoleClient();
+      const supabase = getEnvironmentServiceRoleClient();
       const { data, error } = await supabase
         .from(this._tableName)
         .select('status')
@@ -210,7 +209,7 @@ export class Notification {
    */
   static async getDashboardNotifications(businessId: string, userId: string): Promise<DashboardNotificationData[]> {
     try {
-      const supabase = getServiceRoleClient();
+      const supabase = getEnvironmentServiceRoleClient();
       
       // Get notifications with session info and read status
       const { data, error } = await supabase
@@ -257,7 +256,7 @@ export class Notification {
    */
   static async markAsRead(notificationId: string, userId: string): Promise<void> {
     try {
-      const supabase = getServiceRoleClient();
+      const supabase = getEnvironmentServiceRoleClient();
       
       // Insert or ignore if already exists
       const { error } = await supabase
@@ -290,7 +289,7 @@ export class Notification {
     channelUserId: string;
   }>> {
     try {
-      const supabase = getServiceRoleClient();
+      const supabase = getEnvironmentServiceRoleClient();
       
       // Get all notifications for the business
       const { data: notifications, error: notificationsError } = await supabase
@@ -358,7 +357,7 @@ export class Notification {
    */
   static async getEscalationCountByPhoneNumber(phoneNumber: string): Promise<number> {
     try {
-      const supabase = getServiceRoleClient();
+      const supabase = getEnvironmentServiceRoleClient();
       
       // First get chat sessions for this phone number
       const { data: sessions, error: sessionError } = await supabase
@@ -398,7 +397,7 @@ export class Notification {
    */
   static async getLastEscalationByPhoneNumber(phoneNumber: string): Promise<Notification | null> {
     try {
-      const supabase = getServiceRoleClient();
+      const supabase = getEnvironmentServiceRoleClient();
       
       // First get chat sessions for this phone number
       const { data: sessions, error: sessionError } = await supabase
@@ -431,6 +430,79 @@ export class Notification {
     } catch (error) {
       console.error(`[NotificationDB] Exception fetching last escalation:`, error);
       return null;
+    }
+  }
+
+  /**
+   * Gets notifications from all businesses for superadmin
+   * @returns Promise<Array> - notifications from all businesses
+   */
+  static async getAllBusinessesNotifications(): Promise<Array<{
+    id: string;
+    createdAt: string;
+    message: string;
+    status: NotificationStatus;
+    chatSessionId: string;
+    channelUserId: string;
+  }>> {
+    try {
+      const supabase = getEnvironmentServiceRoleClient();
+      
+      // Get all notifications from all businesses
+      const { data: notifications, error: notificationsError } = await supabase
+        .from(this._tableName)
+        .select('*')
+        .order('createdAt', { ascending: false });
+
+      if (notificationsError) {
+        console.error(`[NotificationDB] Error fetching all notifications:`, notificationsError);
+        return [];
+      }
+
+      if (!notifications?.length) {
+        return [];
+      }
+
+      // Get session data for all notifications
+      const sessionIds = notifications.map(n => n.chatSessionId);
+      const { data: sessions, error: sessionsError } = await supabase
+        .from('chatSessions')
+        .select('id, channelUserId')
+        .in('id', sessionIds);
+
+      if (sessionsError) {
+        console.error(`[NotificationDB] Error fetching sessions:`, sessionsError);
+        return [];
+      }
+
+      // Map session data to notifications
+      const sessionMap = new Map((sessions || []).map(s => [s.id, s]));
+      
+      return notifications
+        .map(notification => {
+          const session = sessionMap.get(notification.chatSessionId);
+          if (!session) return null;
+          
+          return {
+            id: notification.id,
+            createdAt: notification.createdAt,
+            message: notification.message,
+            status: notification.status,
+            chatSessionId: notification.chatSessionId,
+            channelUserId: session.channelUserId,
+          };
+        })
+        .filter(Boolean) as Array<{
+          id: string;
+          createdAt: string;
+          message: string;
+          status: NotificationStatus;
+          chatSessionId: string;
+          channelUserId: string;
+        }>;
+    } catch (error) {
+      console.error(`[NotificationDB] Exception fetching all business notifications:`, error);
+      return [];
     }
   }
 } 

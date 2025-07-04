@@ -2,6 +2,7 @@ import { SupabaseClient } from '@supabase/supabase-js';
 
 export async function clearExistingData(supabase: SupabaseClient) {
   const tables = [
+    'notifications', // Delete notifications first (has foreign keys to chatSessions and businesses)
     'embeddings',
     'documents',
     'events',
@@ -9,6 +10,7 @@ export async function clearExistingData(supabase: SupabaseClient) {
     'quotes',
     'calendarSettings',
     'availabilitySlots', // add this before users
+    'chatSessions', // Add chat sessions in proper order
     'users',
     'businesses',
   ];
@@ -62,6 +64,20 @@ export async function clearBusinessDataById(supabase: SupabaseClient, businessId
 
   const { error: crawlSessionsError } = await supabase.from('crawlSessions').delete().eq('businessId', businessId);
   if (crawlSessionsError) console.log(`[SEED] Note: Error deleting crawl sessions for business ${businessId}:`, crawlSessionsError.message);
+
+  // Get chat sessions before deleting (for notification cleanup)
+  const { data: chatSessions } = await supabase.from('chatSessions').select('id').eq('businessId', businessId);
+  const chatSessionIds = chatSessions?.map(cs => cs.id) || [];
+
+  // Delete notifications first (they have foreign keys to chatSessions and businesses)
+  const { error: notificationsError } = await supabase.from('notifications').delete().eq('businessId', businessId);
+  if (notificationsError) console.log(`[SEED] Note: Error deleting notifications for business ${businessId}:`, notificationsError.message);
+
+  // Also delete notifications linked to chat sessions
+  if (chatSessionIds.length > 0) {
+    const { error: chatNotificationsError } = await supabase.from('notifications').delete().in('chatSessionId', chatSessionIds);
+    if (chatNotificationsError) console.log(`[SEED] Note: Error deleting chat session notifications for business ${businessId}:`, chatNotificationsError.message);
+  }
 
   const { error: chatSessionsError } = await supabase.from('chatSessions').delete().eq('businessId', businessId);
   if (chatSessionsError) console.log(`[SEED] Note: Error deleting chat sessions for business ${businessId}:`, chatSessionsError.message);

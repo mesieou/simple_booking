@@ -1,11 +1,11 @@
-import { createClient } from '../lib/database/supabase/server';
+import { getEnvironmentServerClient } from '../lib/database/supabase/environment';
 import fs from 'fs';
 import path from 'path';
 
 async function main() {
   try {
     console.log('Starting database migration...');
-    const supabase = await createClient();
+    const supabase = getEnvironmentServerClient();
 
     // Read and execute the migration file
     const migrationPath = path.join(process.cwd(), 'migrations', '002_create_crawl_sessions.sql');

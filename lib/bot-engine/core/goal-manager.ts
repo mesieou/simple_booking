@@ -9,8 +9,19 @@ import {
   export class GoalManager {
   
     public async createNewGoal(detectionResult: LLMProcessingResult, participantType: 'business' | 'customer', context: ChatContext): Promise<UserGoal> {
+      // COMPREHENSIVE LOGGING FOR DEBUGGING
+      console.log('===== GOAL MANAGER DEBUG =====');
+      console.log(`[GoalManager] createNewGoal called with:`);
+      console.log(`  - participantType: ${participantType}`);
+      console.log(`  - detectionResult:`, JSON.stringify(detectionResult, null, 2));
+      console.log(`  - detectedUserGoalType: ${detectionResult.detectedUserGoalType}`);
+      console.log(`  - detectedGoalAction: ${detectionResult.detectedGoalAction}`);
+      console.log(`  - extractedInformation:`, detectionResult.extractedInformation);
+      console.log('===============================');
+      
       let flowKey: string;
       let servicesData: any[] = [];
+      let userInfo: { userId?: string; customerName?: string; existingUserFound?: boolean } = {};
       
       if (participantType === 'customer' && detectionResult.detectedUserGoalType === 'serviceBooking' && detectionResult.detectedGoalAction === 'create') {
         const businessId = context.currentParticipant.associatedBusinessId;
@@ -28,6 +39,10 @@ import {
         } else {
           flowKey = 'bookingCreatingForMobileService';
         }
+
+        // Get user information that was already collected during FAQ phase
+        console.log('[GoalManager] Retrieving user info from session...');
+        userInfo = this.getUserInfoFromSession(context);
       } else if (participantType === 'customer' && detectionResult.detectedUserGoalType === 'frequentlyAskedQuestion') {
         flowKey = 'customerFaqHandling';
       } else if (participantType === 'business' && detectionResult.detectedUserGoalType === 'accountManagement') {
@@ -43,11 +58,58 @@ import {
         currentStepIndex: 0,
         collectedData: { 
           ...detectionResult.extractedInformation,
-          availableServices: servicesData
+          availableServices: servicesData,
+          ...userInfo // Include user information that was already collected
         },
         messageHistory: [],
         flowKey
       };
+    }
+
+    private getUserInfoFromSession(context: ChatContext): { userId?: string; customerName?: string; existingUserFound?: boolean } {
+      const sessionUserInfo = context.currentConversationSession?.userData;
+      
+      if (sessionUserInfo?.userId) {
+        console.log(`[GoalManager] Found user info in session: ${sessionUserInfo.customerName} (${sessionUserInfo.userId})`);
+        return {
+          userId: sessionUserInfo.userId,
+          customerName: sessionUserInfo.customerName,
+          existingUserFound: sessionUserInfo.existingUserFound || false
+        };
+      }
+      
+      console.log('[GoalManager] No user info found in session - this should not happen if FAQ flow is working correctly');
+      return { existingUserFound: false };
+    }
+
+    // Remove the old user creation methods since they're now handled in FAQ phase
+    // Keep this method for backward compatibility but it should not be needed
+    public async createUserForBookingGoal(customerName: string, context: ChatContext): Promise<{ userId?: string; customerName: string }> {
+      console.warn('[GoalManager] createUserForBookingGoal called - this should not happen with new flow');
+      try {
+        const { User } = await import('@/lib/database/models/user');
+        
+        const newUser = new User(
+          customerName,
+          '', // lastName
+          'customer',
+          context.currentParticipant.associatedBusinessId || ''
+        );
+        
+        await newUser.add({
+          whatsappNumber: context.currentParticipant.customerWhatsappNumber
+        });
+        
+        console.log(`[GoalManager] Created new user: ${newUser.firstName} (${newUser.id})`);
+        return {
+          userId: newUser.id,
+          customerName: newUser.firstName
+        };
+        
+      } catch (error) {
+        console.error('[GoalManager] Error creating user:', error);
+        throw error;
+      }
     }
   
     public async handleTopicSwitch(
@@ -95,10 +157,7 @@ import {
           newGoal
         };
       }
-      
-      return {
-        responseToUser: "I understand you'd like to switch topics. Let me help you with that.",
-        uiButtonsToDisplay: []
-      };
+
+      throw new Error(`Unsupported topic switch: ${conversationDecision.newGoalType}-${conversationDecision.newGoalAction}`);
     }
   }

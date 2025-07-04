@@ -1,8 +1,8 @@
-import { createClient } from "@/lib/database/supabase/server";
+import { getEnvironmentServerClient } from "@/lib/database/supabase/environment";
 import { redirect } from "next/navigation";
 
 export async function getSession() {
-  const supabase = createClient();
+  const supabase = getEnvironmentServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   return user;
 }

@@ -8,6 +8,8 @@ import { NotificationPanel } from "./notification-panel";
 import { RightMenuPanel } from "./right-menu-panel";
 import { getMessagesForUser, ChatMessage, getUserBusinessId, getBusinessConversations } from "../../../actions";
 import { useRealtimeChat } from "../hooks/useRealtimeChat";
+import { Button } from "@/components/ui/button";
+import { Menu } from "lucide-react";
 
 // Represents a unique conversation with a user, aggregated from one or more sessions.
 export type Conversation = {
@@ -16,16 +18,20 @@ export type Conversation = {
   hasEscalation: boolean;
   escalationStatus: string | null;
   sessionId: string;
+  businessId?: string; // Optional for superadmin
+  businessName?: string; // Optional for superadmin
 };
 
 type ChatInterfaceProps = {
   initialConversations: Conversation[];
   preselectedChannelUserId?: string;
+  isSuperAdmin?: boolean;
 };
 
 export default function ChatInterface({ 
   initialConversations, 
-  preselectedChannelUserId 
+  preselectedChannelUserId,
+  isSuperAdmin = false
 }: ChatInterfaceProps) {
   const [conversations, setConversations] = useState<Conversation[]>(initialConversations);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -188,15 +194,23 @@ export default function ChatInterface({
 
   return (
     <div className="h-full flex flex-col max-h-full overflow-hidden">
-      {/* Small independent Realtime Connection Status */}
-      {userBusinessId && (
-        <div className="flex justify-end p-2 flex-shrink-0">
+      {/* Top Bar with Realtime Status and Menu Button - Always Visible */}
+      <div className="flex justify-end items-center p-2 gap-4 flex-shrink-0">
+        {userBusinessId && (
           <div className="px-3 py-1 bg-slate-800/60 rounded-full text-xs text-gray-300 border border-white/10 inline-flex items-center gap-2">
             <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400' : 'bg-yellow-400'}`}></span>
             Realtime: {isConnected ? 'Connected' : 'Connecting...'}
           </div>
-        </div>
-      )}
+        )}
+        <Button
+            variant="ghost"
+            size="icon"
+            className="text-gray-300 hover:text-white transition-opacity duration-300"
+            onClick={() => setIsMenuOpen(true)}
+        >
+            <Menu className="h-7 w-7" />
+        </Button>
+      </div>
       
       <div className="flex-1 min-h-0">
         <ChatLayout
@@ -221,6 +235,7 @@ export default function ChatInterface({
               conversations={conversations}
               selectedUserId={selectedUserId}
               onConversationSelect={handleConversationSelect}
+              isSuperAdmin={isSuperAdmin}
             />
           }
           chatWindow={

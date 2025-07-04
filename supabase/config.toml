@@ -1,3 +1,35 @@
+# A string used to distinguish different Supabase projects on the same machine.
+# Not required if you have a single project on your machine.
+project_id = "skedy"
+
+[api]
+# Port to use for the API URL.
+port = 54321
+# Schemas to expose in your API. Tables, views and stored procedures in this schema will get API endpoints.
+# public and storage are always included.
+schemas = ["public", "storage", "graphql_public"]
+# Extra schemas to add to the search_path of every request. public is always included.
+extra_search_path = ["public", "extensions"]
+# The maximum number of rows returned from a table or view without an explicit limit.
+max_rows = 1000
+
+[db]
+# Port to use for the local database URL.
+port = 54322
+# Port used by db diff command to initialize the shadow database.
+shadow_port = 54320
+# The database major version to use.
+major_version = 15
+
+[studio]
+# Port to use for Supabase Studio.
+port = 54323
+# External URL of the API server that frontend connects to.
+api_url = "http://127.0.0.1"
+
+[analytics]
+# Disable analytics/vector container to avoid Docker socket issues with Colima
+enabled = false
 
 [functions.link-user-to-business]
 enabled = true
