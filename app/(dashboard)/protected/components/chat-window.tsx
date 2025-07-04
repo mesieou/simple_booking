@@ -104,7 +104,7 @@ type ChatWindowProps = {
     isLoading: boolean;
     error: string | null;
     sessionId?: string;
-    onMessageSent?: () => void;
+    onMessageSent?: (message: string) => void;
     chatStatusRefreshTrigger?: number;
     onBack: () => void;
 };
@@ -492,13 +492,13 @@ export function ChatWindow({
       const data = await response.json();
       
       if (response.ok) {
-        setMessageText("");
         console.log('[ChatWindow] Message sent successfully');
         
         // Trigger callback to update messages via realtime or manual refresh
         if (onMessageSent) {
-          onMessageSent();
+          onMessageSent(messageText);
         }
+        setMessageText("");
       } else {
         alert("Error sending message: " + data.error);
       }
