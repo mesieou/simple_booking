@@ -2,21 +2,29 @@ import { NextRequest, NextResponse } from "next/server";
 import { getEnvironmentServerClient, getEnvironmentServiceRoleClient } from "@/lib/database/supabase/environment";
 import { WhatsappSender } from "@/lib/bot-engine/channels/whatsapp/whatsapp-message-sender";
 import { Business } from "@/lib/database/models/business";
+import { ModelError } from "@/lib/general-helpers/error";
 
 export async function POST(req: NextRequest) {
   try {
+    console.log("[SendMessage] Starting send message process");
     const supabase = getEnvironmentServerClient();
     
     // Verify user authentication with server verification
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
+      console.error("[SendMessage] Authentication failed:", authError);
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    console.log("[SendMessage] User authenticated:", user.id);
+
     const { sessionId, message } = await req.json();
     if (!sessionId || !message?.trim()) {
+      console.error("[SendMessage] Missing required fields - sessionId:", !!sessionId, "message:", !!message?.trim());
       return NextResponse.json({ error: "Session ID and message are required" }, { status: 400 });
     }
+
+    console.log("[SendMessage] Processing message for session:", sessionId);
 
     // Get user's business ID and role
     const { data: userData, error: userError } = await supabase
@@ -26,11 +34,13 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (userError) {
+      console.error("[SendMessage] Failed to fetch user data:", userError);
       return NextResponse.json({ error: "Could not identify your business" }, { status: 403 });
     }
 
     const isSuperAdmin = userData?.role === 'super_admin';
     const userBusinessId = userData?.businessId;
+    console.log("[SendMessage] User role:", userData?.role, "businessId:", userBusinessId);
 
     // Get chat session data and verify ownership (removed businessPhoneNumberId from query)
     const supaServiceRole = getEnvironmentServiceRoleClient();
@@ -41,17 +51,22 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (sessionError || !sessionData) {
+      console.error("[SendMessage] Failed to fetch session data:", sessionError);
       return NextResponse.json({ error: "Chat session not found" }, { status: 404 });
     }
+
+    console.log("[SendMessage] Session found for business:", sessionData.businessId);
 
     // For superadmins, allow access to any session
     // For regular users, verify the session belongs to their business
     if (!isSuperAdmin) {
       if (!userBusinessId) {
+        console.error("[SendMessage] Regular user has no businessId");
         return NextResponse.json({ error: "Could not identify your business" }, { status: 403 });
       }
       
       if (sessionData.businessId !== userBusinessId) {
+        console.error("[SendMessage] Business mismatch - user:", userBusinessId, "session:", sessionData.businessId);
         return NextResponse.json({ error: "You can only manage chats from your business" }, { status: 403 });
       }
     }
@@ -76,42 +91,65 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     if (notificationError) {
+      console.error("[SendMessage] Failed to check attendance status:", notificationError);
       return NextResponse.json({ error: "Error checking attendance status" }, { status: 500 });
     }
 
     if (!notificationData) {
+      console.error("[SendMessage] No attending notification found for session:", sessionId);
       return NextResponse.json({ error: "You must take control of this chat before sending messages" }, { status: 403 });
     }
+
+    console.log("[SendMessage] Staff is attending session, proceeding with message");
 
     // Get businessPhoneNumberId using intelligent multi-approach strategy
     let businessPhoneNumberId: string | null | undefined;
 
-    // Approach 1: Get from business data (most reliable for multi-tenant)
-    const business = await Business.getById(sessionData.businessId);
-    if (business?.whatsappPhoneNumberId) {
-      businessPhoneNumberId = business.whatsappPhoneNumberId;
-      console.log("[SendMessage] Using business-specific WhatsApp Phone Number ID");
-    } else if (business?.whatsappNumber) {
-      // Approach 2: Try to get by WhatsApp number (in case it was auto-mapped elsewhere)
-      businessPhoneNumberId = await Business.getWhatsappPhoneNumberId(business.whatsappNumber);
-      if (businessPhoneNumberId) {
-        console.log("[SendMessage] Found Phone Number ID via WhatsApp number lookup");
+    try {
+      console.log("[SendMessage] Fetching business data for ID:", sessionData.businessId);
+      
+      // Approach 1: Get from business data (most reliable for multi-tenant)
+      const business = await Business.getById(sessionData.businessId);
+      console.log("[SendMessage] Business found:", business.name, "whatsappPhoneNumberId:", business.whatsappPhoneNumberId);
+      
+      if (business?.whatsappPhoneNumberId) {
+        businessPhoneNumberId = business.whatsappPhoneNumberId;
+        console.log("[SendMessage] Using business-specific WhatsApp Phone Number ID");
+      } else if (business?.whatsappNumber) {
+        console.log("[SendMessage] Trying to get Phone Number ID via WhatsApp number:", business.whatsappNumber);
+        // Approach 2: Try to get by WhatsApp number (in case it was auto-mapped elsewhere)
+        businessPhoneNumberId = await Business.getWhatsappPhoneNumberId(business.whatsappNumber);
+        if (businessPhoneNumberId) {
+          console.log("[SendMessage] Found Phone Number ID via WhatsApp number lookup:", businessPhoneNumberId);
+        }
+      }
+    } catch (error) {
+      if (error instanceof ModelError) {
+        console.error("[SendMessage] Business model error:", error.message, error.originalError);
+        return NextResponse.json({ 
+          error: `Failed to fetch business configuration: ${error.message}` 
+        }, { status: 500 });
+      } else {
+        console.error("[SendMessage] Unexpected error fetching business:", error);
+        throw error; // Re-throw non-ModelError exceptions
       }
     }
 
     // Approach 3: Fallback to environment variable (for single-business setups)
     if (!businessPhoneNumberId) {
       businessPhoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-      console.log("[SendMessage] Using environment variable for WhatsApp Phone Number ID");
+      console.log("[SendMessage] Using environment variable for WhatsApp Phone Number ID:", !!businessPhoneNumberId);
     }
 
     if (!businessPhoneNumberId) {
+      console.error("[SendMessage] No WhatsApp Phone Number ID found for business:", sessionData.businessId);
       return NextResponse.json({ 
         error: "WhatsApp integration not configured for your business. Please ensure your WhatsApp Business number is properly set up." 
       }, { status: 500 });
     }
 
     // Send message via WhatsApp
+    console.log("[SendMessage] Preparing to send WhatsApp message to:", sessionData.channelUserId);
     const whatsappSender = new WhatsappSender();
     const customerPhoneNumber = sessionData.channelUserId;
 
@@ -121,9 +159,15 @@ export async function POST(req: NextRequest) {
         { text: message.trim() }, 
         businessPhoneNumberId
       );
+      console.log("[SendMessage] WhatsApp message sent successfully");
     } catch (whatsappError) {
       console.error("[SendMessage] WhatsApp sending failed:", whatsappError);
-      return NextResponse.json({ error: "Failed to send message via WhatsApp" }, { status: 500 });
+      
+      // Provide more specific error information
+      const errorMessage = whatsappError instanceof Error ? whatsappError.message : "Unknown WhatsApp error";
+      return NextResponse.json({ 
+        error: `Failed to send message via WhatsApp: ${errorMessage}` 
+      }, { status: 500 });
     }
 
     // Update chat history with the staff message
@@ -147,15 +191,26 @@ export async function POST(req: NextRequest) {
     if (updateError) {
       console.error("[SendMessage] Failed to update chat history:", updateError);
       // Message was sent but not saved to history - this is logged but not returned as error
+    } else {
+      console.log("[SendMessage] Chat history updated successfully");
     }
 
+    console.log("[SendMessage] Send message process completed successfully");
     return NextResponse.json({ 
       success: true, 
       message: "Message sent successfully" 
     });
 
   } catch (error) {
-    console.error("[SendMessage] Error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    console.error("[SendMessage] Unexpected error in send message:", error);
+    
+    // Provide more detailed error information in development
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    
+    return NextResponse.json({ 
+      error: "Internal server error",
+      ...(isDevelopment && { details: errorMessage, stack: error instanceof Error ? error.stack : undefined })
+    }, { status: 500 });
   }
 } 
