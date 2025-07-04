@@ -175,11 +175,13 @@ export default function ChatInterface({
   }
 
   const handleMessageSent = useCallback(() => {
-    // When a message is sent, this will be called by ChatWindow
-    // The realtime subscription will automatically update the messages
-    // No need for manual refresh since realtime handles it
-    console.log('[ChatInterface] Message sent - relying on realtime updates');
-  }, []); // Remove dependencies to prevent re-creation
+    if (selectedUserId) {
+      console.log('[ChatInterface] Message sent by staff, triggering manual refresh for:', selectedUserId);
+      refreshMessages(selectedUserId);
+    } else {
+      console.log('[ChatInterface] Message sent, but no user selected. Cannot refresh.');
+    }
+  }, [selectedUserId, refreshMessages]);
 
   const handleNotificationClick = useCallback((channelUserId: string, sessionId: string) => {
     console.log('[ChatInterface] Notification clicked for:', channelUserId, 'sessionId:', sessionId);

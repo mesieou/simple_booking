@@ -47,41 +47,12 @@ export class EscalationHandler {
     if (escalationStatus) {
       console.log(`${LOG_PREFIX} Bot is in escalation mode for session ${sessionId}. Status: ${escalationStatus}`);
 
-      if (escalationStatus === 'pending') {
-        // Staff hasn't taken control yet - send waiting message
-        const language = chatContext.participantPreferences.language === 'es' ? 'es' : 'en';
-        const waitingMessage = language === 'es' 
-          ? "Un agente ya ha sido notificado y te atenderá en breve. Por favor, espera un momento."
-          : "An agent has been notified and will assist you shortly. Please wait a moment.";
-
-        console.log(`${LOG_PREFIX} Sending waiting message: "${waitingMessage}"`);
-        const sender = new WhatsappSender();
-        await sender.sendMessage(parsedMessage.senderId, { text: waitingMessage }, parsedMessage.recipientId);
-
-        // Save both user's message and bot's waiting response
-        if (chatContext.currentConversationSession) {
-          await persistSessionState(
-            sessionId, 
-            userContext, 
-            chatContext.currentConversationSession, 
-            undefined,
-            parsedMessage.text || '', 
-            { text: waitingMessage },
-            undefined, // fullHistory is optional and will be reconstructed from activeGoals
-            parsedMessage
-          );
-        }
-
-        return {
-          shouldContinue: false,
-          response: { text: waitingMessage },
-          wasHandled: true,
-          handlerType: 'escalation_pending',
-          message: 'Message received and saved during pending escalation'
-        };
-      } else if (escalationStatus === 'attending') {
-        // Staff is attending - save user message but don't respond
-        console.log(`${LOG_PREFIX} Staff is attending session ${sessionId}. Saving user message but bot stays silent.`);
+      if (escalationStatus === 'pending' || escalationStatus === 'attending') {
+        const logMessage = escalationStatus === 'pending'
+          ? `Escalation is pending for session ${sessionId}. Saving user message and silencing bot.`
+          : `Staff is attending session ${sessionId}. Saving user message and silencing bot.`;
+        
+        console.log(`${LOG_PREFIX} ${logMessage}`);
         
         if (chatContext.currentConversationSession) {
           await persistSessionState(
@@ -90,7 +61,7 @@ export class EscalationHandler {
             chatContext.currentConversationSession, 
             undefined,
             parsedMessage.text || '', 
-            '',
+            '', // No bot response
             undefined, // fullHistory is optional and will be reconstructed from activeGoals
             parsedMessage
           );
@@ -99,8 +70,8 @@ export class EscalationHandler {
         return {
           shouldContinue: false,
           wasHandled: true,
-          handlerType: 'escalation_attending',
-          message: 'User message saved during staff assistance'
+          handlerType: `escalation_${escalationStatus}`,
+          message: 'User message saved during escalation'
         };
       }
     }
