@@ -4,7 +4,7 @@ import {
 } from "@/lib/bot-engine/types";
 import { persistSessionState as persistState } from "@/lib/shared/llm/functions/save-history-and-context";
 import { UserContext } from "@/lib/database/models/user-context";
-import { ChatMessage } from "@/lib/database/models/chat-session";
+import { ChatMessage, ChatSession } from "@/lib/database/models/chat-session";
 import { ParsedMessage, BotResponse } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
 import { convertParsedMessageToChatMessage } from "@/lib/bot-engine/utils/message-converter";
 
@@ -107,6 +107,21 @@ export async function persistSessionState(
           content: msg.content,
           timestamp: msg.messageTimestamp.toISOString(),
         });
+      }
+    } else {
+      // ✅ FIX: When no fullHistory or activeGoals, fetch current session messages from database
+      try {
+        console.log(`[StatePersister] No fullHistory or activeGoals found, fetching existing messages from session ${sessionId}`);
+        const currentSession = await ChatSession.getById(sessionId);
+        if (currentSession && currentSession.allMessages && currentSession.allMessages.length > 0) {
+          chatMessages = [...currentSession.allMessages];
+          console.log(`[StatePersister] Retrieved ${chatMessages.length} existing messages from session`);
+        } else {
+          console.log(`[StatePersister] No existing messages found in session ${sessionId}, starting with empty history`);
+        }
+      } catch (error) {
+        console.error(`[StatePersister] Error fetching existing session messages for ${sessionId}:`, error);
+        // Continue with empty array if we can't fetch existing messages
       }
     }
 
