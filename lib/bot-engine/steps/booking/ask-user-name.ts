@@ -1,5 +1,5 @@
 import type { IndividualStepHandler } from '@/lib/bot-engine/types';
-import { getLocalizedText } from './booking-utils';
+import { getLocalizedText, getLocalizedTextWithVars } from './booking-utils';
 
 export const askUserNameHandler: IndividualStepHandler = {
   defaultChatbotPrompt: 'What\'s your first name so I can create your account?',
@@ -13,9 +13,10 @@ export const askUserNameHandler: IndividualStepHandler = {
       return { isValidInput: true };
     }
     
+    const customerName = currentGoalData.customerName || '{name}';
     return {
       isValidInput: false,
-      validationErrorMessage: getLocalizedText(chatContext, 'MESSAGES.FIRST_NAME_VALIDATION')
+      validationErrorMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.FIRST_NAME_VALIDATION', { name: customerName })
     };
   },
   
@@ -24,10 +25,11 @@ export const askUserNameHandler: IndividualStepHandler = {
       return { ...currentGoalData, shouldAutoAdvance: true };
     }
     
+    const customerName = currentGoalData.customerName || '{name}';
     return {
       ...currentGoalData,
       customerName: validatedInput,
-      confirmationMessage: getLocalizedText(chatContext, 'MESSAGES.CREATE_ACCOUNT')
+      confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.CREATE_ACCOUNT', { name: customerName })
     };
   }
 };

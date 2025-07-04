@@ -1,5 +1,5 @@
 import type { IndividualStepHandler } from '@/lib/bot-engine/types';
-import { getLocalizedText, AvailabilityService, ServiceDataProcessor } from './booking-utils';
+import { getLocalizedText, getLocalizedTextWithVars, AvailabilityService, ServiceDataProcessor } from './booking-utils';
 
 export const showHoursForDayHandler: IndividualStepHandler = {
   defaultChatbotPrompt: 'Please select a time:',
@@ -57,10 +57,11 @@ export const showHoursForDayHandler: IndividualStepHandler = {
     
     if (!businessWhatsappNumberCustomersMessagedTo || totalServiceDuration <= 0 || !dateSelectedByCustomer) {
       console.log('[ShowHoursForDay] Missing required data for hours lookup');
+      const customerName = currentGoalData.customerName || '{name}';
       return {
         ...currentGoalData,
         availabilityError: 'Missing information for time lookup',
-        confirmationMessage: getLocalizedText(chatContext, 'MESSAGES.ERROR_LOADING_TIMES')
+        confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.ERROR_LOADING_TIMES', { name: customerName })
       };
     }
     
@@ -75,10 +76,11 @@ export const showHoursForDayHandler: IndividualStepHandler = {
       console.log('[ShowHoursForDay] Found hours:', availableHoursForBusinessOnSelectedDate);
       
       if (availableHoursForBusinessOnSelectedDate.length === 0) {
+        const customerName = currentGoalData.customerName || '{name}';
         return {
           ...currentGoalData,
           availabilityError: 'No appointments available on this date',
-          confirmationMessage: getLocalizedText(chatContext, 'MESSAGES.NO_APPOINTMENTS_DATE')
+          confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.NO_APPOINTMENTS_DATE', { name: customerName })
         };
       }
       
@@ -102,18 +104,20 @@ export const showHoursForDayHandler: IndividualStepHandler = {
       
       console.log('[ShowHoursForDay] Formatted hours for display:', formattedHoursForDisplay);
       
+      const customerName = currentGoalData.customerName || '{name}';
       return {
         ...currentGoalData,
         availableHours: availableHoursForBusinessOnSelectedDate,
         formattedAvailableHours: formattedHoursForDisplay,
-        confirmationMessage: getLocalizedText(chatContext, 'MESSAGES.SELECT_TIME')
+        confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.SELECT_TIME', { name: customerName })
       };
     } catch (error) {
       console.error('[ShowHoursForDay] Error loading hours:', error);
+      const customerName = currentGoalData.customerName || '{name}';
       return {
         ...currentGoalData,
         availabilityError: 'Error loading times',
-        confirmationMessage: getLocalizedText(chatContext, 'MESSAGES.ERROR_LOADING_TIMES')
+        confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.ERROR_LOADING_TIMES', { name: customerName })
       };
     }
   },

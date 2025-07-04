@@ -1,5 +1,5 @@
 import type { IndividualStepHandler } from '@/lib/bot-engine/types';
-import { getLocalizedText, AddressValidator, BookingButtonGenerator } from './booking-utils';
+import { getLocalizedText, getLocalizedTextWithVars, AddressValidator, BookingButtonGenerator } from './booking-utils';
 
 export const validateAddressHandler: IndividualStepHandler = {
   defaultChatbotPrompt: 'Let me validate your address...',
@@ -26,7 +26,7 @@ export const validateAddressHandler: IndividualStepHandler = {
         finalServiceAddress: undefined,
         isAddressValidated: false,
         addressValidationError: undefined,
-        confirmationMessage: getLocalizedText(chatContext, 'MESSAGES.PROVIDE_ADDRESS')
+        confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.PROVIDE_ADDRESS', { name: currentGoalData.customerName || '{name}' })
       };
     }
     

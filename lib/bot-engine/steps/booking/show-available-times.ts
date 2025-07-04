@@ -1,5 +1,5 @@
 import type { IndividualStepHandler } from '@/lib/bot-engine/types';
-import { getLocalizedText, AvailabilityService, ServiceDataProcessor } from './booking-utils';
+import { getLocalizedText, getLocalizedTextWithVars, AvailabilityService, ServiceDataProcessor } from './booking-utils';
 
 // Step 1: Show next 2 available times + "choose another day" button
 // Job: ONLY display times, no input processing
@@ -54,10 +54,11 @@ export const showAvailableTimesHandler: IndividualStepHandler = {
     console.log('[ShowAvailableTimes] Total service duration for availability check:', totalServiceDuration, 'minutes');
     
     if (!businessWhatsappNumberCustomersMessagedTo || totalServiceDuration <= 0) {
+      const customerName = currentGoalData.customerName || '{name}';
       return {
         ...currentGoalData,
         availabilityError: 'Configuration error - missing business or service information',
-        confirmationMessage: getLocalizedText(chatContext, 'MESSAGES.CONFIGURATION_ERROR')
+        confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.CONFIGURATION_ERROR', { name: customerName })
       };
     }
     
@@ -69,10 +70,11 @@ export const showAvailableTimesHandler: IndividualStepHandler = {
     
     console.log('[ShowAvailableTimes] Next 2 whole hour slots:', next2WholeHourSlots);
     
+    const customerName = currentGoalData.customerName || '{name}';
     return {
       ...currentGoalData,
       next2WholeHourSlots: next2WholeHourSlots,
-      confirmationMessage: getLocalizedText(chatContext, 'MESSAGES.AVAILABLE_TIMES'),
+      confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.AVAILABLE_TIMES', { name: customerName }),
       listSectionTitle: getLocalizedText(chatContext, 'LIST_SECTIONS.AVAILABLE_OPTIONS')
     };
   },
