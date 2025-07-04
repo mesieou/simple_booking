@@ -121,6 +121,7 @@ export default function ChatInterface({
   // Setup realtime subscriptions
   const { isConnected } = useRealtimeChat({
     userBusinessId: userBusinessId,
+    isSuperAdmin: isSuperAdmin,
     selectedUserId: selectedUserId || undefined,
     onMessagesUpdate: refreshMessages,
     onConversationsUpdate: refreshConversations,
