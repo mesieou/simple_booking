@@ -174,13 +174,28 @@ export default function ChatInterface({
       setSelectedUserId(null);
   }
 
-  const handleMessageSent = useCallback(() => {
-    if (selectedUserId) {
-      console.log('[ChatInterface] Message sent by staff, triggering manual refresh for:', selectedUserId);
-      refreshMessages(selectedUserId);
-    } else {
-      console.log('[ChatInterface] Message sent, but no user selected. Cannot refresh.');
+  const handleStaffMessageSent = useCallback((message: string) => {
+    if (!selectedUserId) {
+      console.log('[ChatInterface] Message sent, but no user selected. Cannot update.');
+      return;
     }
+    
+    // Create optimistic message
+    const optimisticMessage: ChatMessage = {
+      id: `optimistic-${Date.now()}`,
+      role: 'staff',
+      senderRole: 'staff',
+      content: message,
+      createdAt: new Date().toISOString(),
+      timestamp: new Date().toISOString(),
+    };
+
+    // Add to local state immediately
+    setMessages(prevMessages => [...prevMessages, optimisticMessage]);
+
+    // Trigger background refresh for consistency
+    console.log('[ChatInterface] Optimistically updated UI, triggering background refresh for:', selectedUserId);
+    refreshMessages(selectedUserId);
   }, [selectedUserId, refreshMessages]);
 
   const handleNotificationClick = useCallback((channelUserId: string, sessionId: string) => {
@@ -247,7 +262,7 @@ export default function ChatInterface({
                 isLoading={isLoading}
                 error={error}
                 sessionId={selectedSessionId || undefined}
-                onMessageSent={handleMessageSent}
+                onMessageSent={handleStaffMessageSent}
                 chatStatusRefreshTrigger={chatStatusRefreshTrigger}
                 onBack={handleBack}
             />
