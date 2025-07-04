@@ -44,17 +44,38 @@ export async function getOrCreateSession(
   // First, perform a fire-and-forget cleanup of any lingering, expired sessions for this user.
   await ChatSession.endInactiveSessionsForUser(channel, channelUserId, sessionTimeoutHours);
 
-  // Now, create a new session.
+  // Before creating a new session, try to get the most recent previous session to preserve message history
+  let previousMessages: any[] = [];
+  try {
+    const mostRecentSession = await ChatSession.getMostRecentPreviousSession(
+      channel,
+      channelUserId,
+      new Date().toISOString() // Use current time as reference
+    );
+    
+    if (mostRecentSession && mostRecentSession.allMessages) {
+      previousMessages = mostRecentSession.allMessages;
+      console.log(`[SessionLogic] Found previous session ${mostRecentSession.id} with ${previousMessages.length} messages - preserving history`);
+    } else {
+      console.log(`[SessionLogic] No previous session found for ${channel}:${channelUserId} - starting with empty history`);
+    }
+  } catch (error) {
+    console.warn(`[SessionLogic] Error retrieving previous session history for ${channel}:${channelUserId}:`, error);
+    // Continue with empty history if we can't retrieve previous messages
+  }
+
+  // Now, create a new session with preserved message history.
   try {
     const createInput: ChatSessionCreateInput = {
       channel: channel,
       channelUserId: channelUserId,
       businessId: businessId,
-      allMessages: [],
+      allMessages: previousMessages, // Preserve message history from previous session
       userId: null, // Explicitly set to null for anonymous WhatsApp users
       ...(additionalSessionParams || {}),
     };
     const newSession = await ChatSession.create(createInput);
+    console.log(`[SessionLogic] Created new session ${newSession.id} with ${previousMessages.length} preserved messages`);
     return {
       session: newSession,
       isNew: true,
