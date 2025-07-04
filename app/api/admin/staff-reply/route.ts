@@ -109,7 +109,10 @@ export async function POST(req: NextRequest) {
       console.log("[StaffReply] Fetching business data for ID:", sessionData.businessId);
       
       // Approach 1: Get from business data (most reliable for multi-tenant)
-      const business = await Business.getById(sessionData.businessId);
+      // Use service role for super_admin to bypass RLS issues
+      const business = isSuperAdmin 
+        ? await Business.getByIdWithServiceRole(sessionData.businessId)
+        : await Business.getById(sessionData.businessId);
       console.log("[StaffReply] Business found:", business.name, "whatsappPhoneNumberId:", business.whatsappPhoneNumberId);
       
       if (business?.whatsappPhoneNumberId) {

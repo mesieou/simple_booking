@@ -104,6 +104,26 @@ export class Business {
         return new Business(data);
     }
 
+    // Get business by ID using service role (for admin operations that need to bypass RLS)
+    static async getByIdWithServiceRole(id: string): Promise<Business> {
+        if (!Business.isValidUUID(id)) {
+            handleModelError("Invalid UUID format", new Error("Invalid UUID"));
+        }
+
+        const supa = getEnvironmentServiceRoleClient();
+        const { data, error } = await supa.from("businesses").select("*").eq("id", id).single();
+        
+        if (error) {
+            handleModelError("Failed to fetch business", error);
+        }
+        
+        if (!data) {
+            handleModelError(`Business with id ${id} not found`, new Error("Business not found"));
+        }
+        
+        return new Business(data);
+    }
+
     // Get business by WhatsApp number (consolidated method with better normalization)
     static async getByWhatsappNumber(whatsappNumber: string): Promise<Business | null> {
         console.log(`[Business] Finding business by WhatsApp number: ${whatsappNumber}`);
