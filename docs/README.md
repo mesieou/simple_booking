@@ -23,6 +23,7 @@
 ### 🔧 Development Workflows
 - **[Making Schema Changes](./WORKFLOW_SCHEMA_CHANGES.md)** - Step-by-step schema updates
 - **[Testing Locally](./WORKFLOW_LOCAL_TESTING.md)** - How to test WhatsApp bot locally
+- **[Running Integration Tests](../tests/README.md)** - Setup `.env.test` and run `npm test`
 - **[Troubleshooting](./TROUBLESHOOTING.md)** - Common issues and solutions
 
 ## 🎯 Quick Reference
