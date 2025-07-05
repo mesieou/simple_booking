@@ -4,6 +4,26 @@ import { ChatSession } from '@/lib/database/models/chat-session';
 import { UserContext } from '@/lib/database/models/user-context';
 import { BOT_CONFIG } from '@/lib/bot-engine/types';
 
+// ===
+import { deleteUserByWhatsapp, deleteChatSessionsForUser } from './dbUtils';
+
+const TEST_WHATSAPP_NUMBER = '+15555550123';
+
+beforeAll(async () => {
+  await deleteChatSessionsForUser(TEST_WHATSAPP_NUMBER);
+  await deleteUserByWhatsapp(TEST_WHATSAPP_NUMBER);
+});
+
+afterAll(async () => {
+  await deleteChatSessionsForUser(TEST_WHATSAPP_NUMBER);
+  await deleteUserByWhatsapp(TEST_WHATSAPP_NUMBER);
+});
+
+describe('New user flow', () => {
+  it('placeholder test', async () => {
+    expect(true).toBe(true);
+// ===
+
 describe('WhatsApp new user flow', () => {
   const phone = '+19998887777';
   let businessId: string | undefined;
