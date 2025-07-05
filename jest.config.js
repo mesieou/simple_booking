@@ -20,6 +20,10 @@ const customJestConfig = {
   transformIgnorePatterns: [
     'node_modules/(?!(got|cheerio|normalize-url)/)'
   ],
+  testMatch: [
+    '<rootDir>/tests/**/*.(test|spec).[jt]s?(x)',
+    '<rootDir>/lib/database/supabase/__mocks__/**/*.(test|spec).[jt]s?(x)'
+  ],
   extensionsToTreatAsEsm: ['.ts'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node']
 };
