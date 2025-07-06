@@ -14,8 +14,8 @@ export async function simulateWebhookPost(input: { phone: string; message: strin
             value: {
               messaging_product: 'whatsapp',
               metadata: {
-                display_phone_number: '15551890570',
-                phone_number_id: '15551890570'
+                display_phone_number: '684078768113901',
+                phone_number_id: '684078768113901'
               },
               contacts: [
                 {
