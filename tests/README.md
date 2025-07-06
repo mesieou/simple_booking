@@ -44,3 +44,20 @@ npm test
 
 The `newUserFlow.test.ts` integration test uses the phone number `+19998887777`. After running the tests, clean up any records created for this number to keep the development database tidy.
 
+
+## WhatsApp new user flow test
+
+`tests/integration/newUserFlow.test.ts` exercises the complete onboarding path for a WhatsApp user.
+It simulates a real webhook payload using the phone number ID `684078768113901` and routes
+it through the actual webhook handler. The message is associated with the business
+`7c98818f-2b01-4fa4-bbca-0d59922a50f7` which must not be modified.
+
+The test sends a greeting from the unique customer number `+19998887777`. The bot
+asks for the user's name, the test replies, and then verifies that:
+
+- A `User` record is created with the provided name.
+- A `ChatSession` and corresponding `UserContext` exist for the business.
+
+All calls to Supabase and OpenAI use the real development environment. After the
+assertions, the test removes the created user, chat session and user context so it
+can be run repeatedly without leaving data behind.
