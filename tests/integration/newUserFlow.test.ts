@@ -5,8 +5,16 @@ import { UserContext } from '@/lib/database/models/user-context';
 import { BOT_CONFIG } from '@/lib/bot-engine/types';
 import { deleteUserByWhatsapp, deleteChatSessionsForUser } from './dbUtils';
 
+import {
+  deleteUserByWhatsapp,
+  deleteChatSessionsForUser,
+  ensureTestBusinessExists
+} from './dbUtils';
+
+
 const TEST_PHONE = '+19998887777';
 const BUSINESS_ID = '7c98818f-2b01-4fa4-bbca-0d59922a50f7';
+
 
 async function cleanup() {
   await deleteChatSessionsForUser(TEST_PHONE);
