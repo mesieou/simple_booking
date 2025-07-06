@@ -13,7 +13,21 @@ function normalize(number: string): string {
 export async function deleteUserByWhatsapp(number: string): Promise<void> {
   const supa = getEnvironmentServiceRoleClient();
   const normalized = normalize(number);
+  
+  // First, get the user to find their auth ID
+  const { data: user } = await supa
+    .from('users')
+    .select('id')
+    .eq('whatsAppNumberNormalized', normalized)
+    .single();
+  
+  // Delete from users table (profiles)
   await supa.from('users').delete().eq('whatsAppNumberNormalized', normalized);
+  
+  // Delete from auth.users table if user exists
+  if (user?.id) {
+    await supa.auth.admin.deleteUser(user.id);
+  }
 }
 
 /**
@@ -21,41 +35,10 @@ export async function deleteUserByWhatsapp(number: string): Promise<void> {
  */
 export async function deleteChatSessionsForUser(number: string): Promise<void> {
   const supa = getEnvironmentServiceRoleClient();
+  const normalized = normalize(number);
   await supa
     .from('chatSessions')
     .delete()
     .eq('channel', 'whatsapp')
-    .eq('channelUserId', number);
-}
-
-/**
- * Ensure a test business exists for integration tests.
- * Inserts a minimal WhatsApp business with a fixed ID if not present.
- */
-export async function ensureTestBusinessExists(): Promise<void> {
-  const supa = getEnvironmentServiceRoleClient();
-  const businessId = 'test-biz';
-  const whatsappNumber = '+15551890570';
-  const phoneNumberId = '15551890570';
-
-  const { data: existing } = await supa
-    .from('businesses')
-    .select('id')
-    .eq('id', businessId)
-    .maybeSingle();
-
-  if (!existing) {
-    await supa.from('businesses').insert({
-      id: businessId,
-      name: 'Test Business',
-      email: 'test@example.com',
-      phone: whatsappNumber,
-      timeZone: 'UTC',
-      interfaceType: 'whatsapp',
-      whatsappNumber,
-      whatsappPhoneNumberId: phoneNumberId,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    });
-  }
+    .eq('channelUserId', normalized);
 }
