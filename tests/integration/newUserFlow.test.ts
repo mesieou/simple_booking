@@ -4,7 +4,7 @@ import { ChatSession } from '@/lib/database/models/chat-session';
 import { UserContext } from '@/lib/database/models/user-context';
 import { BOT_CONFIG } from '@/lib/bot-engine/types';
 
-// ===
+// === integration tests ===
 import {
   deleteUserByWhatsapp,
   deleteChatSessionsForUser,
