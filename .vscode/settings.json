@@ -118,6 +118,10 @@
         {
             "folderPath": "simple_booking\\app\\protected\\",
             "color": "foldercolorizer.color_99cc33"
+        },
+        {
+            "folderPath": "simple_booking\\.env.test\\",
+            "color": "foldercolorizer.color_66cc00"
         }
     ],
 }
