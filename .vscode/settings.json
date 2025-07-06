@@ -122,6 +122,10 @@
         {
             "folderPath": "simple_booking\\.env.test\\",
             "color": "foldercolorizer.color_66cc00"
+        },
+        {
+            "folderPath": "simple_booking\\tests\\",
+            "color": "foldercolorizer.color_cccc00"
         }
     ],
 }
