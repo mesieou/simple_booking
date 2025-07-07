@@ -1,12 +1,4 @@
-"use client"
-
-import * as React from "react"
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 const faqs = [
   {
@@ -35,34 +27,37 @@ const faqs = [
   }
 ];
 
-export function Questions() {
+const Questions2 = () => {
   return (
-    <section className="w-full py-12 md:py-24 max-w-2xl mx-auto">
-      <div className="container mx-auto max-w-4xl px-4">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground">
+    <section className="py-20 px-4 bg-white/5">
+      <div className="container mx-auto">
+        <div className="text-center mb-16">
+          <h2 className="text-4xl font-bold text-white mb-4">
             Frequently Asked Questions
           </h2>
-          <p className="text-muted-foreground mt-3 max-w-2xl mx-auto">
-            Have questions? We have answers. If you can't find what you're looking for, feel free to contact us.
+          <p className="text-xl text-white/60">
+            Everything you need to know about our chatbot
           </p>
         </div>
-        
-        <Accordion type="single" collapsible className="w-full">
+
+        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
           {faqs.map((faq, index) => (
-            <AccordionItem key={index} value={`item-${index}`}>
-              <AccordionTrigger className="text-lg text-left hover:no-underline">
-                {faq.question}
-              </AccordionTrigger>
-              <AccordionContent className="text-base text-muted-foreground pr-9">
-                {faq.answer}
-              </AccordionContent>
-            </AccordionItem>
+            <Card key={index} className="bg-white/5 border-white/10 backdrop-blur-xl">
+              <CardHeader>
+                <CardTitle className="text-white text-lg">{faq.question}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CardDescription className="text-white/70">
+                  {faq.answer}
+                </CardDescription>
+              </CardContent>
+            </Card>
           ))}
-        </Accordion>
+        </div>
       </div>
     </section>
-  )
-}
+  );
+};
 
-export default Questions;
+export default Questions2;
+
