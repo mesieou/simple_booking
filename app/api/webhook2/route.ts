@@ -48,13 +48,13 @@ function cleanupMessageCache() {
 }
 
 // Check if message has already been processed
-function isMessageAlreadyProcessed(messageId: string): boolean {
+export function isMessageAlreadyProcessed(messageId: string): boolean {
   cleanupMessageCache(); // Clean up old entries first
   return processedMessages.has(messageId);
 }
 
 // Mark message as processed
-function markMessageAsProcessed(messageId: string): void {
+export function markMessageAsProcessed(messageId: string): void {
   processedMessages.set(messageId, Date.now());
 }
 

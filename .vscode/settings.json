@@ -128,4 +128,6 @@
             "color": "foldercolorizer.color_cccc00"
         }
     ],
+    "jest.jestCommandLine": "npm run test --",
+    "jest.rootPath": "."
 }
