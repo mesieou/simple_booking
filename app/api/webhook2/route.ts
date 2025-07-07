@@ -17,6 +17,7 @@ import {
 } from "@/lib/bot-engine/channels/whatsapp/message-handlers";
 import { ResponseProcessor } from "@/lib/bot-engine/channels/whatsapp/response-processor";
 import { getCurrentEnvironment, getEnvironmentInfo } from "@/lib/database/supabase/environment";
+import { isMessageAlreadyProcessed, markMessageAsProcessed } from "@/lib/bot-engine/channels/whatsapp/message-deduplication";
 
 export const dynamic = "force-dynamic";
 
@@ -32,31 +33,6 @@ const WEBHOOK_ENABLED = process.env.USE_WABA_WEBHOOK === "true";         // Enab
 
 // Environment-aware logging
 const LOG_PREFIX = `[Webhook ${CURRENT_ENVIRONMENT.toUpperCase()}]`;
-
-// Message deduplication cache - prevents processing the same message multiple times
-const processedMessages = new Map<string, number>();
-const MESSAGE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
-
-// Clean up old entries from deduplication cache
-function cleanupMessageCache() {
-  const now = Date.now();
-  processedMessages.forEach((timestamp, messageId) => {
-    if (now - timestamp > MESSAGE_CACHE_TTL) {
-      processedMessages.delete(messageId);
-    }
-  });
-}
-
-// Check if message has already been processed
-export function isMessageAlreadyProcessed(messageId: string): boolean {
-  cleanupMessageCache(); // Clean up old entries first
-  return processedMessages.has(messageId);
-}
-
-// Mark message as processed
-export function markMessageAsProcessed(messageId: string): void {
-  processedMessages.set(messageId, Date.now());
-}
 
 // Log environment configuration on startup
 console.log(`${LOG_PREFIX} Environment Configuration:`, {

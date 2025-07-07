@@ -1,7 +1,6 @@
 // Is message already processed?
 
-import { isMessageAlreadyProcessed } from '@/app/api/webhook2/route.ts';
-import { markMessageAsProcessed } from '@/app/api/webhook2/route.ts';
+import { isMessageAlreadyProcessed, markMessageAsProcessed } from '@/lib/bot-engine/channels/whatsapp/message-deduplication';
 // Input: messagen - string
 // Output: boolean (yes or no)
 

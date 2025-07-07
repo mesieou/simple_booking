@@ -74,8 +74,11 @@ export async function fetchServices() {
 }
 
 export async function getGoalData() {
-  const session = await getActiveSession();
-  return session?.activeGoals[0]?.collectedData as any;
+  const ctx = await UserContext.getByChannelUserIdAndBusinessId(
+    getNormalizedTestPhone(),
+    BUSINESS_ID
+  );
+  return ctx?.currentGoal?.collectedData as any;
 }
 
 export async function getLastBotMessage() {
@@ -99,6 +102,9 @@ export function verifyNoServiceSelected(goalData: any) {
 }
 
 export async function verifyBookingFlowActive() {
-  const session = await getActiveSession();
-  expect(session?.activeGoals[0]?.goalType).toBe("serviceBooking");
+  const ctx = await UserContext.getByChannelUserIdAndBusinessId(
+    getNormalizedTestPhone(),
+    BUSINESS_ID
+  );
+  expect(ctx?.currentGoal?.goalType).toBe("serviceBooking");
 }
