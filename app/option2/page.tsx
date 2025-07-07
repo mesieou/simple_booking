@@ -16,120 +16,132 @@ if (typeof window !== 'undefined') {
 }
 
 const Option2LandingPage = () => {
-  const heroRef = useRef(null);
-  const titleRef = useRef(null);
-  const subtitleRef = useRef(null);
-  const ctaRef = useRef(null);
-  const featuresRef = useRef(null);
-  const demoRef = useRef(null);
-  const testimonialsRef = useRef(null);
-  const pricingRef = useRef(null);
-  const floatingElementsRef = useRef(null);
+  const heroRef = useRef<HTMLDivElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const subtitleRef = useRef<HTMLParagraphElement>(null);
+  const ctaRef = useRef<HTMLDivElement>(null);
+  const featuresRef = useRef<HTMLDivElement>(null);
+  const demoRef = useRef<HTMLDivElement>(null);
+  const testimonialsRef = useRef<HTMLDivElement>(null);
+  const pricingRef = useRef<HTMLDivElement>(null);
+  const floatingElementsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Animación del hero
     const heroTl = gsap.timeline();
     
-    heroTl
-      .fromTo(heroRef.current, 
-        { opacity: 0, y: 100 }, 
-        { opacity: 1, y: 0, duration: 1, ease: "power3.out" }
-      )
-      .fromTo(titleRef.current,
-        { opacity: 0, y: 50 },
-        { opacity: 1, y: 0, duration: 0.8, ease: "back.out(1.7)" },
-        "-=0.5"
-      )
-      .fromTo(subtitleRef.current,
-        { opacity: 0, y: 30 },
-        { opacity: 1, y: 0, duration: 0.6 },
-        "-=0.3"
-      )
-      .fromTo(ctaRef.current,
-        { opacity: 0, scale: 0.8 },
-        { opacity: 1, scale: 1, duration: 0.5, ease: "back.out(1.7)" },
-        "-=0.2"
-      );
+    if (heroRef.current && titleRef.current && subtitleRef.current && ctaRef.current) {
+      heroTl
+        .fromTo(heroRef.current, 
+          { opacity: 0, y: 100 }, 
+          { opacity: 1, y: 0, duration: 1, ease: "power3.out" }
+        )
+        .fromTo(titleRef.current,
+          { opacity: 0, y: 50 },
+          { opacity: 1, y: 0, duration: 0.8, ease: "back.out(1.7)" },
+          "-=0.5"
+        )
+        .fromTo(subtitleRef.current,
+          { opacity: 0, y: 30 },
+          { opacity: 1, y: 0, duration: 0.6 },
+          "-=0.3"
+        )
+        .fromTo(ctaRef.current,
+          { opacity: 0, scale: 0.8 },
+          { opacity: 1, scale: 1, duration: 0.5, ease: "back.out(1.7)" },
+          "-=0.2"
+        );
+    }
 
     // Animación de elementos flotantes
-    gsap.to(floatingElementsRef.current, {
-      y: -20,
-      duration: 2,
-      ease: "power2.inOut",
-      yoyo: true,
-      repeat: -1
-    });
+    if (floatingElementsRef.current) {
+      gsap.to(floatingElementsRef.current, {
+        y: -20,
+        duration: 2,
+        ease: "power2.inOut",
+        yoyo: true,
+        repeat: -1
+      });
+    }
 
     // Animación de características con ScrollTrigger
-    gsap.fromTo(featuresRef.current?.children,
-      { opacity: 0, y: 100 },
-      {
-        opacity: 1,
-        y: 0,
-        duration: 0.8,
-        stagger: 0.2,
-        ease: "power3.out",
-        scrollTrigger: {
-          trigger: featuresRef.current,
-          start: "top 80%",
-          end: "bottom 20%",
-          toggleActions: "play none none reverse"
+    if (featuresRef.current?.children) {
+      gsap.fromTo(featuresRef.current.children,
+        { opacity: 0, y: 100 },
+        {
+          opacity: 1,
+          y: 0,
+          duration: 0.8,
+          stagger: 0.2,
+          ease: "power3.out",
+          scrollTrigger: {
+            trigger: featuresRef.current,
+            start: "top 80%",
+            end: "bottom 20%",
+            toggleActions: "play none none reverse"
+          }
         }
-      }
-    );
+      );
+    }
 
     // Animación del demo
-    gsap.fromTo(demoRef.current,
-      { opacity: 0, x: -100 },
-      {
-        opacity: 1,
-        x: 0,
-        duration: 1,
-        ease: "power3.out",
-        scrollTrigger: {
-          trigger: demoRef.current,
-          start: "top 80%",
-          end: "bottom 20%",
-          toggleActions: "play none none reverse"
+    if (demoRef.current) {
+      gsap.fromTo(demoRef.current,
+        { opacity: 0, x: -100 },
+        {
+          opacity: 1,
+          x: 0,
+          duration: 1,
+          ease: "power3.out",
+          scrollTrigger: {
+            trigger: demoRef.current,
+            start: "top 80%",
+            end: "bottom 20%",
+            toggleActions: "play none none reverse"
+          }
         }
-      }
-    );
+      );
+    }
 
     // Animación de testimonios
-    gsap.fromTo(testimonialsRef.current?.children,
-      { opacity: 0, scale: 0.8 },
-      {
-        opacity: 1,
-        scale: 1,
-        duration: 0.6,
-        stagger: 0.3,
-        ease: "back.out(1.7)",
-        scrollTrigger: {
-          trigger: testimonialsRef.current,
-          start: "top 80%",
-          end: "bottom 20%",
-          toggleActions: "play none none reverse"
+    if (testimonialsRef.current?.children) {
+      gsap.fromTo(testimonialsRef.current.children,
+        { opacity: 0, scale: 0.8 },
+        {
+          opacity: 1,
+          scale: 1,
+          duration: 0.6,
+          stagger: 0.3,
+          ease: "back.out(1.7)",
+          scrollTrigger: {
+            trigger: testimonialsRef.current,
+            start: "top 80%",
+            end: "bottom 20%",
+            toggleActions: "play none none reverse"
+          }
         }
-      }
-    );
+      );
+    }
 
     // Animación de precios
-    gsap.fromTo(pricingRef.current?.children,
-      { opacity: 0, y: 50 },
-      {
-        opacity: 1,
-        y: 0,
-        duration: 0.8,
-        stagger: 0.2,
-        ease: "power3.out",
-        scrollTrigger: {
-          trigger: pricingRef.current,
-          start: "top 80%",
-          end: "bottom 20%",
-          toggleActions: "play none none reverse"
+    if (pricingRef.current?.children) {
+      gsap.fromTo(pricingRef.current.children,
+        { opacity: 0, y: 50 },
+        {
+          opacity: 1,
+          y: 0,
+          duration: 0.8,
+          stagger: 0.2,
+          ease: "power3.out",
+          scrollTrigger: {
+            trigger: pricingRef.current,
+            start: "top 80%",
+            end: "bottom 20%",
+            toggleActions: "play none none reverse"
+          }
         }
-      }
-    );
+      );
+    }
 
     // Parallax effect para elementos de fondo
     gsap.to(".parallax-bg", {
