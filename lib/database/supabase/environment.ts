@@ -69,6 +69,11 @@ export function getEnvironmentClient(
  * Helper for server components - gets environment-appropriate server client
  */
 export function getEnvironmentServerClient(forceEnvironment?: Environment) {
+  if (process.env.NODE_ENV === 'test') {
+    // During tests we don't have Next.js request context for cookies,
+    // so fall back to using the service-role client.
+    return getEnvironmentServiceRoleClient(forceEnvironment);
+  }
   return getEnvironmentClient('server', forceEnvironment);
 }
 
