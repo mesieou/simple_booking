@@ -2,7 +2,6 @@ import type { IndividualStepHandler } from '@/lib/bot-engine/types';
 import { BookingDataManager } from './booking-utils';
 
 export const handleTimeChoiceHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: 'Processing your selection...',
   autoAdvance: true,
   
   validateUserInput: async (userInput) => {

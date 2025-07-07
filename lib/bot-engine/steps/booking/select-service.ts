@@ -3,7 +3,6 @@ import { getLocalizedText, getLocalizedTextWithVars, ServiceDataProcessor, Booki
 
 // Initial service selection handler - selects first service only
 export const selectServiceHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: 'Please select a service from the list below:',
   
   // Validate service selection
   validateUserInput: async (userInput, currentGoalData, chatContext) => {

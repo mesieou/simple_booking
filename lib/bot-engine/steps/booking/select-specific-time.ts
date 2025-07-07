@@ -2,7 +2,6 @@ import type { IndividualStepHandler } from '@/lib/bot-engine/types';
 import { getLocalizedText, getLocalizedTextWithVars, AvailabilityService, ServiceDataProcessor } from './booking-utils';
 
 export const selectSpecificTimeHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: 'Please select your preferred time:',
   autoAdvance: false,
   
   validateUserInput: async (userInput, currentGoalData) => {

@@ -2,6 +2,8 @@ import { IndividualStepHandler } from "@/lib/bot-engine/types";
 
 // Import step handlers
 import { askAddressHandler } from '../steps/booking/ask-address';
+import { askPickupAddressHandler } from '../steps/booking/ask-pickup-address';
+import { askDropoffAddressHandler } from '../steps/booking/ask-dropoff-address';
 import { validateAddressHandler } from '../steps/booking/validate-address';
 import { selectServiceHandler } from "../steps/booking/select-service";
 import { addAdditionalServicesHandler } from "../steps/booking/add-additional-services";
@@ -28,6 +30,8 @@ export const botTasks: Record<string, IndividualStepHandler> = {
   getBusinessEmail: getBusinessEmailHandler,
   // Customer booking handlers
   askAddress: askAddressHandler,
+  askPickupAddress: askPickupAddressHandler,
+  askDropoffAddress: askDropoffAddressHandler,
   validateAddress: validateAddressHandler,
   selectService: selectServiceHandler,
   addAdditionalServices: addAdditionalServicesHandler,

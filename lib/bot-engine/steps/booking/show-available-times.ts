@@ -4,7 +4,6 @@ import { getLocalizedText, getLocalizedTextWithVars, AvailabilityService, Servic
 // Step 1: Show next 2 available times + "choose another day" button
 // Job: ONLY display times, no input processing
 export const showAvailableTimesHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: 'Here are the next available appointment times:', // This will be overridden by confirmationMessage
   
   // Only accept empty input (first display), reject button clicks so they go to next step
   validateUserInput: async (userInput) => {

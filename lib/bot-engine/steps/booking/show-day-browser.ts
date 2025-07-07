@@ -2,7 +2,6 @@ import type { IndividualStepHandler } from '@/lib/bot-engine/types';
 import { AvailabilityService, getUserLanguage, getLocalizedText, ServiceDataProcessor } from './booking-utils';
 
 export const showDayBrowserHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: 'Here are the available days:',
   
   validateUserInput: async (userInput, currentGoalData) => {
     console.log('[ShowDayBrowser] Validating input:', userInput);

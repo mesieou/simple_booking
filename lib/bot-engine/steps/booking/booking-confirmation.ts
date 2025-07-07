@@ -18,7 +18,6 @@ const formatPhoneForDisplay = (normalizedPhone: string): string => {
 };
 
 export const bookingConfirmationHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: 'Your booking is confirmed!',
   
   validateUserInput: async () => ({ isValidInput: true }),
   
@@ -101,7 +100,7 @@ export const bookingConfirmationHandler: IndividualStepHandler = {
       : getLocalizedText(chatContext, 'BOOKING_CONFIRMATION.SERVICE');
     
     const customerName = currentGoalData.customerName || '{name}';
-    let confirmationMessage = `${getLocalizedText(chatContext, 'BOOKING_CONFIRMATION.TITLE')}\n\n`;
+    let confirmationMessage = `${getLocalizedTextWithVars(chatContext, 'BOOKING_CONFIRMATION.TITLE', { name: customerName })}\n\n`;
     confirmationMessage += `${serviceLabel}\n   ${servicesDisplay}\n`;
     confirmationMessage += bookingSummary.travelCost && parseFloat(bookingSummary.travelCost.replace('$', '')) > 0 
       ? `🚗 ${getLocalizedText(chatContext, 'BOOKING_CONFIRMATION.TRAVEL_COST')} ${bookingSummary.travelCost}\n` 

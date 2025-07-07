@@ -10,7 +10,6 @@ import { DateTime } from 'luxon';
 // Step: Create quote and show comprehensive summary with all details
 // Job: Calculate quote using proper helpers, persist to database, and display summary asking for confirmation
 export const quoteSummaryHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: 'Here\'s your booking summary:',
   
   // Accept empty input (first display) and detect service selections
   validateUserInput: async (userInput, currentGoalData) => {

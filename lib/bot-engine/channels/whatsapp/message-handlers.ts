@@ -14,8 +14,7 @@ import { User } from '@/lib/database/models/user';
 import { persistSessionState } from "@/lib/bot-engine/session/state-persister";
 import { WhatsappSender } from "./whatsapp-message-sender";
 import { START_BOOKING_PAYLOAD } from "@/lib/bot-engine/config/constants";
-
-const LOG_PREFIX = "[Message Handlers]";
+import { WhatsAppHandlerLogger } from "@/lib/bot-engine/utils/logger";
 
 export interface MessageHandlerContext {
   parsedMessage: ParsedMessage;
@@ -45,14 +44,23 @@ export class EscalationHandler {
     // Check if bot is in escalation mode
     const escalationStatus = await Notification.getEscalationStatus(sessionId);
     if (escalationStatus) {
-      console.log(`${LOG_PREFIX} Bot is in escalation mode for session ${sessionId}. Status: ${escalationStatus}`);
+      WhatsAppHandlerLogger.journey('Bot in escalation mode', {
+        sessionId,
+        userId: context.participant.customerWhatsappNumber
+      }, { 
+        escalationStatus,
+        messagePreview: parsedMessage.text?.substring(0, 30) 
+      });
 
       if (escalationStatus === 'pending' || escalationStatus === 'attending') {
         const logMessage = escalationStatus === 'pending'
-          ? `Escalation is pending for session ${sessionId}. Saving user message and silencing bot.`
-          : `Staff is attending session ${sessionId}. Saving user message and silencing bot.`;
+          ? 'Escalation pending - saving message and silencing bot'
+          : 'Staff attending - saving message and silencing bot';
         
-        console.log(`${LOG_PREFIX} ${logMessage}`);
+        WhatsAppHandlerLogger.flow(logMessage, {
+          sessionId,
+          userId: context.participant.customerWhatsappNumber
+        }, { escalationStatus });
         
         if (chatContext.currentConversationSession) {
           await persistSessionState(
@@ -94,11 +102,18 @@ export class LanguageHandler {
     const languageResult = await LanguageDetectionService.detectAndUpdateLanguage(
       parsedMessage.text || '', 
       chatContext, 
-      LOG_PREFIX
+      "[WhatsAppHandler]"
     );
     
     if (languageResult.wasChanged) {
-      console.log(`${LOG_PREFIX} Language detection: ${languageResult.reason}`);
+      WhatsAppHandlerLogger.info('Language preference updated', {
+        sessionId: context.sessionId,
+        userId: context.participant.customerWhatsappNumber
+      }, { 
+        previousLanguage: languageResult.previousLanguage,
+        newLanguage: languageResult.detectedLanguage,
+        reason: languageResult.reason 
+      });
     }
 
     return {
@@ -117,7 +132,10 @@ export class StickerHandler {
     const { parsedMessage, sessionId, userContext, chatContext, historyForLLM } = context;
     
     if (hasStickerContent(parsedMessage.text || '')) {
-      console.log(`${LOG_PREFIX} Sticker detected: "${parsedMessage.text || ''}". Saving to history but not responding.`);
+      WhatsAppHandlerLogger.flow('Sticker message detected - saving without response', {
+        sessionId,
+        userId: context.participant.customerWhatsappNumber
+      }, { stickerContent: parsedMessage.text });
       
       if (chatContext.currentConversationSession) {
         await persistSessionState(
@@ -172,7 +190,13 @@ export class EscalationCommandHandler {
       );
 
       if (escalationResult.isEscalated) {
-        console.log(`${LOG_PREFIX} Message handled by escalation system. Reason: ${escalationResult.reason}`);
+        WhatsAppHandlerLogger.journey('Message escalated to human support', {
+          sessionId: context.sessionId,
+          userId: context.participant.customerWhatsappNumber
+        }, { 
+          escalationReason: escalationResult.reason,
+          hasResponse: !!escalationResult.response
+        });
         
         if (escalationResult.response) {
           const sender = new WhatsappSender();
@@ -223,11 +247,22 @@ export class AudioHandler {
     );
     
     if (audioTranscriptionResult.wasProcessed) {
-      console.log(`${LOG_PREFIX} Audio transcription processed. Original: "${audioTranscriptionResult.originalMessage}" -> Transcribed: "${audioTranscriptionResult.transcribedMessage}"`);
+      WhatsAppHandlerLogger.info('Audio message processed', {
+        sessionId,
+        userId: context.participant.customerWhatsappNumber
+      }, {
+        originalLength: audioTranscriptionResult.originalMessage?.length || 0,
+        transcribedLength: audioTranscriptionResult.transcribedMessage?.length || 0,
+        hasError: !!audioTranscriptionResult.error
+      });
       
       // If transcription failed, send error message
       if (audioTranscriptionResult.error) {
-        console.log(`${LOG_PREFIX} Audio transcription failed, sending error message`);
+        WhatsAppHandlerLogger.warn('Audio transcription failed', {
+          sessionId,
+          userId: context.participant.customerWhatsappNumber
+        }, { error: audioTranscriptionResult.error });
+        
         const sender = new WhatsappSender();
         await sender.sendMessage(parsedMessage.senderId, { text: audioTranscriptionResult.transcribedMessage }, parsedMessage.recipientId);
         
@@ -255,7 +290,11 @@ export class AudioHandler {
       
       // Update message text with transcribed content
       parsedMessage.text = audioTranscriptionResult.transcribedMessage;
-      console.log(`${LOG_PREFIX} Audio successfully transcribed, updated message for processing: "${parsedMessage.text}"`);
+      
+      WhatsAppHandlerLogger.flow('Audio transcribed successfully - continuing processing', {
+        sessionId,
+        userId: context.participant.customerWhatsappNumber
+      }, { transcribedText: audioTranscriptionResult.transcribedMessage?.substring(0, 50) });
       
       return {
         shouldContinue: true,
@@ -306,13 +345,35 @@ export class ConversationFlowHandler {
                            messageIsPaymentCompletion ||
                            (userCurrentGoal && userCurrentGoal.goalType === 'serviceBooking');
     
-    // DEBUG: Log goal state for debugging
-    console.log(`${LOG_PREFIX} Goal state check - Message: "${parsedMessage.text?.substring(0, 50)}..." | HasBookingGoal: ${!!userCurrentGoal} | GoalType: ${userCurrentGoal?.goalType} | ContainsPayload: ${messageContainsBookingPayload} | ContainsUUID: ${messageContainsUUID} | ContainsBookingPayload: ${messageContainsBookingRelatedPayload} | IsPaymentCompletion: ${messageIsPaymentCompletion}`);
+    // Log routing decision with detailed context
+    WhatsAppHandlerLogger.flow('Message routing analysis completed', {
+      sessionId,
+      userId: context.participant.customerWhatsappNumber
+    }, {
+      messagePreview: parsedMessage.text?.substring(0, 50),
+      hasBookingGoal: !!userCurrentGoal,
+      goalType: userCurrentGoal?.goalType,
+      isBookingRelated,
+      routing: {
+        containsPayload: messageContainsBookingPayload,
+        containsUUID: messageContainsUUID,
+        containsBookingPayload: messageContainsBookingRelatedPayload,
+        isPaymentCompletion: messageIsPaymentCompletion
+      }
+    });
     
     let botResponse: BotResponse | null = null;
     
     if (isBookingRelated) {
-      console.log(`${LOG_PREFIX} User is starting or continuing a booking flow. Routing to main engine.`);
+      WhatsAppHandlerLogger.journey('Routing to booking flow', {
+        sessionId,
+        userId: context.participant.customerWhatsappNumber,
+        goalType: userCurrentGoal?.goalType
+      }, {
+        routingReason: messageIsPaymentCompletion ? 'payment_completion' : 
+                      messageContainsBookingPayload ? 'explicit_booking_start' :
+                      userCurrentGoal ? 'existing_booking_goal' : 'booking_related_content'
+      });
       
       if (messageContainsBookingPayload && userCurrentGoal) {
         userCurrentGoal.goalStatus = 'completed';
@@ -335,12 +396,19 @@ export class ConversationFlowHandler {
       );
       
     } else {
-      console.log(`${LOG_PREFIX} No active booking goal. Routing to FAQ/Chitchat handler.`);
+      WhatsAppHandlerLogger.journey('Routing to FAQ/Chitchat handler', {
+        sessionId,
+        userId: context.participant.customerWhatsappNumber
+      }, {
+        reason: 'no_booking_context',
+        messagePreview: parsedMessage.text?.substring(0, 30)
+      });
+      
       const faqResponse = await handleFaqOrChitchat(chatContext, parsedMessage.text || '', []);
       botResponse = faqResponse;
       
       if (botResponse.text && chatContext.currentConversationSession) {
-        console.log(`${LOG_PREFIX} FAQ persisting session state with undefined goal - THIS MIGHT OVERWRITE BOOKING GOALS`);
+        WhatsAppHandlerLogger.debug('FAQ response persisting session state', { sessionId });
         await persistSessionState(
           sessionId, 
           userContext, 
@@ -368,6 +436,15 @@ export class ConversationFlowHandler {
  */
 export class MessageProcessor {
   static async processMessage(context: MessageHandlerContext): Promise<BotResponse | null> {
+    WhatsAppHandlerLogger.journey('Message processing pipeline started', {
+      sessionId: context.sessionId,
+      userId: context.participant.customerWhatsappNumber
+    }, {
+      messageType: context.parsedMessage.attachments?.length ? 'media' : 'text',
+      messagePreview: context.parsedMessage.text?.substring(0, 50),
+      hasCustomerUser: !!context.customerUser
+    });
+
     const handlers = [
       EscalationHandler,
       LanguageHandler,
@@ -381,17 +458,32 @@ export class MessageProcessor {
       const result = await handler.handle(context);
       
       if (!result.shouldContinue) {
-        console.log(`${LOG_PREFIX} Processing stopped by ${result.handlerType}: ${result.message}`);
+        WhatsAppHandlerLogger.journey('Processing stopped by handler', {
+          sessionId: context.sessionId,
+          userId: context.participant.customerWhatsappNumber
+        }, {
+          handlerType: result.handlerType,
+          reason: result.message,
+          hasResponse: !!result.response
+        });
         return result.response || null;
       }
       
       if (result.wasHandled) {
-        console.log(`${LOG_PREFIX} Message processed by ${result.handlerType}`);
+        WhatsAppHandlerLogger.debug('Message processed by handler', {
+          sessionId: context.sessionId
+        }, { handlerType: result.handlerType });
+        
         if (result.response) {
           return result.response;
         }
       }
     }
+
+    WhatsAppHandlerLogger.warn('No handler processed the message', {
+      sessionId: context.sessionId,
+      userId: context.participant.customerWhatsappNumber
+    });
 
     return null;
   }

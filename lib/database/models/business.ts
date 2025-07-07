@@ -4,6 +4,12 @@ import { getEnvironmentServerClient, getEnvironmentServiceRoleClient } from "../
 import { handleModelError } from '@/lib/general-helpers/error';
 
 export type InterfaceType = 'whatsapp' | 'website';
+export type BusinessCategory = 'removalist' | 'salon' | 'default';
+export const VALID_BUSINESS_CATEGORIES: BusinessCategory[] = [
+  'removalist',
+  'salon', 
+  'default'
+];
 
 export interface BusinessData {
     id?: string;
@@ -12,6 +18,7 @@ export interface BusinessData {
     phone: string;
     timeZone: string;
     interfaceType: InterfaceType;
+    businessCategory?: BusinessCategory;
     websiteUrl?: string;
     whatsappNumber?: string; // The actual phone number users dial (e.g., "+1234567890")
     whatsappPhoneNumberId?: string; // WhatsApp Business API Phone Number ID for webhook routing (e.g., "108123456789")
@@ -35,6 +42,9 @@ export class Business {
         if (!['whatsapp', 'website'].includes(data.interfaceType)) handleModelError("Interface type must be 'whatsapp' or 'website'", new Error("Invalid interfaceType"));
         if (data.interfaceType === 'whatsapp' && !data.whatsappNumber) handleModelError("Whatsapp number is required if interface type is 'whatsapp'", new Error("Missing whatsappNumber"));
         if (data.depositPercentage !== undefined && (data.depositPercentage < 0 || data.depositPercentage > 100)) handleModelError("Deposit percentage must be between 0 and 100", new Error("Invalid depositPercentage"));
+        if (data.businessCategory && !VALID_BUSINESS_CATEGORIES.includes(data.businessCategory)) {
+            handleModelError(`businessCategory must be one of: ${VALID_BUSINESS_CATEGORIES.join(', ')}`, new Error("Invalid businessCategory"));
+        }
         this.data = data;
     }
 
@@ -58,6 +68,7 @@ export class Business {
             "phone": this.data.phone,
             "timeZone": this.data.timeZone,
             "interfaceType": this.data.interfaceType,
+            "businessCategory": this.data.businessCategory,
             "websiteUrl": this.data.websiteUrl,
             "whatsappNumber": this.data.whatsappNumber,
             "whatsappPhoneNumberId": this.data.whatsappPhoneNumberId,
@@ -178,6 +189,7 @@ export class Business {
             "phone": businessData.phone,
             "timeZone": businessData.timeZone,
             "interfaceType": businessData.interfaceType,
+            "businessCategory": businessData.businessCategory,
             "websiteUrl": businessData.websiteUrl,
             "whatsappNumber": businessData.whatsappNumber,
             "whatsappPhoneNumberId": businessData.whatsappPhoneNumberId,
@@ -242,6 +254,7 @@ export class Business {
     get stripeConnectAccountId(): string | undefined { return this.data.stripeConnectAccountId; }
     get stripeAccountStatus(): 'pending' | 'active' | 'disabled' | undefined { return this.data.stripeAccountStatus; }
         get preferredPaymentMethod(): string | undefined { return this.data.preferredPaymentMethod; }
+    get businessCategory(): BusinessCategory | undefined { return this.data.businessCategory; }
 
     static async findByWhatsappNumber(whatsappNumber: string): Promise<Business | null> {
         console.log(`[Business] Finding business by WhatsApp number: ${whatsappNumber}`);

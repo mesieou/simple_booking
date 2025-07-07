@@ -2,7 +2,6 @@ import type { IndividualStepHandler } from '@/lib/bot-engine/types';
 import { getLocalizedTextWithVars, getLocalizedText } from './booking-utils';
 
 export const handleUserStatusHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: 'Let me check your account status...',
   autoAdvance: true,
   
   validateUserInput: async () => ({ isValidInput: true }),

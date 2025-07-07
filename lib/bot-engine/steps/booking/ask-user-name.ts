@@ -2,7 +2,6 @@ import type { IndividualStepHandler } from '@/lib/bot-engine/types';
 import { getLocalizedText, getLocalizedTextWithVars } from './booking-utils';
 
 export const askUserNameHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: 'What\'s your first name so I can create your account?',
   
   validateUserInput: async (userInput, currentGoalData, chatContext) => {
     if (currentGoalData.existingUserFound) {
@@ -25,11 +24,19 @@ export const askUserNameHandler: IndividualStepHandler = {
       return { ...currentGoalData, shouldAutoAdvance: true };
     }
     
-    const customerName = currentGoalData.customerName || '{name}';
+    if (validatedInput) {
+      const customerName = currentGoalData.customerName || '{name}';
+      return {
+        ...currentGoalData,
+        customerName: validatedInput,
+        confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.CREATE_ACCOUNT', { name: customerName })
+      };
+    }
+    
+    // Handle initial display (empty input)
     return {
       ...currentGoalData,
-      customerName: validatedInput,
-      confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.CREATE_ACCOUNT', { name: customerName })
+      confirmationMessage: 'What\'s your first name so I can create your account?'
     };
   }
 };

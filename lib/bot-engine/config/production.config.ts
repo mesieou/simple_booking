@@ -130,8 +130,8 @@ export async function healthCheck(): Promise<{ status: string; checks: Record<st
 
   // Check Redis
   try {
-    const { sessionManager } = await import('@/lib/bot-engine/session/session-manager-v2');
-    // Add Redis ping check
+    const { getOrCreateChatContext } = await import('@/lib/bot-engine/session/session-manager');
+    // Add basic session manager check
     checks.redis = true;
   } catch {
     checks.redis = false;

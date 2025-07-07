@@ -1,7 +1,6 @@
 import type { IndividualStepHandler } from '@/lib/bot-engine/types';
 
 export const selectSpecificDayHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: 'Please select a day:',
   
   validateUserInput: async (userInput, currentGoalData) => {
     if (currentGoalData.quickBookingSelected) {

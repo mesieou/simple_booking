@@ -80,7 +80,15 @@ export const BOOKING_TRANSLATIONS = {
       ADD_MORE_SERVICES: '{name}, would you like to add another service or continue with the booking?',
       MULTIPLE_SERVICES_CONFIRMED: 'Great {name}! You\'ve selected {count} services. Let\'s continue with your booking.',
       BOOKING_AVAILABILITY_PERSONALIZED: '📅 Hello {name}! Of course, I\'d be happy to help you book another appointment. We have excellent availability today with slots at {times}. If you\'re looking for another day, we have openings tomorrow and this Monday with times starting at 7:00 AM.\n\nPlease let me know what date and time work best for you, and I\'ll get that booked right away! 😊',
-      BOOKING_REQUEST_PERSONALIZED: '😊 Perfect {name}! I\'d love to help you with your booking.'
+      BOOKING_REQUEST_PERSONALIZED: '😊 Perfect {name}! I\'d love to help you with your booking.',
+      PICKUP_ADDRESS_REQUEST: '🚚 {name}, please provide the PICKUP address for your move. This is where our team will collect your items.',
+      DROPOFF_ADDRESS_REQUEST: '📦 {name}, please provide the DROP-OFF address for your move. This is where our team will deliver your items.',
+      CLARIFICATION_REQUEST: 'Could you tell me more clearly what you\'d like to do?',
+      BOOKING_COMPLETED_FALLBACK: 'Great! Your booking request has been processed.',
+      CONTINUE_BOOKING_FALLBACK: 'Let\'s continue with your booking.',
+      GETTING_STARTED_FALLBACK: 'Let\'s get started with your booking.',
+      REQUEST_COMPLETED_FALLBACK: 'Your request has been completed.',
+      CONTINUING_BOOKING_FALLBACK: 'Continuing with your booking...'
     },
     TIME_LABELS: {
       TODAY: 'Today',
@@ -215,7 +223,15 @@ export const BOOKING_TRANSLATIONS = {
       ADD_MORE_SERVICES: '{name}, ¿te gustaría agregar otro servicio o continuar con la reserva?',
       MULTIPLE_SERVICES_CONFIRMED: '¡Excelente {name}! Has seleccionado {count} servicios. Continuemos con tu reserva.',
       BOOKING_AVAILABILITY_PERSONALIZED: '📅 ¡Hola {name}! Por supuesto, me encantaría ayudarte a reservar otra cita. Tenemos excelente disponibilidad hoy con espacios a las {times}. Si buscas otro día, tenemos aperturas mañana y este lunes con horarios desde las 7:00 AM.\n\n¡Por favor déjame saber qué fecha y hora te funcionan mejor y te lo reservo enseguida! 😊',
-      BOOKING_REQUEST_PERSONALIZED: '😊 ¡Perfecto {name}! Me encantaría ayudarte con tu reserva.'
+      BOOKING_REQUEST_PERSONALIZED: '😊 ¡Perfecto {name}! Me encantaría ayudarte con tu reserva.',
+      PICKUP_ADDRESS_REQUEST: '🚚 {name}, por favor proporciona la dirección de RECOGIDA para tu mudanza. Aquí es donde nuestro equipo recogerá tus artículos.',
+      DROPOFF_ADDRESS_REQUEST: '📦 {name}, por favor proporciona la dirección de ENTREGA para tu mudanza. Aquí es donde nuestro equipo entregará tus artículos.',
+      CLARIFICATION_REQUEST: '¿Podrías decirme más claramente qué te gustaría hacer?',
+      BOOKING_COMPLETED_FALLBACK: '¡Excelente! Tu solicitud de reserva ha sido procesada.',
+      CONTINUE_BOOKING_FALLBACK: 'Continuemos con tu reserva.',
+      GETTING_STARTED_FALLBACK: 'Comencemos con tu reserva.',
+      REQUEST_COMPLETED_FALLBACK: 'Tu solicitud ha sido completada.',
+      CONTINUING_BOOKING_FALLBACK: 'Continuando con tu reserva...'
     },
     TIME_LABELS: {
       TODAY: 'Hoy',

@@ -4,7 +4,6 @@ import { Business } from '@/lib/database/models/business';
 
 // Additional services selection handler - manages multi-service confirmation loop
 export const addAdditionalServicesHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: 'Would you like to add another service?',
   autoAdvance: false, // Don't auto-advance to prevent LLM interference
   
   // Validate continuation choice or additional service selection

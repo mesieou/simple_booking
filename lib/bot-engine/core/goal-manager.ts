@@ -4,7 +4,7 @@ import {
     LLMProcessingResult,
     ButtonConfig,
   } from '@/lib/bot-engine/types';
-  import { conversationFlowBlueprints } from "@/lib/bot-engine/config/blueprints";
+  import { conversationFlowBlueprints, businessCategoryToBookingFlowKey } from "@/lib/bot-engine/config/blueprints";
   
   export class GoalManager {
   
@@ -27,17 +27,24 @@ import {
         const businessId = context.currentParticipant.associatedBusinessId;
         if (businessId) {
           try {
+            // Get business category for flow routing
+            const { Business } = await import('@/lib/database/models/business');
+            const business = await Business.getById(businessId);
+            const businessCategory = business.businessCategory || 'default';
+            flowKey = businessCategoryToBookingFlowKey[businessCategory] || businessCategoryToBookingFlowKey.default;
+            
+            console.log(`[GoalManager] Business category: ${businessCategory}, Selected flow: ${flowKey}`);
+            
+            // Still load services for use in the flow
             const { Service } = await import('@/lib/database/models/service');
             const services = await Service.getByBusiness(businessId);
             servicesData = services.map(s => s.getData());
-            const hasMobileServices = servicesData.some((service: any) => service.mobile === true);
-            flowKey = hasMobileServices ? 'bookingCreatingForMobileService' : 'bookingCreatingForNoneMobileService';
           } catch (error) {
-            console.error('Error loading services for flow determination:', error);
-            flowKey = 'bookingCreatingForMobileService';
+            console.error('Error loading business/services for flow determination:', error);
+            flowKey = businessCategoryToBookingFlowKey.default;
           }
         } else {
-          flowKey = 'bookingCreatingForMobileService';
+          flowKey = businessCategoryToBookingFlowKey.default;
         }
 
         // Get user information that was already collected during FAQ phase
@@ -140,7 +147,7 @@ import {
                                       { ...newGoal.collectedData, ...processingResult.extractedInformation } :
                                       processingResult as Record<string, any>;
         
-        const responseToUser = newGoal.collectedData.confirmationMessage || firstStepHandler.defaultChatbotPrompt || "Let's get started with your booking.";
+        const responseToUser = newGoal.collectedData.confirmationMessage || "Let's get started with your booking.";
         
         let uiButtonsToDisplay: ButtonConfig[] | undefined;
         if (firstStepHandler.fixedUiButtons) {

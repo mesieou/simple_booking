@@ -25,7 +25,6 @@ const formatPhoneForDisplay = (normalizedPhone: string): string => {
 
 // Step: Creates the actual booking - single responsibility
 export const createBookingHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: 'Creating your booking...',
   // No autoAdvance - this is the final step that shows full confirmation
   
   // Accept empty input (auto-advanced) or payment confirmation message
@@ -309,7 +308,10 @@ export const createBookingHandler: IndividualStepHandler = {
           `💰 ${t.BOOKING_CONFIRMATION.TOTAL_COST} $${totalCostIncludingFees.toFixed(2)}\n\n`;
       }
 
-      let confirmationMessage = `${paymentMessage}${t.BOOKING_CONFIRMATION.TITLE}\n\n` +
+      // Get customer name for personalized confirmation
+      const customerName = currentGoalData.customerName || '{name}';
+      
+      let confirmationMessage = `${paymentMessage}${t.BOOKING_CONFIRMATION.TITLE.replace('{name}', customerName)}\n\n` +
           `${servicesDisplayFormatted}\n` +
           `${costBreakdown}` +
           `${t.BOOKING_CONFIRMATION.DATE} ${bookingConfirmationDetails.formattedDate}\n` +
@@ -339,14 +341,13 @@ export const createBookingHandler: IndividualStepHandler = {
       
       console.log(`[CreateBooking] Generated full confirmation for booking ${bookingConfirmationDetails.bookingId}. Goal completed.`);
       
-      const customerName = currentGoalData.customerName || '{name}';
       return {
         ...currentGoalData,
         goalStatus: 'completed', // Complete the goal since this is the final step
         persistedBooking: savedBooking,
         bookingConfirmationDetails: bookingConfirmationDetails,
         paymentCompleted: isPaymentCompletion,
-        confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.BOOKING_PROBLEM', { name: customerName })
+        confirmationMessage: confirmationMessage
       };
 
     } catch (error) {

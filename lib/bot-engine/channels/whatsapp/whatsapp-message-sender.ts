@@ -13,7 +13,8 @@ const WHATSAPP_CONFIG = {
     MAX_LIST_ITEMS: 10,
     BUTTON_TITLE_MAX_LENGTH: 20,
     LIST_TITLE_MAX_LENGTH: 24,
-    LIST_DESCRIPTION_MAX_LENGTH: 72
+    LIST_DESCRIPTION_MAX_LENGTH: 72,
+    MESSAGE_BODY_MAX_LENGTH: 1024
   }
 } as const;
 
@@ -91,17 +92,19 @@ export class WhatsappSender implements IMessageSender {
 
   // Creates a simple text message payload
   private createTextPayload(recipientId: string, text: string): WhatsappTextPayload {
+    const validatedText = this.validateMessageText(text);
     return {
       messaging_product: "whatsapp",
       to: recipientId,
       type: "text",
-      text: { body: text }
+      text: { body: validatedText }
     };
   }
 
   // Creates an interactive button message payload
   private createButtonPayload(recipientId: string, text: string, buttons: BotResponse['buttons']): WhatsappButtonPayload {
     const limitedButtons = buttons!.slice(0, WHATSAPP_CONFIG.LIMITS.MAX_BUTTONS);
+    const validatedText = this.validateMessageText(text);
     
     return {
       messaging_product: "whatsapp",
@@ -109,7 +112,7 @@ export class WhatsappSender implements IMessageSender {
       type: "interactive",
       interactive: {
         type: "button",
-        body: { text },
+        body: { text: validatedText },
         action: {
           buttons: limitedButtons.map((btn) => ({
             type: "reply",
@@ -126,6 +129,7 @@ export class WhatsappSender implements IMessageSender {
   // Creates an interactive list message payload
   private createListPayload(recipientId: string, text: string, response: BotResponse): WhatsappListPayload {
     const limitedButtons = response.buttons!.slice(0, WHATSAPP_CONFIG.LIMITS.MAX_LIST_ITEMS);
+    const validatedText = this.validateMessageText(text);
     console.log('[WhatsappSender] Creating list with buttons:', limitedButtons.map(b => ({ text: b.buttonText, desc: b.buttonDescription })));
     
     return {
@@ -134,7 +138,7 @@ export class WhatsappSender implements IMessageSender {
       type: "interactive",
       interactive: {
         type: "list",
-        body: { text },
+        body: { text: validatedText },
         action: {
           button: response.listActionText || "Select Option",
           sections: [{
@@ -161,6 +165,31 @@ export class WhatsappSender implements IMessageSender {
     
     console.log('[WhatsappSender] Created row:', row);
     return row;
+  }
+
+  // Validates and fixes message text to meet WhatsApp requirements
+  private validateMessageText(text: string): string {
+    if (!text || typeof text !== 'string') {
+      console.warn('[WhatsappSender] Invalid message text detected, using fallback');
+      return 'Message content unavailable';
+    }
+
+    // Trim whitespace
+    const trimmedText = text.trim();
+    
+    // Check for empty message
+    if (trimmedText.length === 0) {
+      console.warn('[WhatsappSender] Empty message text detected, using fallback');
+      return 'Message content unavailable';
+    }
+
+    // Check for length limit
+    if (trimmedText.length > WHATSAPP_CONFIG.LIMITS.MESSAGE_BODY_MAX_LENGTH) {
+      console.warn(`[WhatsappSender] Message too long (${trimmedText.length} chars), truncating to ${WHATSAPP_CONFIG.LIMITS.MESSAGE_BODY_MAX_LENGTH}`);
+      return trimmedText.substring(0, WHATSAPP_CONFIG.LIMITS.MESSAGE_BODY_MAX_LENGTH - 3) + '...';
+    }
+
+    return trimmedText;
   }
 
   // Truncates text to specified length if needed
@@ -227,6 +256,12 @@ export class WhatsappSender implements IMessageSender {
       if (!response.text) {
         console.warn("[WhatsappSender] No text found in response. Skipping message to:", recipientId);
         return;
+      }
+
+      // Log message length for debugging
+      const textLength = response.text.length;
+      if (textLength > 800) {
+        console.warn(`[WhatsappSender] Long message detected (${textLength} chars) for ${recipientId}. Content preview: "${response.text.substring(0, 100)}..."`);
       }
 
       // Create and send payload

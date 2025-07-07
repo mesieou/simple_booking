@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+// Enable clean, focused logging - reduces verbose output while keeping structured logs
+import '@/lib/bot-engine/utils/enable-clean-logs';
 import { parseWhatsappMessage } from "@/lib/bot-engine/channels/whatsapp/whatsapp-payload-parser";
 import { type WebhookAPIBody } from "@/lib/bot-engine/channels/whatsapp/whatsapp-message-logger"; 
 import { type ConversationalParticipant } from "@/lib/bot-engine/types";

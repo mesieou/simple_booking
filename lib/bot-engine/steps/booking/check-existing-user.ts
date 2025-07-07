@@ -2,7 +2,6 @@ import type { IndividualStepHandler } from '@/lib/bot-engine/types';
 import { User } from '@/lib/database/models/user';
 
 export const checkExistingUserHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: 'Let me check if you\'re in our system...',
   autoAdvance: true,
   
   validateUserInput: async () => ({ isValidInput: true }),

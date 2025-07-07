@@ -3,7 +3,6 @@ import { getLocalizedText, getLocalizedTextWithVars } from './booking-utils';
 import { Business } from '@/lib/database/models/business';
 
 export const confirmLocationHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: 'Confirming service location...',
   autoAdvance: true,
   
   validateUserInput: async (userInput, currentGoalData) => {

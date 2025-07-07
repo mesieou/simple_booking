@@ -2,7 +2,6 @@ import type { IndividualStepHandler } from '@/lib/bot-engine/types';
 import { getLocalizedTextWithVars, getLocalizedText } from './booking-utils';
 
 export const createNewUserHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: 'Creating your account...',
   autoAdvance: true,
   
   validateUserInput: async (userInput, currentGoalData) => {

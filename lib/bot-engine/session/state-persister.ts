@@ -201,7 +201,7 @@ export async function persistSessionState(
             timestamp: currentTimestamp,
           });
           console.log(`[StatePersister] Adding message pair: user="${userMessage}", bot="${botResponse}"`);
-        } else if (typeof botResponse === 'object' && botResponse.text && botResponse.text.trim() !== "") {
+        } else if (typeof botResponse === 'object' && botResponse.text && typeof botResponse.text === 'string' && botResponse.text.trim() !== "") {
           // Handle rich BotResponse object
           chatMessages.push({
             role: "bot",

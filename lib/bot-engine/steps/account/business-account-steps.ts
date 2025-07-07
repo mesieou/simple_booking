@@ -74,8 +74,6 @@ class BusinessUIGenerator {
 
 // Collects business email address for account setup
 export const getBusinessEmailHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: BUSINESS_ACCOUNT_CONFIG.PROMPTS.EMAIL_REQUEST,
-  
   // Validates email format and requirements
   validateUserInput: async (input) => {
     return BusinessValidator.createEmailValidationResult(input);
@@ -83,7 +81,15 @@ export const getBusinessEmailHandler: IndividualStepHandler = {
   
   // Processes and stores the business email
   processAndExtractData: async (input, data) => {
-    return BusinessDataProcessor.processBusinessEmail(input, data);
+    if (input) {
+      return BusinessDataProcessor.processBusinessEmail(input, data);
+    }
+    
+    // Handle initial display (empty input)
+    return {
+      ...data,
+      confirmationMessage: BUSINESS_ACCOUNT_CONFIG.PROMPTS.EMAIL_REQUEST
+    };
   },
   
   // Provides alternative email options

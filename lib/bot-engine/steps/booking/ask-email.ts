@@ -2,7 +2,6 @@ import type { IndividualStepHandler } from '@/lib/bot-engine/types';
 import { getLocalizedText, getLocalizedTextWithVars } from './booking-utils';
 
 export const askEmailHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: 'Please provide your email address for booking confirmation:',
   
   validateUserInput: async (userInput, currentGoalData, chatContext) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -18,10 +17,19 @@ export const askEmailHandler: IndividualStepHandler = {
   
   processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
     const customerName = currentGoalData.customerName || '{name}';
+    
+    if (validatedInput) {
+      return {
+        ...currentGoalData,
+        customerEmail: validatedInput,
+        confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.EMAIL_PROMPT', { name: customerName })
+      };
+    }
+    
+    // Handle initial display (empty input)
     return {
       ...currentGoalData,
-      customerEmail: validatedInput,
-      confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.EMAIL_PROMPT', { name: customerName })
+      confirmationMessage: 'Please provide your email address for booking confirmation:'
     };
   }
 };

@@ -6,6 +6,7 @@ import {
 import { conversationFlowBlueprints } from "@/lib/bot-engine/config/blueprints";
 import { botTasks } from "@/lib/bot-engine/config/tasks";
 import { IntelligentLLMService } from '@/lib/bot-engine/services/llm-service';
+import { FlowControllerLogger } from '@/lib/bot-engine/utils/logger';
 
 function shouldSkipStep(stepName: string, goalData: Record<string, any>): boolean {
   const skippableStepsForQuickBooking = [
@@ -24,7 +25,10 @@ function shouldSkipStep(stepName: string, goalData: Record<string, any>): boolea
     return true;
   }
   if (!!goalData.existingUserFound && skippableStepsForExistingUser.includes(stepName)) {
-    console.log(`[FlowController] Skipping step for existing user: ${stepName}`);
+    FlowControllerLogger.flow('Skipping step for existing user', 
+      { step: stepName },
+      { reason: 'existing_user_found' }
+    );
     return true;
   }
   return false;
@@ -36,12 +40,24 @@ export class FlowController {
   public advanceAndSkipStep(userCurrentGoal: UserGoal) {
     const currentSteps = conversationFlowBlueprints[userCurrentGoal.flowKey];
     let nextStepName: string;
+    let skippedSteps: string[] = [];
     
     do {
       userCurrentGoal.currentStepIndex++;
       if (userCurrentGoal.currentStepIndex < currentSteps.length) {
         nextStepName = currentSteps[userCurrentGoal.currentStepIndex];
-        console.log(`[FlowController] Advanced to step: ${nextStepName} (${userCurrentGoal.currentStepIndex})`);
+        
+        if (shouldSkipStep(nextStepName, userCurrentGoal.collectedData)) {
+          skippedSteps.push(nextStepName);
+        } else {
+          FlowControllerLogger.flow('Advanced to step', {
+            goalType: userCurrentGoal.goalType,
+            step: nextStepName
+          }, { 
+            stepIndex: userCurrentGoal.currentStepIndex,
+            skippedSteps: skippedSteps.length > 0 ? skippedSteps : undefined
+          });
+        }
       } else {
         nextStepName = ''; 
       }
@@ -53,20 +69,36 @@ export class FlowController {
     const currentStepIndex = userCurrentGoal.currentStepIndex;
     const goalData = userCurrentGoal.collectedData;
     
+    FlowControllerLogger.debug('Starting navigation analysis', {
+      goalType: userCurrentGoal.goalType,
+      step: currentSteps[currentStepIndex]
+    }, {
+      currentStepIndex,
+      browseModeSelected: goalData.browseModeSelected,
+      hasCompleteBookingData: !!(goalData.selectedService && goalData.selectedDate && goalData.selectedTime)
+    });
+    
     if (goalData.browseModeSelected) {
-      console.log('[FlowController] Browse mode active - using normal sequential flow');
+      FlowControllerLogger.flow('Browse mode navigation active', {
+        goalType: userCurrentGoal.goalType
+      });
       
       // CRITICAL FIX: First check if the current step still needs data, even in browse mode
       const currentStepName = currentSteps[currentStepIndex];
-      if (currentStepName && this.stepNeedsData(currentStepName, goalData)) {
-        console.log(`[FlowController] Browse mode: Current step ${currentStepName} still needs data - staying on current step`);
+      if (currentStepName && this.stepNeedsData(currentStepName, goalData, userCurrentGoal)) {
+        FlowControllerLogger.flow('Browse mode: Current step needs data - staying', {
+          goalType: userCurrentGoal.goalType,
+          step: currentStepName
+        });
         return currentStepName;
       }
       
       let nextStepIndex = currentStepIndex + 1;
       
       while (nextStepIndex < currentSteps.length && shouldSkipStep(currentSteps[nextStepIndex], goalData)) {
-        console.log(`[FlowController] Skipping step in browse mode: ${currentSteps[nextStepIndex]}`);
+        FlowControllerLogger.debug('Skipping step in browse mode', {
+          step: currentSteps[nextStepIndex]
+        });
         nextStepIndex++;
       }
       
@@ -89,20 +121,33 @@ export class FlowController {
       );
       
       if (quoteStepIndex !== -1 && quoteStepIndex > currentStepIndex) {
-        console.log(`[FlowController] Smart jump: Complete booking data detected, jumping to quoteSummary (${quoteStepIndex})`);
+        FlowControllerLogger.flow('Smart jump: Complete booking data detected', {
+          goalType: userCurrentGoal.goalType,
+          step: currentSteps[quoteStepIndex]
+        }, {
+          fromStepIndex: currentStepIndex,
+          toStepIndex: quoteStepIndex,
+          reason: 'complete_booking_data'
+        });
         return currentSteps[quoteStepIndex];
       }
     }
     
     if (goalData.paymentLinkGenerated && !goalData.paymentCompleted) {
-      console.log('[FlowController] Payment pending - staying on current step to wait for payment');
+      FlowControllerLogger.flow('Payment pending - staying on current step', {
+        goalType: userCurrentGoal.goalType,
+        step: currentSteps[currentStepIndex]
+      }, { reason: 'awaiting_payment' });
       return currentSteps[currentStepIndex];
     }
     
     // CRITICAL FIX: First check if the current step still needs data
     const currentStepName = currentSteps[currentStepIndex];
-    if (currentStepName && this.stepNeedsData(currentStepName, goalData)) {
-      console.log(`[FlowController] Current step ${currentStepName} still needs data - staying on current step`);
+    if (currentStepName && this.stepNeedsData(currentStepName, goalData, userCurrentGoal)) {
+      FlowControllerLogger.flow('Current step needs data - staying', {
+        goalType: userCurrentGoal.goalType,
+        step: currentStepName
+      }, { reason: 'current_step_needs_data' });
       return currentStepName;
     }
     
@@ -111,128 +156,157 @@ export class FlowController {
       const stepName = currentSteps[i];
       
       if (shouldSkipStep(stepName, goalData)) {
-        console.log(`[FlowController] Skipping step: ${stepName}`);
+        FlowControllerLogger.debug('Skipping step in navigation analysis', {
+          step: stepName
+        });
         continue;
       }
       
-      if (this.stepNeedsData(stepName, goalData)) {
-        console.log(`[FlowController] Smart navigation: Jumping to step ${stepName} (${i}) - this step still needs data`);
+      if (this.stepNeedsData(stepName, goalData, userCurrentGoal)) {
+        FlowControllerLogger.flow('Smart navigation: Jumping to step that needs data', {
+          goalType: userCurrentGoal.goalType,
+          step: stepName
+        }, {
+          fromStepIndex: currentStepIndex,
+          toStepIndex: i,
+          reason: 'step_needs_data'
+        });
         return stepName;
       }
     }
     
-    return currentSteps[currentStepIndex + 1] || currentSteps[currentStepIndex];
+    const nextStep = currentSteps[currentStepIndex + 1] || currentSteps[currentStepIndex];
+    FlowControllerLogger.flow('Default navigation to next step', {
+      goalType: userCurrentGoal.goalType,
+      step: nextStep
+    }, { fallbackNavigation: true });
+    
+    return nextStep;
   }
 
-  private stepNeedsData(stepName: string, collectedData: Record<string, any>): boolean {
+  private stepNeedsData(stepName: string, collectedData: Record<string, any>, userCurrentGoal?: UserGoal): boolean {
     const stepLower = stepName.toLowerCase();
     
-    // ===================================================================
-    // STEPS THAT NEED USER INPUT (explicit whitelist approach)
-    // ===================================================================
+    // Address collection steps - need data if no address provided yet
+    if (stepLower === 'askpickupaddress') {
+      const needsData = !collectedData.pickupAddress && !collectedData.customerAddress;
+      console.log('[FlowController] askPickupAddress stepNeedsData evaluation:', {
+        stepName,
+        pickupAddress: collectedData.pickupAddress,
+        customerAddress: collectedData.customerAddress,
+        needsData
+      });
+      if (needsData) {
+        FlowControllerLogger.debug('Step needs pickup address input', { step: stepName });
+      }
+      return needsData;
+    }
+    
+    if (stepLower === 'askdropoffaddress') {
+      const needsData = !collectedData.dropoffAddress;
+      if (needsData) {
+        FlowControllerLogger.debug('Step needs dropoff address input', { step: stepName });
+      }
+      return needsData;
+    }
+    
+    // Address validation steps - always need to run for Google API validation
+    if (stepLower === 'validateaddress') {
+      // Check if we have an unvalidated address that needs validation
+      const hasUnvalidatedPickup = collectedData.pickupAddress && !collectedData.pickupAddressValidated;
+      const hasUnvalidatedDropoff = collectedData.dropoffAddress && !collectedData.dropoffAddressValidated;
+      const hasUnvalidatedCustomer = collectedData.customerAddress && !collectedData.isAddressValidated;
+      const needsValidation = hasUnvalidatedPickup || hasUnvalidatedDropoff || hasUnvalidatedCustomer;
+      
+      // DEBUG: Add extensive logging to see what's happening
+      console.log('[FlowController DEBUG] validateAddress step analysis:', {
+        stepName,
+        pickupAddress: collectedData.pickupAddress,
+        pickupAddressValidated: collectedData.pickupAddressValidated,
+        dropoffAddress: collectedData.dropoffAddress,
+        dropoffAddressValidated: collectedData.dropoffAddressValidated,
+        customerAddress: collectedData.customerAddress,
+        isAddressValidated: collectedData.isAddressValidated,
+        hasUnvalidatedPickup,
+        hasUnvalidatedDropoff,
+        hasUnvalidatedCustomer,
+        needsValidation
+      });
+      
+      if (needsValidation) {
+        FlowControllerLogger.debug('Step needs address validation via Google API', { step: stepName });
+      }
+      return needsValidation;
+    }
     
     // Service selection steps
     if (stepLower === 'selectservice') {
-      return !collectedData.selectedService;
+      const needsData = !collectedData.selectedService;
+      if (needsData) {
+        FlowControllerLogger.debug('Step needs service selection', { step: stepName });
+      }
+      return needsData;
     }
     
     if (stepLower === 'addadditionalservices') {
-      return collectedData.addServicesState !== 'completed';
+      const needsData = collectedData.addServicesState !== 'completed';
+      if (needsData) {
+        FlowControllerLogger.debug('Step needs additional services completion', { step: stepName });
+      }
+      return needsData;
     }
     
     // Time/Date selection steps (but only non-auto-advance ones)
     if (stepLower === 'showavailabletimes') {
-      // Always needs to be shown to display time options
+      FlowControllerLogger.debug('Step always needs to show time options', { step: stepName });
       return true;
     }
     
     if (stepLower === 'showdaybrowser') {
-      return !collectedData.selectedDate;
-    }
-    
-    if (stepLower === 'selectspecificday') {
-      return !collectedData.selectedDate;
-    }
-    
-    if (stepLower === 'showhoursforday') {
-      return !collectedData.selectedTime;
-    }
-    
-    if (stepLower === 'selectspecifictime') {
-      return !collectedData.selectedTime;
-    }
-    
-    // Address/Location steps that need user input
-    if (stepLower === 'askaddress') {
-      return !collectedData.customerAddress;
-    }
-    
-    if (stepLower === 'validateaddress') {
-      return !collectedData.addressConfirmed && !collectedData.isAddressValidated;
-    }
-    
-    // User information steps that need input
-    if (stepLower === 'askusername') {
-      return !collectedData.existingUserFound && !collectedData.customerName;
-    }
-
-    if (stepLower === 'createnewuser') {
-      // This step needs to "run" if we have a customer name but no ID yet.
-      // This will halt the flow here until this step is processed and we get a userId.
-      return !collectedData.existingUserFound && !!collectedData.customerName && !collectedData.userId;
-    }
-    
-    if (stepLower === 'askemail') {
-      return !collectedData.customerEmail;
+      const needsData = !collectedData.selectedDate;
+      if (needsData) {
+        FlowControllerLogger.debug('Step needs date selection', { step: stepName });
+      }
+      return needsData;
     }
     
     // Quote and booking choice steps
     if (stepLower === 'quotesummary') {
-      // Needs data if we don't have all required booking information
-      return !(
+      const needsData = !(
         collectedData.selectedService && 
         collectedData.selectedDate && 
         collectedData.selectedTime && 
         collectedData.finalServiceAddress
       );
+      if (needsData) {
+        FlowControllerLogger.debug('Step needs complete booking information for quote', { step: stepName });
+      }
+      return needsData;
     }
     
     if (stepLower === 'handlequotechoice') {
-      // Needs user choice ONLY if a quote has actually been presented.
       const quotePresented = !!collectedData.persistedQuote || !!collectedData.bookingSummary;
       if (!quotePresented) {
         return false;
       }
 
-      // If a quote is presented, it needs a choice, unless payment is done or quote is confirmed.
       const paymentCompleted = collectedData.paymentCompleted;
       const quoteConfirmed = collectedData.quoteConfirmedFromSummary;
       if (paymentCompleted || quoteConfirmed) {
-        return false; // Choice has been made, so we can advance.
+        return false;
       }
       
-      // If we are waiting for a payment link to be clicked, we should wait.
       const paymentLinkGenerated = collectedData.paymentLinkGenerated;
       if (paymentLinkGenerated && !paymentCompleted) {
-        return true; // Waiting for payment, so we need to stay.
+        FlowControllerLogger.debug('Step waiting for payment completion', { step: stepName });
+        return true;
       }
       
-      // Default case: a quote is presented and needs a choice.
+      FlowControllerLogger.debug('Step needs quote choice from user', { step: stepName });
       return true;
     }
     
-    // ===================================================================
-    // DEFAULT: AUTO-ADVANCE STEPS DON'T NEED DATA (safe default)
-    // ===================================================================
-    
-    // All other steps are auto-advance and complete after execution:
-    // - checkExistingUser
-    // - handleUserStatus  
-    // - confirmLocation
-    // - handleTimeChoice
-    // - createBooking
-    // - bookingConfirmation
-    // - validateAddress (when auto-confirming)
+    // All other steps are auto-advance and complete after execution
     return false;
   }
 
@@ -270,18 +344,32 @@ export class FlowController {
     const targetStepIndex = currentSteps.indexOf(targetStepName);
     
     if (targetStepIndex !== -1) {
+      const previousStep = currentSteps[userCurrentGoal.currentStepIndex];
       userCurrentGoal.currentStepIndex = targetStepIndex;
-      console.log(`[FlowController] Navigated back to step: ${targetStepName} (${targetStepIndex})`);
+      
+      FlowControllerLogger.journey('Navigated back to step', {
+        goalType: userCurrentGoal.goalType,
+        step: targetStepName
+      }, {
+        fromStep: previousStep,
+        fromIndex: currentSteps.indexOf(previousStep),
+        toIndex: targetStepIndex
+      });
+      
       userCurrentGoal.collectedData.navigateBackTo = undefined;
       userCurrentGoal.collectedData.showEditOptions = false;
       this.clearDataForStepType(userCurrentGoal.collectedData, targetStepName);
     } else {
-      console.error(`[FlowController] Target step not found in flow: ${targetStepName}`);
+      FlowControllerLogger.error('Target step not found in flow', {
+        goalType: userCurrentGoal.goalType,
+        step: targetStepName
+      }, { flowKey: userCurrentGoal.flowKey, availableSteps: currentSteps });
     }
   }
 
   private clearDataForStepType(collectedData: Record<string, any>, targetStepName: string) {
     const stepLower = targetStepName.toLowerCase();
+    let clearedDataTypes: string[] = [];
     
     if (stepLower === 'selectservice') {
       // Clear all service-related data when going back to initial service selection
@@ -294,6 +382,7 @@ export class FlowController {
       collectedData.persistedQuote = undefined;
       collectedData.quoteId = undefined;
       collectedData.browseModeSelected = undefined;
+      clearedDataTypes.push('service', 'quote', 'location');
     }
     
     if (stepLower === 'addadditionalservices') {
@@ -304,6 +393,7 @@ export class FlowController {
       collectedData.bookingSummary = undefined;
       collectedData.persistedQuote = undefined;
       collectedData.quoteId = undefined;
+      clearedDataTypes.push('additional_services', 'quote', 'location');
     }
     
     if ((stepLower.includes('time') || stepLower.includes('date') || stepLower.includes('day') || stepLower.includes('hour')) && !stepLower.includes('show') && !stepLower.includes('available')) {
@@ -317,6 +407,7 @@ export class FlowController {
       collectedData.persistedQuote = undefined;
       collectedData.quoteId = undefined;
       collectedData.bookingSummary = undefined;
+      clearedDataTypes.push('time', 'date', 'quote');
     }
     
     if (stepLower.includes('address') || stepLower.includes('location')) {
@@ -326,12 +417,20 @@ export class FlowController {
       collectedData.persistedQuote = undefined;
       collectedData.quoteId = undefined;
       collectedData.bookingSummary = undefined;
+      clearedDataTypes.push('address', 'location', 'quote');
     }
     
     if (stepLower.includes('user') || stepLower.includes('name')) {
       collectedData.userId = undefined;
       collectedData.existingUserFound = undefined;
       collectedData.customerName = undefined;
+      clearedDataTypes.push('user');
+    }
+    
+    if (clearedDataTypes.length > 0) {
+      FlowControllerLogger.info('Cleared collected data for step navigation', {
+        step: targetStepName
+      }, { clearedDataTypes });
     }
   }
 
@@ -379,7 +478,7 @@ export class FlowController {
         );
         responseToUser = contextualResponse.text;
       } catch (error) {
-        responseToUser = userCurrentGoal.collectedData.confirmationMessage || targetStepHandler.defaultChatbotPrompt || "Let's update your selection.";
+        responseToUser = userCurrentGoal.collectedData.confirmationMessage || "Let's update your selection.";
       }
       
       let uiButtonsToDisplay: ButtonConfig[] | undefined;
@@ -428,7 +527,6 @@ export class FlowController {
                                       targetStepResult as Record<string, any>;
       
       const responseToUser = userCurrentGoal.collectedData.confirmationMessage || 
-                      targetStepHandler.defaultChatbotPrompt || 
                       "Let's continue with your new service selection.";
       
       let uiButtonsToDisplay: ButtonConfig[] | undefined;
@@ -465,7 +563,6 @@ export class FlowController {
                                       targetStepResult as Record<string, any>;
       
       const responseToUser = userCurrentGoal.collectedData.confirmationMessage || 
-                      targetStepHandler.defaultChatbotPrompt || 
                       "Let's update your selection.";
       
       let uiButtonsToDisplay: ButtonConfig[] | undefined;

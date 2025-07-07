@@ -94,8 +94,8 @@ export class ResponseSender {
     senderId: string,
     businessPhoneNumberId?: string
   ): Promise<boolean> {
-    if (!botResponse || !botResponse.text || !botResponse.text.trim()) {
-      if (botResponse && !botResponse.text?.trim()) {
+    if (!botResponse || !botResponse.text || typeof botResponse.text !== 'string' || !botResponse.text.trim()) {
+      if (botResponse && (!botResponse.text || typeof botResponse.text !== 'string' || !botResponse.text.trim())) {
         console.log(`${LOG_PREFIX} Bot response is empty - not sending message to ${senderId}`);
       } else {
         console.log(`${LOG_PREFIX} No bot response to send for ${senderId}`);
@@ -126,7 +126,7 @@ export class ResponseSender {
  */
 export class ResponseProcessor {
   /**
-   * Processes and sends a bot response (translation + sending)
+   * Processes and sends a bot response (no translation needed)
    */
   static async processAndSend(
     botResponse: BotResponse | null,
@@ -140,22 +140,16 @@ export class ResponseProcessor {
       return false;
     }
 
-    let processedResponse = botResponse;
+    // REMOVED LLM TRANSLATION SYSTEM
+    // All booking-related text should use the proper localization system
+    // (getLocalizedText/getLocalizedTextWithVars) in the booking handlers themselves
+    // This prevents double-translation issues where Spanish text gets translated back to English
+    
+    console.log(`${LOG_PREFIX} Using proper localization system - no LLM translation needed`);
 
-    // Translate if target language is specified and different from default
-    if (targetLanguage && targetLanguage !== 'en') {
-      try {
-        processedResponse = await ResponseTranslator.translateBotResponse(botResponse, targetLanguage);
-        console.log(`${LOG_PREFIX} Response translated to ${targetLanguage}`);
-      } catch (error) {
-        console.error(`${LOG_PREFIX} Translation failed, using original response:`, error);
-        processedResponse = botResponse;
-      }
-    }
-
-    // Send the response
+    // Send the response directly (no translation)
     return await ResponseSender.sendResponse(
-      processedResponse,
+      botResponse,
       recipientId,
       senderId,
       businessPhoneNumberId

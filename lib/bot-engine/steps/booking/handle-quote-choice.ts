@@ -6,7 +6,6 @@ import { Business } from '@/lib/database/models/business';
 // Step: Handle user's choice from quote summary
 // Job: Process confirmation (trigger payment) or show edit options
 export const handleQuoteChoiceHandler: IndividualStepHandler = {
-  defaultChatbotPrompt: 'Processing your choice...',
   // Conditionally auto-advance: only when quote is confirmed, not when showing edit options
   
   // Accept confirmation, edit choice, or payment completion
@@ -164,7 +163,7 @@ export const handleQuoteChoiceHandler: IndividualStepHandler = {
             paymentLink: paymentResult.paymentLink,
             paymentError: false, // Clear any previous payment errors
             shouldAutoAdvance: false, // Don't auto-advance, wait for payment
-            confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.QUOTE_CONFIRMED', { name: customerName })
+            confirmationMessage: paymentMessage
           };
 
         } catch (error) {

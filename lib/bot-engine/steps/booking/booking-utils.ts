@@ -60,7 +60,7 @@ export class AddressValidator {
     }
     
     const hasStreetInfo = /\d+.*[a-zA-Z]/.test(address);
-    const hasSuburb = address.toLowerCase().split(' ').length >= 3;
+    const hasSuburb = address.toLowerCase().split(' ').length >= 2; // Relaxed from 3 to 2 words
     
     if (hasStreetInfo && hasSuburb) {
       return { isValidInput: true };
@@ -77,20 +77,136 @@ export class AddressValidator {
     formattedAddress?: string;
     errorMessage?: string;
   }> {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const basicValidation = AddressValidator.validateAddress(address, chatContext);
-    if (!basicValidation.isValidInput) {
+    try {
+      const customerName = '{name}'; // Will be replaced by localization
+      console.log('[AddressValidator] API Key status:', {
+        present: !!process.env.GOOGLE_MAPS_API_KEY,
+        length: process.env.GOOGLE_MAPS_API_KEY?.length || 0
+      });
+
+      if (!process.env.GOOGLE_MAPS_API_KEY) {
+        console.error('[AddressValidator] No Google Maps API key found in environment');
+        // Fallback to basic validation if no API key
+        const basicValidation = AddressValidator.validateAddress(address, chatContext);
+        return {
+          isValid: basicValidation.isValidInput ?? false,
+          formattedAddress: basicValidation.isValidInput ? address.trim() : undefined,
+          errorMessage: basicValidation.validationErrorMessage
+        };
+      }
+
+      const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+      const encodedAddress = encodeURIComponent(address);
+      // Remove AU restriction to allow international addresses
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodedAddress}&key=${apiKey}`;
+      
+      console.log('[AddressValidator] Making request to Google API for address:', address);
+      
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      console.log('[AddressValidator] Google API response:', {
+        status: data.status,
+        resultsCount: data.results?.length || 0,
+        hasResults: data.results && data.results.length > 0
+      });
+
+      if (data.status === 'OK' && data.results && data.results.length > 0) {
+        const result = data.results[0];
+        console.log('[AddressValidator] Google API validation successful');
+        
+        // Check if this is a reasonable address match
+        const hasStreetNumber = result.address_components?.some((component: any) => 
+          component.types.includes('street_number')
+        );
+        const hasRoute = result.address_components?.some((component: any) => 
+          component.types.includes('route')
+        );
+        const hasLocality = result.address_components?.some((component: any) => 
+          component.types.includes('locality') || 
+          component.types.includes('administrative_area_level_1') ||
+          component.types.includes('administrative_area_level_2')
+        );
+        const hasCountry = result.address_components?.some((component: any) => 
+          component.types.includes('country')
+        );
+
+        console.log('[AddressValidator] Address analysis:', {
+          hasStreetNumber,
+          hasRoute,
+          hasLocality,
+          hasCountry,
+          geometryType: result.geometry?.location_type,
+          partialMatch: result.partial_match
+        });
+
+        // More flexible validation - accept if it has reasonable location components
+        // Accept both full addresses and partial matches if they have basic location info
+        if (hasCountry && hasLocality && (hasStreetNumber || hasRoute || result.partial_match)) {
+          console.log('[AddressValidator] Accepting address match (flexible validation)');
+          return {
+            isValid: true,
+            formattedAddress: result.formatted_address
+          };
+        } else if (hasCountry && hasLocality) {
+          // Accept even basic city/country combinations
+          console.log('[AddressValidator] Accepting basic location match');
+          return {
+            isValid: true,
+            formattedAddress: result.formatted_address
+          };
+        } else {
+          console.log('[AddressValidator] Rejecting address: insufficient location data');
+          return {
+            isValid: false,
+            errorMessage: getLocalizedTextWithVars(chatContext, 'ERROR_MESSAGES.INVALID_ADDRESS', { name: customerName })
+          };
+        }
+      } else if (data.status === 'ZERO_RESULTS') {
+        // Address not found
+        console.log('[AddressValidator] Google API: Address not found (ZERO_RESULTS)');
+        return {
+          isValid: false,
+          errorMessage: getLocalizedTextWithVars(chatContext, 'ERROR_MESSAGES.INVALID_ADDRESS', { name: customerName })
+        };
+      } else if (data.status === 'INVALID_REQUEST') {
+        // Invalid request format
+        console.log('[AddressValidator] Google API: Invalid request format');
+        return {
+          isValid: false,
+          errorMessage: getLocalizedTextWithVars(chatContext, 'ERROR_MESSAGES.INVALID_ADDRESS', { name: customerName })
+        };
+      } else {
+        // Other API errors (rate limit, etc.)
+        console.log(`[AddressValidator] Google API error: ${data.status}, falling back to basic validation`);
+        
+        // Fall back to basic validation if API is having issues
+        const basicValidation = AddressValidator.validateAddress(address, chatContext);
+        if (basicValidation.isValidInput) {
+          console.log('[AddressValidator] API unavailable but address looks reasonable - accepting');
+          return {
+            isValid: true,
+            formattedAddress: address.trim().replace(/\s+/g, ' ')
+          };
+        } else {
+          console.log('[AddressValidator] API unavailable and address looks incomplete - rejecting');
+          return {
+            isValid: false,
+            errorMessage: basicValidation.validationErrorMessage
+          };
+        }
+      }
+    } catch (error) {
+      console.error('[AddressValidator] Error calling Google Maps API:', error);
+      
+      // Fallback to basic validation on error
+      const basicValidation = AddressValidator.validateAddress(address, chatContext);
       return {
-        isValid: false,
+        isValid: basicValidation.isValidInput ?? false,
+        formattedAddress: basicValidation.isValidInput ? address.trim() : undefined,
         errorMessage: basicValidation.validationErrorMessage
       };
     }
-    
-    return {
-      isValid: true,
-      formattedAddress: address.trim().replace(/\s+/g, ' ')
-    };
   }
 }
 
@@ -137,37 +253,118 @@ export class ServiceDataProcessor {
     const normalizedInput = serviceName.toLowerCase().trim();
     console.log(`[ServiceProcessor] Looking for service by name: "${normalizedInput}"`);
     
+    // Spanish to English service name mapping
+    const spanishToEnglishMapping: { [key: string]: string[] } = {
+      'manicura': ['manicure'],
+      'manicura básica': ['basic manicure'],
+      'manicura express': ['express manicure'],
+      'manicura con gel': ['gel manicure'],
+      'pedicura': ['pedicure'],
+      'pedicura básica': ['basic pedicure'],
+      'pedicura con gel': ['gel pedicure'],
+      'manicura presionada': ['press on manicure'],
+      'corte de cabello': ['haircut', 'ladies haircut'],
+      'peinado': ['hair styling'],
+      'trenzas': ['braids'],
+      'secado': ['blow dry'],
+      'ondas': ['waves'],
+      'tratamientos': ['treatments'],
+      'gel': ['gel'],
+      'básica': ['basic'],
+      'express': ['express'],
+      'presionada': ['press on'],
+      'cabello': ['hair'],
+      'damas': ['ladies']
+    };
+    
+    // 1. Exact match (English)
     let found = availableServices.find(service => 
       service.name.toLowerCase() === normalizedInput
     );
     
     if (found) {
-      console.log(`[ServiceProcessor] Found exact match: ${found.name}`);
+      console.log(`[ServiceProcessor] Found exact English match: ${found.name}`);
       return found;
     }
     
-    found = availableServices.find(service => 
-      service.name.toLowerCase().includes(normalizedInput) || 
-      normalizedInput.includes(service.name.toLowerCase())
-    );
+    // 2. Spanish-to-English mapping match
+    for (const [spanishTerm, englishTerms] of Object.entries(spanishToEnglishMapping)) {
+      if (normalizedInput.includes(spanishTerm)) {
+        console.log(`[ServiceProcessor] Found Spanish term "${spanishTerm}" in input`);
+        
+        // Try to match with English equivalents
+        for (const englishTerm of englishTerms) {
+          found = availableServices.find(service => 
+            service.name.toLowerCase().includes(englishTerm)
+          );
+          if (found) {
+            console.log(`[ServiceProcessor] Found Spanish-to-English match: "${spanishTerm}" -> "${englishTerm}" -> ${found.name}`);
+            return found;
+          }
+        }
+      }
+    }
+    
+    // 3. Multi-word Spanish matching (e.g., "manicura con gel" -> "gel manicure")
+    const inputWords = normalizedInput.split(/\s+/).filter(word => word.length >= 3);
+    if (inputWords.length >= 2) {
+      for (const service of availableServices) {
+        const serviceWords = service.name.toLowerCase().split(/\s+/);
+        let matchCount = 0;
+        
+        for (const inputWord of inputWords) {
+          const englishEquivalents = spanishToEnglishMapping[inputWord] || [inputWord];
+          for (const englishWord of englishEquivalents) {
+            if (serviceWords.some(serviceWord => serviceWord.includes(englishWord) || englishWord.includes(serviceWord))) {
+              matchCount++;
+              break;
+            }
+          }
+        }
+        
+        // Require at least half the words to match
+        if (matchCount >= Math.ceil(inputWords.length / 2)) {
+          console.log(`[ServiceProcessor] Found multi-word Spanish match: ${service.name} (${matchCount}/${inputWords.length} words matched)`);
+          return service;
+        }
+      }
+    }
+    
+    // 4. Full service name contained in input or vice versa (but only if meaningful)
+    found = availableServices.find(service => {
+      const serviceName = service.name.toLowerCase();
+      const minLength = 4; // Require at least 4 characters for partial matching
+      
+      return (serviceName.length >= minLength && normalizedInput.includes(serviceName)) ||
+             (normalizedInput.length >= minLength && serviceName.includes(normalizedInput));
+    });
     
     if (found) {
       console.log(`[ServiceProcessor] Found partial match: ${found.name}`);
       return found;
     }
     
-    const inputWords = normalizedInput.split(/\s+/);
+    // 5. Conservative word-based matching - require exact word matches and meaningful overlap
+    const englishInputWords = inputWords.filter(word => word.length >= 3);
+    
+    if (englishInputWords.length === 0) {
+      console.log(`[ServiceProcessor] Input too short or no meaningful words for: "${serviceName}"`);
+      return undefined;
+    }
+    
     found = availableServices.find(service => {
-      const serviceWords = service.name.toLowerCase().split(/\s+/);
-      return inputWords.some(inputWord => 
-        serviceWords.some(serviceWord => 
-          serviceWord.includes(inputWord) || inputWord.includes(serviceWord)
-        )
+      const serviceWords = service.name.toLowerCase().split(/\s+/).filter(word => word.length >= 3);
+      const matchingWords = englishInputWords.filter(inputWord => 
+        serviceWords.some(serviceWord => serviceWord === inputWord)
       );
+      
+      // Require at least one exact word match and reasonable overlap
+      const overlapRatio = matchingWords.length / Math.min(englishInputWords.length, serviceWords.length);
+      return matchingWords.length >= 1 && overlapRatio >= 0.5;
     });
     
     if (found) {
-      console.log(`[ServiceProcessor] Found word-based match: ${found.name}`);
+      console.log(`[ServiceProcessor] Found conservative word-based match: ${found.name}`);
       return found;
     }
     
