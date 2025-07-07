@@ -117,8 +117,7 @@ describe('Service Selection Step - Reflecting Real Bot Behavior', () => {
     if (!basicManicure) console.warn('⚠️  No "basic manicure" service found - some tests may fail');
   });
 
-  it(
-    'initiates booking flow correctly',
+  it( 'initiates booking flow correctly',
     async () => {
       await startBookingFlow();
 
@@ -135,8 +134,7 @@ describe('Service Selection Step - Reflecting Real Bot Behavior', () => {
     TEST_CONFIG.TIMEOUT_SECONDS * 1000
   );
 
-  it(
-    'selects service via button click',
+  it('selects service via button click',
     async () => {
       await startBookingFlow();
       
@@ -158,8 +156,7 @@ describe('Service Selection Step - Reflecting Real Bot Behavior', () => {
     TEST_CONFIG.TIMEOUT_SECONDS * 1000
   );
 
-  it(
-    'selects service via text input - exact match',
+  it('selects service via text input - exact match',
     async () => {
       await startBookingFlow();
       
@@ -183,8 +180,7 @@ describe('Service Selection Step - Reflecting Real Bot Behavior', () => {
     TEST_CONFIG.TIMEOUT_SECONDS * 1000
   );
 
-  it(
-    'selects service via text input - partial match (updated timeout)',
+  it('selects service via text input - partial match (updated timeout)',
     async () => {
       await startBookingFlow();
       
@@ -207,8 +203,7 @@ describe('Service Selection Step - Reflecting Real Bot Behavior', () => {
     TEST_CONFIG.TIMEOUT_SECONDS * 1000 * 2 // Increased timeout for partial matching
   );
 
-  it(
-    'handles invalid service selection with helpful response',
+  it('handles invalid service selection with helpful response',
     async () => {
       await startBookingFlow();
       
@@ -234,8 +229,7 @@ describe('Service Selection Step - Reflecting Real Bot Behavior', () => {
     TEST_CONFIG.TIMEOUT_SECONDS * 1000
   );
 
-  it(
-    'handles FAQ interruption with conversational location response',
+  it('handles FAQ interruption with conversational location response',
     async () => {
       await startBookingFlow();
       
@@ -259,8 +253,7 @@ describe('Service Selection Step - Reflecting Real Bot Behavior', () => {
     TEST_CONFIG.TIMEOUT_SECONDS * 1000
   );
 
-  it(
-    'handles core service variations (updated expectations)',
+  it('handles core service variations (updated expectations)',
     async () => {
       const services = await fetchServices();
       const gelManicure = services.find(s => s.name.toLowerCase().includes('gel manicure'));
@@ -299,8 +292,7 @@ describe('Service Selection Step - Reflecting Real Bot Behavior', () => {
   );
 
   // Test for variations that might not work (to document bot limitations)
-  it(
-    'documents service variations that need improvement',
+  it('documents service variations that need improvement',
     async () => {
       await startBookingFlow();
       
@@ -335,8 +327,7 @@ describe('Service Selection Step - Reflecting Real Bot Behavior', () => {
   );
 
   // Additional test to verify service data integrity
-  it(
-    'service selection includes correct pricing and duration data',
+  it('service selection includes correct pricing and duration data',
     async () => {
       await startBookingFlow();
       
