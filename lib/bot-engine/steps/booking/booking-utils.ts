@@ -52,24 +52,15 @@ export const BOOKING_CONFIG = {
 export class AddressValidator {
   
   static validateAddress(address: string, chatContext: ChatContext): LLMProcessingResult {
-    if (address.length < BOOKING_CONFIG.VALIDATION.MIN_ADDRESS_LENGTH) {
+    // Only basic length check - Google API will do the real validation
+    if (!address || address.trim().length < 5) {
       return {
         isValidInput: false,
         validationErrorMessage: getLocalizedText(chatContext, 'ERROR_MESSAGES.INVALID_ADDRESS')
       };
     }
     
-    const hasStreetInfo = /\d+.*[a-zA-Z]/.test(address);
-    const hasSuburb = address.toLowerCase().split(' ').length >= 2; // Relaxed from 3 to 2 words
-    
-    if (hasStreetInfo && hasSuburb) {
-      return { isValidInput: true };
-    }
-    
-    return {
-      isValidInput: false,
-      validationErrorMessage: getLocalizedText(chatContext, 'ERROR_MESSAGES.INVALID_ADDRESS')
-    };
+    return { isValidInput: true };
   }
 
   static async validateWithGoogleAPI(address: string, chatContext: ChatContext): Promise<{
@@ -85,13 +76,10 @@ export class AddressValidator {
       });
 
       if (!process.env.GOOGLE_MAPS_API_KEY) {
-        console.error('[AddressValidator] No Google Maps API key found in environment');
-        // Fallback to basic validation if no API key
-        const basicValidation = AddressValidator.validateAddress(address, chatContext);
+        console.error('[AddressValidator] No Google Maps API key found in environment - REJECTING ALL ADDRESSES');
         return {
-          isValid: basicValidation.isValidInput ?? false,
-          formattedAddress: basicValidation.isValidInput ? address.trim() : undefined,
-          errorMessage: basicValidation.validationErrorMessage
+          isValid: false,
+          errorMessage: 'Address validation service unavailable. Please try again later.'
         };
       }
 
@@ -113,55 +101,12 @@ export class AddressValidator {
 
       if (data.status === 'OK' && data.results && data.results.length > 0) {
         const result = data.results[0];
-        console.log('[AddressValidator] Google API validation successful');
+        console.log('[AddressValidator] Google API validation successful - accepting address');
         
-        // Check if this is a reasonable address match
-        const hasStreetNumber = result.address_components?.some((component: any) => 
-          component.types.includes('street_number')
-        );
-        const hasRoute = result.address_components?.some((component: any) => 
-          component.types.includes('route')
-        );
-        const hasLocality = result.address_components?.some((component: any) => 
-          component.types.includes('locality') || 
-          component.types.includes('administrative_area_level_1') ||
-          component.types.includes('administrative_area_level_2')
-        );
-        const hasCountry = result.address_components?.some((component: any) => 
-          component.types.includes('country')
-        );
-
-        console.log('[AddressValidator] Address analysis:', {
-          hasStreetNumber,
-          hasRoute,
-          hasLocality,
-          hasCountry,
-          geometryType: result.geometry?.location_type,
-          partialMatch: result.partial_match
-        });
-
-        // More flexible validation - accept if it has reasonable location components
-        // Accept both full addresses and partial matches if they have basic location info
-        if (hasCountry && hasLocality && (hasStreetNumber || hasRoute || result.partial_match)) {
-          console.log('[AddressValidator] Accepting address match (flexible validation)');
-          return {
-            isValid: true,
-            formattedAddress: result.formatted_address
-          };
-        } else if (hasCountry && hasLocality) {
-          // Accept even basic city/country combinations
-          console.log('[AddressValidator] Accepting basic location match');
-          return {
-            isValid: true,
-            formattedAddress: result.formatted_address
-          };
-        } else {
-          console.log('[AddressValidator] Rejecting address: insufficient location data');
-          return {
-            isValid: false,
-            errorMessage: getLocalizedTextWithVars(chatContext, 'ERROR_MESSAGES.INVALID_ADDRESS', { name: customerName })
-          };
-        }
+        return {
+          isValid: true,
+          formattedAddress: result.formatted_address
+        };
       } else if (data.status === 'ZERO_RESULTS') {
         // Address not found
         console.log('[AddressValidator] Google API: Address not found (ZERO_RESULTS)');
@@ -178,33 +123,19 @@ export class AddressValidator {
         };
       } else {
         // Other API errors (rate limit, etc.)
-        console.log(`[AddressValidator] Google API error: ${data.status}, falling back to basic validation`);
-        
-        // Fall back to basic validation if API is having issues
-        const basicValidation = AddressValidator.validateAddress(address, chatContext);
-        if (basicValidation.isValidInput) {
-          console.log('[AddressValidator] API unavailable but address looks reasonable - accepting');
-          return {
-            isValid: true,
-            formattedAddress: address.trim().replace(/\s+/g, ' ')
-          };
-        } else {
-          console.log('[AddressValidator] API unavailable and address looks incomplete - rejecting');
-          return {
-            isValid: false,
-            errorMessage: basicValidation.validationErrorMessage
-          };
-        }
+        console.log(`[AddressValidator] Google API error: ${data.status} - REJECTING ADDRESS`);
+        return {
+          isValid: false,
+          errorMessage: `Address validation failed: ${data.status}. Please check your address and try again.`
+        };
       }
     } catch (error) {
       console.error('[AddressValidator] Error calling Google Maps API:', error);
       
-      // Fallback to basic validation on error
-      const basicValidation = AddressValidator.validateAddress(address, chatContext);
+      // Reject all addresses if Google API fails
       return {
-        isValid: basicValidation.isValidInput ?? false,
-        formattedAddress: basicValidation.isValidInput ? address.trim() : undefined,
-        errorMessage: basicValidation.validationErrorMessage
+        isValid: false,
+        errorMessage: 'Address validation service error. Please try again later.'
       };
     }
   }
@@ -388,7 +319,9 @@ export class ServiceDataProcessor {
       durationEstimate: service.durationEstimate,
       fixedPrice: service.fixedPrice,
       pricingType: service.pricingType,
-      mobile: service.mobile
+      mobile: service.mobile,
+      ratePerMinute: service.ratePerMinute,
+      baseCharge: service.baseCharge
     };
   }
 

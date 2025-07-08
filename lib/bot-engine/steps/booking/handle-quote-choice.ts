@@ -15,8 +15,8 @@ export const handleQuoteChoiceHandler: IndividualStepHandler = {
       return { isValidInput: true };
     }
     
-    // Handle edit sub-choices (service, time)
-    if (userInput === 'edit_service' || userInput === 'edit_time') {
+    // Handle edit sub-choices (service, time, pickup address, dropoff address)
+    if (userInput === 'edit_service' || userInput === 'edit_time' || userInput === 'edit_pickup_address' || userInput === 'edit_dropoff_address') {
       return { isValidInput: true };
     }
     
@@ -114,8 +114,9 @@ export const handleQuoteChoiceHandler: IndividualStepHandler = {
           const serviceTotal = currentGoalData.selectedService?.fixedPrice || 0;
           const remainingBalance = currentGoalData.remainingBalance || currentGoalData.bookingSummary?.remainingBalance || (serviceTotal - depositAmount);
           
-          // Get business preferred payment method
+          // Get business info for payment method and type
           let preferredPaymentMethod = language === 'es' ? 'efectivo o tarjeta' : 'cash or card';
+          let businessType = 'unknown';
           
           if (businessId) {
             try {
@@ -123,12 +124,20 @@ export const handleQuoteChoiceHandler: IndividualStepHandler = {
               if (business.preferredPaymentMethod) {
                 preferredPaymentMethod = business.preferredPaymentMethod;
               }
+              businessType = business.businessCategory || 'unknown';
             } catch (error) {
               console.warn('[HandleQuoteChoice] Could not fetch business payment method');
             }
           }
           
           const customerName = currentGoalData.customerName || '{name}';
+          
+          // Use "Estimate Remaining Balance" for removalists
+          const isRemovalist = businessType?.toLowerCase() === 'removalist';
+          const remainingBalanceLabel = language === 'es' 
+            ? (isRemovalist ? 'Balance restante estimado' : 'Balance restante')
+            : (isRemovalist ? 'Estimate Remaining Balance' : 'Remaining balance');
+          
           const paymentMessage = language === 'es' 
             ? `💳 *¡Listo para Reservar!*\n\n` +
               `Para asegurar tu cita, por favor completa el pago del depósito de reserva:\n\n` +
@@ -137,7 +146,7 @@ export const handleQuoteChoiceHandler: IndividualStepHandler = {
               `   • Depósito (ahora): $${depositAmount.toFixed(2)}\n` +
               `   • Tarifa de reserva: $4.00\n` +
               `   • *Total a pagar ahora: $${totalChargeAmount.toFixed(2)}*\n\n` +
-              `📍 *Balance restante: $${remainingBalance.toFixed(2)}*\n` +
+              `📍 *${remainingBalanceLabel}: $${remainingBalance.toFixed(2)}*\n` +
               `   💳 A pagar en la cita (${preferredPaymentMethod})\n\n` +
               `🔗 *Enlace de Pago:*\n${paymentResult.paymentLink}\n\n` +
               `¡Después del pago, serás redirigido de vuelta a WhatsApp y tu reserva será confirmada automáticamente!\n\n` +
@@ -150,7 +159,7 @@ export const handleQuoteChoiceHandler: IndividualStepHandler = {
               `   • Deposit (now): $${depositAmount.toFixed(2)}\n` +
               `   • Booking fee: $4.00\n` +
               `   • *Total to pay now: $${totalChargeAmount.toFixed(2)}*\n\n` +
-              `📍 *Remaining balance: $${remainingBalance.toFixed(2)}*\n` +
+              `📍 *${remainingBalanceLabel}: $${remainingBalance.toFixed(2)}*\n` +
               `   💳 Pay at appointment (${preferredPaymentMethod})\n\n` +
               `🔗 *Payment Link:*\n${paymentResult.paymentLink}\n\n` +
               `After payment, you'll be redirected back to WhatsApp and your booking will be confirmed automatically!\n\n` +
@@ -217,6 +226,26 @@ export const handleQuoteChoiceHandler: IndividualStepHandler = {
       };
     }
     
+    if (validatedInput === 'edit_pickup_address') {
+      console.log('[HandleQuoteChoice] Pickup address edit requested - navigating back to askPickupAddress');
+      return {
+        ...currentGoalData,
+        navigateBackTo: 'askPickupAddress',
+        shouldAutoAdvance: true, // Auto-advance to navigate back
+        confirmationMessage: 'Let\'s update your pickup address...'
+      };
+    }
+
+    if (validatedInput === 'edit_dropoff_address') {
+      console.log('[HandleQuoteChoice] Dropoff address edit requested - navigating back to askDropoffAddress');
+      return {
+        ...currentGoalData,
+        navigateBackTo: 'askDropoffAddress',
+        shouldAutoAdvance: true, // Auto-advance to navigate back
+        confirmationMessage: 'Let\'s update your dropoff address...'
+      };
+    }
+    
     // Handle payment completion
     if (validatedInput && validatedInput.startsWith('PAYMENT_COMPLETED_')) {
       console.log('[HandleQuoteChoice] Payment completion detected - advancing to booking creation');
@@ -251,10 +280,23 @@ export const handleQuoteChoiceHandler: IndividualStepHandler = {
     }
 
     if (currentGoalData.showEditOptions) {
-      return [
+      // Check if any selected services are mobile to determine if address editing is relevant
+      const selectedServices = currentGoalData.selectedServices || 
+                              (currentGoalData.selectedService ? [currentGoalData.selectedService] : []);
+      const hasMobileServices = selectedServices.some((service: any) => service?.mobile);
+      
+      const buttons = [
         { buttonText: getLocalizedText(chatContext, 'BUTTONS.CHANGE_SERVICE'), buttonValue: 'edit_service' },
         { buttonText: getLocalizedText(chatContext, 'BUTTONS.CHANGE_TIME'), buttonValue: 'edit_time' }
       ];
+      
+      // Only add address buttons for mobile services (pickup and dropoff separately)
+      if (hasMobileServices) {
+        buttons.push({ buttonText: getLocalizedText(chatContext, 'BUTTONS.CHANGE_PICKUP'), buttonValue: 'edit_pickup_address' });
+        buttons.push({ buttonText: getLocalizedText(chatContext, 'BUTTONS.CHANGE_DROPOFF'), buttonValue: 'edit_dropoff_address' });
+      }
+      
+      return buttons;
     }
     
     // No buttons if quote confirmed or navigating back

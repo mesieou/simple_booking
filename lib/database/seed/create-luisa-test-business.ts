@@ -38,13 +38,13 @@ export async function createLuisaTestBusiness(supabase?: SupabaseClient): Promis
   
   const supa = supabase || getServiceRoleClient();
 
-  // --- COMPREHENSIVE CLEANUP OF EXISTING LUISA DATA ---
-  // Clean up any businesses that match Luisa's data (email, phone, or whatsapp number)
+  // --- TARGETED CLEANUP OF EXISTING LUISA DATA ---
+  // Clean up only the specific beauty business by name and email (not phone numbers)
   console.log('[SEED] Checking for existing Luisa business data to clean up...');
   const { data: businesses, error: businessError } = await supa
     .from('businesses')
     .select('id, name, email')
-    .or('name.eq.Beauty Asiul,email.eq.luisa.bernal7826@gmail.com,phone.eq.+61473164581,whatsappNumber.eq.+61411851098');
+    .or('name.eq.Beauty Asiul,email.eq.luisa.bernal7826@gmail.com');
 
   if (businessError) {
     console.error('[SEED] Error checking for existing business, skipping cleanup:', businessError);
@@ -72,12 +72,13 @@ export async function createLuisaTestBusiness(supabase?: SupabaseClient): Promis
       timeZone: 'Australia/Sydney',
       interfaceType: 'whatsapp',
       whatsappNumber: '+61411851098',
-      whatsappPhoneNumberId: undefined, // Will be auto-mapped when webhook is received
+      whatsappPhoneNumberId: '684078768113901', // WhatsApp Business API phone number ID
       businessAddress: '9 Dryburgh st, West Melbourne, VIC 3003',
       websiteUrl: undefined,
+      businessCategory: 'salon', // Set business category for beauty salon
       depositPercentage: 50, // 50% deposit required for bookings
-      stripeConnectAccountId: undefined, // Will be set during Stripe onboarding
-      stripeAccountStatus: 'pending',
+      stripeConnectAccountId: 'acct_1RdjJT00GaxmqnjE', // Stripe Connect account ID
+      stripeAccountStatus: 'active',
       preferredPaymentMethod: 'cash'
     };
 
@@ -363,10 +364,10 @@ async function triggerPdfContentCrawler(businessId: string): Promise<any> {
   try {
     console.log('[SEED] Loading Luisa FAQ whatsapp conversations (1).pdf for processing...');
     
-    // Load the actual PDF file from the project root
+    // Load the actual PDF file from the public folder
     const fs = require('fs');
     const path = require('path');
-    const pdfPath = path.join(process.cwd(), 'Luisa FAQ whatsapp conversations (1).pdf');
+    const pdfPath = path.join(process.cwd(), 'public', 'Luisa FAQ whatsapp conversations (1).pdf');
     
     if (!fs.existsSync(pdfPath)) {
       throw new Error(`PDF file not found at: ${pdfPath}`);

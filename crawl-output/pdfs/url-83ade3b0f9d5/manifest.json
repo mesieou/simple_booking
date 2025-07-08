@@ -1,0 +1,92 @@
+{
+  "sourceUrl": "pdf-Luisa FAQ whatsapp conversations (1).pdf#page=1",
+  "pageTitle": "Luisa FAQ whatsapp conversations (1).pdf - Page 1",
+  "isPdf": true,
+  "totalLlmChunks": 12,
+  "documents": [
+    {
+      "documentId": "336993b7-75a1-4a74-9d6a-0dbd1684a91a",
+      "chunkOrder": 1,
+      "category": "faq",
+      "originalTextLength": 192,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "d3bb3753-cac3-40e0-8368-df9528dbc127",
+      "chunkOrder": 2,
+      "category": "faq",
+      "originalTextLength": 246,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "c52dca2a-29e3-4602-918f-d0ed4743bd27",
+      "chunkOrder": 3,
+      "category": "terms & conditions / legal policies",
+      "originalTextLength": 348,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "95695384-83d7-4291-8b91-2cc1cfadc431",
+      "chunkOrder": 4,
+      "category": "faq",
+      "originalTextLength": 257,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "425870dd-3668-4ebc-9d4a-d2eb4916319e",
+      "chunkOrder": 1,
+      "category": "faq",
+      "originalTextLength": 175,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "22590028-5c0c-4f23-8c20-d25db86edae5",
+      "chunkOrder": 2,
+      "category": "faq",
+      "originalTextLength": 203,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "12f31c2f-d657-41cd-a595-916d656ea436",
+      "chunkOrder": 3,
+      "category": "faq",
+      "originalTextLength": 211,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "5e840a40-aa35-4431-b292-df5c59dcc59e",
+      "chunkOrder": 4,
+      "category": "faq",
+      "originalTextLength": 205,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "0e2b6416-e9c8-4206-9068-35e32fdeb2ff",
+      "chunkOrder": 5,
+      "category": "faq",
+      "originalTextLength": 160,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "c1c68d0f-d14d-4959-9f0a-14f5e515e832",
+      "chunkOrder": 6,
+      "category": "faq",
+      "originalTextLength": 212,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "b98446fb-c1af-4d8f-92c9-9838c997bcef",
+      "chunkOrder": 7,
+      "category": "faq",
+      "originalTextLength": 39,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "4b6482c7-d8b8-4dcf-8668-58ed49994757",
+      "chunkOrder": 1,
+      "category": "faq",
+      "originalTextLength": 338,
+      "preChunkSourceIndex": 0
+    }
+  ]
+}

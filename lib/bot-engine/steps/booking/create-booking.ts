@@ -229,6 +229,7 @@ export const createBookingHandler: IndividualStepHandler = {
       // Get provider contact information and business payment preferences
       let providerContactInfo = '';
       let preferredPaymentMethod = getUserLanguage(chatContext) === 'es' ? 'efectivo/tarjeta' : 'cash/card';
+      let businessType = 'unknown';
       
       try {
         // Get provider (user) contact info
@@ -244,11 +245,13 @@ export const createBookingHandler: IndividualStepHandler = {
           console.log('[CreateBooking] Provider contact info:', providerContactInfo);
         }
         
-        // Get business payment preferences
+        // Get business payment preferences and type
         const business = await Business.getById(businessId);
         if (business && business.preferredPaymentMethod) {
           preferredPaymentMethod = business.preferredPaymentMethod;
         }
+        // Store business type for remaining balance label
+        businessType = business?.businessCategory || 'unknown';
       } catch (error) {
         console.warn('[CreateBooking] Could not fetch provider/business details for confirmation');
       }
@@ -320,9 +323,15 @@ export const createBookingHandler: IndividualStepHandler = {
 
       // Add payment details if applicable
       if (showPaymentDetails) {
+        // Use "Estimate Remaining Balance" for removalists
+        const isRemovalist = businessType?.toLowerCase() === 'removalist';
+        const amountOwedLabel = isRemovalist 
+          ? (getUserLanguage(chatContext) === 'es' ? 'Balance Restante Estimado:' : 'Estimate Remaining Balance:')
+          : t.BOOKING_CONFIRMATION.AMOUNT_OWED;
+        
         confirmationMessage += `${t.BOOKING_CONFIRMATION.PAYMENT_DETAILS}\n` +
           `   ${t.BOOKING_CONFIRMATION.AMOUNT_PAID} $${amountPaid.toFixed(2)}\n` +
-          (amountOwed > 0 ? `   ${t.BOOKING_CONFIRMATION.AMOUNT_OWED} $${amountOwed.toFixed(2)}\n` : '') +
+          (amountOwed > 0 ? `   ${amountOwedLabel} $${amountOwed.toFixed(2)}\n` : '') +
           (amountOwed > 0 ? `   ${t.BOOKING_CONFIRMATION.PAYMENT_METHOD} ${preferredPaymentMethod}\n` : '') +
           `\n`;
       }

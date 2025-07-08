@@ -644,8 +644,21 @@ export class MessageProcessor {
     }
 
     // Handle conditional or continued auto-advance
-    const shouldContinueAutoAdvance = stepHandler.autoAdvance || userCurrentGoal.collectedData.shouldAutoAdvance;
+    // CRITICAL FIX: Respect explicit shouldAutoAdvance: false to prevent infinite loops
+    const shouldAutoAdvanceFlag = userCurrentGoal.collectedData.shouldAutoAdvance;
+    const shouldContinueAutoAdvance = shouldAutoAdvanceFlag === false 
+      ? false 
+      : (stepHandler.autoAdvance || shouldAutoAdvanceFlag === true);
+    
     const currentSteps = conversationFlowBlueprints[userCurrentGoal.flowKey];
+    
+    console.log('[MessageProcessor] Auto-advance decision:', {
+      stepName: conversationFlowBlueprints[userCurrentGoal.flowKey][userCurrentGoal.currentStepIndex],
+      stepHandlerAutoAdvance: stepHandler.autoAdvance,
+      shouldAutoAdvanceFlag,
+      shouldContinueAutoAdvance,
+      hasNextStep: userCurrentGoal.currentStepIndex + 1 < currentSteps.length
+    });
     
     if (shouldContinueAutoAdvance && userCurrentGoal.currentStepIndex + 1 < currentSteps.length) {
       return this.continueAutoAdvance(userCurrentGoal, currentContext);
@@ -677,8 +690,8 @@ export class MessageProcessor {
   ): Promise<{ responseToUser: string; uiButtonsToDisplay?: ButtonConfig[] }> {
     console.log(`[MessageProcessor] Continuing auto-advance`);
 
-    // Reset conditional auto-advance flag
-    if (userCurrentGoal.collectedData.shouldAutoAdvance) {
+    // Reset conditional auto-advance flag (only if it was explicitly set to true)
+    if (userCurrentGoal.collectedData.shouldAutoAdvance === true) {
       userCurrentGoal.collectedData.shouldAutoAdvance = false;
     }
 

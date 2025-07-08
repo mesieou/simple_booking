@@ -17,9 +17,9 @@ export interface QuoteEstimation {
 
 export function calculateServiceCost(service: ServiceData): number {
   if (service.pricingType === 'fixed') {
-    return service.fixedPrice ?? 0;
+    return Math.round(service.fixedPrice ?? 0);
   }
-  return (service.durationEstimate ?? 0) * (service.ratePerMinute ?? 0);
+  return Math.round((service.durationEstimate ?? 0) * (service.ratePerMinute ?? 0));
 }
 
 export function calculateTravelCost(
@@ -29,7 +29,7 @@ export function calculateTravelCost(
   if (!service.mobile || service.pricingType === 'fixed') {
     return 0;
   }
-  return (travelTimeEstimate ?? 0) * (service.ratePerMinute ?? 0);
+  return Math.round((travelTimeEstimate ?? 0) * (service.ratePerMinute ?? 0));
 }
 
 export function calculateTotalJobDuration(
@@ -78,8 +78,10 @@ export function calculateTotalJobCost(
   let totalJobCost = serviceCost + travelCost;
 
   if (shouldApplyBaseCharge(service, totalJobCost)) {
-    totalJobCost = service.baseCharge!;
-    travelCost = service.baseCharge! - serviceCost;
+    totalJobCost = Math.round(service.baseCharge!);
+    travelCost = Math.round(service.baseCharge! - serviceCost);
+  } else {
+    totalJobCost = Math.round(totalJobCost);
   }
 
   return { totalJobCost, serviceCost, travelCost };

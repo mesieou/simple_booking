@@ -54,6 +54,7 @@ export const bookingConfirmationHandler: IndividualStepHandler = {
     let amountPaid = 0;
     let amountOwed = 0;
     let showPaymentDetails = false;
+    let businessType = 'unknown';
     
     if (businessId) {
       try {
@@ -69,12 +70,14 @@ export const bookingConfirmationHandler: IndividualStepHandler = {
           providerContactInfo = [providerPhone, providerEmail].filter(Boolean).join(' • ');
         }
         
-        // Get business payment preferences
+        // Get business payment preferences and type
         const { Business } = await import('@/lib/database/models/business');
         const business = await Business.getById(businessId);
         if (business) {
           preferredPaymentMethod = business.preferredPaymentMethod || '';
         }
+        // Store business type for remaining balance label
+        businessType = business?.businessCategory || 'unknown';
       } catch (error) {
         console.warn('[BookingConfirmation] Could not fetch provider/business details');
       }
@@ -112,9 +115,16 @@ export const bookingConfirmationHandler: IndividualStepHandler = {
 
     // Add payment details if applicable
     if (showPaymentDetails) {
+      // Use "Estimate Remaining Balance" for removalists
+      const isRemovalist = businessType?.toLowerCase() === 'removalist';
+      const { getUserLanguage } = await import('./booking-utils');
+      const amountOwedLabel = isRemovalist 
+        ? (getUserLanguage(chatContext) === 'es' ? 'Balance Restante Estimado:' : 'Estimate Remaining Balance:')
+        : getLocalizedText(chatContext, 'BOOKING_CONFIRMATION.AMOUNT_OWED');
+      
       confirmationMessage += `${getLocalizedText(chatContext, 'BOOKING_CONFIRMATION.PAYMENT_DETAILS')}\n` +
         `   ${getLocalizedText(chatContext, 'BOOKING_CONFIRMATION.AMOUNT_PAID')} $${amountPaid.toFixed(2)}\n` +
-        (amountOwed > 0 ? `   ${getLocalizedText(chatContext, 'BOOKING_CONFIRMATION.AMOUNT_OWED')} $${amountOwed.toFixed(2)}\n` : '') +
+        (amountOwed > 0 ? `   ${amountOwedLabel} $${amountOwed.toFixed(2)}\n` : '') +
         (amountOwed > 0 && preferredPaymentMethod ? `   ${getLocalizedText(chatContext, 'BOOKING_CONFIRMATION.PAYMENT_METHOD')} ${preferredPaymentMethod}\n` : '') +
         `\n`;
     }

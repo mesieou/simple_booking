@@ -1,55 +1,43 @@
-import { NextResponse } from 'next/server';
-// Correcting import path to be relative for potentially better module resolution
-import { createLuisaTestBusinessForProduction, type LuisaTestBusinessSeedResult } from '@/lib/database/seed/create-luisa-test-business';
-// Supabase client is not strictly needed here as createLuisaTestBusiness uses models 
-// that internally call createClient(), but it's good practice for API routes to manage clients if needed.
-// import { createClient } from '@/lib/database/supabase/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { createLuisaTestBusiness } from '@/lib/database/seed/create-luisa-test-business';
 
-export async function POST(request: Request) {
+export async function POST(req: NextRequest) {
   try {
-    // const supabase = createClient(); // If you were to pass it to createLuisaTestBusiness
-    console.log("[SEED] Starting Luisa's test business seeding process...");
-    const result: LuisaTestBusinessSeedResult = await createLuisaTestBusinessForProduction();
+    console.log('💄 Starting Luisa business seed via API...');
     
-    console.log("[SEED] Successfully seeded Luisa's test business:", {
-      businessId: result.businessId,
-      ownerProviderId: result.ownerProviderId,
-      serviceCount: result.serviceIds.length,
-      calendarSettingsId: result.calendarSettingsId
-    });
-
+    const result = await createLuisaTestBusiness();
+    
     return NextResponse.json({
-      message: "Luisa's test business seeded successfully",
-      data: result
-    });
-
-  } catch (error) {
-    // Enhanced error logging
-    console.error("[SEED ERROR] Detailed error information:", {
-      name: error instanceof Error ? error.name : 'Unknown',
-      message: error instanceof Error ? error.message : 'No message available',
-      stack: error instanceof Error ? error.stack : 'No stack trace',
-      // If it's a ModelError, log the original error
-      originalError: error instanceof Error && 'originalError' in error ? error.originalError : null
-    });
-
-    // Check if it's a fetch error (which might indicate Supabase connection issues)
-    if (error instanceof Error && error.message.includes('fetch failed')) {
-      console.error("[SEED ERROR] Supabase connection issue detected. Please check:");
-      console.error("1. SUPABASE_URL environment variable is set correctly");
-      console.error("2. SUPABASE_ANON_KEY environment variable is set correctly");
-      console.error("3. Network connectivity to Supabase");
-    }
-
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    return NextResponse.json(
-      { 
-        error: 'Failed to seed Luisa\'s test business', 
-        details: errorMessage,
-        type: error instanceof Error ? error.name : 'Unknown',
-        timestamp: new Date().toISOString()
+      success: true,
+      message: '✅ Luisa business seed completed successfully!',
+      data: {
+        businessId: result.businessId,
+        ownerProviderId: result.ownerProviderId,
+        serviceCount: result.serviceIds.length,
+        calendarSettingsId: result.calendarSettingsId,
+        documentCount: result.documentIds.length
       },
-      { status: 500 }
-    );
+      instructions: {
+        whatsappNumber: '+61 411 851 098',
+        testMessage: 'Try asking about beauty services to test fixed pricing quotes!'
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Luisa seed failed:', error);
+    
+    return NextResponse.json({
+      success: false,
+      error: (error as Error).message,
+      fullError: error
+    }, { status: 500 });
   }
+}
+
+export async function GET(req: NextRequest) {
+  return NextResponse.json({
+    message: 'Use POST to run Luisa business seed',
+    warning: '💄 This will create Beauty Asiul business for development testing',
+    whatsappNumber: '+61 411 851 098'
+  });
 } 

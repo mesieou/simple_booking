@@ -1,0 +1,6 @@
+{
+  "rawResponse": "```json\n[\n  {\n    \"category\": 5,\n    \"content\": \"No. When asked, she confirmed she only attends in North Melbourne. 12. What if I can’t reach Luisa? Clients sometimes call or message repeatedly when arriving. If there's a delay, it’s best to: ● Message again via WhatsApp ● Wait in the lobby or outside Apt 111 ● Be patient, as she may be attending another client or caring for her child\",\n    \"confidence\": 0.9,\n    \"confidenceReason\": \"Content addresses specific questions and concerns, fitting the FAQ category.\"\n  }\n]\n```",
+  "responseLength": 525,
+  "parsedItemCount": 1,
+  "timestamp": "2025-07-08T00:17:00.425Z"
+}

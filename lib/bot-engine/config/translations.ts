@@ -27,6 +27,9 @@ export const BOOKING_TRANSLATIONS = {
       EDIT: 'Edit',
       CHANGE_SERVICE: 'Change Service',
       CHANGE_TIME: 'Change Date/Time',
+      CHANGE_ADDRESS: 'Change Address',
+      CHANGE_PICKUP: 'Change Pickup',
+      CHANGE_DROPOFF: 'Change Dropoff',
       SELECT: 'Select',
       ADD_ANOTHER_SERVICE: '➕ Add Another Service',
       CONTINUE_WITH_SERVICES: '✅ Continue'
@@ -118,6 +121,29 @@ export const BOOKING_TRANSLATIONS = {
       CONFIRM_QUESTION: '{name}, would you like to confirm this quote?',
       MINUTES: 'minutes'
     },
+    QUOTE_TEMPLATES: {
+      LABELS: {
+        SERVICE_SINGLE: '💼 Service:',
+        SERVICES_MULTIPLE: '💼 Services:',
+        TRAVEL_SHORT: '🚗 Travel'
+      },
+      FIXED: {
+        PER_MINUTE_LABEL: 'per minute',
+        COSTS_LABEL: 'Costs:',
+        TRAVEL_COST_LABEL: 'Travel Cost',
+        ESTIMATED_LABOUR_LABEL: 'Estimated Labour cost',
+        TOTAL_ESTIMATED_LABEL: 'Total Estimated cost',
+        TOTAL_COST_LABEL: 'Total Cost'
+      },
+      PER_MINUTE: {
+        PER_MINUTE_LABEL: 'per minute',
+        COSTS_LABEL: 'Costs:',
+        TRAVEL_COST_LABEL: 'Travel Cost',
+        ESTIMATED_LABOUR_LABEL: 'Estimated Labour cost',
+        TOTAL_ESTIMATED_LABEL: 'Total Estimated cost',
+        TOTAL_COST_LABEL: 'Total Cost'
+      }
+    },
     BOOKING_CONFIRMATION: {
       TITLE: '🎉 {name}, your booking is confirmed!',
       SERVICE: '💼 Service:',
@@ -170,6 +196,9 @@ export const BOOKING_TRANSLATIONS = {
       EDIT: 'Editar',
       CHANGE_SERVICE: 'Cambiar Servicio',
       CHANGE_TIME: 'Cambiar Fecha/Hora',
+      CHANGE_ADDRESS: 'Cambiar Dirección',
+      CHANGE_PICKUP: 'Cambiar Recogida',
+      CHANGE_DROPOFF: 'Cambiar Entrega',
       SELECT: 'Seleccionar',
       ADD_ANOTHER_SERVICE: '➕ Agregar Otro Servicio',
       CONTINUE_WITH_SERVICES: '✅ Continuar'
@@ -260,6 +289,29 @@ export const BOOKING_TRANSLATIONS = {
       QUOTE_ID: 'ID de Cotización:',
       CONFIRM_QUESTION: '{name}, ¿te gustaría confirmar esta cotización?',
       MINUTES: 'minutos'
+    },
+    QUOTE_TEMPLATES: {
+      LABELS: {
+        SERVICE_SINGLE: '💼 Servicio:',
+        SERVICES_MULTIPLE: '💼 Servicios:',
+        TRAVEL_SHORT: '🚗 Viaje'
+      },
+      FIXED: {
+        PER_MINUTE_LABEL: 'por minuto',
+        COSTS_LABEL: 'Costos:',
+        TRAVEL_COST_LABEL: 'Costo de Viaje',
+        ESTIMATED_LABOUR_LABEL: 'Costo Estimado de Mano de Obra',
+        TOTAL_ESTIMATED_LABEL: 'Costo Total Estimado',
+        TOTAL_COST_LABEL: 'Costo Total'
+      },
+      PER_MINUTE: {
+        PER_MINUTE_LABEL: 'por minuto',
+        COSTS_LABEL: 'Costos:',
+        TRAVEL_COST_LABEL: 'Costo de Viaje',
+        ESTIMATED_LABOUR_LABEL: 'Costo Estimado de Mano de Obra',
+        TOTAL_ESTIMATED_LABEL: 'Costo Total Estimado',
+        TOTAL_COST_LABEL: 'Costo Total'
+      }
     },
     BOOKING_CONFIRMATION: {
       TITLE: '🎉 ¡{name}, tu reserva está confirmada!',

@@ -7,8 +7,24 @@ export const validateAddressHandler: IndividualStepHandler = {
   validateUserInput: async (userInput, currentGoalData, chatContext) => {
     console.log('[ValidateAddress] Validating input:', userInput);
     
-    // Detect context: if we have dropoffAddress field, we're validating dropoff
-    const isValidatingDropoff = !!currentGoalData.dropoffAddress;
+    // Detect context: determine which address needs validation based on validation flags
+    // Priority: check which validation flag is false (indicates unvalidated address)
+    const needsPickupValidation = !!currentGoalData.pickupAddress && !currentGoalData.pickupAddressValidated;
+    const needsDropoffValidation = !!currentGoalData.dropoffAddress && !currentGoalData.dropoffAddressValidated;
+    
+    let isValidatingDropoff = false;
+    if (needsPickupValidation && !needsDropoffValidation) {
+      isValidatingDropoff = false; // Validate pickup
+    } else if (!needsPickupValidation && needsDropoffValidation) {
+      isValidatingDropoff = true; // Validate dropoff  
+    } else if (needsPickupValidation && needsDropoffValidation) {
+      // Both need validation - default to pickup first
+      isValidatingDropoff = false;
+    } else {
+      // Fallback to old logic if no clear indicators
+      isValidatingDropoff = !!currentGoalData.dropoffAddress;
+    }
+    
     const currentValidationFlag = isValidatingDropoff ? currentGoalData.dropoffAddressValidated : currentGoalData.pickupAddressValidated;
     
     console.log('[ValidateAddress] Current validation state:', {
@@ -16,7 +32,13 @@ export const validateAddressHandler: IndividualStepHandler = {
       currentValidationFlag,
       isAddressValidated: currentGoalData.isAddressValidated,
       lastErrorMessage: currentGoalData.lastErrorMessage,
-      hasCustomerAddress: !!currentGoalData.customerAddress
+      hasCustomerAddress: !!currentGoalData.customerAddress,
+      needsPickupValidation,
+      needsDropoffValidation,
+      pickupAddress: currentGoalData.pickupAddress,
+      dropoffAddress: currentGoalData.dropoffAddress,
+      pickupAddressValidated: currentGoalData.pickupAddressValidated,
+      dropoffAddressValidated: currentGoalData.dropoffAddressValidated
     });
     
     // Handle address confirmation buttons - always valid
@@ -124,10 +146,35 @@ export const validateAddressHandler: IndividualStepHandler = {
     console.log('[ValidateAddress] Current customerAddress:', currentGoalData.customerAddress);
     console.log('[ValidateAddress] IsAddressValidated:', currentGoalData.isAddressValidated);
     
-    // Detect context: if we have dropoffAddress field, we're validating dropoff
-    const isValidatingDropoff = !!currentGoalData.dropoffAddress;
+    // Detect context: determine which address needs validation based on validation flags
+    // Priority: check which validation flag is false (indicates unvalidated address)
+    const needsPickupValidation = !!currentGoalData.pickupAddress && !currentGoalData.pickupAddressValidated;
+    const needsDropoffValidation = !!currentGoalData.dropoffAddress && !currentGoalData.dropoffAddressValidated;
+    
+    let isValidatingDropoff = false;
+    if (needsPickupValidation && !needsDropoffValidation) {
+      isValidatingDropoff = false; // Validate pickup
+    } else if (!needsPickupValidation && needsDropoffValidation) {
+      isValidatingDropoff = true; // Validate dropoff  
+    } else if (needsPickupValidation && needsDropoffValidation) {
+      // Both need validation - default to pickup first
+      isValidatingDropoff = false;
+    } else {
+      // Fallback to old logic if no clear indicators
+      isValidatingDropoff = !!currentGoalData.dropoffAddress;
+    }
+    
     const currentValidationFlag = isValidatingDropoff ? currentGoalData.dropoffAddressValidated : currentGoalData.pickupAddressValidated;
     console.log('[ValidateAddress] Context detected - validating dropoff:', isValidatingDropoff);
+    console.log('[ValidateAddress] Context detection details:', {
+      needsPickupValidation,
+      needsDropoffValidation,
+      pickupAddress: currentGoalData.pickupAddress,
+      dropoffAddress: currentGoalData.dropoffAddress,
+      pickupAddressValidated: currentGoalData.pickupAddressValidated,
+      dropoffAddressValidated: currentGoalData.dropoffAddressValidated,
+      customerAddress: currentGoalData.customerAddress
+    });
     
     // Handle user clicking "edit address" - clear validation and go back to ask for address
     if (validatedInput === 'address_edit') {

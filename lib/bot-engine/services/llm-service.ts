@@ -130,8 +130,20 @@ INTENT CLASSIFICATION:
 **CONTEXT ANALYSIS FOR GO_BACK:**
 - If user is currently in service selection and says "change service" → interpret as clarification, use "continue"
 - If user has already selected a service and says "change service" → use "go_back" with targetStep: "selectService"
-- If user has selected time and says "change time" → use "go_back" with targetStep: "selectTime"
-- If user has entered address and says "change address" → use "go_back" with targetStep: "addressEntry"
+- If user has selected time and says "change time" → use "go_back" with targetStep: "showAvailableTimes"
+- If user has entered address and says "change address" → use "go_back" with targetStep: "askPickupAddress"
+
+**ADDRESS-SPECIFIC DETECTION:**
+- If user mentions "pickup", "pick up", "collection", "from" address → targetStep: "askPickupAddress"
+- If user mentions "dropoff", "drop off", "delivery", "to", "destination" address → targetStep: "askDropoffAddress"
+- If user says generic "address" or "location" without specifying → targetStep: "askPickupAddress" (default)
+
+**EXAMPLES:**
+- "can i change the pickup address" → go_back, targetStep: "askPickupAddress"
+- "can i change the drop off address" → go_back, targetStep: "askDropoffAddress"
+- "change the delivery address" → go_back, targetStep: "askDropoffAddress"  
+- "change the collection point" → go_back, targetStep: "askPickupAddress"
+- "change address" → go_back, targetStep: "askPickupAddress" (default)
 
 **CONFIDENCE SCORING:**
 - High confidence (0.8+): Clear action words present or obvious navigation intent
@@ -148,7 +160,7 @@ INTENT CLASSIFICATION:
 Return ONLY JSON:
 {
   "action": "continue|advance|go_back|switch_topic|restart",
-  "targetStep": "stepName (if go_back - use: selectService, selectTime, selectLocation, etc.)",
+  "targetStep": "stepName (if go_back - use: selectService, showAvailableTimes, askPickupAddress, askDropoffAddress, etc.)",
   "newGoalType": "serviceBooking|serviceInquiry (if switch_topic)",
   "newGoalAction": "create|inquire (if switch_topic)", 
   "confidence": 0.8,
@@ -819,70 +831,86 @@ Analyze this message and determine if an escalation is required. Return ONLY the
         jsonText = resultText.substring(jsonStart, jsonEnd);
       }
 
-      return JSON.parse(jsonText) as EscalationAnalysis;
+      const parsedResult = JSON.parse(jsonText) as EscalationAnalysis;
+      
+      return {
+        escalate: parsedResult.escalate || false,
+        reason: parsedResult.reason || 'none',
+        summary_for_agent: parsedResult.summary_for_agent || ''
+      };
 
     } catch (error) {
-      console.error('[IntelligentLLMService] Error in escalation analysis:', error);
+      console.error('[LLMService] Error in escalation analysis:', error);
       return { escalate: false, reason: 'none', summary_for_agent: '' };
     }
   }
 
   /**
-   * Translates a single text or an array of texts to a target language.
-   * @param texts The text or array of texts to translate.
-   * @param targetLanguage The target language code (e.g., 'es' for Spanish).
-   * @returns A promise that resolves to the translated text or array of texts.
+   * Translates an array of text strings to the target language
    */
-  async translate(
-    texts: string | string[],
-    targetLanguage: string
-  ): Promise<string | string[]> {
-    const isSingleString = typeof texts === 'string';
-    const textsToTranslate = isSingleString ? [texts] : texts;
+  async translate(texts: string[], targetLanguage: string): Promise<string[]> {
+    if (!texts || texts.length === 0) {
+      return [];
+    }
 
-    if (!textsToTranslate || textsToTranslate.length === 0) {
+    // If target language is English, return as-is (assuming input is already English)
+    if (targetLanguage === 'en') {
       return texts;
     }
 
-    const systemPrompt = `You are a professional translation assistant. Translate the given JSON array of strings into the specified target language.
+    const systemPrompt = `You are a professional translator. Translate the provided texts to ${targetLanguage === 'es' ? 'Spanish' : targetLanguage}.
 
-RULES:
-- Maintain the original meaning and tone.
-- Do NOT change the order of the strings in the array.
-- Return ONLY a valid JSON array of the translated strings. For example: ["Hola", "Adiós"]
-- If a string contains a variable like '{{name}}' or an emoji, keep it in the translated string.
-- The target language is: ${targetLanguage}`;
+IMPORTANT RULES:
+- Maintain the original formatting and structure
+- Keep placeholders like {name}, {time}, etc. unchanged
+- Preserve WhatsApp formatting (*bold*, _italic_)
+- Translate naturally while keeping the professional booking context
+- Return ONLY a JSON array of translated strings in the same order
 
-    const userPrompt = JSON.stringify(textsToTranslate);
+Input will be an array of strings to translate.
+Output should be: ["translated text 1", "translated text 2", ...]`;
+
+    const userPrompt = `Translate these texts to ${targetLanguage === 'es' ? 'Spanish' : targetLanguage}:
+${JSON.stringify(texts)}`;
 
     try {
       const response = await executeChatCompletion(
         [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt },
+          { role: 'user', content: userPrompt }
         ],
         'gpt-4o',
-        0.1,
-        500 
+        0.3,
+        800
       );
 
       const resultText = response.choices[0]?.message?.content?.trim();
       if (!resultText) {
-        console.error('[IntelligentLLMService] Translation failed: No response from LLM.');
-        return texts; // Return original texts on failure
+        return texts; // Return original on failure
       }
 
-      const translatedArray = JSON.parse(resultText) as string[];
-
-      if (translatedArray.length !== textsToTranslate.length) {
-        console.error('[IntelligentLLMService] Translation failed: Mismatch in array length.');
-        return texts; // Return original texts on failure
+      // Parse JSON response
+      let jsonText = resultText;
+      if (resultText.includes('```')) {
+        const jsonStart = resultText.indexOf('[');
+        const jsonEnd = resultText.lastIndexOf(']') + 1;
+        if (jsonStart !== -1 && jsonEnd !== -1) {
+          jsonText = resultText.substring(jsonStart, jsonEnd);
+        }
       }
 
-      return isSingleString ? translatedArray[0] : translatedArray;
+      const translatedTexts = JSON.parse(jsonText);
+      
+      // Validate that we got an array of strings
+      if (Array.isArray(translatedTexts) && translatedTexts.length === texts.length) {
+        return translatedTexts;
+      }
+      
+      return texts; // Return original if validation fails
+
     } catch (error) {
-      console.error(`[IntelligentLLMService] Error during translation to ${targetLanguage}:`, error);
-      return texts; // Return original texts on error
+      console.error('[LLMService] Error in translation:', error);
+      return texts; // Return original on error
     }
   }
-} 
+}

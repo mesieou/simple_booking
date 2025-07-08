@@ -1,6 +1,7 @@
 import { franc } from 'franc-min';
 import { ChatContext } from '../types';
 import { executeChatCompletion } from '@/lib/shared/llm/openai/openai-core';
+import { conversationFlowBlueprints } from '@/lib/bot-engine/config/blueprints';
 
 export interface LanguageDetectionResult {
   detectedLanguage: string;
@@ -27,6 +28,24 @@ export class LanguageDetectionService {
   ): Promise<LanguageDetectionResult> {
     try {
       const existingLang = chatContext.participantPreferences.language || this.DEFAULT_LANGUAGE;
+      
+      // SKIP language detection during address collection steps
+      if (this.shouldSkipLanguageDetection(chatContext)) {
+        console.log(`${logPrefix} Skipping language detection for address collection step - preserving ${existingLang}`);
+        
+        // Ensure we have a language set
+        if (!chatContext.participantPreferences.language) {
+          chatContext.participantPreferences.language = this.DEFAULT_LANGUAGE;
+        }
+
+        return {
+          detectedLanguage: existingLang,
+          wasChanged: false,
+          confidence: 'low',
+          reason: 'Address collection step - language preserved'
+        };
+      }
+
       const messageLength = message.trim().length;
 
       // FIRST: Always skip system-generated messages completely
@@ -262,5 +281,29 @@ Examples:
       console.error('[LanguageDetection] LLM error:', error);
       return { language: null, confidence: 0, method: 'llm-error' };
     }
+  }
+
+  /**
+   * Determines if language detection should be skipped based on current conversation step
+   */
+  private static shouldSkipLanguageDetection(chatContext: ChatContext): boolean {
+    // Check if user is in an active booking goal
+    const activeGoal = chatContext.currentConversationSession?.activeGoals?.find(g => g.goalStatus === 'inProgress');
+    
+    if (!activeGoal) {
+      return false;
+    }
+
+    // Get current step name from blueprints
+    const currentStepName = conversationFlowBlueprints[activeGoal.flowKey]?.[activeGoal.currentStepIndex];
+    
+    // Skip language detection for address-related steps
+    const addressSteps = [
+      'askPickupAddress',
+      'askDropoffAddress', 
+      'validateAddress'
+    ];
+    
+    return addressSteps.includes(currentStepName);
   }
 } 

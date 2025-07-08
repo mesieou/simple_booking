@@ -1,0 +1,12 @@
+{
+  "sourceUrl": "pdf-Luisa FAQ whatsapp conversations (1).pdf#page=2",
+  "originalCleanedTextPath": "../../01_cleaned_text/cleaned_pdf_page.txt",
+  "maxCharsPerGptChunk": 6000,
+  "numberOfPreChunks": 1,
+  "preChunkFileNames": [
+    "pre_chunk_0.txt"
+  ],
+  "timestamp": "2025-07-08T00:16:56.779Z",
+  "sessionId": "f6ac0a74-491c-4415-9496-b6549ac6023f",
+  "domain": "Luisa FAQ whatsapp conversations (1).pdf"
+}

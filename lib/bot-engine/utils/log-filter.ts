@@ -144,6 +144,25 @@ class LogFilterManager {
       pattern: /===============================/,
       level: ['log', 'info'],
       action: 'suppress'
+    },
+
+    // Quote Summary - keep important journey/flow logs, reduce debug noise
+    {
+      pattern: /^\[QuoteSummary\] DEBUG/,
+      level: ['log', 'info'],
+      action: 'suppress'
+    },
+    {
+      pattern: /🚀.*\[QuoteSummary\].*Quote processing completed/,
+      level: ['log', 'info'],
+      action: 'simplify',
+      replacement: '💰 [Quote] Summary generated successfully'
+    },
+    {
+      pattern: /→.*\[QuoteSummary\].*Starting quote calculation/,
+      level: ['log', 'info'],
+      action: 'simplify',
+      replacement: '🧮 [Quote] Calculating pricing and details'
     }
   ];
 
