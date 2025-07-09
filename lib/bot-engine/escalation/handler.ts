@@ -8,6 +8,7 @@ import { Business } from '@/lib/database/models/business';
 import { User } from '@/lib/database/models/user';
 import { analyzeSentiment } from '@/lib/shared/llm/functions/sentiment-analiser';
 import { executeChatCompletion } from '@/lib/shared/llm/openai/openai-core';
+import { getSiteUrl } from '@/lib/config/auth-config';
 
 const LOG_PREFIX = '[EscalationHandler]';
 
@@ -389,7 +390,7 @@ async function sendEscalationNotification(
   const lang = language === 'es' ? 'es' : 'en';
   const t = i18n[lang];
   const sender = new WhatsappSender();
-  const dashboardLink = `https://skedy.io/protected?sessionId=${chatSessionId}`;
+  const dashboardLink = `${getSiteUrl()}/protected?sessionId=${chatSessionId}`;
 
   // Use different title for media redirections
   const notificationTitle = escalationReason === 'media_redirect' ? t.imageRedirectTitle : t.notificationTitle;
@@ -400,19 +401,32 @@ async function sendEscalationNotification(
   if (lastNMessages.length > 0) {
     historyText = lastNMessages.map(msg => {
       const roleIcon = msg.role === 'user' ? '👤' : (msg.role === 'staff' ? '👨‍💼' : '🤖');
-      return `${roleIcon}: ${msg.content}`;
+      
+      // Handle different content types (string vs BotResponse object)
+      let content = '';
+      if (typeof msg.content === 'string') {
+        content = msg.content;
+      } else if (msg.content && typeof msg.content === 'object') {
+        // Extract text from BotResponse object
+        content = (msg.content as any).text || '[Complex message]';
+      } else {
+        content = '[Unknown content]';
+      }
+      
+      return `${roleIcon}: ${content}`;
     }).join('\n');
   }
 
   // Use customer phone number if available
   const displayPhoneNumber = customerPhoneNumber || 'Unknown';
 
-  // Create the single message with the specified format
+  // Create message with prominent URL formatting
   const fullMessage = `${notificationTitle}
 
 ${t.clientLabel} ${customerName} (${displayPhoneNumber})
 
-${t.assistRequestText} ${dashboardLink}.
+🔗 *${t.assistRequestText}:*
+${dashboardLink}
 
 ${t.historyTitle}
 

@@ -174,12 +174,25 @@ export class EscalationCommandHandler {
     const { parsedMessage, participant, chatContext, userContext, historyForLLM, customerUser } = context;
     
     if (chatContext.currentConversationSession) {
+      // Fetch actual chat history for escalation
+      let chatHistory: any[] = [];
+      try {
+        const { ChatSession } = await import('@/lib/database/models/chat-session');
+        const sessionData = await ChatSession.getById(chatContext.currentConversationSession.id);
+        if (sessionData && sessionData.allMessages) {
+          chatHistory = sessionData.allMessages;
+          console.log(`[EscalationCommandHandler] Retrieved ${chatHistory.length} messages from chat history`);
+        }
+      } catch (error) {
+        console.error('[EscalationCommandHandler] Error fetching chat history:', error);
+      }
+      
       const escalationResult = await handleEscalationOrAdminCommand(
         parsedMessage.text || '',
         participant,
         chatContext,
         userContext,
-        [], // Pass empty array since we don't have ChatMessage[] format here
+        chatHistory, // Pass actual chat history
         customerUser ? {
           firstName: customerUser.firstName || '',
           lastName: customerUser.lastName || '',
@@ -199,9 +212,6 @@ export class EscalationCommandHandler {
         });
         
         if (escalationResult.response) {
-          const sender = new WhatsappSender();
-          await sender.sendMessage(parsedMessage.senderId, escalationResult.response, parsedMessage.recipientId);
-          
           chatContext.currentConversationSession.sessionStatus = 'escalated';
           await persistSessionState(
             context.sessionId, 
@@ -449,8 +459,8 @@ export class MessageProcessor {
       EscalationHandler,
       LanguageHandler,
       StickerHandler,
-      EscalationCommandHandler,
       AudioHandler,
+      EscalationCommandHandler,
       ConversationFlowHandler
     ];
 

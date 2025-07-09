@@ -50,7 +50,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={cn(inter.className)}>
-      <body className="bg-background text-foreground">
+      <body className="bg-background text-foreground" suppressHydrationWarning={true}>
         <AuthProvider>
           <LayoutSwitcher>{children}</LayoutSwitcher>
         </AuthProvider>

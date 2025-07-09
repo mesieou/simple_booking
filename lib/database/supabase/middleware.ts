@@ -49,7 +49,7 @@ export async function updateSession(request: NextRequest) {
         
       const supabaseServiceKey = isProduction 
         ? (process.env.SUPABASE_PROD_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY)
-        : process.env.SUPABASE_SERVICE_ROLE_KEY;
+        : (process.env.SUPABASE_DEV_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY);
 
       if (!supabaseUrl || !supabaseServiceKey) {
         console.error('[Middleware] Missing admin client credentials:', {
