@@ -113,6 +113,17 @@ export async function POST(req: NextRequest) {
   try {
     const payload = JSON.parse(rawBody) as WebhookAPIBody;
     
+    // 🚨 TEMPORARY DEBUG: Log the full webhook payload to see what Meta is actually sending
+    console.log(`${LOG_PREFIX} 🔍 DEBUG - Full webhook payload:`, JSON.stringify(payload, null, 2));
+    
+    // Extract phone_number_id manually for debugging
+    const debugPhoneNumberId = payload.entry?.[0]?.changes?.[0]?.value?.metadata?.phone_number_id;
+    console.log(`${LOG_PREFIX} 🔍 DEBUG - Extracted phone_number_id:`, debugPhoneNumberId);
+    
+    // Check if there are multiple entries or changes
+    console.log(`${LOG_PREFIX} 🔍 DEBUG - Entry count:`, payload.entry?.length);
+    console.log(`${LOG_PREFIX} 🔍 DEBUG - Changes count:`, payload.entry?.[0]?.changes?.length);
+    
     // --- Multi-Tenant Phone Number ID Routing ---
     const routingResult: BusinessRoutingResult = await WebhookRouter.routeByPhoneNumberId(payload);
     

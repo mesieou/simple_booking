@@ -5,9 +5,9 @@
 async function findBusinessPhoneIds() {
   try {
     // Import the Business model (this works in a script context)
-    const { createClient } = await import('../lib/database/supabase/server.js');
+    const { getEnvironmentServiceRoleClient } = await import('../lib/database/supabase/environment.ts');
     
-    const supabase = await createClient();
+    const supabase = getEnvironmentServiceRoleClient();
     
     const { data: businesses, error } = await supabase
       .from('businesses')
