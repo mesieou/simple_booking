@@ -157,12 +157,12 @@ export async function POST(req: NextRequest) {
     const customerPhoneNumber = sessionData.channelUserId;
 
     try {
-      await whatsappSender.sendMessage(
+      const whatsappMessageId = await whatsappSender.sendMessage(
         customerPhoneNumber, 
         { text: message.trim() }, 
         businessPhoneNumberId
       );
-      console.log("[StaffReply] WhatsApp message sent successfully");
+      console.log(`[StaffReply] WhatsApp message sent successfully (Message ID: ${whatsappMessageId || 'unknown'})`);
     } catch (whatsappError) {
       console.error("[StaffReply] WhatsApp sending failed:", whatsappError);
       

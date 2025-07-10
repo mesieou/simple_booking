@@ -111,8 +111,8 @@ export class ResponseSender {
 
       console.log(`${LOG_PREFIX} Attempting to send reply to ${senderId}: "${botResponse.text}"`);
       const sender = new WhatsappSender();
-      await sender.sendMessage(recipientId, botResponse, businessPhoneNumberId);
-      console.log(`${LOG_PREFIX} Reply successfully sent via WhatsappSender to ${senderId}`);
+      const whatsappMessageId = await sender.sendMessage(recipientId, botResponse, businessPhoneNumberId);
+      console.log(`${LOG_PREFIX} Reply successfully sent via WhatsappSender to ${senderId} (Message ID: ${whatsappMessageId || 'unknown'})`);
       return true;
     } catch (sendError) {
       console.error(`${LOG_PREFIX} Error sending reply via WhatsappSender to ${senderId}:`, sendError);

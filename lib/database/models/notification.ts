@@ -7,7 +7,7 @@ const NOTIFICATIONS_TABLE_NAME = 'notifications';
 export type NotificationStatus = 'pending' | 'attending' | 'provided_help' | 'ignored' | 'wrong_activation';
 
 // NEW: Delivery status tracking
-export type DeliveryStatus = 'pending' | 'sent' | 'failed' | 'retry_scheduled';
+export type DeliveryStatus = 'pending' | 'sent' | 'delivered' | 'read' | 'failed' | 'retry_scheduled';
 
 export interface NotificationData {
   id: string;
@@ -22,6 +22,7 @@ export interface NotificationData {
   lastDeliveryAttempt?: string;
   deliveryError?: string;
   targetPhoneNumber?: string;
+  whatsappMessageId?: string;
 }
 
 export interface DashboardNotificationData {
@@ -36,6 +37,7 @@ export interface DashboardNotificationData {
   // NEW: Delivery info for dashboard
   deliveryStatus?: DeliveryStatus;
   deliveryError?: string;
+  whatsappMessageId?: string;
 }
 
 export class Notification {
@@ -51,6 +53,7 @@ export class Notification {
   lastDeliveryAttempt?: string;
   deliveryError?: string;
   targetPhoneNumber?: string;
+  whatsappMessageId?: string;
 
   private static _tableName = NOTIFICATIONS_TABLE_NAME;
 
@@ -66,6 +69,7 @@ export class Notification {
     this.lastDeliveryAttempt = data.lastDeliveryAttempt;
     this.deliveryError = data.deliveryError;
     this.targetPhoneNumber = data.targetPhoneNumber;
+    this.whatsappMessageId = data.whatsappMessageId;
   }
 
   static fromRow(row: any): Notification {
@@ -82,6 +86,7 @@ export class Notification {
       lastDeliveryAttempt: row.lastDeliveryAttempt,
       deliveryError: row.deliveryError,
       targetPhoneNumber: row.targetPhoneNumber,
+      whatsappMessageId: row.whatsappMessageId,
     });
   }
 
@@ -542,7 +547,7 @@ export class Notification {
       const { error } = await supabase
         .from(this._tableName)
         .update({
-          deliveryStatus: 'sent',
+          deliveryStatus: 'sent', // Changed from 'sent' to be more accurate - this is just API acceptance
           lastDeliveryAttempt: new Date().toISOString(),
         })
         .eq('id', notificationId);
@@ -552,9 +557,100 @@ export class Notification {
         throw error;
       }
 
-      console.log(`[NotificationDB] Marked notification ${notificationId} as successfully delivered`);
+      console.log(`[NotificationDB] Marked notification ${notificationId} as sent to WhatsApp API`);
     } catch (error) {
       console.error(`[NotificationDB] Exception marking delivery success:`, error);
+      throw error;
+    }
+  }
+
+  // NEW: Track delivery success with WhatsApp message ID
+  static async markDeliverySuccessWithMessageId(notificationId: string, whatsappMessageId: string | null): Promise<void> {
+    try {
+      const supabase = getEnvironmentServiceRoleClient();
+      const updateData: any = {
+        deliveryStatus: 'sent',
+        lastDeliveryAttempt: new Date().toISOString(),
+      };
+      
+      if (whatsappMessageId) {
+        updateData.whatsappMessageId = whatsappMessageId;
+      }
+      
+      const { error } = await supabase
+        .from(this._tableName)
+        .update(updateData)
+        .eq('id', notificationId);
+
+      if (error) {
+        console.error(`[NotificationDB] Error marking delivery success with message ID:`, error);
+        throw error;
+      }
+
+      console.log(`[NotificationDB] Marked notification ${notificationId} as sent to WhatsApp API (Message ID: ${whatsappMessageId || 'none'})`);
+    } catch (error) {
+      console.error(`[NotificationDB] Exception marking delivery success:`, error);
+      throw error;
+    }
+  }
+
+  // NEW: Update delivery status by WhatsApp message ID
+  static async updateDeliveryStatusByMessageId(
+    whatsappMessageId: string, 
+    status: 'sent' | 'delivered' | 'read' | 'failed',
+    errorMessage?: string
+  ): Promise<void> {
+    try {
+      const supabase = getEnvironmentServiceRoleClient();
+      
+      const updateData: any = {
+        deliveryStatus: status,
+        lastDeliveryAttempt: new Date().toISOString(),
+      };
+      
+      if (errorMessage) {
+        updateData.deliveryError = errorMessage;
+      }
+      
+      // Try to find by exact WhatsApp message ID match first
+      const { data: updated, error } = await supabase
+        .from(this._tableName)
+        .update(updateData)
+        .eq('whatsappMessageId', whatsappMessageId)
+        .select('id, targetPhoneNumber');
+
+      if (error) {
+        console.error(`[NotificationDB] Error updating delivery status by message ID:`, error);
+        throw error;
+      }
+
+      if (updated && updated.length > 0) {
+        console.log(`[NotificationDB] Updated notification ${updated[0].id} status to: ${status} (Message ID: ${whatsappMessageId})`);
+      } else {
+        // Fallback: try to match by recent timestamp and sent status for backward compatibility
+        console.log(`[NotificationDB] No exact match for message ID ${whatsappMessageId}, trying fallback matching...`);
+        
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+        
+        const { data: fallbackUpdated, error: fallbackError } = await supabase
+          .from(this._tableName)
+          .update(updateData)
+          .gte('createdAt', oneHourAgo) // Only recent notifications
+          .eq('deliveryStatus', 'sent') // Only notifications that were previously sent
+          .is('whatsappMessageId', null) // Only notifications without stored message ID
+          .select('id, targetPhoneNumber')
+          .limit(1);
+
+        if (fallbackError) {
+          console.error(`[NotificationDB] Error in fallback update:`, fallbackError);
+        } else if (fallbackUpdated && fallbackUpdated.length > 0) {
+          console.log(`[NotificationDB] Fallback updated notification ${fallbackUpdated[0].id} status to: ${status}`);
+        } else {
+          console.log(`[NotificationDB] No matching notification found for WhatsApp message: ${whatsappMessageId}`);
+        }
+      }
+    } catch (error) {
+      console.error(`[NotificationDB] Exception updating delivery status:`, error);
       throw error;
     }
   }

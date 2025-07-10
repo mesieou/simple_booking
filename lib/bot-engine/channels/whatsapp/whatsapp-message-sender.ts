@@ -225,7 +225,7 @@ export class WhatsappSender implements IMessageSender {
 
   // Sends HTTP request to WhatsApp API
   // AHORA NECESITA EL ID DEL NÚMERO DE TELÉFONO
-  private async sendToWhatsappApi(payload: WhatsappPayload, businessPhoneNumberId: string): Promise<void> {
+  private async sendToWhatsappApi(payload: WhatsappPayload, businessPhoneNumberId: string): Promise<string | null> {
     const apiUrl = this.getApiUrl(businessPhoneNumberId); // Se lo pasamos
     const headers = getWhatsappHeaders();
     const body = JSON.stringify(payload);
@@ -245,17 +245,26 @@ export class WhatsappSender implements IMessageSender {
 
     const responseData = await response.json();
     console.log("[WhatsappSender] Message sent successfully. Response:", responseData);
+    
+    // Extract and return the WhatsApp message ID
+    const messageId = responseData.messages?.[0]?.id;
+    if (messageId) {
+      console.log(`[WhatsappSender] WhatsApp message ID: ${messageId}`);
+      return messageId;
+    }
+    
+    return null;
   }
 
   // Main method: AHORA ACEPTA EL ID DEL NÚMERO DE TELÉFONO DEL NEGOCIO
-  async sendMessage(recipientId: string, response: BotResponse, businessPhoneNumberId: string): Promise<void> {
+  async sendMessage(recipientId: string, response: BotResponse, businessPhoneNumberId: string): Promise<string | null> {
     try {
       // Validate prerequisites
       this.validateConfiguration();
       
       if (!response.text) {
         console.warn("[WhatsappSender] No text found in response. Skipping message to:", recipientId);
-        return;
+        return null;
       }
 
       // Log message length for debugging
@@ -269,8 +278,10 @@ export class WhatsappSender implements IMessageSender {
       const messageType = this.getMessageType(response.buttons?.length || 0);
       
       this.logOutgoingMessage(recipientId, messageType, response.buttons?.length);
-      // LE PASAMOS EL ID DEL NÚMERO DE TELÉFONO A LA FUNCIÓN DE ENVÍO
-      await this.sendToWhatsappApi(payload, businessPhoneNumberId);
+      // LE PASAMOS EL ID DEL NÚMERO DE TELÉFONO A LA FUNCIÓN DE ENVÍO Y RETORNAMOS EL MESSAGE ID
+      const whatsappMessageId = await this.sendToWhatsappApi(payload, businessPhoneNumberId);
+      
+      return whatsappMessageId;
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";

@@ -325,6 +325,7 @@ async function checkForEscalationTrigger(
         
         const chatSessionId = currentContext.currentConversationSession?.id;
         if (chatSessionId) {
+          // For fallback scenario, we don't have a notification ID, so send directly
           await sendEscalationNotification(fallbackPhone, customerName, messageHistory, language, fallbackPhone, chatSessionId, currentContext.currentParticipant.customerWhatsappNumber, escalationReason);
         }
         return { 
@@ -403,8 +404,8 @@ async function sendEscalationNotificationWithTracking(
   console.log(`${LOG_PREFIX} Target phone: ${businessPhoneNumber}, Notification ID: ${notificationId}`);
   
   try {
-    // Send the notification
-    await sendEscalationNotification(
+    // Send the notification and capture WhatsApp message ID
+    const whatsappMessageId = await sendEscalationNotification(
       businessPhoneNumber,
       customerName,
       messageHistory,
@@ -415,13 +416,13 @@ async function sendEscalationNotificationWithTracking(
       escalationReason
     );
     
-    // Mark delivery as successful
-    await Notification.markDeliverySuccess(notificationId);
-    console.log(`${LOG_PREFIX} ✅ Escalation notification delivered successfully to ${businessPhoneNumber}`);
+    // Mark delivery as successful and store WhatsApp message ID
+    await Notification.markDeliverySuccessWithMessageId(notificationId, whatsappMessageId);
+    console.log(`${LOG_PREFIX} ✅ Escalation notification sent to WhatsApp API for ${businessPhoneNumber} (Message ID: ${whatsappMessageId || 'unknown'})`);
     
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error(`${LOG_PREFIX} ❌ Failed to deliver escalation notification to ${businessPhoneNumber}:`, errorMessage);
+    console.error(`${LOG_PREFIX} ❌ Failed to send escalation notification to ${businessPhoneNumber}:`, errorMessage);
     
     // Mark delivery as failed with retry scheduling
     await Notification.markDeliveryFailure(notificationId, errorMessage, businessPhoneNumber);
@@ -444,7 +445,7 @@ async function sendEscalationNotification(
   chatSessionId: string,
   customerPhoneNumber?: string,
   escalationReason?: string
-) {
+): Promise<string | null> {
   const lang = language === 'es' ? 'es' : 'en';
   const t = i18n[lang];
   const sender = new WhatsappSender();
@@ -492,8 +493,11 @@ ${historyText}`;
 
   console.log(`${LOG_PREFIX} Sending escalation notification for session: ${chatSessionId}`);
   try {
-    await sender.sendMessage(businessPhoneNumber, { text: fullMessage }, businessPhoneNumberId);
+    const whatsappMessageId = await sender.sendMessage(businessPhoneNumber, { text: fullMessage }, businessPhoneNumberId);
+    console.log(`${LOG_PREFIX} Escalation notification sent successfully (WhatsApp ID: ${whatsappMessageId || 'unknown'})`);
+    return whatsappMessageId;
   } catch (error) {
     console.error(`${LOG_PREFIX} Failed to send escalation notification:`, error);
+    throw error;
   }
 } 

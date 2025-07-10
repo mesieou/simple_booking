@@ -18,6 +18,8 @@ import {
 import { ResponseProcessor } from "@/lib/bot-engine/channels/whatsapp/response-processor";
 import { getCurrentEnvironment, getEnvironmentInfo } from "@/lib/database/supabase/environment";
 import { isMessageAlreadyProcessed, markMessageAsProcessed } from "@/lib/bot-engine/channels/whatsapp/message-deduplication";
+import { Notification } from '@/lib/database/models/notification';
+import { ParsedStatusUpdate } from '@/lib/bot-engine/channels/whatsapp/whatsapp-payload-parser';
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +44,49 @@ console.log(`${LOG_PREFIX} Environment Configuration:`, {
   hasProdConfig: ENVIRONMENT_INFO.hasProdConfig,
   webhookEnabled: WEBHOOK_ENABLED
 });
+
+/**
+ * Handles WhatsApp status updates for delivery tracking
+ */
+async function handleWhatsAppStatusUpdate(statusUpdate: ParsedStatusUpdate): Promise<void> {
+  const { messageId, status, recipientId } = statusUpdate;
+  
+  console.log(`[Status Handler] Processing status: ${status} for message: ${messageId} to: ${recipientId}`);
+
+  try {
+    // Update notification delivery status based on WhatsApp status
+    switch (status) {
+      case 'sent':
+        // Message was sent from WhatsApp to the recipient
+        await Notification.updateDeliveryStatusByMessageId(messageId, 'sent');
+        console.log(`[Status Handler] Message ${messageId} marked as sent`);
+        break;
+        
+      case 'delivered':
+        // Message was delivered to the recipient's device
+        await Notification.updateDeliveryStatusByMessageId(messageId, 'delivered');
+        console.log(`[Status Handler] ✅ Message ${messageId} delivered to ${recipientId}`);
+        break;
+        
+      case 'read':
+        // Message was read by the recipient
+        await Notification.updateDeliveryStatusByMessageId(messageId, 'read');
+        console.log(`[Status Handler] ✅ Message ${messageId} read by ${recipientId}`);
+        break;
+        
+      case 'failed':
+        // Message delivery failed
+        await Notification.updateDeliveryStatusByMessageId(messageId, 'failed', `WhatsApp delivery failed: ${status}`);
+        console.error(`[Status Handler] ❌ Message ${messageId} delivery failed to ${recipientId}`);
+        break;
+        
+      default:
+        console.log(`[Status Handler] Unhandled status: ${status} for message: ${messageId}`);
+    }
+  } catch (error) {
+    console.error(`[Status Handler] Error updating delivery status for message ${messageId}:`, error);
+  }
+}
 
 // Multi-tenant routing - route messages based on phone number ID to different businesses
 
@@ -250,21 +295,28 @@ export async function POST(req: NextRequest) {
         console.error(`${LOG_PREFIX} Error processing message for ${parsedMessage.senderId}:`, processingError);
       }
     } else {
-      // Skip status updates and non-actionable messages
+      // Handle status updates and non-actionable messages
       if (parsedEvent && "type" in parsedEvent && parsedEvent.type === "status_update") {
-        // Silently skip status updates
-      } else {
-        console.log(`${LOG_PREFIX} Skipping processing: Payload could not be parsed into an actionable message.`);
-      }
-    }
-    
-    return NextResponse.json({ status: "success - acknowledged by juan-bot v2" }, { status: 200 });
+        console.log(`${LOG_PREFIX} Processing WhatsApp status update: ${parsedEvent.status} for message ${parsedEvent.messageId}`);
+        
+                 // Handle delivery status updates for escalation notifications
+         try {
+           await handleWhatsAppStatusUpdate(parsedEvent);
+         } catch (statusError) {
+           console.error(`${LOG_PREFIX} Error handling status update:`, statusError);
+         }
+       } else {
+         console.log(`${LOG_PREFIX} Skipping processing: Payload could not be parsed into an actionable message.`);
+       }
+     }
+     
+     return NextResponse.json({ status: "success - acknowledged by juan-bot v2" }, { status: 200 });
 
-  } catch (error) {
-    console.error(`${LOG_PREFIX} Critical error processing POST request:`, error);
-    if (error instanceof SyntaxError) {
-      return NextResponse.json({ message: "Invalid JSON payload" }, { status: 400 });
-    }
-    return NextResponse.json({ message: "Internal server error in juan-bot webhook" }, { status: 500 });
-  }
-} 
+   } catch (error) {
+     console.error(`${LOG_PREFIX} Critical error processing POST request:`, error);
+     if (error instanceof SyntaxError) {
+       return NextResponse.json({ message: "Invalid JSON payload" }, { status: 400 });
+     }
+     return NextResponse.json({ message: "Internal server error in juan-bot webhook" }, { status: 500 });
+   }
+ }

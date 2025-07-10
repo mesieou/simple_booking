@@ -46,6 +46,7 @@ export interface IMessageSender {
    * @param recipientId The unique identifier of the message recipient.
    * @param response The bot's response to send.
    * @param businessPhoneNumberId The unique identifier of the business phone number sending the message.
+   * @returns Promise that resolves to the message ID from the channel (for delivery tracking) or null if unavailable
    */
-  sendMessage(recipientId: string, response: BotResponse, businessPhoneNumberId: string): Promise<void>;
+  sendMessage(recipientId: string, response: BotResponse, businessPhoneNumberId: string): Promise<string | null>;
 } 
