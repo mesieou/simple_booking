@@ -113,8 +113,26 @@ export class User {
             }
         }
 
-        // Use provided email or generate default
-        const email = options?.email || `${this.firstName.toLowerCase()}.${this.lastName.toLowerCase()}@example.com`;
+        // Use provided email or generate default with proper sanitization
+        const sanitizeEmailPart = (str: string) => {
+            return str
+                .toLowerCase()
+                .replace(/[^a-z0-9]/g, '') // Remove all non-alphanumeric characters
+                .substring(0, 20); // Limit length
+        };
+        
+        const sanitizedFirstName = sanitizeEmailPart(this.firstName);
+        const sanitizedLastName = sanitizeEmailPart(this.lastName);
+        
+        // Generate a valid email address
+        let generatedEmail: string;
+        if (sanitizedLastName) {
+            generatedEmail = `${sanitizedFirstName}.${sanitizedLastName}@example.com`;
+        } else {
+            generatedEmail = `${sanitizedFirstName}@example.com`;
+        }
+        
+        const email = options?.email || generatedEmail;
         const password = options?.password || 'password123';
 
         // Prepare user_metadata

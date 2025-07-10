@@ -209,9 +209,11 @@ async function handleUserCreationIfNeeded(
     
     // If we're waiting for a name (user creation in progress)
     if (sessionUserInfo?.awaitingName) {
-      // Validate the name
-      if (userMessage && userMessage.length >= 2 && !userMessage.includes('uuid') && !userMessage.includes('@')) {
-        console.log('[handleFaqOrChitchat] Creating user with provided name:', userMessage);
+      // Use LLM to assess if the message is a name or another question/request
+      const isValidName = await assessIfMessageIsName(userMessage, userLanguage);
+      
+      if (isValidName) {
+        console.log('[handleFaqOrChitchat] LLM confirmed this is a name, creating user:', userMessage);
         
         // Create the user
         const { User } = await import('@/lib/database/models/user');
@@ -340,10 +342,10 @@ async function handleUserCreationIfNeeded(
           };
         }
       } else {
-        // Invalid name, ask again
+        // LLM determined this is not a name, ask again with context
         const errorMessage = userLanguage === 'es'
-          ? 'Por favor proporciona tu nombre (al menos 2 letras):'
-          : 'Please provide your name (at least 2 letters):';
+          ? 'Entiendo que quieres ayuda, pero primero necesito saber tu nombre. Por favor, solo dime cómo te llamas:'
+          : 'I understand you want help, but I need to know your name first. Please just tell me what your name is:';
         
         return {
           text: errorMessage
@@ -399,4 +401,71 @@ async function handleUserCreationIfNeeded(
     console.error('[handleFaqOrChitchat] Error during user creation process:', error);
     return null; // Continue with normal FAQ flow
   }
-} 
+}
+
+/**
+ * Uses LLM to assess if a user's message is a name or another type of message
+ */
+async function assessIfMessageIsName(message: string, language: string): Promise<boolean> {
+  try {
+    const prompt = language === 'es' ? 
+      `Evalúa si el siguiente mensaje es un nombre de persona o no.
+
+Ejemplos de NOMBRES (responder "yes"):
+- "Juan"
+- "María García"
+- "Pedro Luis"
+- "Ana"
+- "Carlos Alberto"
+
+Ejemplos de NO NOMBRES (responder "no"):
+- "me puedes ayudar con un servicio"
+- "hola como estas"
+- "necesito información"
+- "cuando están disponibles"
+- "qué servicios ofrecen"
+- "help me please"
+- "I need assistance"
+
+Mensaje a evaluar: "${message}"
+
+Responde ÚNICAMENTE con "yes" si es un nombre o "no" si no es un nombre.` :
+
+      `Evaluate if the following message is a person's name or not.
+
+Examples of NAMES (answer "yes"):
+- "John"
+- "Mary Smith"
+- "Peter"
+- "Anna"
+- "Carlos"
+
+Examples of NOT NAMES (answer "no"):
+- "me puedes ayudar con un servicio"
+- "can you help me with a service"
+- "hello how are you"
+- "I need information"
+- "when are you available"
+- "what services do you offer"
+- "help me please"
+
+Message to evaluate: "${message}"
+
+Answer ONLY with "yes" if it's a name or "no" if it's not a name.`;
+
+    const messages: OpenAIChatMessage[] = [
+      { role: 'user', content: prompt }
+    ];
+
+    const response = await executeChatCompletion(messages, "gpt-4o", 0.3, 50);
+    const result = response.choices[0]?.message?.content?.trim().toLowerCase();
+    
+    console.log(`[assessIfMessageIsName] Message: "${message}" -> LLM result: "${result}"`);
+    
+    return result === 'yes';
+  } catch (error) {
+    console.error('[assessIfMessageIsName] Error with LLM assessment:', error);
+    // Fallback to basic validation if LLM fails
+    return message.length >= 2 && message.length <= 50 && !message.includes('?') && !message.includes('@');
+  }
+}
