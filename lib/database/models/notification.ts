@@ -6,6 +6,9 @@ const NOTIFICATIONS_TABLE_NAME = 'notifications';
 
 export type NotificationStatus = 'pending' | 'attending' | 'provided_help' | 'ignored' | 'wrong_activation';
 
+// NEW: Delivery status tracking
+export type DeliveryStatus = 'pending' | 'sent' | 'failed' | 'retry_scheduled';
+
 export interface NotificationData {
   id: string;
   createdAt: string;
@@ -13,6 +16,12 @@ export interface NotificationData {
   chatSessionId: string;
   message: string;
   status: NotificationStatus;
+  // NEW: Delivery tracking fields
+  deliveryStatus?: DeliveryStatus;
+  deliveryAttempts?: number;
+  lastDeliveryAttempt?: string;
+  deliveryError?: string;
+  targetPhoneNumber?: string;
 }
 
 export interface DashboardNotificationData {
@@ -24,6 +33,9 @@ export interface DashboardNotificationData {
   status: NotificationStatus;
   channelUserId: string;
   isRead: boolean;
+  // NEW: Delivery info for dashboard
+  deliveryStatus?: DeliveryStatus;
+  deliveryError?: string;
 }
 
 export class Notification {
@@ -33,6 +45,12 @@ export class Notification {
   chatSessionId: string;
   message: string;
   status: NotificationStatus;
+  // NEW: Delivery tracking properties
+  deliveryStatus?: DeliveryStatus;
+  deliveryAttempts?: number;
+  lastDeliveryAttempt?: string;
+  deliveryError?: string;
+  targetPhoneNumber?: string;
 
   private static _tableName = NOTIFICATIONS_TABLE_NAME;
 
@@ -43,6 +61,11 @@ export class Notification {
     this.chatSessionId = data.chatSessionId;
     this.message = data.message;
     this.status = data.status;
+    this.deliveryStatus = data.deliveryStatus;
+    this.deliveryAttempts = data.deliveryAttempts;
+    this.lastDeliveryAttempt = data.lastDeliveryAttempt;
+    this.deliveryError = data.deliveryError;
+    this.targetPhoneNumber = data.targetPhoneNumber;
   }
 
   static fromRow(row: any): Notification {
@@ -53,6 +76,12 @@ export class Notification {
       chatSessionId: row.chatSessionId,
       message: row.message,
       status: row.status,
+      // NEW: Map delivery fields
+      deliveryStatus: row.deliveryStatus,
+      deliveryAttempts: row.deliveryAttempts,
+      lastDeliveryAttempt: row.lastDeliveryAttempt,
+      deliveryError: row.deliveryError,
+      targetPhoneNumber: row.targetPhoneNumber,
     });
   }
 
@@ -502,6 +531,102 @@ export class Notification {
         }>;
     } catch (error) {
       console.error(`[NotificationDB] Exception fetching all business notifications:`, error);
+      return [];
+    }
+  }
+
+  // NEW: Track delivery success
+  static async markDeliverySuccess(notificationId: string): Promise<void> {
+    try {
+      const supabase = getEnvironmentServiceRoleClient();
+      const { error } = await supabase
+        .from(this._tableName)
+        .update({
+          deliveryStatus: 'sent',
+          lastDeliveryAttempt: new Date().toISOString(),
+        })
+        .eq('id', notificationId);
+
+      if (error) {
+        console.error(`[NotificationDB] Error marking delivery success:`, error);
+        throw error;
+      }
+
+      console.log(`[NotificationDB] Marked notification ${notificationId} as successfully delivered`);
+    } catch (error) {
+      console.error(`[NotificationDB] Exception marking delivery success:`, error);
+      throw error;
+    }
+  }
+
+  // NEW: Track delivery failure
+  static async markDeliveryFailure(
+    notificationId: string, 
+    errorMessage: string,
+    targetPhone?: string
+  ): Promise<void> {
+    try {
+      const supabase = getEnvironmentServiceRoleClient();
+      
+      // Get current attempt count
+      const { data: current } = await supabase
+        .from(this._tableName)
+        .select('deliveryAttempts')
+        .eq('id', notificationId)
+        .single();
+
+      const attemptCount = (current?.deliveryAttempts || 0) + 1;
+      const maxAttempts = 3;
+      const deliveryStatus: DeliveryStatus = attemptCount >= maxAttempts ? 'failed' : 'retry_scheduled';
+
+      const { error } = await supabase
+        .from(this._tableName)
+        .update({
+          deliveryStatus,
+          deliveryAttempts: attemptCount,
+          lastDeliveryAttempt: new Date().toISOString(),
+          deliveryError: errorMessage,
+          targetPhoneNumber: targetPhone,
+        })
+        .eq('id', notificationId);
+
+      if (error) {
+        console.error(`[NotificationDB] Error marking delivery failure:`, error);
+        throw error;
+      }
+
+      console.log(`[NotificationDB] Marked notification ${notificationId} delivery failure (attempt ${attemptCount}/${maxAttempts}): ${errorMessage}`);
+      
+      // Alert if max attempts reached
+      if (attemptCount >= maxAttempts) {
+        console.error(`[NotificationDB] 🚨 CRITICAL: Escalation notification ${notificationId} failed all delivery attempts to ${targetPhone}`);
+        // TODO: Send alert to system administrators
+      }
+    } catch (error) {
+      console.error(`[NotificationDB] Exception marking delivery failure:`, error);
+      throw error;
+    }
+  }
+
+  // NEW: Get failed delivery notifications for retry
+  static async getFailedDeliveries(): Promise<Notification[]> {
+    try {
+      const supabase = getEnvironmentServiceRoleClient();
+      const { data, error } = await supabase
+        .from(this._tableName)
+        .select('*')
+        .eq('deliveryStatus', 'retry_scheduled')
+        .lt('deliveryAttempts', 3)
+        .order('lastDeliveryAttempt', { ascending: true });
+
+      if (error) {
+        console.error(`[NotificationDB] Error fetching failed deliveries:`, error);
+        return [];
+      }
+
+      return (data || []).map(row => this.fromRow(row));
+    } catch (error) {
+      console.error(`[NotificationDB] Exception fetching failed deliveries:`, error);
       return [];
     }
   }

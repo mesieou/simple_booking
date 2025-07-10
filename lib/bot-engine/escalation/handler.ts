@@ -357,7 +357,18 @@ async function checkForEscalationTrigger(
       }
       
       if (chatSessionId) {
-        await sendEscalationNotification(escalationPhoneNumber, customerName, messageHistory, language, finalBusinessPhoneNumberId, chatSessionId, currentContext.currentParticipant.customerWhatsappNumber, escalationReason);
+        // Send notification with delivery tracking
+        await sendEscalationNotificationWithTracking(
+          notification.id,
+          escalationPhoneNumber, 
+          customerName, 
+          messageHistory, 
+          language, 
+          finalBusinessPhoneNumberId, 
+          chatSessionId, 
+          currentContext.currentParticipant.customerWhatsappNumber, 
+          escalationReason
+        );
       }
       
       return {
@@ -372,6 +383,53 @@ async function checkForEscalationTrigger(
   }
 
   return { isEscalated: false };
+}
+
+/**
+ * Sends escalation notification with delivery tracking
+ */
+async function sendEscalationNotificationWithTracking(
+  notificationId: string,
+  businessPhoneNumber: string,
+  customerName: string,
+  messageHistory: ChatMessage[],
+  language: string,
+  businessPhoneNumberId: string,
+  chatSessionId: string,
+  customerPhoneNumber?: string,
+  escalationReason?: string
+) {
+  console.log(`${LOG_PREFIX} Sending escalation notification for session: ${chatSessionId}`);
+  console.log(`${LOG_PREFIX} Target phone: ${businessPhoneNumber}, Notification ID: ${notificationId}`);
+  
+  try {
+    // Send the notification
+    await sendEscalationNotification(
+      businessPhoneNumber,
+      customerName,
+      messageHistory,
+      language,
+      businessPhoneNumberId,
+      chatSessionId,
+      customerPhoneNumber,
+      escalationReason
+    );
+    
+    // Mark delivery as successful
+    await Notification.markDeliverySuccess(notificationId);
+    console.log(`${LOG_PREFIX} ✅ Escalation notification delivered successfully to ${businessPhoneNumber}`);
+    
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`${LOG_PREFIX} ❌ Failed to deliver escalation notification to ${businessPhoneNumber}:`, errorMessage);
+    
+    // Mark delivery as failed with retry scheduling
+    await Notification.markDeliveryFailure(notificationId, errorMessage, businessPhoneNumber);
+    
+    // Don't throw the error - we've tracked it in the database
+    // The escalation is created even if delivery fails
+    console.log(`${LOG_PREFIX} Escalation notification failure tracked in database for retry`);
+  }
 }
 
 /**
