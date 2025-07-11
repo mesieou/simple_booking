@@ -112,7 +112,7 @@ export class WhatsAppTemplateSender {
     language: string = 'en'
   ): Promise<string | null> {
     try {
-      const languageCode = language === 'es' ? 'es' : 'en_US';
+      const languageCode = language === 'es' ? 'es' : 'en'; // Changed from 'en_US' to 'en'
       const templateName = getEscalationTemplateName();
       
       // Truncate message to fit template constraints
@@ -169,7 +169,7 @@ export class WhatsAppTemplateSender {
         name: templateName,
         status: 'unknown',
         category: 'UTILITY',
-        language: 'en_US'
+        language: 'en' // Changed from 'en_US' to 'en' for consistency
       };
       
     } catch (error) {
