@@ -53,8 +53,23 @@ export class WhatsAppTemplateSender {
   ): Promise<string | null> {
     try {
       console.log(`${LOG_PREFIX} Sending template "${templateName}" to ${recipientId}`);
-      console.log(`${LOG_PREFIX} Header parameters:`, headerParameters);
-      console.log(`${LOG_PREFIX} Body parameters:`, bodyParameters);
+      console.log(`${LOG_PREFIX} Header parameters (${headerParameters.length}):`, headerParameters);
+      console.log(`${LOG_PREFIX} Body parameters (${bodyParameters.length}):`, bodyParameters);
+      
+      // 🔧 FIX: Validate that all parameters are non-empty strings to prevent WhatsApp API errors
+      const validatedHeaderParams = headerParameters.filter(param => param && param.trim().length > 0);
+      const validatedBodyParams = bodyParameters.filter(param => param && param.trim().length > 0);
+      
+      if (validatedHeaderParams.length !== headerParameters.length) {
+        console.warn(`${LOG_PREFIX} ⚠️ Removed ${headerParameters.length - validatedHeaderParams.length} empty header parameters`);
+      }
+      
+      if (validatedBodyParams.length !== bodyParameters.length) {
+        console.warn(`${LOG_PREFIX} ⚠️ Removed ${bodyParameters.length - validatedBodyParams.length} empty body parameters`);
+      }
+      
+      const totalParams = validatedHeaderParams.length + validatedBodyParams.length;
+      console.log(`${LOG_PREFIX} 🔍 Validated parameters - Header: ${validatedHeaderParams.length}, Body: ${validatedBodyParams.length}, Total: ${totalParams}`);
       
       const phoneNumberIdToUse = businessPhoneNumberId || this.phoneNumberId;
       
@@ -69,10 +84,10 @@ export class WhatsAppTemplateSender {
       const components: any[] = [];
       
       // Add header parameters if provided
-      if (headerParameters.length > 0) {
+      if (validatedHeaderParams.length > 0) {
         components.push({
           type: 'header',
-          parameters: headerParameters.map(param => ({
+          parameters: validatedHeaderParams.map(param => ({
             type: 'text',
             text: cleanForTemplateParameter(param)
           }))
@@ -80,10 +95,10 @@ export class WhatsAppTemplateSender {
       }
       
       // Add body parameters if provided
-      if (bodyParameters.length > 0) {
+      if (validatedBodyParams.length > 0) {
         components.push({
           type: 'body',
-          parameters: bodyParameters.map(param => ({
+          parameters: validatedBodyParams.map(param => ({
             type: 'text',
             text: cleanForTemplateParameter(param)
           }))
@@ -119,7 +134,18 @@ export class WhatsAppTemplateSender {
       
       if (!response.ok) {
         console.error(`${LOG_PREFIX} Template API error:`, responseData);
-        throw new Error(`Template API error: ${responseData.error?.message || 'Unknown error'}`);
+        
+        // 🔧 FIX: Provide more detailed error information for parameter mismatches
+        const errorMessage = responseData.error?.message || 'Unknown error';
+        if (errorMessage.includes('number of parameters') || errorMessage.includes('localizable_params')) {
+          console.error(`${LOG_PREFIX} 🚨 Parameter count mismatch detected!`);
+          console.error(`${LOG_PREFIX} Template: ${templateName}, Language: ${languageCode}`);
+          console.error(`${LOG_PREFIX} Sent - Header: ${validatedHeaderParams.length}, Body: ${validatedBodyParams.length}, Total: ${totalParams}`);
+          console.error(`${LOG_PREFIX} Header params:`, validatedHeaderParams);
+          console.error(`${LOG_PREFIX} Body params:`, validatedBodyParams);
+        }
+        
+        throw new Error(`Template API error: ${errorMessage}`);
       }
       
       const messageId = responseData.messages?.[0]?.id;

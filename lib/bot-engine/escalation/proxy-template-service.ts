@@ -90,14 +90,37 @@ export async function sendEscalationTemplate(
     
     const languageCode = language === 'es' ? 'es' : 'en';
     
+    // 🔧 FIX: Ensure all parameters have valid fallback values to prevent parameter count mismatch
+    const safeCustomerName = customerName?.trim() || 'Customer';
+    const safeLastMessage = lastCustomerMessage?.trim() || 'No message';
+    const safeHistory = fullHistory?.trim() || 'No conversation history';
+    
+    console.log(`${LOG_PREFIX} Template parameters - Customer: "${safeCustomerName}", Message: "${safeLastMessage.substring(0, 50)}...", History length: ${safeHistory.length}`);
+    
     // Prepare original parameters (cleaned but not truncated)
     const originalHeaderParams = [
-      cleanForTemplateParameter(customerName)
+      cleanForTemplateParameter(safeCustomerName)
     ];
     const originalBodyParams = [
-      cleanForTemplateParameter(fullHistory),
-      cleanForTemplateParameter(lastCustomerMessage.substring(0, TEMPLATE_CONFIG.MAX_CURRENT_MESSAGE_LENGTH))
+      cleanForTemplateParameter(safeHistory),
+      cleanForTemplateParameter(safeLastMessage.substring(0, TEMPLATE_CONFIG.MAX_CURRENT_MESSAGE_LENGTH))
     ];
+    
+    // 🔧 FIX: Validate that all parameters are non-empty to ensure correct parameter count
+    if (!originalHeaderParams[0]) {
+      originalHeaderParams[0] = 'Customer';
+      console.warn(`${LOG_PREFIX} ⚠️ Empty header parameter detected, using fallback: "Customer"`);
+    }
+    
+    if (!originalBodyParams[0]) {
+      originalBodyParams[0] = 'No conversation history available';
+      console.warn(`${LOG_PREFIX} ⚠️ Empty history parameter detected, using fallback`);
+    }
+    
+    if (!originalBodyParams[1]) {
+      originalBodyParams[1] = 'No current message available';
+      console.warn(`${LOG_PREFIX} ⚠️ Empty message parameter detected, using fallback`);
+    }
     
     // Check if parameters exceed WhatsApp template limits
     const limitCheck = checkParameterLimits(originalHeaderParams, originalBodyParams);
@@ -125,6 +148,17 @@ export async function sendEscalationTemplate(
       };
       
       console.log(`${LOG_PREFIX} 📏 Using truncated parameters for template, will send full details in follow-up`);
+    }
+    
+    // 🔧 FIX: Final validation to ensure we always send exactly 3 parameters (1 header + 2 body)
+    const totalParamCount = templateParams.header.length + templateParams.body.length;
+    console.log(`${LOG_PREFIX} 🔍 Template parameter validation - Header: ${templateParams.header.length}, Body: ${templateParams.body.length}, Total: ${totalParamCount}`);
+    
+    if (totalParamCount !== 3) {
+      console.error(`${LOG_PREFIX} ❌ Parameter count mismatch! Expected 3, got ${totalParamCount}`);
+      console.error(`${LOG_PREFIX} Header params:`, templateParams.header);
+      console.error(`${LOG_PREFIX} Body params:`, templateParams.body);
+      throw new Error(`Template parameter count mismatch: expected 3, got ${totalParamCount}`);
     }
     
     console.log(`${LOG_PREFIX} Sending template with params:`, {
@@ -155,9 +189,9 @@ export async function sendEscalationTemplate(
       await sendFullConversationHistoryFollowUp(
         businessPhoneNumber,
         businessPhoneNumberId,
-        customerName,
-        fullHistory,
-        lastCustomerMessage,
+        safeCustomerName,
+        safeHistory,
+        safeLastMessage,
         language,
         sender
       );
