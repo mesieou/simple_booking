@@ -7,6 +7,24 @@ import {
 
 const LOG_PREFIX = '[WhatsAppTemplateSender]';
 
+/**
+ * Cleans text for WhatsApp template parameters by removing/replacing forbidden characters
+ * WhatsApp doesn't allow: newlines, tabs, or more than 4 consecutive spaces
+ */
+function cleanForTemplateParameter(text: string): string {
+  return text
+    // Remove all newlines and replace with space
+    .replace(/\n/g, ' ')
+    // Remove all tabs and replace with space
+    .replace(/\t/g, ' ')
+    // Replace multiple consecutive spaces (4+) with 3 spaces
+    .replace(/\s{4,}/g, '   ')
+    // Clean up any double spaces that might have been created
+    .replace(/\s{2}/g, ' ')
+    // Trim whitespace from start and end
+    .trim();
+}
+
 export class WhatsAppTemplateSender {
   private accessToken: string;
   private phoneNumberId: string;
@@ -56,7 +74,7 @@ export class WhatsAppTemplateSender {
           type: 'header',
           parameters: headerParameters.map(param => ({
             type: 'text',
-            text: param
+            text: cleanForTemplateParameter(param)
           }))
         });
       }
@@ -67,7 +85,7 @@ export class WhatsAppTemplateSender {
           type: 'body',
           parameters: bodyParameters.map(param => ({
             type: 'text',
-            text: param
+            text: cleanForTemplateParameter(param)
           }))
         });
       }

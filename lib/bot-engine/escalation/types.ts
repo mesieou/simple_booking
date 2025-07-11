@@ -148,6 +148,13 @@ export const ESCALATION_CONSTANTS = {
     MAX_CURRENT_MESSAGE_LENGTH: 150,
     MAX_MESSAGES_IN_HISTORY: 4
   },
+  // WhatsApp template parameter limits to prevent API errors
+  TEMPLATE_PARAMETER_LIMITS: {
+    HEADER_MAX_LENGTH: 60,    // WhatsApp header parameter limit
+    BODY_MAX_LENGTH: 1024,    // WhatsApp body parameter limit
+    SAFE_HISTORY_LENGTH: 300, // Conservative limit for history in templates
+    SAFE_MESSAGE_LENGTH: 100  // Conservative limit for current message in templates
+  },
   FRUSTRATION_THRESHOLDS: {
     CONSECUTIVE_FRUSTRATED_MESSAGES: 3,
     SENTIMENT_ANALYSIS_HISTORY_LIMIT: 15

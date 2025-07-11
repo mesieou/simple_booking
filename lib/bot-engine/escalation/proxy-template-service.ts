@@ -11,9 +11,65 @@ const LOG_PREFIX = '[ProxyTemplateService]';
 
 // Use shared template configuration
 const TEMPLATE_CONFIG = ESCALATION_CONSTANTS.TEMPLATE_CONFIG;
+const TEMPLATE_LIMITS = ESCALATION_CONSTANTS.TEMPLATE_PARAMETER_LIMITS;
 
 /**
- * Sends escalation template message with conversation context
+ * Cleans text for WhatsApp template parameters by removing/replacing forbidden characters
+ * WhatsApp doesn't allow: newlines, tabs, or more than 4 consecutive spaces
+ */
+function cleanForTemplateParameter(text: string): string {
+  return text
+    // Remove all newlines and replace with space
+    .replace(/\n/g, ' ')
+    // Remove all tabs and replace with space
+    .replace(/\t/g, ' ')
+    // Replace multiple consecutive spaces (4+) with 3 spaces
+    .replace(/\s{4,}/g, '   ')
+    // Clean up any double spaces that might have been created
+    .replace(/\s{2}/g, ' ')
+    // Trim whitespace from start and end
+    .trim();
+}
+
+/**
+ * Truncates text to fit WhatsApp template parameter limits
+ */
+function truncateForTemplate(text: string, maxLength: number): string {
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength - 3) + '...';
+}
+
+/**
+ * Checks if template parameters exceed WhatsApp limits
+ */
+function checkParameterLimits(headerParams: string[], bodyParams: string[]): {
+  isWithinLimits: boolean;
+  issues: string[];
+} {
+  const issues: string[] = [];
+  
+  // Check header parameters
+  headerParams.forEach((param, index) => {
+    if (param.length > TEMPLATE_LIMITS.HEADER_MAX_LENGTH) {
+      issues.push(`Header param ${index + 1} too long: ${param.length}/${TEMPLATE_LIMITS.HEADER_MAX_LENGTH} chars`);
+    }
+  });
+  
+  // Check body parameters  
+  bodyParams.forEach((param, index) => {
+    if (param.length > TEMPLATE_LIMITS.BODY_MAX_LENGTH) {
+      issues.push(`Body param ${index + 1} too long: ${param.length}/${TEMPLATE_LIMITS.BODY_MAX_LENGTH} chars`);
+    }
+  });
+  
+  return {
+    isWithinLimits: issues.length === 0,
+    issues
+  };
+}
+
+/**
+ * Sends escalation template message with conversation context and smart fallback
  */
 export async function sendEscalationTemplate(
   businessPhoneNumber: string,
@@ -30,34 +86,62 @@ export async function sendEscalationTemplate(
   try {
     // Get conversation history for template
     const conversationHistory = await getConversationHistory(chatSessionId, TEMPLATE_CONFIG.MAX_MESSAGES_IN_HISTORY);
-    const compactHistory = formatConversationHistoryForTemplate(conversationHistory, customerName, language, TEMPLATE_CONFIG.MAX_HISTORY_LENGTH);
+    const fullHistory = formatConversationHistoryForTemplate(conversationHistory, customerName, language, TEMPLATE_CONFIG.MAX_HISTORY_LENGTH);
     
-    // Send comprehensive escalation template (header + body + button)
-    const languageCode = language === 'es' ? 'es' : 'en'; // Changed from 'en_US' to 'en'
+    const languageCode = language === 'es' ? 'es' : 'en';
     
-    // Template structure (based on actual template):
-    // Header: Customer {{1}} needs help!
-    // Body: Customer {{1}} needs help! \n📝 Recent Chat: {{2}} \n💬 Current Message: "{{3}}"
-    const headerParams = [customerName]; // {{1}} for header
-    const bodyParams = [
-      customerName, // {{1}} for body - customer name (reused)
-      compactHistory, // {{2}} for body - conversation history  
-      lastCustomerMessage.substring(0, TEMPLATE_CONFIG.MAX_CURRENT_MESSAGE_LENGTH) // {{3}} for body - current message
+    // Prepare original parameters (cleaned but not truncated)
+    const originalHeaderParams = [
+      cleanForTemplateParameter(customerName)
+    ];
+    const originalBodyParams = [
+      cleanForTemplateParameter(fullHistory),
+      cleanForTemplateParameter(lastCustomerMessage.substring(0, TEMPLATE_CONFIG.MAX_CURRENT_MESSAGE_LENGTH))
     ];
     
+    // Check if parameters exceed WhatsApp template limits
+    const limitCheck = checkParameterLimits(originalHeaderParams, originalBodyParams);
+    
+    let templateParams = {
+      header: originalHeaderParams,
+      body: originalBodyParams
+    };
+    
+    let needsFollowUp = false;
+    
+    if (!limitCheck.isWithinLimits) {
+      console.log(`${LOG_PREFIX} ⚠️ Template parameters exceed limits:`, limitCheck.issues);
+      needsFollowUp = true;
+      
+      // Create truncated versions for template
+      templateParams = {
+        header: [
+          truncateForTemplate(originalHeaderParams[0], TEMPLATE_LIMITS.HEADER_MAX_LENGTH)
+        ],
+        body: [
+          truncateForTemplate(originalBodyParams[0], TEMPLATE_LIMITS.SAFE_HISTORY_LENGTH), // Use conservative limit for history
+          truncateForTemplate(originalBodyParams[1], TEMPLATE_LIMITS.SAFE_MESSAGE_LENGTH)  // Use conservative limit for message
+        ]
+      };
+      
+      console.log(`${LOG_PREFIX} 📏 Using truncated parameters for template, will send full details in follow-up`);
+    }
+    
     console.log(`${LOG_PREFIX} Sending template with params:`, {
-      customerName,
-      historyLength: compactHistory.length,
-      currentMessage: bodyParams[2]
+      customerName: templateParams.header[0],
+      historyLength: templateParams.body[0].length,
+      currentMessage: templateParams.body[1],
+      willSendFollowUp: needsFollowUp
     });
     
+    // Send the template with (possibly truncated) parameters
     const templateMessageId = await sender.sendTemplateMessage(
       businessPhoneNumber,
       getEscalationTemplateName(),
       languageCode,
-      bodyParams, // body parameters
+      templateParams.body,
       businessPhoneNumberId,
-      headerParams // header parameters
+      templateParams.header
     );
     
     if (!templateMessageId) {
@@ -65,11 +149,84 @@ export async function sendEscalationTemplate(
     }
     
     console.log(`${LOG_PREFIX} ✅ Template sent successfully (ID: ${templateMessageId})`);
+    
+    // Send follow-up message with full conversation history if needed
+    if (needsFollowUp) {
+      await sendFullConversationHistoryFollowUp(
+        businessPhoneNumber,
+        businessPhoneNumberId,
+        customerName,
+        fullHistory,
+        lastCustomerMessage,
+        language,
+        sender
+      );
+    }
+    
     return templateMessageId;
     
   } catch (error) {
     console.error(`${LOG_PREFIX} ❌ Failed to send escalation template:`, error);
     throw error;
+  }
+}
+
+/**
+ * Sends follow-up message with full conversation history when template was truncated
+ */
+async function sendFullConversationHistoryFollowUp(
+  businessPhoneNumber: string,
+  businessPhoneNumberId: string,
+  customerName: string,
+  fullHistory: string,
+  lastCustomerMessage: string,
+  language: string,
+  sender: WhatsappSender
+): Promise<void> {
+  try {
+    const lang = language === 'es' ? 'es' : 'en';
+    
+    const translations = {
+      es: {
+        followUpTitle: '📋 *Historial Completo de Conversación*',
+        customerName: 'Cliente',
+        currentMessage: 'Mensaje Actual',
+        fullHistory: 'Historial Completo'
+      },
+      en: {
+        followUpTitle: '📋 *Complete Conversation History*',
+        customerName: 'Customer',
+        currentMessage: 'Current Message',
+        fullHistory: 'Full History'
+      }
+    };
+    
+    const t = translations[lang];
+    
+    // Create comprehensive follow-up message
+    const followUpMessage = `${t.followUpTitle}
+
+${t.customerName}: ${customerName}
+
+${t.currentMessage}: "${lastCustomerMessage}"
+
+${t.fullHistory}:
+${fullHistory}`;
+    
+    console.log(`${LOG_PREFIX} 📤 Sending follow-up with full conversation history (${followUpMessage.length} chars)`);
+    
+    // Send as regular message
+    await sender.sendMessage(
+      businessPhoneNumber,
+      { text: followUpMessage },
+      businessPhoneNumberId
+    );
+    
+    console.log(`${LOG_PREFIX} ✅ Follow-up message sent with complete conversation history`);
+    
+  } catch (error) {
+    console.error(`${LOG_PREFIX} ❌ Failed to send follow-up message:`, error);
+    // Don't throw error - template was already sent successfully
   }
 }
 
@@ -146,12 +303,12 @@ export function formatConversationHistoryForTemplate(
     const sender = isCustomer ? t.customer : t.bot;
     const timestamp = formatRelativeTime(msg.timestamp!, lang);
     
-    // Extract text content from message
+    // Extract text content from message and clean it for template compatibility
     let messageText = '';
     if (typeof msg.content === 'string') {
-      messageText = msg.content;
+      messageText = cleanForTemplateParameter(msg.content);
     } else if (msg.content && typeof msg.content === 'object') {
-      messageText = (msg.content as any).text || '[Non-text message]';
+      messageText = cleanForTemplateParameter((msg.content as any).text || '[Non-text message]');
     } else {
       messageText = '[Empty message]';
     }
@@ -161,20 +318,22 @@ export function formatConversationHistoryForTemplate(
     const mediaIndicator = hasMedia ? ' 📎' : '';
     
     // Compact format: "Sender: 'message' (timestamp)" with media indicator
-    const maxMsgLength = hasMedia ? 75 : 80; // Leave space for media indicator
+    // Use " • " as separator instead of newlines for WhatsApp template compatibility
+    const maxMsgLength = hasMedia ? 70 : 75; // Leave space for media indicator and separator
     const truncatedText = messageText.length > maxMsgLength 
       ? messageText.substring(0, maxMsgLength - 3) + '...'
       : messageText;
     
-    const line = `${sender}: "${truncatedText}"${mediaIndicator} (${timestamp})\n`;
+    const line = `${sender}: "${truncatedText}"${mediaIndicator} (${timestamp})`;
+    const separator = historyText ? ' • ' : ''; // Add bullet separator between messages
     
     // Check if adding this line would exceed max length
-    if (currentLength + line.length > maxLength) {
+    if (currentLength + line.length + separator.length > maxLength) {
       break;
     }
     
-    historyText = line + historyText; // Prepend to show chronological order
-    currentLength += line.length;
+    historyText = line + separator + historyText; // Prepend to show chronological order
+    currentLength += line.length + separator.length;
   }
   
   return historyText.trim();

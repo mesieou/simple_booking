@@ -1,6 +1,24 @@
 import { BotResponse, IMessageSender } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
 import { getWhatsappHeaders } from "./whatsapp-headers";
 
+/**
+ * Cleans text for WhatsApp template parameters by removing/replacing forbidden characters
+ * WhatsApp doesn't allow: newlines, tabs, or more than 4 consecutive spaces
+ */
+function cleanForTemplateParameter(text: string): string {
+  return text
+    // Remove all newlines and replace with space
+    .replace(/\n/g, ' ')
+    // Remove all tabs and replace with space
+    .replace(/\t/g, ' ')
+    // Replace multiple consecutive spaces (4+) with 3 spaces
+    .replace(/\s{4,}/g, '   ')
+    // Clean up any double spaces that might have been created
+    .replace(/\s{2}/g, ' ')
+    // Trim whitespace from start and end
+    .trim();
+}
+
 // Configuration constants - easily customizable without touching core logic
 const WHATSAPP_CONFIG = {
   API_VERSION: process.env.WHATSAPP_API_VERSION || "v23.0",
@@ -277,7 +295,7 @@ export class WhatsappSender implements IMessageSender {
       if (headerParameters.length > 0) {
         components.push({
           type: "header",
-          parameters: headerParameters.map(param => ({ type: "text", text: param }))
+          parameters: headerParameters.map(param => ({ type: "text", text: cleanForTemplateParameter(param) }))
         });
       }
       
@@ -285,7 +303,7 @@ export class WhatsappSender implements IMessageSender {
       if (parameters.length > 0) {
         components.push({
           type: "body",
-          parameters: parameters.map(param => ({ type: "text", text: param }))
+          parameters: parameters.map(param => ({ type: "text", text: cleanForTemplateParameter(param) }))
         });
       }
       
