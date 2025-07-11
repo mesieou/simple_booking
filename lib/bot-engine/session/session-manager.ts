@@ -151,21 +151,6 @@ export async function getOrCreateChatContext(
       customerUser = await User.findUserByCustomerWhatsappNumber(
         participant.customerWhatsappNumber
       );
-      
-      // If no customer user found, we need to clear any cached user data from the session
-      // to prevent old super admin or other non-customer data from persisting
-      if (!customerUser && historyAndContext?.userContext?.sessionData?.userId) {
-        console.log(`[SessionManager] No customer found but session has cached user data - clearing cached data`);
-        // Clear the cached user data from the session
-        if (historyAndContext.userContext.sessionData) {
-          historyAndContext.userContext.sessionData = {
-            ...historyAndContext.userContext.sessionData,
-            userId: undefined,
-            customerName: undefined,
-            existingUserFound: false
-          };
-        }
-      }
     } catch (error) {
       console.error(`[MessageProcessor] Error looking up customer user:`, error);
     }
@@ -202,6 +187,21 @@ export async function getOrCreateChatContext(
         sessionData: null,
       },
     };
+  }
+
+  // If no customer user found, clear any cached user data from the session
+  // to prevent old super admin or other non-customer data from persisting
+  if (!customerUser && historyAndContext?.userContext?.sessionData?.userId) {
+    console.log(`[SessionManager] No customer found but session has cached user data - clearing cached data`);
+    // Clear the cached user data from the session
+    if (historyAndContext.userContext.sessionData) {
+      historyAndContext.userContext.sessionData = {
+        ...historyAndContext.userContext.sessionData,
+        userId: undefined,
+        customerName: undefined,
+        existingUserFound: false
+      };
+    }
   }
 
   const currentSession = convertToInternalSession(
