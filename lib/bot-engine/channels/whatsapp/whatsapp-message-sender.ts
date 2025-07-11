@@ -264,10 +264,30 @@ export class WhatsappSender implements IMessageSender {
     templateName: string,
     languageCode: string,
     parameters: string[],
-    businessPhoneNumberId: string
+    businessPhoneNumberId: string,
+    headerParameters: string[] = []
   ): Promise<string | null> {
     try {
       this.validateConfiguration();
+      
+      // Build components array
+      const components: any[] = [];
+      
+      // Add header parameters if provided
+      if (headerParameters.length > 0) {
+        components.push({
+          type: "header",
+          parameters: headerParameters.map(param => ({ type: "text", text: param }))
+        });
+      }
+      
+      // Add body parameters if provided
+      if (parameters.length > 0) {
+        components.push({
+          type: "body",
+          parameters: parameters.map(param => ({ type: "text", text: param }))
+        });
+      }
       
       const payload = {
         messaging_product: "whatsapp",
@@ -278,12 +298,7 @@ export class WhatsappSender implements IMessageSender {
           language: {
             code: languageCode
           },
-          components: parameters.length > 0 ? [
-            {
-              type: "body",
-              parameters: parameters.map(param => ({ type: "text", text: param }))
-            }
-          ] : undefined
+          components: components.length > 0 ? components : undefined
         }
       };
 

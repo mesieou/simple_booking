@@ -34,24 +34,30 @@ export async function sendEscalationTemplate(
     
     // Send comprehensive escalation template (header + body + button)
     const languageCode = language === 'es' ? 'es' : 'en'; // Changed from 'en_US' to 'en'
-    const templateParams = [
-      customerName, // {{1}} - used in header
-      compactHistory, // {{2}} - conversation history in body
-      lastCustomerMessage.substring(0, TEMPLATE_CONFIG.MAX_CURRENT_MESSAGE_LENGTH) // {{3}} - current message in body
+    
+    // Template structure (based on actual template):
+    // Header: Customer {{1}} needs help!
+    // Body: Customer {{1}} needs help! \n📝 Recent Chat: {{2}} \n💬 Current Message: "{{3}}"
+    const headerParams = [customerName]; // {{1}} for header
+    const bodyParams = [
+      customerName, // {{1}} for body - customer name (reused)
+      compactHistory, // {{2}} for body - conversation history  
+      lastCustomerMessage.substring(0, TEMPLATE_CONFIG.MAX_CURRENT_MESSAGE_LENGTH) // {{3}} for body - current message
     ];
     
     console.log(`${LOG_PREFIX} Sending template with params:`, {
       customerName,
       historyLength: compactHistory.length,
-      currentMessage: templateParams[2]
+      currentMessage: bodyParams[2]
     });
     
     const templateMessageId = await sender.sendTemplateMessage(
       businessPhoneNumber,
       getEscalationTemplateName(),
       languageCode,
-      templateParams,
-      businessPhoneNumberId
+      bodyParams, // body parameters
+      businessPhoneNumberId,
+      headerParams // header parameters
     );
     
     if (!templateMessageId) {

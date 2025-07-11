@@ -30,11 +30,13 @@ export class WhatsAppTemplateSender {
     templateName: string,
     languageCode: string,
     bodyParameters: string[] = [],
-    businessPhoneNumberId?: string
+    businessPhoneNumberId?: string,
+    headerParameters: string[] = []
   ): Promise<string | null> {
     try {
       console.log(`${LOG_PREFIX} Sending template "${templateName}" to ${recipientId}`);
-      console.log(`${LOG_PREFIX} Parameters:`, bodyParameters);
+      console.log(`${LOG_PREFIX} Header parameters:`, headerParameters);
+      console.log(`${LOG_PREFIX} Body parameters:`, bodyParameters);
       
       const phoneNumberIdToUse = businessPhoneNumberId || this.phoneNumberId;
       
@@ -45,17 +47,34 @@ export class WhatsAppTemplateSender {
         }
       };
       
+      // Build components array
+      const components: any[] = [];
+      
+      // Add header parameters if provided
+      if (headerParameters.length > 0) {
+        components.push({
+          type: 'header',
+          parameters: headerParameters.map(param => ({
+            type: 'text',
+            text: param
+          }))
+        });
+      }
+      
       // Add body parameters if provided
       if (bodyParameters.length > 0) {
-        templateMessage.components = [
-          {
-            type: 'body',
-            parameters: bodyParameters.map(param => ({
-              type: 'text',
-              text: param
-            }))
-          }
-        ];
+        components.push({
+          type: 'body',
+          parameters: bodyParameters.map(param => ({
+            type: 'text',
+            text: param
+          }))
+        });
+      }
+      
+      // Add components to template if any exist
+      if (components.length > 0) {
+        templateMessage.components = components;
       }
       
       const payload = {
@@ -120,9 +139,13 @@ export class WhatsAppTemplateSender {
         ? customerMessage.substring(0, 97) + '...'
         : customerMessage;
       
-      const parameters = [
-        customerName,
-        truncatedMessage
+      // For escalation template, we need to pass conversation history too
+      // This method is simplified - we'll use the more detailed one from proxy-template-service
+      const headerParameters = [customerName]; // {{1}} in header: "Customer {{1}} needs help!"
+      const bodyParameters = [
+        customerName, // {{1}} in body - customer name (reused from header)
+        "[Recent conversation history]", // {{2}} in body  
+        truncatedMessage // {{3}} in body
       ];
       
       console.log(`${LOG_PREFIX} Sending escalation template to ${adminPhone}`);
@@ -132,8 +155,9 @@ export class WhatsAppTemplateSender {
         adminPhone,
         templateName,
         languageCode,
-        parameters,
-        businessPhoneNumberId
+        bodyParameters,
+        businessPhoneNumberId,
+        headerParameters
       );
       
     } catch (error) {
@@ -185,7 +209,8 @@ export async function sendWhatsAppTemplate(
   templateName: string,
   languageCode: string,
   parameters: string[] = [],
-  businessPhoneNumberId?: string
+  businessPhoneNumberId?: string,
+  headerParameters: string[] = []
 ): Promise<string | null> {
   const sender = new WhatsAppTemplateSender();
   return await sender.sendTemplateMessage(
@@ -193,7 +218,8 @@ export async function sendWhatsAppTemplate(
     templateName,
     languageCode,
     parameters,
-    businessPhoneNumberId
+    businessPhoneNumberId,
+    headerParameters
   );
 }
 
