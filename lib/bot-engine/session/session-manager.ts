@@ -127,7 +127,7 @@ export async function getOrCreateChatContext(
     `[getOrCreateChatContext] Attempting to find business with normalized number: ${numberToSearch}`
   );
 
-  const business = await Business.findByWhatsappNumber(numberToSearch);
+  const business = await Business.getByWhatsappNumber(numberToSearch);
 
   if (!business || !business.id) {
     // Si no se encuentra el negocio, no podemos continuar.

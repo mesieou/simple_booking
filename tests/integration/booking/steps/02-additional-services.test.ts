@@ -1,4 +1,3 @@
-import { simulateWebhookPost } from "../../utils";
 import {
   cleanup,
   startBookingFlow,
@@ -6,12 +5,16 @@ import {
   fetchServices,
   getGoalData,
   getLastBotMessage,
-  verifyBookingFlowActive,
+  verifyServicesLoaded,
   verifyServiceSelected,
   verifyNoServiceSelected,
+  verifyBotMentionsService,
+  verifyBookingFlowActive,
   TEST_PHONE,
-  BUSINESS_ID,
-} from "../shared/booking-test-utils";
+  BUSINESS_ID 
+} from '../shared/booking-test-utils';
+import { simulateWebhookPost } from '../../utils';
+import { ESCALATION_TEST_CONFIG } from '../../../config/escalation-test-config';
 
 describe("Additional Services Selection Step - Real Bot Behavior", () => {
   beforeEach(async () => {

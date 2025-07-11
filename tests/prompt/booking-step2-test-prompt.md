@@ -33,7 +33,7 @@ tests/integration/booking/
 ## Business Context
 
 ### **Test Business:** Beauty Asiul
-- **Business ID:** `TEST_CONFIG.BUSINESS_ID` (`7c98818f-2b01-4fa4-bbca-0d59922a50f7`)
+- **Business ID:** `TEST_CONFIG.BUSINESS_ID` (`ef97961f-18ad-4304-9d9d-6cd38308d65f`)
 - **Services:** 12 real services (manicures, pedicures, hair services)
 - **Location:** North Melbourne (NO mobile services)
 - **Owner:** Luisa Bernal

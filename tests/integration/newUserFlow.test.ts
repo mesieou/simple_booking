@@ -3,16 +3,26 @@ import { User } from '@/lib/database/models/user';
 import { ChatSession } from '@/lib/database/models/chat-session';
 import { UserContext } from '@/lib/database/models/user-context';
 import { BOT_CONFIG } from '@/lib/bot-engine/types';
-import { deleteUserByWhatsapp, deleteChatSessionsForUser } from './dbUtils';
-import { TEST_CONFIG, getNormalizedTestPhone } from '../config/test-config';
+import { deleteChatSessionsForUser } from './dbUtils';
+import { ESCALATION_TEST_CONFIG, getNormalizedPhone } from '../config/escalation-test-config';
 
-const TEST_PHONE = TEST_CONFIG.TEST_PHONE_NUMBER;
-const BUSINESS_ID = TEST_CONFIG.BUSINESS_ID;
-const TEST_USER_NAME = TEST_CONFIG.TEST_USER_NAME;
+const TEST_PHONE = ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE.replace(/^\+/, ''); // Remove + for webhook simulation
+const BUSINESS_ID = ESCALATION_TEST_CONFIG.LUISA_BUSINESS.ID;
+const TEST_USER_NAME = ESCALATION_TEST_CONFIG.CUSTOMER_USER.WHATSAPP_NAME.split(' ')[0]; // Use first name
 
+/**
+ * Helper function to get normalized phone number
+ */
+function getNormalizedTestPhone(): string {
+  return getNormalizedPhone(ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE);
+}
+
+/**
+ * Clean up test data - only removes temporary sessions and contexts, never users
+ */
 async function cleanup() {
   await deleteChatSessionsForUser(TEST_PHONE);
-  await deleteUserByWhatsapp(TEST_PHONE);
+  
   const ctx = await UserContext.getByChannelUserIdAndBusinessId(
     getNormalizedTestPhone(),
     BUSINESS_ID
@@ -81,5 +91,5 @@ describe('WhatsApp new user flow', () => {
       const nameMessage = finalMessages.find(msg => msg.role === 'user' && msg.content === TEST_USER_NAME);
       expect(nameMessage).toBeDefined();
     }
-  }, TEST_CONFIG.TIMEOUT_SECONDS * 1000); // Convert to milliseconds
+  }, ESCALATION_TEST_CONFIG.TIMEOUT_SECONDS * 1000); // Convert to milliseconds
 });

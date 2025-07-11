@@ -7,12 +7,12 @@ async function cleanupLuisaBusinessData() {
   try {
     const supabase = getServiceRoleClient();
     
-    // Find all businesses that match Luisa's data
+    // Find all businesses that match Luisa's data (both dev and prod)
     console.log('[CLEANUP] Searching for existing Luisa business data...');
     const { data: businesses, error: businessError } = await supabase
       .from('businesses')
       .select('id, name, email, phone, whatsappNumber')
-      .or('name.eq.Beauty Asiul,email.eq.luisa.bernal7826@gmail.com,phone.eq.+61473164581,whatsappNumber.eq.+61411851098');
+      .or('name.ilike.%Beauty Asiul%,email.eq.luisa.bernal7826@gmail.com,email.eq.luisa.dev@beautyasiul.com,phone.eq.+61473164581,phone.eq.+61452490450,whatsappNumber.eq.+61411851098,whatsappNumber.eq.+15551890570');
 
     if (businessError) {
       console.error('[CLEANUP] Error searching for businesses:', businessError);
@@ -44,15 +44,17 @@ async function cleanupLuisaBusinessData() {
   }
 }
 
-// Run the cleanup when this script is executed
-cleanupLuisaBusinessData()
-  .then(() => {
-    console.log('[CLEANUP] Cleanup completed successfully');
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error('[CLEANUP] Cleanup failed:', error);
-    process.exit(1);
-  });
+export { cleanupLuisaBusinessData };
 
-export { cleanupLuisaBusinessData }; 
+// Run the cleanup when this script is executed directly (not imported)
+if (require.main === module) {
+  cleanupLuisaBusinessData()
+    .then(() => {
+      console.log('[CLEANUP] Cleanup completed successfully');
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error('[CLEANUP] Cleanup failed:', error);
+      process.exit(1);
+    });
+} 

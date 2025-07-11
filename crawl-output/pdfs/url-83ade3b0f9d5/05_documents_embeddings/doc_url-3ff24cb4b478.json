@@ -1,12 +1,12 @@
 {
-  "businessId": "de836809-b6a2-4458-baa9-9348e0a6b7eb",
+  "businessId": "ef97961f-18ad-4304-9d9d-6cd38308d65f",
   "content": "7. Can I cancel or reschedule my appointment? Yes, you can cancel or reschedule, but it must be at least 24 hours in advance to retain your deposit. Last-minute cancellations or no-shows may forfeit the deposit.",
   "title": "Luisa FAQ whatsapp conversations (1).pdf - Page 2 - faq (Chunk 3, Pre 0)",
   "source": "pdf-Luisa FAQ whatsapp conversations (1).pdf#page=2",
   "type": "pdf",
   "category": "faq",
   "contentHash": "28f4e7b4dacae7577261edd34f39ac7b25d1e92ea478dc2b109ea48d35078412",
-  "confidence": 0.9,
+  "confidence": 0.95,
   "preChunkSourceIndex": 0,
   "embeddingInputText": "7. Can I cancel or reschedule my appointment? Yes, you can cancel or reschedule, but it must be at least 24 hours in advance to retain your deposit. Last-minute cancellations or no-shows may forfeit the deposit.",
   "embedding": [

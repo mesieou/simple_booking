@@ -1,7 +1,7 @@
 # FAQ System Integration Test Generation - Beauty Asiul
 
 ## Business Information
-**Business ID:** 7c98818f-2b01-4fa4-bbca-0d59922a50f7
+**Business ID:** ef97961f-18ad-4304-9d9d-6cd38308d65f
 **Business Name:** Beauty Asiul
 **Owner:** Luisa Bernal
 

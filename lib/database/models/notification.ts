@@ -159,15 +159,14 @@ export class Notification {
       throw updateError;
     }
 
-    // 2. Unlock the associated chat session
+    // 2. Update the associated chat session status to completed
     try {
       const { ChatSession } = await import('./chat-session');
       await ChatSession.updateStatus(notification.chatSessionId, 'completed');
-      console.log(`[NotificationDB] Unlocked chat session ${notification.chatSessionId} by setting status to 'completed'.`);
+      console.log(`[NotificationDB] Updated chat session ${notification.chatSessionId} status to 'completed'.`);
     } catch (sessionError) {
-      console.error(`[NotificationDB] Failed to unlock chat session ${notification.chatSessionId}:`, sessionError);
-      // Decide if we should roll back the notification status change or just log the error
-      // For now, we'll log it and proceed.
+      console.error(`[NotificationDB] Failed to update chat session ${notification.chatSessionId}:`, sessionError);
+      // Log error but proceed as notification resolution is more critical
     }
 
     return this.fromRow(updatedRow);
@@ -565,7 +564,11 @@ export class Notification {
   }
 
   // NEW: Track delivery success with WhatsApp message ID
-  static async markDeliverySuccessWithMessageId(notificationId: string, whatsappMessageId: string | null): Promise<void> {
+  static async markDeliverySuccessWithMessageId(
+    notificationId: string, 
+    whatsappMessageId: string | null, 
+    fallbackMethod?: string
+  ): Promise<void> {
     try {
       const supabase = getEnvironmentServiceRoleClient();
       const updateData: any = {
@@ -575,6 +578,11 @@ export class Notification {
       
       if (whatsappMessageId) {
         updateData.whatsappMessageId = whatsappMessageId;
+      }
+      
+      // Add fallback method info if provided
+      if (fallbackMethod) {
+        updateData.deliveryError = `Sent via ${fallbackMethod} method`;
       }
       
       const { error } = await supabase
@@ -587,7 +595,8 @@ export class Notification {
         throw error;
       }
 
-      console.log(`[NotificationDB] Marked notification ${notificationId} as sent to WhatsApp API (Message ID: ${whatsappMessageId || 'none'})`);
+      const methodInfo = fallbackMethod ? ` (via ${fallbackMethod})` : '';
+      console.log(`[NotificationDB] Marked notification ${notificationId} as sent to WhatsApp API${methodInfo} (Message ID: ${whatsappMessageId || 'none'})`);
     } catch (error) {
       console.error(`[NotificationDB] Exception marking delivery success:`, error);
       throw error;
@@ -638,6 +647,7 @@ export class Notification {
           .gte('createdAt', oneHourAgo) // Only recent notifications
           .eq('deliveryStatus', 'sent') // Only notifications that were previously sent
           .is('whatsappMessageId', null) // Only notifications without stored message ID
+          .order('createdAt', { ascending: false }) // Add explicit order before limit
           .select('id, targetPhoneNumber')
           .limit(1);
 
