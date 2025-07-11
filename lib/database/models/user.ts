@@ -497,12 +497,12 @@ export class User {
             const normalizedInputWhatsappNumber = PhoneNumberUtils.normalize(customerWhatsappNumber);
             console.log(`[User] Normalized input customer WhatsApp number: ${normalizedInputWhatsappNumber}`);
             
-            // Query the public.users table directly on the normalized number
-
+            // Query the public.users table directly on the normalized number, but ONLY for customer role
             const { data: userData, error: userError } = await supa
                 .from('users')
                 .select('*')
                 .eq('whatsAppNumberNormalized', normalizedInputWhatsappNumber)
+                .eq('role', 'customer') // Only look for customer users, not admins or providers
                 .maybeSingle(); // Use maybeSingle() as it's possible no user is found
             
             if (userError) {
@@ -516,7 +516,7 @@ export class User {
                 return null;
             }
             
-            console.log(`[User] Found user record for customer with WhatsApp number, user ID: ${userData.id}`);
+            console.log(`[User] Found customer user record for WhatsApp number, user ID: ${userData.id}`);
             
             const user = new User(
                 userData.firstName, 
