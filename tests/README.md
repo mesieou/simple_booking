@@ -48,7 +48,7 @@ The `newUserFlow.test.ts` integration test uses the phone number `+19998887777`.
 ## WhatsApp new user flow test
 
 `tests/integration/newUserFlow.test.ts` exercises the complete onboarding path for a WhatsApp user.
-It simulates a real webhook payload using the phone number ID `684078768113901` and routes it through the actual webhook handler. The message is associated with the business `7c98818f-2b01-4fa4-bbca-0d59922a50f7` which must not be modified.
+It simulates a real webhook payload using the phone number ID `684078768113901` and routes it through the actual webhook handler. The message is associated with the business `ef97961f-18ad-4304-9d9d-6cd38308d65f` which must not be modified.
 
 The test sends a greeting from the unique customer number `+19998887777`. The bot
 asks for the user's name, the test replies, and then verifies that:

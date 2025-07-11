@@ -37,7 +37,7 @@ See [`tests/config/README.md`](./config/README.md) for complete setup instructio
 ## 🏢 Business Info (DO NOT CHANGE)
 
 The tests use a real business (Beauty Asiul):
-- **Business ID**: `7c98818f-2b01-4fa4-bbca-0d59922a50f7`
+- **Business ID**: `ef97961f-18ad-4304-9d9d-6cd38308d65f`
 - **WhatsApp Number**: `+15551890570`
 - **Phone Number ID**: `684078768113901`
 

@@ -33,7 +33,7 @@ tests/integration/booking/
 ## Business Context
 
 ### **Test Business:** Beauty Asiul
-- **Business ID:** `TEST_CONFIG.BUSINESS_ID` (`7c98818f-2b01-4fa4-bbca-0d59922a50f7`)
+- **Business ID:** `TEST_CONFIG.BUSINESS_ID` (`ef97961f-18ad-4304-9d9d-6cd38308d65f`)
 - **Services:** 12 real services (manicures, pedicures, hair services)
 - **Location:** North Melbourne (NO mobile services)
 - **Owner:** Luisa Bernal
@@ -288,7 +288,7 @@ import { TEST_CONFIG, getNormalizedTestPhone } from '../../../config/test-config
 
 // Add to test-config.ts if needed:
 export const TEST_CONFIG = {
-  BUSINESS_ID: '7c98818f-2b01-4fa4-bbca-0d59922a50f7',
+  BUSINESS_ID: 'ef97961f-18ad-4304-9d9d-6cd38308d65f',
   TEST_PHONE_NUMBER: '+15551234567',
   TEST_USER_NAME: 'TestUser',
   TIMEOUT_SECONDS: 30

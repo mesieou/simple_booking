@@ -1,38 +1,67 @@
 import { simulateWebhookPost } from "./utils";
 import { ChatSession } from "@/lib/database/models/chat-session";
 import { UserContext } from "@/lib/database/models/user-context";
-import { BOT_CONFIG } from "@/lib/bot-engine/types";
-import { deleteUserByWhatsapp, deleteChatSessionsForUser } from "./dbUtils";
-import { TEST_CONFIG, getNormalizedTestPhone } from "../config/test-config";
 import { Service } from "@/lib/database/models/service";
+import { BOT_CONFIG } from "@/lib/bot-engine/types";
+import { deleteChatSessionsForUser } from "./dbUtils";
+import { ESCALATION_TEST_CONFIG, getNormalizedPhone } from '../config/escalation-test-config';
 
-const TEST_PHONE = TEST_CONFIG.TEST_PHONE_NUMBER;
-const BUSINESS_ID = TEST_CONFIG.BUSINESS_ID;
-const TEST_USER_NAME = TEST_CONFIG.TEST_USER_NAME;
+const TEST_PHONE = ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE.replace(/^\+/, ''); // Remove + for webhook simulation
+const BUSINESS_ID = ESCALATION_TEST_CONFIG.LUISA_BUSINESS.ID;
+const TEST_USER_NAME = ESCALATION_TEST_CONFIG.CUSTOMER_USER.WHATSAPP_NAME.split(' ')[0]; // Use first name
 
-async function setupUser() {
-  await deleteChatSessionsForUser(TEST_PHONE);
-  await deleteUserByWhatsapp(TEST_PHONE);
-  const first = await simulateWebhookPost({
-    phone: TEST_PHONE,
-    message: "Hola",
-  });
-  expect(JSON.stringify(first)).toMatch(/success/i);
-  const second = await simulateWebhookPost({
-    phone: TEST_PHONE,
-    message: TEST_USER_NAME,
-  });
-  expect(JSON.stringify(second)).toMatch(/success/i);
+/**
+ * Helper function to get normalized phone number
+ */
+function getNormalizedTestPhone(): string {
+  return getNormalizedPhone(ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE);
 }
 
+const WEBHOOK_URL = `${process.env.WEBHOOK_BASE_URL || 'http://localhost:3000'}/api/webhook2`;
+
+async function expectBotResponse(
+  userMessage: string,
+  expectedIncludes?: string | string[],
+  expectedExcludes?: string | string[]
+): Promise<any> {
+  // Webhook simulation and response checking logic
+  const response = await simulateWebhookPost({ phone: TEST_PHONE, message: userMessage });
+  expect(response.status).toBe(200);
+  
+  if (expectedIncludes) {
+    const includes = Array.isArray(expectedIncludes) ? expectedIncludes : [expectedIncludes];
+    for (const include of includes) {
+      expect(response.body).toContain(include);
+    }
+  }
+  
+  if (expectedExcludes) {
+    const excludes = Array.isArray(expectedExcludes) ? expectedExcludes : [expectedExcludes];
+    for (const exclude of excludes) {
+      expect(response.body).not.toContain(exclude);
+    }
+  }
+  
+  return response;
+}
+
+/**
+ * Clean up test data - only removes temporary sessions and contexts, never users
+ */
 async function cleanupAll() {
   await deleteChatSessionsForUser(TEST_PHONE);
-  await deleteUserByWhatsapp(TEST_PHONE);
+  
   const ctx = await UserContext.getByChannelUserIdAndBusinessId(
     getNormalizedTestPhone(),
     BUSINESS_ID,
   );
   if (ctx) await UserContext.delete(ctx.id);
+}
+
+async function setupUser() {
+  // User setup logic would go here if needed
+  // For now, the user should already exist in the database
+  console.log('Setting up test user...');
 }
 
 async function sendAndGetResponse(message: string): Promise<string> {
@@ -86,7 +115,7 @@ describe("FAQ System Integration Tests - Beauty Asiul", () => {
           expect(text).toMatch(/60/);
         }
       },
-      TEST_CONFIG.TIMEOUT_SECONDS * 1000 * 8,
+      ESCALATION_TEST_CONFIG.TIMEOUT_SECONDS * 1000 * 8,
     );
 
     let services: { name: string; price: number; duration: number }[] = [];
@@ -111,7 +140,7 @@ describe("FAQ System Integration Tests - Beauty Asiul", () => {
           expect(text).toMatch(new RegExp(String(service.duration)));
         }
       },
-      TEST_CONFIG.TIMEOUT_SECONDS * 1000 * 12,
+      ESCALATION_TEST_CONFIG.TIMEOUT_SECONDS * 1000 * 12,
     );
   });
 
@@ -136,7 +165,7 @@ describe("FAQ System Integration Tests - Beauty Asiul", () => {
           expect(text.toLowerCase()).toMatch(/don\'t|not.*offer/);
         }
       },
-      TEST_CONFIG.TIMEOUT_SECONDS * 1000 * 10,
+      ESCALATION_TEST_CONFIG.TIMEOUT_SECONDS * 1000 * 10,
     );
   });
 
@@ -161,7 +190,7 @@ describe("FAQ System Integration Tests - Beauty Asiul", () => {
           expect(text).toMatch(/West Melbourne|Dryburgh/i);
         }
       },
-      TEST_CONFIG.TIMEOUT_SECONDS * 1000 * 8,
+      ESCALATION_TEST_CONFIG.TIMEOUT_SECONDS * 1000 * 8,
     );
   });
 
@@ -187,7 +216,7 @@ describe("FAQ System Integration Tests - Beauty Asiul", () => {
           expect(text).toMatch(/50|cash|24/i);
         }
       },
-      TEST_CONFIG.TIMEOUT_SECONDS * 1000 * 11,
+      ESCALATION_TEST_CONFIG.TIMEOUT_SECONDS * 1000 * 11,
     );
   });
 
@@ -214,7 +243,7 @@ describe("FAQ System Integration Tests - Beauty Asiul", () => {
           );
         }
       },
-      TEST_CONFIG.TIMEOUT_SECONDS * 1000 * 10,
+      ESCALATION_TEST_CONFIG.TIMEOUT_SECONDS * 1000 * 10,
     );
   });
 
@@ -239,7 +268,7 @@ describe("FAQ System Integration Tests - Beauty Asiul", () => {
           );
         }
       },
-      TEST_CONFIG.TIMEOUT_SECONDS * 1000 * 7,
+      ESCALATION_TEST_CONFIG.TIMEOUT_SECONDS * 1000 * 7,
     );
   });
 });

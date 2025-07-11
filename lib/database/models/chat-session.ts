@@ -37,6 +37,7 @@ export interface ChatSessionDBSchema {
   businessId: string; // uuid, foreign key to businesses.id (Now non-nullable)
   channel: string; // e.g., 'whatsapp', 'web', 'api' (Made non-nullable as it's key for session identification)
   channelUserId: string; // User's identifier on the specific channel (Made non-nullable)
+  status?: string | null; // Session status: 'active', 'completed', 'escalated', 'expired', 'abandoned'
   endedAt?: string | null; // timestamptz, when the session was explicitly ended
   sessionIntent?: string | null; // Detected overall intent for the session
   allMessages: ChatMessage[]; // jsonb, array of ChatMessage objects
@@ -53,6 +54,7 @@ export type ChatSessionCreateInput = {
   channelUserId: string; // Required
   businessId: string; // Required
   userId?: string | null;
+  status?: string | null; // Session status, defaults to 'active'
   endedAt?: string | null;
   sessionIntent?: string | null;
   allMessages?: ChatMessage[] | null; // Optional, will default to []
@@ -71,6 +73,7 @@ export class ChatSession {
   businessId: string;
   channel: string;
   channelUserId: string;
+  status?: string | null;
   endedAt?: string | null;
   sessionIntent?: string | null;
   allMessages: ChatMessage[];
@@ -86,6 +89,7 @@ export class ChatSession {
     this.businessId = data.businessId;
     this.channel = data.channel;
     this.channelUserId = data.channelUserId;
+    this.status = data.status;
     this.endedAt = data.endedAt;
     this.sessionIntent = data.sessionIntent;
     this.allMessages = data.allMessages || []; // Ensure it's an array
@@ -112,6 +116,7 @@ export class ChatSession {
       channelUserId: input.channelUserId,
       businessId: input.businessId,
       userId: input.userId,
+      status: input.status || 'active', // Default to 'active' status
       endedAt: input.endedAt,
       sessionIntent: input.sessionIntent,
       allMessages: input.allMessages || [],
@@ -302,12 +307,20 @@ export class ChatSession {
 
   static async updateStatus(
     sessionId: string,
-    status: 'active' | 'completed' | 'expired' | 'escalated'
+    status: 'active' | 'completed' | 'escalated' | 'expired' | 'abandoned'
   ): Promise<ChatSession> {
+    if (!this.isValidUUID(sessionId)) {
+      console.warn(`[ChatSessionModel] Attempted to update status with invalid UUID: ${sessionId}`);
+      throw new Error(`Invalid session ID: ${sessionId}`);
+    }
+    
     const supa = getEnvironmentServiceRoleClient(); // Use service role client for all backend operations
     const { data, error } = await supa
       .from('chatSessions')
-      .update({ status: status, updated_at: new Date().toISOString() })
+      .update({ 
+        status: status, 
+        'updatedAt': new Date().toISOString() // Use quoted column name to ensure proper handling
+      })
       .eq('id', sessionId)
       .select()
       .single();

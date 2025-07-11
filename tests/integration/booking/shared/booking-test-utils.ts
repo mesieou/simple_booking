@@ -1,20 +1,26 @@
-import { simulateWebhookPost } from "../../utils";
+import { Service } from "@/lib/database/models/service";
 import { ChatSession } from "@/lib/database/models/chat-session";
 import { UserContext } from "@/lib/database/models/user-context";
-import { Service } from "@/lib/database/models/service";
-import { deleteChatSessionsForUser, deleteUserByWhatsapp } from "../../dbUtils";
-import {
-  TEST_CONFIG,
-  getNormalizedTestPhone,
-} from "../../../config/test-config";
+import { ESCALATION_TEST_CONFIG, getNormalizedPhone } from "../../../config/escalation-test-config";
+import { deleteChatSessionsForUser } from "../../dbUtils";
+import { simulateWebhookPost } from "../../utils";
 import { BOT_CONFIG } from "@/lib/bot-engine/types";
 
-export const TEST_PHONE = TEST_CONFIG.TEST_PHONE_NUMBER;
-export const BUSINESS_ID = TEST_CONFIG.BUSINESS_ID;
+export const TEST_PHONE = ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE.replace(/^\+/, ''); // Remove + for webhook simulation
+export const BUSINESS_ID = ESCALATION_TEST_CONFIG.LUISA_BUSINESS.ID;
 
+/**
+ * Helper function to get normalized phone number
+ */
+export function getNormalizedTestPhone(): string {
+  return getNormalizedPhone(ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE);
+}
+
+/**
+ * Clean up test data - only removes temporary sessions and contexts, never users
+ */
 export async function cleanup() {
   await deleteChatSessionsForUser(TEST_PHONE);
-  await deleteUserByWhatsapp(TEST_PHONE);
   
   // Delete ALL UserContext records for this user and business (handling duplicates)
   try {
@@ -107,4 +113,15 @@ export async function verifyBookingFlowActive() {
     BUSINESS_ID
   );
   expect(ctx?.currentGoal?.goalType).toBe("serviceBooking");
+}
+
+export async function verifyServicesLoaded() {
+  const services = await fetchServices();
+  expect(services.length).toBeGreaterThan(0);
+  return services;
+}
+
+export async function verifyBotMentionsService(serviceName: string) {
+  const lastMessage = await getLastBotMessage();
+  expect(lastMessage.toLowerCase()).toContain(serviceName.toLowerCase());
 }

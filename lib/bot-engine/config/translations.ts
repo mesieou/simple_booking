@@ -166,6 +166,11 @@ export const BOOKING_TRANSLATIONS = {
       SALON_INSTRUCTIONS: '{name}, please arrive 5-10 minutes early to find parking and locate our business. Once you arrive, please contact us to let us know you\'re here. If you need directions or have any questions, feel free to reach out!',
       BOOKING_ID: '📄 Booking ID:',
       LOOKING_FORWARD: '{name}, we look forward to seeing you! You can ask me anything else if you have more questions.'
+    },
+    ESCALATION: {
+      USER_RESPONSE: "Your request has been sent to our team. Someone will contact you shortly via WhatsApp.",
+      FRUSTRATION_DETECTED: "I apologize for any inconvenience. It seems you're having some difficulty with our automated system. A member of our staff will contact you shortly to assist you personally.",
+      MEDIA_REDIRECT_RESPONSE: "I cannot process media files (images, videos, documents, audios) at the moment. I'm connecting you with a staff member who will review your content and assist you shortly. Please wait to be attended."
     }
   },
   es: {
@@ -335,6 +340,11 @@ export const BOOKING_TRANSLATIONS = {
       SALON_INSTRUCTIONS: '{name}, por favor llega 5-10 minutos antes para encontrar estacionamiento y ubicar nuestro negocio. Una vez que llegues, contáctanos para que sepamos que estás aquí. Si necesitas indicaciones o tienes preguntas, ¡no dudes en comunicarte!',
       BOOKING_ID: '📄 ID de Reserva:',
       LOOKING_FORWARD: '¡{name}, esperamos verte! Puedes preguntarme cualquier otra cosa si tienes más preguntas.'
+    },
+    ESCALATION: {
+      USER_RESPONSE: "Tu solicitud ha sido enviada a nuestro equipo. Alguien se pondrá en contacto contigo en breve a través de WhatsApp.",
+      FRUSTRATION_DETECTED: "Disculpe las molestias. Parece que está teniendo algunas complicaciones con nuestro sistema automatizado. Pronto un miembro de nuestro personal se comunicará con usted para asistirle personalmente.",
+      MEDIA_REDIRECT_RESPONSE: "No puedo procesar archivos multimedia (imágenes, videos, documentos, audios) en este momento. Te estoy conectando con un miembro del personal que revisará tu contenido y te asistirá en breve. Por favor espera a ser atendido."
     }
   }
 } as const; 

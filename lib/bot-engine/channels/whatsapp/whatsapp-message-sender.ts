@@ -256,6 +256,51 @@ export class WhatsappSender implements IMessageSender {
     return null;
   }
 
+  /**
+   * Sends a WhatsApp template message for escalation proxy mode
+   */
+  async sendTemplateMessage(
+    recipientId: string, 
+    templateName: string,
+    languageCode: string,
+    parameters: string[],
+    businessPhoneNumberId: string
+  ): Promise<string | null> {
+    try {
+      this.validateConfiguration();
+      
+      const payload = {
+        messaging_product: "whatsapp",
+        to: recipientId,
+        type: "template",
+        template: {
+          name: templateName,
+          language: {
+            code: languageCode
+          },
+          components: parameters.length > 0 ? [
+            {
+              type: "body",
+              parameters: parameters.map(param => ({ type: "text", text: param }))
+            }
+          ] : undefined
+        }
+      };
+
+      console.log(`[WhatsappSender] Sending escalation template ${templateName} to ${recipientId}:`, JSON.stringify(payload, null, 2));
+
+      const whatsappMessageId = await this.sendToWhatsappApi(payload as any, businessPhoneNumberId);
+      console.log(`[WhatsappSender] ✅ Template message sent successfully (WhatsApp ID: ${whatsappMessageId || 'unknown'})`);
+      
+      return whatsappMessageId;
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      console.error(`[WhatsappSender] ❌ Failed to send template message to ${recipientId}:`, errorMessage);
+      throw error;
+    }
+  }
+
   // Main method: AHORA ACEPTA EL ID DEL NÚMERO DE TELÉFONO DEL NEGOCIO
   async sendMessage(recipientId: string, response: BotResponse, businessPhoneNumberId: string): Promise<string | null> {
     try {

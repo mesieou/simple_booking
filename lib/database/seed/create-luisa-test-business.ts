@@ -26,17 +26,53 @@ export interface LuisaTestBusinessSeedResult {
  * - PDF content processing from public/Customer-Service-Handbook.pdf
  * - Embeddings generation for RAG functionality
  */
-export async function createLuisaTestBusiness(supabase?: SupabaseClient): Promise<LuisaTestBusinessSeedResult> {
+export async function createLuisaTestBusiness(
+  supabase?: SupabaseClient, 
+  businessConfig?: Partial<BusinessData>
+): Promise<LuisaTestBusinessSeedResult> {
   console.log('[SEED] Starting database seeding for Luisa\'s Business (Beauty Asiul)...');
   console.log('[SEED] Environment:', {
     supabaseUrl: supabase ? 'Using provided client' : process.env.NEXT_PUBLIC_SUPABASE_URL,
     hasServiceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
     usingProvidedClient: !!supabase,
     productionUrl: process.env.SUPABASE_PROD_URL,
-    hasProductionServiceRoleKey: !!process.env.SUPABASE_PROD_SERVICE_ROLE_KEY
+    hasProductionServiceRoleKey: !!process.env.SUPABASE_PROD_SERVICE_ROLE_KEY,
+    hasCustomConfig: !!businessConfig
   });
   
   const supa = supabase || getServiceRoleClient();
+
+  // Default business configuration (backward compatibility)
+  const defaultBusinessData: BusinessData = {
+    name: 'Beauty Asiul',
+    email: 'luisa.bernal7826@gmail.com', 
+    phone: '+61473164581',
+    timeZone: 'Australia/Sydney',
+    interfaceType: 'whatsapp',
+    whatsappNumber: '+61411851098',
+    whatsappPhoneNumberId: '684078768113901', // WhatsApp Business API phone number ID
+    businessAddress: '9 Dryburgh st, West Melbourne, VIC 3003',
+    websiteUrl: undefined,
+    businessCategory: 'salon', // Set business category for beauty salon
+    depositPercentage: 50, // 50% deposit required for bookings
+    stripeConnectAccountId: 'acct_1RdjJT00GaxmqnjE', // Stripe Connect account ID
+    stripeAccountStatus: 'active',
+    preferredPaymentMethod: 'cash'
+  };
+
+  // Merge custom config with defaults
+  const businessData: BusinessData = {
+    ...defaultBusinessData,
+    ...businessConfig
+  };
+
+  console.log('[SEED] Using business configuration:', {
+    name: businessData.name,
+    email: businessData.email,
+    phone: businessData.phone,
+    whatsappNumber: businessData.whatsappNumber,
+    whatsappPhoneNumberId: businessData.whatsappPhoneNumberId
+  });
 
   // --- TARGETED CLEANUP OF EXISTING LUISA DATA ---
   // Clean up only the specific beauty business by name and email (not phone numbers)
@@ -44,7 +80,7 @@ export async function createLuisaTestBusiness(supabase?: SupabaseClient): Promis
   const { data: businesses, error: businessError } = await supa
     .from('businesses')
     .select('id, name, email')
-    .or('name.eq.Beauty Asiul,email.eq.luisa.bernal7826@gmail.com');
+    .or(`name.eq.${businessData.name},email.eq.${businessData.email}`);
 
   if (businessError) {
     console.error('[SEED] Error checking for existing business, skipping cleanup:', businessError);
@@ -65,22 +101,6 @@ export async function createLuisaTestBusiness(supabase?: SupabaseClient): Promis
   try {
     // --- CREATE NEW BUSINESS ---
     console.log('[SEED] Creating new business...');
-    const businessData: BusinessData = {
-      name: 'Beauty Asiul',
-      email: 'luisa.bernal7826@gmail.com', 
-      phone: '+61473164581',
-      timeZone: 'Australia/Sydney',
-      interfaceType: 'whatsapp',
-      whatsappNumber: '+61411851098',
-      whatsappPhoneNumberId: '684078768113901', // WhatsApp Business API phone number ID
-      businessAddress: '9 Dryburgh st, West Melbourne, VIC 3003',
-      websiteUrl: undefined,
-      businessCategory: 'salon', // Set business category for beauty salon
-      depositPercentage: 50, // 50% deposit required for bookings
-      stripeConnectAccountId: 'acct_1RdjJT00GaxmqnjE', // Stripe Connect account ID
-      stripeAccountStatus: 'active',
-      preferredPaymentMethod: 'cash'
-    };
 
     const businessInstance = new Business(businessData);
     const createdBusiness = await businessInstance.addWithClient(supa);
@@ -429,7 +449,9 @@ async function triggerPdfContentCrawler(businessId: string): Promise<any> {
  * - SUPABASE_PROD_SERVICE_ROLE_KEY=your_prod_service_role_key
  * - WEBHOOK_BASE_URL=https://your-production-domain.com (for PDF content crawler)
  */
-export async function createLuisaTestBusinessForProduction(): Promise<LuisaTestBusinessSeedResult> {
+export async function createLuisaTestBusinessForProduction(
+  businessConfig?: Partial<BusinessData>
+): Promise<LuisaTestBusinessSeedResult> {
   // Validate that we're using production environment
   const supabaseUrl = process.env.SUPABASE_PROD_URL;
   const isProduction = supabaseUrl && supabaseUrl.includes('itjtaeggupasvrepfkcw');
@@ -440,7 +462,22 @@ export async function createLuisaTestBusinessForProduction(): Promise<LuisaTestB
     console.log('[SEED] Expected production URL should contain: itjtaeggupasvrepfkcw');
   }
   
+  // Production-specific defaults
+  const prodDefaults: Partial<BusinessData> = {
+    name: 'Beauty Asiul',
+    email: 'luisa.bernal7826@gmail.com',
+    phone: '+61411851098',
+    whatsappNumber: '+61411851098', 
+    whatsappPhoneNumberId: '484592048053952', // Different from dev
+    preferredPaymentMethod: 'card'
+  };
+  
+  // Merge with any custom config
+  const finalConfig = { ...prodDefaults, ...businessConfig };
+  
+  console.log('[SEED] Creating Luisa business for PRODUCTION with config:', finalConfig);
+  
   // Create production client and pass it explicitly
   const productionClient = getProdServiceRoleClient();
-  return createLuisaTestBusiness(productionClient);
+  return createLuisaTestBusiness(productionClient, finalConfig);
 } 

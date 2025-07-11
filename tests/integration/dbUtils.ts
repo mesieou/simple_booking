@@ -8,30 +8,8 @@ function normalize(number: string): string {
 }
 
 /**
- * Delete a user record based on their WhatsApp number.
- */
-export async function deleteUserByWhatsapp(number: string): Promise<void> {
-  const supa = getEnvironmentServiceRoleClient();
-  const normalized = normalize(number);
-  
-  // First, get the user to find their auth ID
-  const { data: user } = await supa
-    .from('users')
-    .select('id')
-    .eq('whatsAppNumberNormalized', normalized)
-    .single();
-  
-  // Delete from users table (profiles)
-  await supa.from('users').delete().eq('whatsAppNumberNormalized', normalized);
-  
-  // Delete from auth.users table if user exists
-  if (user?.id) {
-    await supa.auth.admin.deleteUser(user.id);
-  }
-}
-
-/**
  * Delete all chat sessions associated with a WhatsApp user.
+ * This only cleans up temporary session data, never deletes actual users.
  */
 export async function deleteChatSessionsForUser(number: string): Promise<void> {
   const supa = getEnvironmentServiceRoleClient();

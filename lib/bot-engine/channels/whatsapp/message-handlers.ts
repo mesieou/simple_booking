@@ -1,9 +1,11 @@
 import { type ConversationalParticipant, type ChatContext } from "@/lib/bot-engine/types";
 import { type ParsedMessage, type BotResponse } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
-import { 
-    handleEscalationOrAdminCommand, 
+import {
+    handleEscalationOrAdminCommand,
+} from "@/lib/bot-engine/escalation/escalation-orchestrator";
+import {
     hasStickerContent,
-} from "@/lib/bot-engine/escalation/handler";
+} from "@/lib/bot-engine/escalation/escalation-detector";
 import { handleAudioTranscription } from "@/lib/bot-engine/audio-transcription/audio-transcription-handler";
 import { handleFaqOrChitchat } from "@/lib/bot-engine/steps/faq/faq-handler";
 import { processIncomingMessage } from "@/lib/bot-engine/core/message-processor";
@@ -15,6 +17,7 @@ import { persistSessionState } from "@/lib/bot-engine/session/state-persister";
 import { WhatsappSender } from "./whatsapp-message-sender";
 import { START_BOOKING_PAYLOAD } from "@/lib/bot-engine/config/constants";
 import { WhatsAppHandlerLogger } from "@/lib/bot-engine/utils/logger";
+import { ProxyMessageHandler } from './proxy-message-interceptor';
 
 export interface MessageHandlerContext {
   parsedMessage: ParsedMessage;
@@ -212,7 +215,15 @@ export class EscalationCommandHandler {
         });
         
         if (escalationResult.response) {
-          chatContext.currentConversationSession.sessionStatus = 'escalated';
+          // Update chat session status to escalated for tracking
+          try {
+            const { ChatSession } = await import('@/lib/database/models/chat-session');
+            await ChatSession.updateStatus(context.sessionId, 'escalated');
+            console.log(`[EscalationCommandHandler] Updated session ${context.sessionId} status to 'escalated'`);
+          } catch (error) {
+            console.error(`[EscalationCommandHandler] Failed to update session status:`, error);
+          }
+          
           await persistSessionState(
             context.sessionId, 
             userContext, 
@@ -441,6 +452,8 @@ export class ConversationFlowHandler {
   }
 }
 
+
+
 /**
  * Main message processing pipeline
  */
@@ -456,6 +469,7 @@ export class MessageProcessor {
     });
 
     const handlers = [
+      ProxyMessageHandler, // 🆕 Add proxy handler first
       EscalationHandler,
       LanguageHandler,
       StickerHandler,

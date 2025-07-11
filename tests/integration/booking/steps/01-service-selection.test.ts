@@ -1,18 +1,20 @@
 import { simulateWebhookPost } from '../../utils';
-import { ChatSession } from '@/lib/database/models/chat-session';
 import { Service } from '@/lib/database/models/service';
+import { ChatSession } from '@/lib/database/models/chat-session';
 import { UserContext } from '@/lib/database/models/user-context';
 import { BOT_CONFIG } from '@/lib/bot-engine/types';
-import { deleteChatSessionsForUser, deleteUserByWhatsapp } from '../../dbUtils';
-import { TEST_CONFIG, getNormalizedTestPhone } from '../../../config/test-config';
-import { 
-  cleanup, 
-  startBookingFlow, 
-  getActiveSession, 
-  fetchServices,
-  TEST_PHONE,
-  BUSINESS_ID 
-} from '../shared/booking-test-utils';
+import { ESCALATION_TEST_CONFIG, getNormalizedPhone } from '../../../config/escalation-test-config';
+import { deleteChatSessionsForUser } from '../../dbUtils';
+
+const TEST_PHONE = ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE.replace(/^\+/, ''); // Remove + for webhook simulation
+const BUSINESS_ID = ESCALATION_TEST_CONFIG.LUISA_BUSINESS.ID;
+
+/**
+ * Helper function to get normalized phone number
+ */
+function getNormalizedTestPhone(): string {
+  return getNormalizedPhone(ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE);
+}
 
 /**
  * Helper function to safely extract bot text from message content
@@ -37,8 +39,12 @@ async function getGoalData(): Promise<any> {
  * Get the last bot message from session
  */
 async function getLastBotMessage(): Promise<string> {
-  const session = await getActiveSession();
-  if (!session) return '';
+  const session = await ChatSession.getActiveByChannelUserId(
+    'whatsapp',
+    getNormalizedTestPhone(),
+    BOT_CONFIG.SESSION_TIMEOUT_HOURS
+  );
+  if (!session || !session.allMessages || session.allMessages.length === 0) return '';
   
   const lastMessage = session.allMessages[session.allMessages.length - 1];
   return extractBotText(lastMessage.content);
@@ -101,12 +107,12 @@ async function verifyBookingFlowActive(): Promise<void> {
 
 describe('Service Selection Step - Reflecting Real Bot Behavior', () => {
   beforeEach(async () => {
-    await cleanup();
+    await deleteChatSessionsForUser(getNormalizedTestPhone(), BUSINESS_ID);
   });
 
   // Pre-test validation to ensure database has required data
   beforeAll(async () => {
-    const services = await fetchServices();
+    const services = await Service.getByBusiness(BUSINESS_ID);
     console.log(`✅ Found ${services.length} services for testing`);
     
     // Verify we have the specific services needed for our tests
@@ -119,10 +125,12 @@ describe('Service Selection Step - Reflecting Real Bot Behavior', () => {
 
   it( 'initiates booking flow correctly',
     async () => {
-      await startBookingFlow();
-
-      const session = await getActiveSession();
-      expect(session).not.toBeNull();
+      // Start booking flow using webhook simulation
+      const resp = await simulateWebhookPost({ 
+        phone: TEST_PHONE, 
+        message: "start_booking_flow" 
+      });
+      expect(JSON.stringify(resp)).toMatch(/success/i);
 
       await verifyServicesLoaded();
 
@@ -131,14 +139,20 @@ describe('Service Selection Step - Reflecting Real Bot Behavior', () => {
       
       console.log('✅ Booking flow initiated successfully');
     },
-    TEST_CONFIG.TIMEOUT_SECONDS * 1000
+    ESCALATION_TEST_CONFIG.TIMEOUT_SECONDS * 1000
   );
 
   it('selects service via button click',
     async () => {
-      await startBookingFlow();
+      const session = await ChatSession.startSession(
+        getNormalizedTestPhone(),
+        BUSINESS_ID,
+        'serviceBooking',
+        'initial_message'
+      );
+      expect(session).not.toBeNull();
       
-      const services = await fetchServices();
+      const services = await Service.getByBusiness(BUSINESS_ID);
       const firstService = services[0];
       console.log(`🔘 Testing button selection with: ${firstService.name}`);
 
@@ -153,14 +167,20 @@ describe('Service Selection Step - Reflecting Real Bot Behavior', () => {
       
       console.log(`✅ Button selection successful: ${firstService.name}`);
     },
-    TEST_CONFIG.TIMEOUT_SECONDS * 1000
+    ESCALATION_TEST_CONFIG.TIMEOUT_SECONDS * 1000
   );
 
   it('selects service via text input - exact match',
     async () => {
-      await startBookingFlow();
+      const session = await ChatSession.startSession(
+        getNormalizedTestPhone(),
+        BUSINESS_ID,
+        'serviceBooking',
+        'initial_message'
+      );
+      expect(session).not.toBeNull();
       
-      const services = await fetchServices();
+      const services = await Service.getByBusiness(BUSINESS_ID);
       const gelManicure = services.find(s => s.name.toLowerCase().includes('gel manicure'));
       expect(gelManicure).toBeDefined();
       
@@ -177,14 +197,20 @@ describe('Service Selection Step - Reflecting Real Bot Behavior', () => {
       
       console.log('✅ Text input (exact match) successful');
     },
-    TEST_CONFIG.TIMEOUT_SECONDS * 1000
+    ESCALATION_TEST_CONFIG.TIMEOUT_SECONDS * 1000
   );
 
   it('selects service via text input - partial match (updated timeout)',
     async () => {
-      await startBookingFlow();
+      const session = await ChatSession.startSession(
+        getNormalizedTestPhone(),
+        BUSINESS_ID,
+        'serviceBooking',
+        'initial_message'
+      );
+      expect(session).not.toBeNull();
       
-      const services = await fetchServices();
+      const services = await Service.getByBusiness(BUSINESS_ID);
       const basicManicure = services.find(s => s.name.toLowerCase().includes('basic manicure'));
       expect(basicManicure).toBeDefined();
       
@@ -200,12 +226,18 @@ describe('Service Selection Step - Reflecting Real Bot Behavior', () => {
       
       console.log('✅ Text input (partial match) successful');
     },
-    TEST_CONFIG.TIMEOUT_SECONDS * 1000 * 2 // Increased timeout for partial matching
+    ESCALATION_TEST_CONFIG.TIMEOUT_SECONDS * 1000 * 2 // Increased timeout for partial matching
   );
 
   it('handles invalid service selection with helpful response',
     async () => {
-      await startBookingFlow();
+      const session = await ChatSession.startSession(
+        getNormalizedTestPhone(),
+        BUSINESS_ID,
+        'serviceBooking',
+        'initial_message'
+      );
+      expect(session).not.toBeNull();
       
       console.log('🚫 Testing invalid service: "massage"');
 
@@ -219,19 +251,25 @@ describe('Service Selection Step - Reflecting Real Bot Behavior', () => {
       await verifyBotShowsHelpfulError(); // Updated to expect helpful error
 
       // Verify bot mentions actual available services
-      const services = await fetchServices();
+      const services = await Service.getByBusiness(BUSINESS_ID);
       const firstServiceName = services[0].name;
       const botText = await getLastBotMessage();
       expect(botText).toMatch(new RegExp(firstServiceName, 'i'));
       
       console.log('✅ Invalid service handled with helpful response');
     },
-    TEST_CONFIG.TIMEOUT_SECONDS * 1000
+    ESCALATION_TEST_CONFIG.TIMEOUT_SECONDS * 1000
   );
 
   it('handles FAQ interruption with conversational location response',
     async () => {
-      await startBookingFlow();
+      const session = await ChatSession.startSession(
+        getNormalizedTestPhone(),
+        BUSINESS_ID,
+        'serviceBooking',
+        'initial_message'
+      );
+      expect(session).not.toBeNull();
       
       console.log('❓ Testing FAQ interruption: "where are you located?"');
 
@@ -250,12 +288,12 @@ describe('Service Selection Step - Reflecting Real Bot Behavior', () => {
       
       console.log('✅ FAQ interruption handled with conversational response');
     },
-    TEST_CONFIG.TIMEOUT_SECONDS * 1000
+    ESCALATION_TEST_CONFIG.TIMEOUT_SECONDS * 1000
   );
 
   it('handles core service variations (updated expectations)',
     async () => {
-      const services = await fetchServices();
+      const services = await Service.getByBusiness(BUSINESS_ID);
       const gelManicure = services.find(s => s.name.toLowerCase().includes('gel manicure'));
       expect(gelManicure).toBeDefined();
 
@@ -271,8 +309,14 @@ describe('Service Selection Step - Reflecting Real Bot Behavior', () => {
       console.log(`🔄 Testing ${coreVariations.length} core variations for: ${gelManicure!.name}`);
 
       for (const variation of coreVariations) {
-        await cleanup();
-        await startBookingFlow();
+        await deleteChatSessionsForUser(getNormalizedTestPhone(), BUSINESS_ID);
+        const session = await ChatSession.startSession(
+          getNormalizedTestPhone(),
+          BUSINESS_ID,
+          'serviceBooking',
+          'initial_message'
+        );
+        expect(session).not.toBeNull();
         
         const resp = await simulateWebhookPost({ 
           phone: TEST_PHONE, 
@@ -288,15 +332,21 @@ describe('Service Selection Step - Reflecting Real Bot Behavior', () => {
       
       console.log('✅ Core variations handled correctly');
     },
-    TEST_CONFIG.TIMEOUT_SECONDS * 1000 * 3 // Reduced timeout for fewer variations
+    ESCALATION_TEST_CONFIG.TIMEOUT_SECONDS * 1000 * 3 // Reduced timeout for fewer variations
   );
 
   // Test for variations that might not work (to document bot limitations)
   it('documents service variations that need improvement',
     async () => {
-      await startBookingFlow();
+      const session = await ChatSession.startSession(
+        getNormalizedTestPhone(),
+        BUSINESS_ID,
+        'serviceBooking',
+        'initial_message'
+      );
+      expect(session).not.toBeNull();
       
-      const services = await fetchServices();
+      const services = await Service.getByBusiness(BUSINESS_ID);
       const gelManicure = services.find(s => s.name.toLowerCase().includes('gel manicure'));
       expect(gelManicure).toBeDefined();
 
@@ -323,15 +373,21 @@ describe('Service Selection Step - Reflecting Real Bot Behavior', () => {
       
       console.log('✅ Challenging variation test completed');
     },
-    TEST_CONFIG.TIMEOUT_SECONDS * 1000
+    ESCALATION_TEST_CONFIG.TIMEOUT_SECONDS * 1000
   );
 
   // Additional test to verify service data integrity
   it('service selection includes correct pricing and duration data',
     async () => {
-      await startBookingFlow();
+      const session = await ChatSession.startSession(
+        getNormalizedTestPhone(),
+        BUSINESS_ID,
+        'serviceBooking',
+        'initial_message'
+      );
+      expect(session).not.toBeNull();
       
-      const services = await fetchServices();
+      const services = await Service.getByBusiness(BUSINESS_ID);
       const serviceWithPrice = services.find(s => s.fixedPrice && s.durationEstimate);
       expect(serviceWithPrice).toBeDefined();
       
@@ -353,6 +409,6 @@ describe('Service Selection Step - Reflecting Real Bot Behavior', () => {
       
       console.log('✅ Service data integrity verified');
     },
-    TEST_CONFIG.TIMEOUT_SECONDS * 1000
+    ESCALATION_TEST_CONFIG.TIMEOUT_SECONDS * 1000
   );
 });
