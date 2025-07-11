@@ -101,9 +101,11 @@ export async function sendEscalationTemplate(
     const originalHeaderParams = [
       cleanForTemplateParameter(safeCustomerName)
     ];
+    // 🔧 FIX: WhatsApp template expects 3 body parameters: customer name, conversation history, current message
     const originalBodyParams = [
-      cleanForTemplateParameter(safeHistory),
-      cleanForTemplateParameter(safeLastMessage.substring(0, TEMPLATE_CONFIG.MAX_CURRENT_MESSAGE_LENGTH))
+      cleanForTemplateParameter(safeCustomerName), // {{1}} - customer name (repeated from header)
+      cleanForTemplateParameter(safeHistory),      // {{2}} - conversation history  
+      cleanForTemplateParameter(safeLastMessage.substring(0, TEMPLATE_CONFIG.MAX_CURRENT_MESSAGE_LENGTH)) // {{3}} - current message
     ];
     
     // 🔧 FIX: Validate that all parameters are non-empty to ensure correct parameter count
@@ -113,12 +115,17 @@ export async function sendEscalationTemplate(
     }
     
     if (!originalBodyParams[0]) {
-      originalBodyParams[0] = 'No conversation history available';
-      console.warn(`${LOG_PREFIX} ⚠️ Empty history parameter detected, using fallback`);
+      originalBodyParams[0] = 'Customer';
+      console.warn(`${LOG_PREFIX} ⚠️ Empty customer name parameter detected, using fallback`);
     }
     
     if (!originalBodyParams[1]) {
-      originalBodyParams[1] = 'No current message available';
+      originalBodyParams[1] = 'No conversation history available';
+      console.warn(`${LOG_PREFIX} ⚠️ Empty history parameter detected, using fallback`);
+    }
+    
+    if (!originalBodyParams[2]) {
+      originalBodyParams[2] = 'No current message available';
       console.warn(`${LOG_PREFIX} ⚠️ Empty message parameter detected, using fallback`);
     }
     
@@ -142,29 +149,31 @@ export async function sendEscalationTemplate(
           truncateForTemplate(originalHeaderParams[0], TEMPLATE_LIMITS.HEADER_MAX_LENGTH)
         ],
         body: [
-          truncateForTemplate(originalBodyParams[0], TEMPLATE_LIMITS.SAFE_HISTORY_LENGTH), // Use conservative limit for history
-          truncateForTemplate(originalBodyParams[1], TEMPLATE_LIMITS.SAFE_MESSAGE_LENGTH)  // Use conservative limit for message
+          truncateForTemplate(originalBodyParams[0], TEMPLATE_LIMITS.HEADER_MAX_LENGTH), // Customer name (same limit as header)
+          truncateForTemplate(originalBodyParams[1], TEMPLATE_LIMITS.SAFE_HISTORY_LENGTH), // Use conservative limit for history
+          truncateForTemplate(originalBodyParams[2], TEMPLATE_LIMITS.SAFE_MESSAGE_LENGTH)  // Use conservative limit for message
         ]
       };
       
       console.log(`${LOG_PREFIX} 📏 Using truncated parameters for template, will send full details in follow-up`);
     }
     
-    // 🔧 FIX: Final validation to ensure we always send exactly 3 parameters (1 header + 2 body)
+    // 🔧 FIX: Final validation to ensure we always send exactly 4 parameters (1 header + 3 body)
     const totalParamCount = templateParams.header.length + templateParams.body.length;
     console.log(`${LOG_PREFIX} 🔍 Template parameter validation - Header: ${templateParams.header.length}, Body: ${templateParams.body.length}, Total: ${totalParamCount}`);
     
-    if (totalParamCount !== 3) {
-      console.error(`${LOG_PREFIX} ❌ Parameter count mismatch! Expected 3, got ${totalParamCount}`);
+    if (totalParamCount !== 4) {
+      console.error(`${LOG_PREFIX} ❌ Parameter count mismatch! Expected 4, got ${totalParamCount}`);
       console.error(`${LOG_PREFIX} Header params:`, templateParams.header);
       console.error(`${LOG_PREFIX} Body params:`, templateParams.body);
-      throw new Error(`Template parameter count mismatch: expected 3, got ${totalParamCount}`);
+      throw new Error(`Template parameter count mismatch: expected 4, got ${totalParamCount}`);
     }
     
     console.log(`${LOG_PREFIX} Sending template with params:`, {
       customerName: templateParams.header[0],
-      historyLength: templateParams.body[0].length,
-      currentMessage: templateParams.body[1],
+      customerNameBody: templateParams.body[0],
+      historyLength: templateParams.body[1].length,
+      currentMessage: templateParams.body[2],
       willSendFollowUp: needsFollowUp
     });
     

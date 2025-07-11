@@ -187,9 +187,9 @@ export class WhatsAppTemplateSender {
       // This method is simplified - we'll use the more detailed one from proxy-template-service
       const headerParameters = [customerName]; // {{1}} in header: "Customer {{1}} needs help!"
       const bodyParameters = [
-        customerName, // {{1}} in body - customer name (reused from header)
-        "[Recent conversation history]", // {{2}} in body  
-        truncatedMessage // {{3}} in body
+        customerName, // {{1}} in body - customer name (same as header)
+        "[Recent conversation history]", // {{2}} in body - conversation history 
+        truncatedMessage // {{3}} in body - current message
       ];
       
       console.log(`${LOG_PREFIX} Sending escalation template to ${adminPhone}`);
