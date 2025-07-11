@@ -189,6 +189,21 @@ export async function getOrCreateChatContext(
     };
   }
 
+  // If no customer user found, clear any cached user data from the session
+  // to prevent old super admin or other non-customer data from persisting
+  if (!customerUser && historyAndContext?.userContext?.sessionData?.userId) {
+    console.log(`[SessionManager] No customer found but session has cached user data - clearing cached data`);
+    // Clear the cached user data from the session
+    if (historyAndContext.userContext.sessionData) {
+      historyAndContext.userContext.sessionData = {
+        ...historyAndContext.userContext.sessionData,
+        userId: undefined,
+        customerName: undefined,
+        existingUserFound: false
+      };
+    }
+  }
+
   const currentSession = convertToInternalSession(
     historyAndContext,
     participantWithBusinessId
