@@ -33,7 +33,7 @@ export async function sendEscalationTemplate(
     const compactHistory = formatConversationHistoryForTemplate(conversationHistory, customerName, language, TEMPLATE_CONFIG.MAX_HISTORY_LENGTH);
     
     // Send comprehensive escalation template (header + body + button)
-    const languageCode = language === 'es' ? 'es' : 'en_US';
+    const languageCode = language === 'es' ? 'es' : 'en'; // Changed from 'en_US' to 'en'
     const templateParams = [
       customerName, // {{1}} - used in header
       compactHistory, // {{2}} - conversation history in body
