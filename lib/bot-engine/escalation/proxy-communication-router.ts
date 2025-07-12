@@ -106,12 +106,21 @@ export async function routeProxyMessage(
       return { wasHandled: false, messageForwarded: false, proxyEnded: false };
     }
     
-    const isFromAdmin = parsedMessage.senderId === business.phone;
-    console.log(`${LOG_PREFIX} Message from admin: ${isFromAdmin} (sender: ${parsedMessage.senderId}, admin: ${business.phone})`);
+    const businessId = business.id;
+    if (!businessId) {
+      console.log(`${LOG_PREFIX} Business ID is missing for business: ${business.name}`);
+      return { wasHandled: false, messageForwarded: false, proxyEnded: false };
+    }
+    
+    // Use proper admin detection logic
+    const isFromAdmin = await isUserAdminByPhone(parsedMessage.senderId, businessId);
+    console.log(`${LOG_PREFIX} Message from admin: ${isFromAdmin} (sender: ${parsedMessage.senderId}, businessId: ${businessId})`);
     
     if (isFromAdmin) {
+      console.log(`${LOG_PREFIX} 🎯 Admin message detected, checking for proxy session...`);
       return await handleAdminProxyMessage(parsedMessage, business, businessPhoneNumberId);
     } else {
+      console.log(`${LOG_PREFIX} 👤 Customer message detected, checking for proxy session...`);
       return await handleCustomerProxyMessage(parsedMessage, businessPhoneNumberId);
     }
     
@@ -129,6 +138,41 @@ export async function routeProxyMessage(
 }
 
 /**
+ * Helper function to determine if a user is an admin based on their phone number and role
+ * @param phoneNumber - The phone number to check
+ * @param businessId - The business ID to verify the user belongs to
+ * @returns Promise<boolean> - true if user has admin/provider role for this business
+ */
+async function isUserAdminByPhone(phoneNumber: string, businessId: string): Promise<boolean> {
+  try {
+    const { getEnvironmentServiceRoleClient } = await import("@/lib/database/supabase/environment");
+    const { PROVIDER_ROLES } = await import("@/lib/database/models/user");
+    const supa = getEnvironmentServiceRoleClient();
+    
+    // Normalize the input phone number for comparison (remove + and non-digits)
+    const normalizedInputPhone = phoneNumber.replace(/[^\d]/g, '');
+    
+    // Query users table directly by phoneNormalized or whatsAppNumberNormalized fields
+    const { data: users, error } = await supa
+      .from('users')
+      .select('*')
+      .eq('businessId', businessId)
+      .in('role', PROVIDER_ROLES)
+      .or(`phoneNormalized.eq.${normalizedInputPhone},whatsAppNumberNormalized.eq.${normalizedInputPhone}`);
+    
+    if (error) {
+      console.error(`${LOG_PREFIX} Error querying users table:`, error);
+      return false;
+    }
+    
+    return users && users.length > 0;
+  } catch (error) {
+    console.error(`${LOG_PREFIX} Error checking admin status for phone ${phoneNumber}:`, error);
+    return false;
+  }
+}
+
+/**
  * Handles messages from admin in proxy mode
  */
 async function handleAdminProxyMessage(
@@ -137,6 +181,7 @@ async function handleAdminProxyMessage(
   businessPhoneNumberId: string
 ): Promise<ProxyMessageResult> {
   console.log(`${LOG_PREFIX} Handling admin message: "${parsedMessage.text}"`);
+  console.log(`${LOG_PREFIX} 🔍 Looking for proxy session for admin: ${business.phone}`);
   
   // Check for takeover command first (button or text)
   const buttonId = extractButtonId(parsedMessage);
@@ -173,11 +218,16 @@ async function handleAdminProxyMessage(
   }
   
   // Forward message to customer
+  console.log(`${LOG_PREFIX} 🔍 Looking for active proxy session for admin: ${business.phone}`);
   const proxySession = await getProxySessionByAdmin(business.phone);
   if (!proxySession) {
-    console.log(`${LOG_PREFIX} No active proxy session for admin: ${business.phone}`);
+    console.log(`${LOG_PREFIX} ❌ No active proxy session for admin: ${business.phone}`);
+    console.log(`${LOG_PREFIX} 💡 This might be because the admin's message created a new session instead of using the existing proxy session`);
     return { wasHandled: false, messageForwarded: false, proxyEnded: false };
   }
+  
+  console.log(`${LOG_PREFIX} ✅ Found active proxy session: ${proxySession.sessionId}`);
+  console.log(`${LOG_PREFIX} 📞 Customer phone: ${proxySession.customerPhone}`);
   
   const forwarded = await forwardAdminMessageToCustomer(
     parsedMessage,
@@ -211,18 +261,20 @@ async function handleCustomerProxyMessage(
   // Get session ID from customer phone
   const sessionId = await getSessionIdByCustomerPhone(parsedMessage.senderId);
   if (!sessionId) {
-    console.log(`${LOG_PREFIX} No session found for customer: ${parsedMessage.senderId}`);
+    console.log(`${LOG_PREFIX} ❌ No session found for customer: ${parsedMessage.senderId}`);
     return { wasHandled: false, messageForwarded: false, proxyEnded: false };
   }
+  
+  console.log(`${LOG_PREFIX} 📋 Found session ID: ${sessionId} for customer: ${parsedMessage.senderId}`);
   
   // Check if session is in proxy mode
   const proxySession = await getProxySessionBySessionId(sessionId);
   if (!proxySession) {
-    console.log(`${LOG_PREFIX} No active proxy session for session: ${sessionId}`);
+    console.log(`${LOG_PREFIX} ❌ No active proxy session for session: ${sessionId}`);
     return { wasHandled: false, messageForwarded: false, proxyEnded: false };
   }
   
-  console.log(`${LOG_PREFIX} Found active proxy session, forwarding to admin: ${proxySession.adminPhone}`);
+  console.log(`${LOG_PREFIX} ✅ Found active proxy session, forwarding to admin: ${proxySession.adminPhone}`);
   
   // Forward message to admin
   const forwarded = await forwardCustomerMessageToAdmin(

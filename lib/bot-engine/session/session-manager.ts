@@ -144,6 +144,80 @@ export async function getOrCreateChatContext(
     `[getOrCreateChatContext] Dynamically identified business ID: ${associatedBusinessId}`
   );
 
+  // 🆕 PROXY SESSION CHECK: If this is an admin message, check for active proxy session first
+  if (participant.type === 'business') {
+    console.log(`${LOG_PREFIX} Admin message detected, checking for active proxy session...`);
+    console.log(`${LOG_PREFIX} Debug - participant.type: ${participant.type}, participant.id: ${participant.id}`);
+    
+    try {
+      const { getProxySessionByAdmin } = await import('@/lib/bot-engine/escalation/proxy-session-manager');
+      const proxySession = await getProxySessionByAdmin(participant.id);
+      
+      if (proxySession) {
+        console.log(`${LOG_PREFIX} Found active proxy session for admin, using customer session: ${proxySession.sessionId}`);
+        
+        // Use the customer's session instead of creating a new admin session
+        const customerParticipant: ConversationalParticipant = {
+          ...participant,
+          customerWhatsappNumber: proxySession.customerPhone,
+          associatedBusinessId: associatedBusinessId,
+          type: 'customer' as const // Temporarily treat as customer to get their session
+        };
+        
+        // Get the customer's session context
+        const customerContext = await extractSessionHistoryAndContext(
+          "whatsapp",
+          proxySession.customerPhone,
+          associatedBusinessId || "",
+          BOT_CONFIG.SESSION_TIMEOUT_HOURS,
+          {}
+        );
+        
+        if (customerContext) {
+          // Convert back to admin participant for the context
+          const adminParticipant: ConversationalParticipant = {
+            ...participant,
+            associatedBusinessId: associatedBusinessId,
+          };
+          
+          const currentSession = convertToInternalSession(
+            customerContext,
+            adminParticipant
+          );
+          
+          const context: ChatContext = {
+            currentParticipant: adminParticipant,
+            currentConversationSession: currentSession,
+            previousConversationSession: undefined,
+            frequentlyDiscussedTopics: customerContext.userContext.frequentlyDiscussedTopics
+              ? customerContext.userContext.frequentlyDiscussedTopics.split(", ").filter((topic: string) => topic.trim() !== "")
+              : ["general queries", "booking help"],
+            participantPreferences: customerContext.userContext.participantPreferences || {
+              language: BOT_CONFIG.DEFAULT_LANGUAGE,
+              timezone: BOT_CONFIG.DEFAULT_TIMEZONE,
+              notificationSettings: { email: true },
+            },
+          };
+          
+          return {
+            context,
+            sessionId: proxySession.sessionId,
+            userContext: customerContext.userContext,
+            historyForLLM: customerContext.historyForLLM,
+            customerUser: undefined, // Admin doesn't have customer user
+          };
+        }
+      } else {
+        console.log(`${LOG_PREFIX} No active proxy session found for admin, proceeding with normal session creation`);
+      }
+    } catch (error) {
+      console.error(`${LOG_PREFIX} Error checking proxy session for admin:`, error);
+      // Continue with normal session creation if proxy check fails
+    }
+  } else {
+    console.log(`${LOG_PREFIX} Customer message - participant.type: ${participant.type}, participant.id: ${participant.id}`);
+  }
+
   let customerUser: any = undefined;
 
   if (participant.customerWhatsappNumber && participant.type === "customer") {

@@ -6,6 +6,7 @@ import { type WebhookAPIBody } from "@/lib/bot-engine/channels/whatsapp/whatsapp
 import { type ConversationalParticipant } from "@/lib/bot-engine/types";
 import { getOrCreateChatContext } from "@/lib/bot-engine/session/session-manager";
 import { Business } from '@/lib/database/models/business';
+import { User, PROVIDER_ROLES } from '@/lib/database/models/user';
 import { 
   WebhookRouter, 
   WebhookSecurityUtils,
@@ -44,6 +45,51 @@ console.log(`${LOG_PREFIX} Environment Configuration:`, {
   hasProdConfig: ENVIRONMENT_INFO.hasProdConfig,
   webhookEnabled: WEBHOOK_ENABLED
 });
+
+/**
+ * Helper function to determine if a user is an admin based on their phone number and role
+ * @param phoneNumber - The phone number to check
+ * @param businessId - The business ID to verify the user belongs to
+ * @returns Promise<boolean> - true if user has admin/provider role for this business
+ */
+async function isUserAdminByPhone(phoneNumber: string, businessId: string): Promise<boolean> {
+  try {
+    console.log(`${LOG_PREFIX} Checking if phone ${phoneNumber} is admin for business ${businessId}`);
+    
+    // Import the database client and phone normalization utils
+    const { getEnvironmentServiceRoleClient } = await import("@/lib/database/supabase/environment");
+    const supa = getEnvironmentServiceRoleClient();
+    
+    // Normalize the input phone number for comparison (remove + and non-digits)
+    const normalizedInputPhone = phoneNumber.replace(/[^\d]/g, '');
+    console.log(`${LOG_PREFIX} Normalized input phone: ${normalizedInputPhone}`);
+    
+    // Query users table directly by phoneNormalized or whatsAppNumberNormalized fields
+    const { data: users, error } = await supa
+      .from('users')
+      .select('*')
+      .eq('businessId', businessId)
+      .in('role', PROVIDER_ROLES)
+      .or(`phoneNormalized.eq.${normalizedInputPhone},whatsAppNumberNormalized.eq.${normalizedInputPhone}`);
+    
+    if (error) {
+      console.error(`${LOG_PREFIX} Error querying users table:`, error);
+      return false;
+    }
+    
+    if (users && users.length > 0) {
+      const matchedUser = users[0];
+      console.log(`${LOG_PREFIX} Found admin user: role=${matchedUser.role}, userId=${matchedUser.id}, phoneNormalized=${matchedUser.phoneNormalized}, whatsAppNumberNormalized=${matchedUser.whatsAppNumberNormalized}`);
+      return true;
+    }
+    
+    console.log(`${LOG_PREFIX} No admin user found with phoneNormalized or whatsAppNumberNormalized matching ${normalizedInputPhone} for business ${businessId}`);
+    return false;
+  } catch (error) {
+    console.error(`${LOG_PREFIX} Error checking admin status for phone ${phoneNumber}:`, error);
+    return false;
+  }
+}
 
 /**
  * Handles WhatsApp status updates for delivery tracking
@@ -223,14 +269,31 @@ export async function POST(req: NextRequest) {
         console.log(`${LOG_PREFIX} Message contains ${parsedMessage.attachments.length} attachment(s)`);
       }
 
+      // Determine if sender is admin based on phone number and role
+      const businessId = business.id;
+      if (!businessId) {
+        console.error(`${LOG_PREFIX} Business ID is missing for business: ${business.name}`);
+        return NextResponse.json({ message: "Business configuration error" }, { status: 500 });
+      }
+      
+      const isAdmin = await isUserAdminByPhone(parsedMessage.senderId, businessId);
+
       const participant: ConversationalParticipant = {
         id: parsedMessage.senderId,
-        type: 'customer',
+        type: isAdmin ? 'business' : 'customer',
         businessWhatsappNumber: parsedMessage.businessWhatsappNumber,
         customerWhatsappNumber: parsedMessage.customerWhatsappNumber,
         creationTimestamp: parsedMessage.timestamp ? new Date(parsedMessage.timestamp) : new Date(),
         lastUpdatedTimestamp: new Date(),
       };
+
+      console.log(`${LOG_PREFIX} Created participant:`, {
+        id: participant.id,
+        type: participant.type,
+        senderId: parsedMessage.senderId,
+        businessId: business.id,
+        isAdmin: isAdmin
+      });
 
       try {
         if (!parsedMessage.text) {
