@@ -18,6 +18,78 @@ import {
 const LOG_PREFIX = '[ProxyMessageRouter]';
 
 /**
+ * Extracts button ID from parsed message (for button interactions)
+ */
+function extractButtonId(parsedMessage: ParsedMessage): string | undefined {
+  try {
+    // Check if message has button interaction data from WhatsApp
+    // Button interactions come in the 'interactive' field of the webhook payload
+    const originalPayload = (parsedMessage as any).originalPayload;
+    
+    if (originalPayload) {
+      // Navigate through the webhook structure to find button reply
+      const entry = originalPayload.entry?.[0];
+      const changes = entry?.changes?.[0];
+      const value = changes?.value;
+      const message = value?.messages?.[0];
+      
+      // Check for interactive button reply
+      if (message?.interactive?.type === 'button_reply') {
+        return message.interactive.button_reply?.id;
+      }
+      
+      // Check for list reply (if template uses list instead of buttons)
+      if (message?.interactive?.type === 'list_reply') {
+        return message.interactive.list_reply?.id;
+      }
+    }
+    
+    // Fallback: check if parsedMessage has button data directly
+    if ((parsedMessage as any).interactive?.button_reply?.id) {
+      return (parsedMessage as any).interactive.button_reply.id;
+    }
+    
+    // Legacy fallback: check for button data in other formats
+    if ((parsedMessage as any).buttonId) {
+      return (parsedMessage as any).buttonId;
+    }
+    
+    return undefined;
+  } catch (error) {
+    console.error(`${LOG_PREFIX} Error extracting button ID:`, error);
+    return undefined;
+  }
+}
+
+/**
+ * Gets session ID by customer phone number
+ */
+async function getSessionIdByCustomerPhone(customerPhone: string): Promise<string | null> {
+  try {
+    // Use existing method to get active session (proxy should only work with recent/active sessions)
+    const session = await ChatSession.getActiveByChannelUserId('whatsapp', customerPhone, 24); // 24 hour timeout
+    return session?.id || null;
+  } catch (error) {
+    console.error(`${LOG_PREFIX} Error getting session by customer phone:`, error);
+    return null;
+  }
+}
+
+/**
+ * Gets customer name from session
+ */
+async function getCustomerName(sessionId: string): Promise<string> {
+  try {
+    const session = await ChatSession.getById(sessionId);
+    // Extract customer name from session data or use phone number
+    return session?.channelUserId || 'Customer';
+  } catch (error) {
+    console.error(`${LOG_PREFIX} Error getting customer name:`, error);
+    return 'Customer';
+  }
+}
+
+/**
  * Main router for proxy messages - determines if message should be handled by proxy system
  */
 export async function routeProxyMessage(
@@ -122,10 +194,8 @@ async function handleAdminProxyMessage(
   return {
     wasHandled: true,
     messageForwarded: forwarded,
-    proxyEnded: false,
-    response: forwarded 
-      ? { text: "✅ Message sent to customer" }
-      : { text: "⚠️ Failed to send message to customer" }
+    proxyEnded: false
+    // No response - admin doesn't need confirmation when message is forwarded
   };
 }
 
@@ -236,56 +306,5 @@ async function forwardCustomerMessageToAdmin(
   } catch (error) {
     console.error(`${LOG_PREFIX} ❌ Failed to forward customer message:`, error);
     return false;
-  }
-}
-
-/**
- * Helper functions for proxy message routing
- */
-
-async function getSessionIdByCustomerPhone(customerPhone: string): Promise<string | null> {
-  try {
-    // Use existing method to get active session (proxy should only work with recent/active sessions)
-    const session = await ChatSession.getActiveByChannelUserId('whatsapp', customerPhone, 24); // 24 hour timeout
-    return session?.id || null;
-  } catch (error) {
-    console.error(`${LOG_PREFIX} Error getting session by customer phone:`, error);
-    return null;
-  }
-}
-
-async function getCustomerName(sessionId: string): Promise<string> {
-  try {
-    const session = await ChatSession.getById(sessionId);
-    // Extract customer name from session data or use phone number
-    return session?.channelUserId || 'Customer';
-  } catch (error) {
-    console.error(`${LOG_PREFIX} Error getting customer name:`, error);
-    return 'Customer';
-  }
-}
-
-/**
- * Extracts button ID from WhatsApp interactive message
- */
-function extractButtonId(parsedMessage: ParsedMessage): string | undefined {
-  try {
-    // Check if message has button interaction data
-    // This would come from the WhatsApp webhook when a template button is pressed
-    const messageData = (parsedMessage as any).interactive || (parsedMessage as any).button_reply;
-    
-    if (messageData?.button_reply?.id) {
-      return messageData.button_reply.id;
-    }
-    
-    // Check for button data in raw message data (fallback)
-    if ((parsedMessage as any).buttonId) {
-      return (parsedMessage as any).buttonId;
-    }
-    
-    return undefined;
-  } catch (error) {
-    console.error(`${LOG_PREFIX} Error extracting button ID:`, error);
-    return undefined;
   }
 } 

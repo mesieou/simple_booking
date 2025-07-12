@@ -6,11 +6,8 @@ const LOG_PREFIX = '[CustomerService]';
 
 export class CustomerService {
   /**
-   * Unified customer name resolution with fallback chain:
-   * 1. WhatsApp profile name
-   * 2. Passed customer user (firstName + lastName)
-   * 3. Linked user from session
-   * 4. Phone number fallback
+   * Resolves customer name from customer user data
+   * Customers should already have proper names in the system
    */
   static async resolveCustomerName(context: {
     whatsappName?: string;
@@ -18,48 +15,33 @@ export class CustomerService {
     sessionId?: string;
     phoneNumber?: string;
   }): Promise<string> {
-    const { whatsappName, customerUser, sessionId, phoneNumber } = context;
+    const { customerUser, phoneNumber } = context;
     
     try {
-      // 1. WhatsApp profile name (highest priority)
-      if (whatsappName?.trim()) {
-        console.log(`${LOG_PREFIX} Using WhatsApp profile name: ${whatsappName}`);
-        return whatsappName.trim();
-      }
-      
-      // 2. Passed customer user
+      // Use customer user data - this should always exist
       if (customerUser?.firstName && customerUser?.lastName) {
         const fullName = `${customerUser.firstName} ${customerUser.lastName}`;
-        console.log(`${LOG_PREFIX} Using passed customer user name: ${fullName}`);
+        console.log(`${LOG_PREFIX} Using customer name: ${fullName}`);
         return fullName;
       }
       
-      // 3. Try to get linked user from session
-      if (sessionId) {
-        const linkedUserName = await this.getLinkedUserName(sessionId);
-        if (linkedUserName) {
-          console.log(`${LOG_PREFIX} Using linked user name from DB: ${linkedUserName}`);
-          return linkedUserName;
-        }
+      if (customerUser?.firstName) {
+        console.log(`${LOG_PREFIX} Using customer first name: ${customerUser.firstName}`);
+        return customerUser.firstName;
       }
       
-      // 4. Phone number fallback
-      if (phoneNumber) {
-        console.log(`${LOG_PREFIX} Using phone number fallback: ${phoneNumber}`);
-        return phoneNumber;
-      }
+      // If we get here, there's a problem with the customer data
+      console.error(`${LOG_PREFIX} No customer name available - customer data missing!`, { 
+        hasCustomerUser: !!customerUser,
+        customerId: customerUser?.id,
+        phoneNumber 
+      });
       
-      // 5. Default fallback
-      console.log(`${LOG_PREFIX} Using default fallback name`);
-      return 'Unknown Customer';
+      return phoneNumber || 'Unknown Customer';
       
     } catch (error) {
       console.error(`${LOG_PREFIX} Error resolving customer name:`, error);
-      throw new EscalationError(
-        'Failed to resolve customer name',
-        EscalationErrorCode.CUSTOMER_NAME_RESOLUTION_FAILED,
-        { context, error: error instanceof Error ? error.message : 'Unknown error' }
-      );
+      return phoneNumber || 'Unknown Customer';
     }
   }
   

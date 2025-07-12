@@ -90,11 +90,14 @@ export async function getProxySessionByAdmin(adminPhone: string): Promise<ProxyS
     const notification = await Notification.getActiveProxyByAdminPhone(adminPhone);
     if (!notification) return null;
     
+    // Get customer phone from session data
+    const customerPhone = await getCustomerPhoneFromSession(notification.chatSessionId);
+    
     return {
       notificationId: notification.id,
       sessionId: notification.chatSessionId,
       adminPhone: adminPhone,
-      customerPhone: '', // We'll get this from session
+      customerPhone: customerPhone || '', // Now properly retrieved from session
       businessPhoneNumberId: '', // We'll get this from business
       isActive: true
     };
@@ -112,11 +115,17 @@ export async function getProxySessionBySessionId(sessionId: string): Promise<Pro
     const notification = await Notification.getActiveProxyBySessionId(sessionId);
     if (!notification) return null;
     
+    // Get customer phone from session data
+    const customerPhone = await getCustomerPhoneFromSession(sessionId);
+    
+    // Get admin phone from notification data (assuming it's stored in proxyData)
+    const adminPhone = await getAdminPhoneFromNotification(notification);
+    
     return {
       notificationId: notification.id,
       sessionId: sessionId,
-      adminPhone: '', // We'll get this from notification data
-      customerPhone: '', // We'll get this from session
+      adminPhone: adminPhone || '', // Now properly retrieved from notification
+      customerPhone: customerPhone || '', // Now properly retrieved from session
       businessPhoneNumberId: '', // We'll get this from business
       isActive: true
     };
@@ -171,5 +180,47 @@ export function logProxySessionActivity(
   
   if (details) {
     console.log(`${LOG_PREFIX} Details:`, details);
+  }
+} 
+
+/**
+ * Helper function to get customer phone from session data
+ */
+async function getCustomerPhoneFromSession(sessionId: string): Promise<string | null> {
+  try {
+    const { ChatSession } = await import('@/lib/database/models/chat-session');
+    const session = await ChatSession.getById(sessionId);
+    
+    if (!session) {
+      console.warn(`${LOG_PREFIX} Session not found: ${sessionId}`);
+      return null;
+    }
+    
+    // The channelUserId should be the customer's phone number for WhatsApp
+    return session.channelUserId || null;
+  } catch (error) {
+    console.error(`${LOG_PREFIX} Error getting customer phone from session:`, error);
+    return null;
+  }
+}
+
+/**
+ * Helper function to get admin phone from notification data
+ */
+async function getAdminPhoneFromNotification(notification: any): Promise<string | null> {
+  try {
+    // Get business phone from the notification's business
+    const { Business } = await import('@/lib/database/models/business');
+    const business = await Business.getById(notification.businessId);
+    
+    if (!business) {
+      console.warn(`${LOG_PREFIX} Business not found: ${notification.businessId}`);
+      return null;
+    }
+    
+    return business.phone || null;
+  } catch (error) {
+    console.error(`${LOG_PREFIX} Error getting admin phone from notification:`, error);
+    return null;
   }
 } 

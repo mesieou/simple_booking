@@ -11,9 +11,7 @@ import {
   logProxySessionActivity
 } from './proxy-session-manager';
 import { 
-  sendEscalationTemplate, 
-  sendMediaAttachments, 
-  getConversationHistory 
+  sendEscalationTemplate
 } from './proxy-template-service';
 import { 
   type ProxySessionData,
@@ -65,21 +63,6 @@ export async function sendEscalationTemplateWithProxy(
     
     await createProxySession(notificationId, sessionData);
     console.log(`${LOG_PREFIX} ✅ Proxy session created successfully`);
-    
-    // Step 3: Send media attachments if any exist
-    try {
-      const conversationHistory = await getConversationHistory(chatSessionId, 4);
-      await sendMediaAttachments(
-        conversationHistory,
-        businessPhoneNumber,
-        businessPhoneNumberId,
-        customerName,
-        language
-      );
-    } catch (mediaError) {
-      console.warn(`${LOG_PREFIX} ⚠️ Media attachments failed but template succeeded:`, mediaError);
-      // Don't fail the whole process if media fails
-    }
     
     // Log successful proxy session creation
     logProxySessionActivity(chatSessionId, 'created', {

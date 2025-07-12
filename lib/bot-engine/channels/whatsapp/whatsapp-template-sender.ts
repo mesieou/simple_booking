@@ -166,6 +166,7 @@ export class WhatsAppTemplateSender {
   
   /**
    * Sends escalation notification template with customer details
+   * @deprecated Use sendEscalationTemplate from proxy-template-service.ts instead
    */
   async sendEscalationTemplate(
     adminPhone: string,
@@ -175,7 +176,7 @@ export class WhatsAppTemplateSender {
     language: string = 'en'
   ): Promise<string | null> {
     try {
-      const languageCode = language === 'es' ? 'es' : 'en'; // Changed from 'en_US' to 'en'
+      const languageCode = language === 'es' ? 'es' : 'en';
       const templateName = getEscalationTemplateName();
       
       // Truncate message to fit template constraints
@@ -183,17 +184,20 @@ export class WhatsAppTemplateSender {
         ? customerMessage.substring(0, 97) + '...'
         : customerMessage;
       
-      // For escalation template, we need to pass conversation history too
-      // This method is simplified - we'll use the more detailed one from proxy-template-service
-      const headerParameters = [customerName]; // {{1}} in header: "Customer {{1}} needs help!"
+      console.warn(`${LOG_PREFIX} ⚠️ DEPRECATED: Using old sendEscalationTemplate method. Use proxy-template-service.ts instead.`);
+      
+      // New simplified template format:
+      // Header: Customer {{1}} needs help!
+      // Body: 👤{{1}} asked: {{2}}
+      const headerParameters = [customerName]; // {{1}} in header
       const bodyParameters = [
-        customerName, // {{1}} in body - customer name (same as header)
-        "[Recent conversation history]", // {{2}} in body - conversation history 
-        truncatedMessage // {{3}} in body - current message
+        customerName,      // {{1}} in body - customer name (repeated from header)
+        truncatedMessage   // {{2}} in body - triggering message
       ];
       
       console.log(`${LOG_PREFIX} Sending escalation template to ${adminPhone}`);
       console.log(`${LOG_PREFIX} Customer: ${customerName}, Message: "${truncatedMessage}"`);
+      console.log(`${LOG_PREFIX} Using simplified template format (3 parameters total)`);
       
       return await this.sendTemplateMessage(
         adminPhone,
