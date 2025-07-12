@@ -40,6 +40,48 @@ const i18n = {
     }
 };
 
+/**
+ * Helper function to find admin's personal phone number for a business
+ * @param businessId - The business ID to find admin for
+ * @returns Promise<string | null> - The admin's personal phone with + prefix, or null if not found
+ */
+async function getAdminPersonalPhoneForBusiness(businessId: string): Promise<string | null> {
+  try {
+    const { getEnvironmentServiceRoleClient } = await import("@/lib/database/supabase/environment");
+    const { PROVIDER_ROLES } = await import("@/lib/database/models/user");
+    const supa = getEnvironmentServiceRoleClient();
+    
+    // Find admin/provider users for this business
+    const { data: users, error } = await supa
+      .from('users')
+      .select('phoneNormalized, whatsAppNumberNormalized, role, firstName, lastName')
+      .eq('businessId', businessId)
+      .in('role', PROVIDER_ROLES)
+      .not('phoneNormalized', 'is', null)
+      .limit(1);
+    
+    if (error) {
+      console.error(`${LOG_PREFIX} Error finding admin for business ${businessId}:`, error);
+      return null;
+    }
+    
+    if (!users || users.length === 0) {
+      console.log(`${LOG_PREFIX} No admin users found for business ${businessId}`);
+      return null;
+    }
+    
+    const admin = users[0];
+    console.log(`${LOG_PREFIX} Found admin: ${admin.firstName} ${admin.lastName} (${admin.role})`);
+    
+    // Return phone with + prefix (prefer phoneNormalized, fallback to whatsAppNumberNormalized)
+    const phone = admin.phoneNormalized || admin.whatsAppNumberNormalized;
+    return phone ? `+${phone}` : null;
+  } catch (error) {
+    console.error(`${LOG_PREFIX} Exception finding admin for business ${businessId}:`, error);
+    return null;
+  }
+}
+
 // Escalation detection functions moved to escalation-detector.ts
 
 /**
@@ -134,6 +176,16 @@ async function checkForEscalationTrigger(
         return { isEscalated: false };
       }
       
+      // Find the admin's personal phone number for this business
+      const adminPersonalPhone = await getAdminPersonalPhoneForBusiness(businessId);
+      if (!adminPersonalPhone) {
+        console.warn(`${LOG_PREFIX} Warning: Could not find admin personal phone for business ${businessId}, using business phone as fallback`);
+      }
+      
+      // Use admin personal phone if found, otherwise fallback to business phone
+      const targetAdminPhone = adminPersonalPhone || business.phone;
+      console.log(`${LOG_PREFIX} Targeting admin phone: ${targetAdminPhone} (personal: ${!!adminPersonalPhone})`);
+      
       const notification = await NotificationService.createEscalationNotification({
         businessId,
         chatSessionId,
@@ -141,10 +193,10 @@ async function checkForEscalationTrigger(
         message: `Escalation triggered: ${escalationReason}`
       });
     
-      // Send notification with delivery tracking
+      // Send notification with delivery tracking - use admin's personal phone
       await sendEscalationNotificationWithTracking(
         notification.id,
-        business.phone, 
+        targetAdminPhone, 
         customerName, 
         messageHistory, 
         language, 

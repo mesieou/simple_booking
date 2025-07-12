@@ -206,19 +206,40 @@ async function getCustomerPhoneFromSession(sessionId: string): Promise<string | 
 
 /**
  * Helper function to get admin phone from notification data
+ * Gets the actual admin's personal phone, not the business phone
  */
 async function getAdminPhoneFromNotification(notification: any): Promise<string | null> {
   try {
-    // Get business phone from the notification's business
-    const { Business } = await import('@/lib/database/models/business');
-    const business = await Business.getById(notification.businessId);
-    
-    if (!business) {
-      console.warn(`${LOG_PREFIX} Business not found: ${notification.businessId}`);
-      return null;
+    // Try to get admin phone from proxy data first (if stored)
+    if (notification.proxyData && notification.proxyData.adminPhone) {
+      return notification.proxyData.adminPhone;
     }
     
-    return business.phone || null;
+    // Fallback: Find admin's personal phone for this business
+    const { getEnvironmentServiceRoleClient } = await import("@/lib/database/supabase/environment");
+    const { PROVIDER_ROLES } = await import("@/lib/database/models/user");
+    const supa = getEnvironmentServiceRoleClient();
+    
+    const { data: users, error } = await supa
+      .from('users')
+      .select('phoneNormalized, whatsAppNumberNormalized, role')
+      .eq('businessId', notification.businessId)
+      .in('role', PROVIDER_ROLES)
+      .not('phoneNormalized', 'is', null)
+      .limit(1);
+    
+    if (error || !users || users.length === 0) {
+      console.warn(`${LOG_PREFIX} Could not find admin for business: ${notification.businessId}`);
+      
+      // Final fallback: use business phone
+      const { Business } = await import('@/lib/database/models/business');
+      const business = await Business.getById(notification.businessId);
+      return business?.phone || null;
+    }
+    
+    const admin = users[0];
+    const phone = admin.phoneNormalized || admin.whatsAppNumberNormalized;
+    return phone ? `+${phone}` : null;
   } catch (error) {
     console.error(`${LOG_PREFIX} Error getting admin phone from notification:`, error);
     return null;

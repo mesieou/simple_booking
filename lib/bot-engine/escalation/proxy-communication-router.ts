@@ -185,13 +185,15 @@ async function handleAdminProxyMessage(
   
   // Check for takeover command first (button or text)
   const buttonId = extractButtonId(parsedMessage);
+  const adminPersonalPhone = parsedMessage.senderId;
+  
   if (isTakeoverCommand(parsedMessage.text || '', buttonId)) {
     console.log(`${LOG_PREFIX} Takeover command detected (${buttonId ? 'button' : 'text'})`);
     
-    // Find active proxy session for this admin
-    const proxySession = await getProxySessionByAdmin(business.phone);
+    // Find active proxy session for this admin using their personal phone
+    const proxySession = await getProxySessionByAdmin(adminPersonalPhone);
     if (!proxySession) {
-      console.log(`${LOG_PREFIX} No active proxy session found for admin: ${business.phone}`);
+      console.log(`${LOG_PREFIX} No active proxy session found for admin personal phone: ${adminPersonalPhone}`);
       return {
         wasHandled: true,
         messageForwarded: false,
@@ -200,8 +202,8 @@ async function handleAdminProxyMessage(
       };
     }
     
-    // End proxy mode
-    await endProxySession(proxySession.notificationId, business.phone, businessPhoneNumberId);
+    // End proxy mode - use the admin's personal phone
+    await endProxySession(proxySession.notificationId, adminPersonalPhone, businessPhoneNumberId);
     
     logProxySessionActivity(proxySession.sessionId, 'ended', {
       direction: 'Admin→Customer',
@@ -217,11 +219,11 @@ async function handleAdminProxyMessage(
     };
   }
   
-  // Forward message to customer
-  console.log(`${LOG_PREFIX} 🔍 Looking for active proxy session for admin: ${business.phone}`);
-  const proxySession = await getProxySessionByAdmin(business.phone);
+  // Forward message to customer - use admin's personal phone (sender), not business phone
+  console.log(`${LOG_PREFIX} 🔍 Looking for active proxy session for admin personal phone: ${adminPersonalPhone}`);
+  const proxySession = await getProxySessionByAdmin(adminPersonalPhone);
   if (!proxySession) {
-    console.log(`${LOG_PREFIX} ❌ No active proxy session for admin: ${business.phone}`);
+    console.log(`${LOG_PREFIX} ❌ No active proxy session for admin personal phone: ${adminPersonalPhone}`);
     console.log(`${LOG_PREFIX} 💡 This might be because the admin's message created a new session instead of using the existing proxy session`);
     return { wasHandled: false, messageForwarded: false, proxyEnded: false };
   }
