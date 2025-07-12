@@ -27,6 +27,7 @@ class NotificationProxyExtensions {
         deliveryStatus: 'sent',
         whatsappMessageId: proxyData.templateMessageId,
         lastDeliveryAttempt: new Date().toISOString(),
+        targetPhoneNumber: proxyData.adminPhone, // ← THE MISSING PIECE!
         // Store proxy session data in the JSONB column
         proxySessionData: proxyData
       };
