@@ -50,22 +50,22 @@ const HeroContent = () => {
        <br />
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto mb-12 bg-secondary p-4 rounded-lg">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto mb-12 p-4 rounded-lg">
+        
         <div className="text-center">
-          <div className="text-3xl font-bold text-green-400 mb-2">24/7</div>
-          <div className="text-sm text-white">Availability</div>
+            <div className="text-4xl font-bold text-green-400 mb-2">20%-67%</div>
+            <div className="text-sm text-white">Sales increase</div>
+          </div><div className="text-center">
+          <div className="text-4xl font-bold text-red-400 mb-2">30%</div>
+          <div className="text-sm text-white">Reduction in Costs</div>
         </div>
         <div className="text-center">
-          <div className="text-3xl font-bold text-blue-400 mb-2">20+</div>
-          <div className="text-sm text-white">Languages</div>
+          <div className="text-4xl font-bold text-purple-400 mb-2">80%</div>
+          <div className="text-sm text-white">resolution without human intervention</div>
         </div>
         <div className="text-center">
-          <div className="text-3xl font-bold text-purple-400 mb-2">70%</div>
-          <div className="text-sm text-white">Less Costs</div>
-        </div>
-        <div className="text-center">
-          <div className="text-3xl font-bold text-orange-400 mb-2">5min</div>
-          <div className="text-sm text-white">Setup</div>
+          <div className="text-4xl font-bold text-fuchsia-400 mb-2">57%</div>
+          <div className="text-sm text-white">return investment</div>
         </div>
       </div>
 
