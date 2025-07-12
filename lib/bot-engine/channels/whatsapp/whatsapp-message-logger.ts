@@ -130,6 +130,10 @@ export interface Message {
     };
     [key: string]: any;
   };
+  button?: {
+    payload: string;
+    text: string;
+  };
   errors?: {
     code: number;
     title: string;
