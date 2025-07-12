@@ -117,7 +117,7 @@ export class Notification {
   }
   
   static async getById(id: string): Promise<Notification | null> {
-    const supabase = getEnvironmentServerClient();
+    const supabase = getEnvironmentServiceRoleClient();
     const { data, error } = await supabase
       .from(this._tableName)
       .select('*')
@@ -146,7 +146,7 @@ export class Notification {
     }
 
     // 1. Update the notification status
-    const supabase = getEnvironmentServerClient();
+    const supabase = getEnvironmentServiceRoleClient();
     const { data: updatedRow, error: updateError } = await supabase
       .from(this._tableName)
       .update({ status: newStatus })
