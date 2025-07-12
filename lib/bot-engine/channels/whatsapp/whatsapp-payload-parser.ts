@@ -298,9 +298,14 @@ export async function parseWhatsappMessage(payload: WebhookAPIBody): Promise<Par
         }
         break;
       case 'button': // This is for when a user clicks a button from a Buttons Message Template
-          textContent = waMessage.text?.body; // The button click often sends back the button's text as a message
+          // Extract text from button payload, not from waMessage.text?.body
+          textContent = waMessage.button?.text || waMessage.button?.payload;
           console.log("[WhatsappParser] Parsed button click message. Text:", textContent);
-          // Or, if there's specific button payload: attachments.push({ type: 'button_reply', payload: waMessage.button }) 
+          
+          // Add button data to attachments for reference
+          if (waMessage.button) {
+            attachments.push({ type: 'interactive_reply', payload: waMessage.button });
+          }
           break;
       default:
         attachments.push({ type: 'unsupported', payload: waMessage });

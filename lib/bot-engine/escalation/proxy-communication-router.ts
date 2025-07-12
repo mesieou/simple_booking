@@ -23,7 +23,6 @@ const LOG_PREFIX = '[ProxyMessageRouter]';
 function extractButtonId(parsedMessage: ParsedMessage): string | undefined {
   try {
     // Check if message has button interaction data from WhatsApp
-    // Button interactions come in the 'interactive' field of the webhook payload
     const originalPayload = (parsedMessage as any).originalPayload;
     
     if (originalPayload) {
@@ -32,6 +31,11 @@ function extractButtonId(parsedMessage: ParsedMessage): string | undefined {
       const changes = entry?.changes?.[0];
       const value = changes?.value;
       const message = value?.messages?.[0];
+      
+      // Check for direct button click (WhatsApp template button)
+      if (message?.type === 'button' && message?.button) {
+        return message.button.payload || message.button.text;
+      }
       
       // Check for interactive button reply
       if (message?.interactive?.type === 'button_reply') {
