@@ -1,0 +1,191 @@
+/* components/AnimatedRibbons.module.css */
+.ribbonContainer {
+    position: relative;
+    width: 100vw;
+    margin-left: calc(-50vw + 50%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    padding: 40px 0;
+  }
+  
+  .ribbon {
+    width: 100vw;
+    height: 100px;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    position: relative;
+    margin: 20px 0;
+    color: white;
+    font-weight: bold;
+    font-size: 3rem;
+    white-space: nowrap;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    animation: float 6s ease-in-out infinite;
+    transition: transform 0.3s ease;
+  }
+  
+  .ribbon::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    animation: shine 3s infinite;
+  }
+  
+  .ribbon:hover {
+    transform: scale(1.05) rotate(0deg) !important;
+  }
+  
+  /* Colores de cintas */
+  .ribbonPurple {
+    background: linear-gradient(45deg, #6a4c93, #9b59b6);
+  }
+  
+  .ribbonPurple:hover {
+    background: linear-gradient(45deg, #8e44ad, #a569bd);
+  }
+  
+  .ribbonBlue {
+    background: linear-gradient(45deg, #3498db, #2980b9);
+  }
+  
+  .ribbonBlue:hover {
+    background: linear-gradient(45deg, #5dade2, #3498db);
+  }
+  
+  .ribbonRed {
+    background: linear-gradient(45deg, #e74c3c, #c0392b);
+  }
+  
+  .ribbonRed:hover {
+    background: linear-gradient(45deg, #ec7063, #e74c3c);
+  }
+  
+  .ribbonGreen {
+    background: linear-gradient(45deg, #27ae60, #2ecc71);
+  }
+  
+  .ribbonGreen:hover {
+    background: linear-gradient(45deg, #58d68d, #27ae60);
+  }
+  
+  .ribbonOrange {
+    background: linear-gradient(45deg, #f39c12, #e67e22);
+  }
+  
+  .ribbonOrange:hover {
+    background: linear-gradient(45deg, #f5b041, #f39c12);
+  }
+  
+  /* Animaciones de marquesina */
+  .marquee {
+    display: flex;
+    animation: scroll 20s linear infinite;
+  }
+  
+  .marqueeReverse {
+    display: flex;
+    animation: scrollReverse 25s linear infinite;
+  }
+  
+  .marqueeItem {
+    margin: 0 40px;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  }
+  
+  .separator {
+    opacity: 0.3;
+    margin: 0 20px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+  }
+  
+  /* Keyframes */
+  @keyframes scroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-100%); }
+  }
+  
+  @keyframes scrollReverse {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(0); }
+  }
+  
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+  }
+  
+  @keyframes shine {
+    0% { left: -100%; }
+    100% { left: 100%; }
+  }
+  
+  /* Responsive */
+  @media (max-width: 768px) {
+    .ribbonContainer {
+      width: 100vw;
+      margin-left: calc(-50vw + 50%);
+    }
+    
+    .ribbon {
+      width: 100vw;
+      font-size: 2rem;
+      height: 80px;
+    }
+    
+    .marqueeItem {
+      margin: 0 20px;
+    }
+    
+    .separator {
+      margin: 0 10px;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .ribbonContainer {
+      width: 100vw;
+      margin-left: calc(-50vw + 50%);
+    }
+    
+    .ribbon {
+      width: 100vw;
+      font-size: 1.5rem;
+      height: 60px;
+    }
+    
+    .marqueeItem {
+      margin: 0 15px;
+    }
+    
+    .ribbonContainer {
+      padding: 20px 0;
+    }
+  }
+  
+  @media (max-width: 320px) {
+    .ribbonContainer {
+      width: 100vw;
+      margin-left: calc(-50vw + 50%);
+    }
+    
+    .ribbon {
+      width: 100vw;
+      font-size: 1.2rem;
+      height: 50px;
+    }
+    
+    .marqueeItem {
+      margin: 0 10px;
+    }
+  }
