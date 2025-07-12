@@ -7,16 +7,8 @@ import { ChatMessage } from '@/lib/database/models/chat-session';
  * Gets the appropriate template name based on environment
  */
 export function getEscalationTemplateName(): string {
-  // Detect environment based on Supabase URL
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-  const isProd = supabaseUrl.includes('itjtaeggupasvrepfkcw');
-  
-  const templateName = isProd ? 'customer_needs_help' : 'header_customer_needs_help';
-  const environment = isProd ? 'PRODUCTION' : 'DEVELOPMENT';
-  
-  console.log(`[EscalationTemplate] Using template "${templateName}" for ${environment} environment`);
-  
-  return templateName;
+  // Always use the new template name
+  return 'escalation';
 }
 
 // Core escalation types
