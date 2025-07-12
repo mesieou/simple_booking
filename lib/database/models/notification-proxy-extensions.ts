@@ -51,16 +51,23 @@ class NotificationProxyExtensions {
   
   /**
    * Gets active proxy session by admin phone number
+   * Handles phone number normalization (with/without + prefix)
    */
   static async getActiveProxyByAdminPhone(adminPhone: string): Promise<NotificationData | null> {
     try {
       const supabase = getEnvironmentServiceRoleClient();
       
+      // Normalize phone numbers for comparison - try both with and without + prefix
+      const phoneWithoutPlus = adminPhone.replace(/^\+/, '');
+      const phoneWithPlus = `+${phoneWithoutPlus}`;
+      
+      console.log(`${LOG_PREFIX} Looking for proxy session with admin phone: ${adminPhone} (normalized: ${phoneWithoutPlus}, with+: ${phoneWithPlus})`);
+      
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
         .eq('status', 'proxy_mode')
-        .eq('targetPhoneNumber', adminPhone)
+        .or(`targetPhoneNumber.eq.${phoneWithoutPlus},targetPhoneNumber.eq.${phoneWithPlus}`)
         .order('createdAt', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -71,7 +78,24 @@ class NotificationProxyExtensions {
       }
 
       if (data) {
-        console.log(`${LOG_PREFIX} Found active proxy session for admin: ${adminPhone}`);
+        console.log(`${LOG_PREFIX} ✅ Found active proxy session for admin: ${adminPhone} (matched targetPhoneNumber: ${data.targetPhoneNumber})`);
+      } else {
+        console.log(`${LOG_PREFIX} ❌ No active proxy session found for admin: ${adminPhone}`);
+        
+        // Debug: Check what proxy sessions exist
+        const { data: allProxySessions, error: debugError } = await supabase
+          .from('notifications')
+          .select('id, targetPhoneNumber, proxySessionData, createdAt')
+          .eq('status', 'proxy_mode')
+          .order('createdAt', { ascending: false })
+          .limit(5);
+        
+        if (!debugError && allProxySessions && allProxySessions.length > 0) {
+          console.log(`${LOG_PREFIX} 🔍 Found ${allProxySessions.length} active proxy sessions:`);
+          allProxySessions.forEach((session, i) => {
+            console.log(`${LOG_PREFIX}   ${i + 1}. ID: ${session.id}, TargetPhone: ${session.targetPhoneNumber}, Created: ${session.createdAt}`);
+          });
+        }
       }
 
       return data;
