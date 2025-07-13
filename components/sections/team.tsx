@@ -11,15 +11,6 @@ const people = [
     twitter: "#",
   },
   {
-    name: "Luka Smith",
-    role: "Developer",
-    image:
-      "https://randomuser.me/api/portraits/men/2.jpg",
-    instagram: "#",
-    facebook: "#",
-    twitter: "#",
-  },
-  {
     name: "Juan Smith",
     role: "Developer",
     image:

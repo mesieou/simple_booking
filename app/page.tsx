@@ -13,6 +13,12 @@ import { Play, Users } from 'lucide-react';
 import WhatYouGet from '@/components/sections/what_you_get';
 import EmailDialog from '@/components/sections/email-dialog';
 import Team from '@/components/sections/team';
+import AnimatedRibbons from '@/components/animated ribbon/AnimatedRibbons';
+import { FeaturesSection as WhatYouGet3 } from '@/components/sections/what_you_get3';
+import WhatYouGet2 from '@/components/sections/what_you_get2';
+import { CTASection } from '@/components/sections/cta-section';
+import OnboardingAccordion from '@/components/ui/OnboardingAccordion';
+import OnboardingAccordion2 from '@/components/ui/OnboardingAccordion2';
 
 const LandingPage = () => {
   const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
@@ -25,6 +31,10 @@ const LandingPage = () => {
   };
 
   const handleStartFree = () => {
+    setIsEmailDialogOpen(true);
+  };
+
+  const handleCTAClick = () => {
     setIsEmailDialogOpen(true);
   };
 
@@ -63,13 +73,20 @@ const LandingPage = () => {
           </div>
         </div>
       </main>
+
       
       <div id="demo-section">
         <DemoSection />
       </div>
+      <div className="my-16">
+        <OnboardingAccordion />
+      </div>
+      <div className="my-16">
+        <OnboardingAccordion2 />
+      </div>
       
       
-      <WhatYouGet />
+      <WhatYouGet3 />
       <Questions />
       <Pricing />
       
@@ -77,8 +94,9 @@ const LandingPage = () => {
         isOpen={isEmailDialogOpen} 
         onClose={() => setIsEmailDialogOpen(false)} 
       />
-      <Team />
+      <CTASection onButtonClick={handleCTAClick} />
     </>
+    
   )
 }
 
