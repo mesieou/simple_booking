@@ -317,28 +317,48 @@ async function forwardAdminMessageToCustomer(
       return false;
     }
     
-    let messageToSend = parsedMessage.text;
+    const sender = new WhatsappSender();
     
-    // Check if message has image attachment and include image link
-    if (parsedMessage.attachments && parsedMessage.attachments.length > 0) {
-      const imageAttachment = parsedMessage.attachments.find(attachment => 
-        attachment.type === 'image' &&
-        (attachment.payload?.storedUrl || attachment.payload?.url)
-      );
-      
-      if (imageAttachment) {
-        const imageUrl = imageAttachment.payload?.storedUrl || imageAttachment.payload?.url;
-        if (imageUrl) {
-          messageToSend += `\n\n📸 Image: ${imageUrl}`;
-          console.log(`${LOG_PREFIX} Including image link in admin message to customer: ${imageUrl}`);
+    // Check if message has image attachment
+    const imageAttachment = parsedMessage.attachments?.find(attachment => 
+      attachment.type === 'image' &&
+      (attachment.payload?.storedUrl || attachment.payload?.url)
+    );
+    
+    if (imageAttachment) {
+      const imageUrl = imageAttachment.payload?.storedUrl || imageAttachment.payload?.url;
+      if (imageUrl) {
+        console.log(`${LOG_PREFIX} Sending image directly from admin to customer: ${imageUrl}`);
+        
+        // Send the image first (no caption needed for admin messages)
+        const imageMessageId = await sender.sendMediaMessage(
+          proxySession.customerPhone,
+          'image',
+          imageUrl,
+          businessPhoneNumberId
+        );
+        
+        // Then send the text message if there's text content beyond [IMAGE]
+        const textContent = parsedMessage.text?.replace(/\[IMAGE\]/g, '').trim();
+        if (textContent) {
+          const textMessageId = await sender.sendMessage(
+            proxySession.customerPhone,
+            { text: textContent },
+            businessPhoneNumberId
+          );
+          console.log(`${LOG_PREFIX} ✅ Admin image + text forwarded to customer (Image: ${imageMessageId}, Text: ${textMessageId})`);
+        } else {
+          console.log(`${LOG_PREFIX} ✅ Admin image forwarded to customer (ID: ${imageMessageId})`);
         }
+        
+        return !!(imageMessageId);
       }
     }
     
-    const sender = new WhatsappSender();
+    // No image - send regular text message
     const messageId = await sender.sendMessage(
       proxySession.customerPhone,
-      { text: messageToSend },
+      { text: parsedMessage.text },
       businessPhoneNumberId
     );
     
@@ -365,27 +385,48 @@ async function forwardCustomerMessageToAdmin(
       return false;
     }
     
-    // Format message with customer context and emoticon
+    const sender = new WhatsappSender();
     const customerName = await getCustomerName(proxySession.sessionId);
-    let forwardedMessage = `👤 ${customerName} said: "${parsedMessage.text}"`;
     
-    // Check if message has image attachment and include image link
-    if (parsedMessage.attachments && parsedMessage.attachments.length > 0) {
-      const imageAttachment = parsedMessage.attachments.find(attachment => 
-        attachment.type === 'image' &&
-        (attachment.payload?.storedUrl || attachment.payload?.url)
-      );
-      
-      if (imageAttachment) {
-        const imageUrl = imageAttachment.payload?.storedUrl || imageAttachment.payload?.url;
-        if (imageUrl) {
-          forwardedMessage += `\n\n📸 Image: ${imageUrl}`;
-          console.log(`${LOG_PREFIX} Including image link in forwarded message: ${imageUrl}`);
+    // Check if message has image attachment
+    const imageAttachment = parsedMessage.attachments?.find(attachment => 
+      attachment.type === 'image' &&
+      (attachment.payload?.storedUrl || attachment.payload?.url)
+    );
+    
+    if (imageAttachment) {
+      const imageUrl = imageAttachment.payload?.storedUrl || imageAttachment.payload?.url;
+      if (imageUrl) {
+        console.log(`${LOG_PREFIX} Sending image directly from customer to admin: ${imageUrl}`);
+        
+        // Send the image first
+        const imageMessageId = await sender.sendMediaMessage(
+          proxySession.adminPhone,
+          'image',
+          imageUrl,
+          businessPhoneNumberId,
+          `👤 ${customerName} sent:` // Caption with customer context
+        );
+        
+        // Then send the text message if there's text content beyond [IMAGE]
+        const textContent = parsedMessage.text?.replace(/\[IMAGE\]/g, '').trim();
+        if (textContent) {
+          const textMessageId = await sender.sendMessage(
+            proxySession.adminPhone,
+            { text: `👤 ${customerName} said: "${textContent}"` },
+            businessPhoneNumberId
+          );
+          console.log(`${LOG_PREFIX} ✅ Customer image + text forwarded to admin (Image: ${imageMessageId}, Text: ${textMessageId})`);
+        } else {
+          console.log(`${LOG_PREFIX} ✅ Customer image forwarded to admin (ID: ${imageMessageId})`);
         }
+        
+        return !!(imageMessageId);
       }
     }
     
-    const sender = new WhatsappSender();
+    // No image - send regular text message
+    const forwardedMessage = `👤 ${customerName} said: "${parsedMessage.text}"`;
     const messageId = await sender.sendMessage(
       proxySession.adminPhone,
       { text: forwardedMessage },
