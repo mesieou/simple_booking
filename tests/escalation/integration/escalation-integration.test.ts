@@ -294,14 +294,14 @@ describe('Escalation Integration Tests', () => {
       // Verify escalation was triggered
       expect(escalationResult.isEscalated).toBe(true);
       
-      // Verify template was sent with media parameter
+      // Verify escalation_with_image template was sent with image header
       expect(mockSendTemplateMessage).toHaveBeenCalledWith(
         expect.any(String), // admin phone
-        'escalation',
+        'escalation_with_image', // NEW template name
         'en',
         expect.any(Array), // body parameters
         expect.any(String), // business phone number id
-        expect.any(Array), // header parameters
+        [], // empty header parameters (no text)
         expect.objectContaining({ // header media parameter
           type: 'image',
           url: 'https://example.com/test-image.jpg'
@@ -309,6 +309,108 @@ describe('Escalation Integration Tests', () => {
       );
       
       // Verify only the template was sent (no follow-up messages for media)
+      expect(mockSendTemplateMessage).toHaveBeenCalledTimes(1);
+      expect(mockSendMessage).not.toHaveBeenCalled();
+    });
+
+    it('should handle escalation without media using regular template', async () => {
+      // Mock the WhatsApp sender to capture calls
+      const mockSendTemplateMessage = jest.fn().mockResolvedValue('template-message-id');
+      const mockSendMessage = jest.fn().mockResolvedValue('text-message-id');
+      
+      const { WhatsappSender } = require('@/lib/bot-engine/channels/whatsapp/whatsapp-message-sender');
+      WhatsappSender.mockImplementation(() => ({
+        sendTemplateMessage: mockSendTemplateMessage,
+        sendMessage: mockSendMessage
+      }));
+
+      // Create chat context for escalation
+      const participant: ConversationalParticipant = {
+        id: getNormalizedPhone(ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE),
+        type: 'customer',
+        customerWhatsappNumber: getNormalizedPhone(ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE),
+        businessWhatsappNumber: getNormalizedPhone(ESCALATION_TEST_CONFIG.LUISA_BUSINESS.PHONE),
+        associatedBusinessId: testBusiness.id!
+      };
+
+      const chatContext: ChatContext = {
+        currentParticipant: participant,
+        currentConversationSession: {
+          id: testChatSession.id!,
+          channel: 'whatsapp',
+          channelUserId: getNormalizedPhone(ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE),
+          businessId: testBusiness.id!,
+          startedAt: new Date().toISOString(),
+          lastActivityAt: new Date().toISOString(),
+          isActive: true
+        },
+        frequentlyDiscussedTopics: [],
+        participantPreferences: { language: 'en', timezone: 'UTC', notificationSettings: {} }
+      };
+
+      const userContext = new UserContext({
+        id: 'test-context',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        channelUserId: getNormalizedPhone(ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE),
+        businessId: testBusiness.id!,
+        currentGoal: null,
+        previousGoal: null,
+        participantPreferences: null,
+        frequentlyDiscussedTopics: null,
+        sessionData: null
+      });
+
+      // Create message history (simple, no media)
+      const messageHistory = [
+        { role: 'user', content: 'Hello', timestamp: new Date().toISOString() },
+        { role: 'bot', content: 'Hi! How can I help?', timestamp: new Date().toISOString() }
+      ];
+
+      // Create current message WITHOUT media attachment (text only)
+      const currentTextMessage = {
+        channelType: 'whatsapp' as const,
+        messageId: 'test-text-message-id',
+        senderId: getNormalizedPhone(ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE),
+        userName: ESCALATION_TEST_CONFIG.CUSTOMER_USER.WHATSAPP_NAME,
+        recipientId: ESCALATION_TEST_CONFIG.LUISA_BUSINESS.WHATSAPP_PHONE_NUMBER_ID,
+        timestamp: new Date(),
+        text: 'Can I speak with a human',
+        originalPayload: {}
+      };
+
+      // Trigger escalation without media
+      const escalationResult = await handleEscalationOrAdminCommand(
+        'Can I speak with a human',
+        participant,
+        chatContext,
+        userContext,
+        messageHistory,
+        {
+          firstName: testCustomer.firstName,
+          lastName: testCustomer.lastName,
+          id: testCustomer.id
+        },
+        ESCALATION_TEST_CONFIG.LUISA_BUSINESS.WHATSAPP_PHONE_NUMBER_ID,
+        ESCALATION_TEST_CONFIG.CUSTOMER_USER.WHATSAPP_NAME,
+        currentTextMessage
+      );
+
+      // Verify escalation was triggered
+      expect(escalationResult.isEscalated).toBe(true);
+      
+      // Verify regular escalation template was sent with text header
+      expect(mockSendTemplateMessage).toHaveBeenCalledWith(
+        expect.any(String), // admin phone
+        'escalation', // Regular template name
+        'en',
+        expect.any(Array), // body parameters
+        expect.any(String), // business phone number id
+        expect.arrayContaining([expect.any(String)]), // header parameters with customer name
+        undefined // no media parameter
+      );
+      
+      // Verify only the template was sent
       expect(mockSendTemplateMessage).toHaveBeenCalledTimes(1);
       expect(mockSendMessage).not.toHaveBeenCalled();
     });
