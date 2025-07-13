@@ -5,10 +5,15 @@ import {
   EscalationAssertions,
   AsyncTestHelpers,
   ESCALATION_TEST_CONFIG 
-} from '../../utilities/escalation-test-helpers';
+} from '../utilities/escalation-test-helpers';
 
 describe('Complete Escalation Scenarios (End-to-End)', () => {
   
+  beforeAll(async () => {
+    // Initialize test configuration with database data
+    await EscalationDatabaseHelpers.initializeTestEnvironment();
+  });
+
   beforeEach(async () => {
     console.log('🧹 Cleaning up test data...');
     await EscalationDatabaseHelpers.cleanupEscalationTestData();
@@ -23,7 +28,7 @@ describe('Complete Escalation Scenarios (End-to-End)', () => {
     
     it('Scenario 1: Customer sends broken item photo → Admin helps → Resolution', async () => {
       console.log('\n🎬 SCENARIO 1: Photo Escalation Flow');
-      console.log('👤 Customer: Juan (+61473164581)');
+      console.log(`👤 Customer: ${ESCALATION_TEST_CONFIG.CUSTOMER_USER.WHATSAPP_NAME} (${ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE})`);
       console.log('👨‍💼 Admin: Luisa (+61452490450)');
       console.log('🏢 Business: Luisa Business');
       

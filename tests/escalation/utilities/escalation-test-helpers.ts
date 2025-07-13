@@ -11,7 +11,8 @@ import { UserContext } from '@/lib/database/models/user-context';
 import { Notification } from '@/lib/database/models/notification';
 import { 
   ESCALATION_TEST_CONFIG, 
-  initializeEscalationTestConfig 
+  initializeEscalationTestConfig,
+  createTestSessionId 
 } from '../config/escalation-test-config';
 import { getEnvironmentServiceRoleClient } from '@/lib/database/supabase/environment';
 
@@ -312,7 +313,7 @@ export class EscalationContextBuilder {
     sessionId?: string;
     hasActiveGoal?: boolean;
   } = {}): ChatContext {
-    const sessionId = options.sessionId || `test-session-${Date.now()}`;
+    const sessionId = options.sessionId || createTestSessionId();
     
     const activeGoals: UserGoal[] = options.hasActiveGoal ? [{
       goalType: 'serviceBooking',

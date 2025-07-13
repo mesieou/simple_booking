@@ -9,7 +9,7 @@ import {
   EscalationContextBuilder,
   EscalationAssertions,
   ESCALATION_TEST_CONFIG 
-} from '../../utilities/escalation-test-helpers';
+} from '../utilities/escalation-test-helpers';
 
 describe('Escalation Detection System', () => {
   
@@ -98,10 +98,14 @@ describe('Escalation Detection System', () => {
       it('should escalate based on frustrated message count: 1→No, 2→No, 3→Yes (AUTOMATIC TEST)', async () => {
         console.log('🧪 COMPREHENSIVE FRUSTRATION TEST: Testing all escalation thresholds automatically...');
 
+        // Use configured frustration messages instead of hardcoded ones
+        const frustrationMessages = ESCALATION_TEST_CONFIG.ESCALATION_TRIGGERS.FRUSTRATION_MESSAGES;
+        const threshold = ESCALATION_TEST_CONFIG.THRESHOLDS.CONSECUTIVE_FRUSTRATED_MESSAGES;
+
         // ===== TEST 1: Single frustrated message → No escalation =====
         console.log('\n📝 TESTING 1 FRUSTRATED MESSAGE (should NOT escalate)');
         const historyWith0 = []; // No history
-        const result1 = await analyzeFrustrationPattern('This is frustrating!', historyWith0, chatContext);
+        const result1 = await analyzeFrustrationPattern(frustrationMessages[0], historyWith0, chatContext);
         
         expect(result1.shouldEscalate).toBe(false);
         expect(result1.consecutiveFrustratedMessages).toBe(1);
@@ -110,7 +114,7 @@ describe('Escalation Detection System', () => {
         // ===== TEST 2: Two frustrated messages → No escalation =====
         console.log('\n📝 TESTING 2 FRUSTRATED MESSAGES (should NOT escalate)');
         const historyWith1 = EscalationContextBuilder.createFrustrationMessageHistory(1);
-        const result2 = await analyzeFrustrationPattern('This is really frustrating!', historyWith1, chatContext);
+        const result2 = await analyzeFrustrationPattern(frustrationMessages[1], historyWith1, chatContext);
         
         expect(result2.shouldEscalate).toBe(false);
         expect(result2.consecutiveFrustratedMessages).toBe(2);
@@ -119,16 +123,16 @@ describe('Escalation Detection System', () => {
         // ===== TEST 3: Three frustrated messages → Escalation triggered! =====
         console.log('\n📝 TESTING 3 FRUSTRATED MESSAGES (should ESCALATE)');
         const historyWith2 = EscalationContextBuilder.createFrustrationMessageHistory(2);
-        const result3 = await analyzeFrustrationPattern('This is absolutely terrible!', historyWith2, chatContext);
+        const result3 = await analyzeFrustrationPattern(frustrationMessages[2], historyWith2, chatContext);
         
         expect(result3.shouldEscalate).toBe(true);
-        expect(result3.consecutiveFrustratedMessages).toBe(3);
-        console.log(`🚨 3 messages: ESCALATION TRIGGERED (${result3.consecutiveFrustratedMessages} messages)`);
+        expect(result3.consecutiveFrustratedMessages).toBe(threshold);
+        console.log(`🚨 ${threshold} messages: ESCALATION TRIGGERED (${result3.consecutiveFrustratedMessages} messages)`);
 
         console.log('\n🎉 ALL FRUSTRATION THRESHOLDS WORKING CORRECTLY!');
         console.log('   → 1 message: ❌ No escalation');
         console.log('   → 2 messages: ❌ No escalation'); 
-        console.log('   → 3 messages: ✅ ESCALATION!');
+        console.log(`   → ${threshold} messages: ✅ ESCALATION!`);
       });
 
       it('should reset frustration count after staff intervention', async () => {
@@ -252,9 +256,10 @@ describe('Escalation Detection System', () => {
         it('should escalate for frustration pattern', async () => {
           // Create 2 frustrated messages in history + 1 current = 3 total (triggers escalation)
           const frustratedHistory = EscalationContextBuilder.createFrustrationMessageHistory(2);
+          const frustrationMessage = ESCALATION_TEST_CONFIG.ESCALATION_TRIGGERS.FRUSTRATION_MESSAGES[2];
           
           const result = await detectEscalationTrigger(
-            'This is absolutely terrible!',
+            frustrationMessage,
             chatContext,
             frustratedHistory
           );

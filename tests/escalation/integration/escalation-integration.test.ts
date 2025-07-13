@@ -5,6 +5,11 @@ import { handleEscalationOrAdminCommand } from '@/lib/bot-engine/escalation/esca
 import { getServiceRoleClient } from '@/lib/database/supabase/service-role';
 import { ConversationalParticipant, ChatContext } from '@/lib/bot-engine/types';
 import { UserContext } from '@/lib/database/models/user-context';
+import { 
+  ESCALATION_TEST_CONFIG,
+  initializeEscalationTestConfig,
+  getNormalizedPhone 
+} from '../config/escalation-test-config';
 
 // Mock WhatsApp API to prevent actual API calls during tests
 jest.mock('@/lib/bot-engine/channels/whatsapp/whatsapp-message-sender');
@@ -16,21 +21,19 @@ describe('Escalation Integration Tests', () => {
   let testAdmin: User;
   let testProvider: User;
   let testChatSession: ChatSession;
-  
-  const TEST_CUSTOMER_PHONE = '61999111222';
-  const TEST_ADMIN_PHONE = '+61452490450';
-  const TEST_BUSINESS_PHONE = '+61411851098';
 
   beforeAll(async () => {
+    // Initialize test configuration first
+    await initializeEscalationTestConfig();
     supabase = getServiceRoleClient();
     
-    // Create test business
+    // Create test business using config values
     const businessData = {
-      name: 'Test Escalation Business',
-      email: 'test@example.com',
-      phone: TEST_BUSINESS_PHONE,
-      whatsappNumber: TEST_BUSINESS_PHONE,
-      whatsappPhoneNumberId: '680108705183414',
+      name: `${ESCALATION_TEST_CONFIG.LUISA_BUSINESS.NAME} (Test)`,
+      email: `test-${Date.now()}-${ESCALATION_TEST_CONFIG.LUISA_BUSINESS.ID}@example.com`,
+      phone: ESCALATION_TEST_CONFIG.LUISA_BUSINESS.PHONE,
+      whatsappNumber: ESCALATION_TEST_CONFIG.LUISA_BUSINESS.WHATSAPP_NUMBER,
+      whatsappPhoneNumberId: ESCALATION_TEST_CONFIG.LUISA_BUSINESS.WHATSAPP_PHONE_NUMBER_ID,
       businessAddress: 'Test Address',
       timeZone: 'Australia/Sydney',
       interfaceType: 'whatsapp' as const
@@ -39,32 +42,32 @@ describe('Escalation Integration Tests', () => {
     testBusiness = new Business(businessData);
     await testBusiness.add(supabase);
     
-    // Create test users with different roles
+    // Create test users with different roles using config values
     testCustomer = new User('John', 'Customer', 'customer', testBusiness.id!);
     testAdmin = new User('Admin', 'User', 'super_admin', testBusiness.id!);
     testProvider = new User('Provider', 'User', 'provider', testBusiness.id!);
     
     await testCustomer.add({ 
-      whatsappNumber: TEST_CUSTOMER_PHONE,
+      whatsappNumber: getNormalizedPhone(ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE),
       skipProviderValidation: true,
       supabaseClient: supabase
     });
     await testAdmin.add({ 
-      whatsappNumber: TEST_ADMIN_PHONE,
+      whatsappNumber: getNormalizedPhone(ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE), // Same phone as customer to test the bug fix
       skipProviderValidation: true,
       supabaseClient: supabase
     });
     await testProvider.add({ 
-      whatsappNumber: TEST_BUSINESS_PHONE,
+      whatsappNumber: getNormalizedPhone(ESCALATION_TEST_CONFIG.LUISA_BUSINESS.PHONE),
       skipProviderValidation: true,
       supabaseClient: supabase
     });
     
-    // Create test chat session
+    // Create test chat session using config values
     testChatSession = await ChatSession.create({
       businessId: testBusiness.id!,
       channel: 'whatsapp',
-      channelUserId: TEST_CUSTOMER_PHONE,
+      channelUserId: getNormalizedPhone(ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE),
       allMessages: [
         { role: 'user', content: 'Hello', timestamp: new Date().toISOString() },
         { role: 'bot', content: 'Hi! How can I help?', timestamp: new Date().toISOString() },
@@ -91,7 +94,7 @@ describe('Escalation Integration Tests', () => {
   describe('Full Escalation Flow Integration', () => {
     it('should complete escalation flow without the bugs we fixed', async () => {
       // Step 1: User lookup should find ONLY customer, not super admin
-      const foundUser = await User.findUserByCustomerWhatsappNumber(TEST_CUSTOMER_PHONE);
+      const foundUser = await User.findUserByCustomerWhatsappNumber(getNormalizedPhone(ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE));
       expect(foundUser).not.toBeNull();
       expect(foundUser?.role).toBe('customer');
       expect(foundUser?.role).not.toBe('super_admin'); // This was the bug!
@@ -100,7 +103,7 @@ describe('Escalation Integration Tests', () => {
       const allUsersWithPhone = await supabase
         .from('users')
         .select('*')
-        .eq('whatsAppNumberNormalized', TEST_CUSTOMER_PHONE);
+        .eq('whatsAppNumberNormalized', getNormalizedPhone(ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE));
       
       const roles = allUsersWithPhone.data?.map((u: any) => u.role) || [];
       expect(roles).toContain('customer');
@@ -123,15 +126,24 @@ describe('Escalation Integration Tests', () => {
 
       // Create chat context for escalation
       const participant: ConversationalParticipant = {
-        id: TEST_CUSTOMER_PHONE,
+        id: getNormalizedPhone(ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE),
         type: 'customer',
-        customerWhatsappNumber: TEST_CUSTOMER_PHONE,
-        businessWhatsappNumber: TEST_BUSINESS_PHONE,
+        customerWhatsappNumber: getNormalizedPhone(ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE),
+        businessWhatsappNumber: getNormalizedPhone(ESCALATION_TEST_CONFIG.LUISA_BUSINESS.PHONE),
         associatedBusinessId: testBusiness.id!
       };
 
       const chatContext: ChatContext = {
         currentParticipant: participant,
+        currentConversationSession: {
+          id: testChatSession.id!,
+          channel: 'whatsapp',
+          channelUserId: getNormalizedPhone(ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE),
+          businessId: testBusiness.id!,
+          startedAt: new Date().toISOString(),
+          lastActivityAt: new Date().toISOString(),
+          isActive: true
+        },
         frequentlyDiscussedTopics: [],
         participantPreferences: { language: 'en', timezone: 'UTC', notificationSettings: {} }
       };
@@ -140,7 +152,7 @@ describe('Escalation Integration Tests', () => {
         id: 'test-context',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        channelUserId: TEST_CUSTOMER_PHONE,
+        channelUserId: getNormalizedPhone(ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE),
         businessId: testBusiness.id!,
         currentGoal: null,
         previousGoal: null,
@@ -165,12 +177,12 @@ describe('Escalation Integration Tests', () => {
           lastName: testCustomer.lastName,
           id: testCustomer.id
         },
-        '680108705183414',
-        'John Customer'
+        ESCALATION_TEST_CONFIG.LUISA_BUSINESS.WHATSAPP_PHONE_NUMBER_ID,
+        ESCALATION_TEST_CONFIG.CUSTOMER_USER.WHATSAPP_NAME
       );
 
       // Verify escalation was triggered
-      expect(escalationResult.escalated).toBe(true);
+      expect(escalationResult.isEscalated).toBe(true);
       
       // Verify template or fallback message was sent (depending on template availability)
       const totalCalls = mockSendTemplateMessage.mock.calls.length + mockSendMessage.mock.calls.length;
@@ -179,16 +191,16 @@ describe('Escalation Integration Tests', () => {
       // If template was called, verify correct parameters and language
       if (mockSendTemplateMessage.mock.calls.length > 0) {
         const templateCall = mockSendTemplateMessage.mock.calls[0];
-        expect(templateCall[1]).toBe('customer_needs_help'); // Template name
+        expect(templateCall[1]).toBe('escalation'); // Template name
         expect(templateCall[2]).toBe('en'); // Language code (not en_US!)
-        expect(templateCall[3]).toHaveLength(3); // Body parameters: [name, history, message]
+        expect(templateCall[3]).toHaveLength(2); // Body parameters: [name, message]
         expect(templateCall[5]).toHaveLength(1); // Header parameters: [name]
       }
     });
 
     it('should prevent all the bugs we encountered', async () => {
       // Bug 1: User lookup finding super admin instead of customer
-      const customerLookup = await User.findUserByCustomerWhatsappNumber(TEST_CUSTOMER_PHONE);
+      const customerLookup = await User.findUserByCustomerWhatsappNumber(getNormalizedPhone(ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE));
       expect(customerLookup?.role).toBe('customer');
       expect(customerLookup?.role).not.toBe('super_admin');
       
@@ -251,7 +263,7 @@ describe('Escalation Integration Tests', () => {
   describe('Error Prevention Regression Tests', () => {
     it('should never return the wrong user type', async () => {
       // This test ensures we never regress to finding super admins when looking for customers
-      const result = await User.findUserByCustomerWhatsappNumber(TEST_CUSTOMER_PHONE);
+      const result = await User.findUserByCustomerWhatsappNumber(getNormalizedPhone(ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE));
       
       // Strong assertion - must be customer or null, never admin
       if (result) {
@@ -270,11 +282,11 @@ describe('Escalation Integration Tests', () => {
       process.env.NEXT_PUBLIC_SUPABASE_URL = mockProdUrl;
       
       const { getEscalationTemplateName } = require('@/lib/bot-engine/escalation/types');
-      expect(getEscalationTemplateName()).toBe('customer_needs_help');
+      expect(getEscalationTemplateName()).toBe('escalation');
       
       // Mock development
       process.env.NEXT_PUBLIC_SUPABASE_URL = mockDevUrl;
-      expect(getEscalationTemplateName()).toBe('header_customer_needs_help');
+      expect(getEscalationTemplateName()).toBe('escalation');
       
       // Restore
       process.env.NEXT_PUBLIC_SUPABASE_URL = originalUrl;
@@ -284,7 +296,7 @@ describe('Escalation Integration Tests', () => {
       // Integration test ensuring all pieces work together
       const steps = {
         userLookup: async () => {
-          const user = await User.findUserByCustomerWhatsappNumber(TEST_CUSTOMER_PHONE);
+          const user = await User.findUserByCustomerWhatsappNumber(getNormalizedPhone(ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE));
           return user?.role === 'customer';
         },
         templateLanguage: () => {
@@ -292,8 +304,8 @@ describe('Escalation Integration Tests', () => {
           return languageCode === 'en';
         },
         templateParameters: () => {
-          const header = ['John Customer'];
-          const body = ['John Customer', 'Chat history', 'Current message'];
+          const header = [ESCALATION_TEST_CONFIG.CUSTOMER_USER.WHATSAPP_NAME];
+          const body = [ESCALATION_TEST_CONFIG.CUSTOMER_USER.WHATSAPP_NAME, 'Chat history', 'Current message'];
           return header.length === 1 && body.length === 3;
         }
       };

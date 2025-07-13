@@ -8,13 +8,17 @@ import {
   routeProxyMessage 
 } from '@/lib/bot-engine/escalation/proxy-communication-router';
 import { 
+  getOrCreateChatContext 
+} from '@/lib/bot-engine/session/session-manager';
+import { 
   WhatsAppMessageBuilder,
   EscalationDatabaseHelpers,
   EscalationContextBuilder,
   EscalationAssertions,
   AsyncTestHelpers,
   ESCALATION_TEST_CONFIG 
-} from '../../utilities/escalation-test-helpers';
+} from '../utilities/escalation-test-helpers';
+import { createTestNotificationId } from '../config/escalation-test-config';
 import { UserContext } from '@/lib/database/models/user-context';
 
 describe('Escalation Flow Integration Tests', () => {
@@ -36,18 +40,16 @@ describe('Escalation Flow Integration Tests', () => {
   describe('Complete Escalation Flow', () => {
     
     it('should handle media content escalation end-to-end', async () => {
-      // 1. SETUP: Create test context and customer message
-      const chatContext = EscalationContextBuilder.createTestChatContext({
-        language: 'en',
-        sessionId: await EscalationDatabaseHelpers.createTestChatSession()
-      });
-      
+      // 1. SETUP: Create test context using REAL production function
       const participant = EscalationContextBuilder.createTestParticipant();
-      const userContext = new UserContext({
-        id: 'test-user-context',
-        businessId: ESCALATION_TEST_CONFIG.LUISA_BUSINESS.ID,
-        sessionContext: {}
-      });
+      
+      // Use the real production function to create chat context (this creates ChatSession too)
+      const { context: chatContext, sessionId: realSessionId, userContext, customerUser } = await getOrCreateChatContext(participant);
+      
+      console.log('🔍 DEBUG: Created real session ID:', realSessionId);
+      console.log('🔍 DEBUG: Chat context session ID:', chatContext.currentConversationSession?.id);
+      console.log('🔍 DEBUG: Customer user phone:', ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE);
+      console.log('🔍 DEBUG: Admin user phone:', ESCALATION_TEST_CONFIG.ADMIN_USER.PHONE);
 
       // 2. ESCALATION TRIGGER: Customer sends image
       console.log('🔍 Testing: Customer sends image message');
@@ -59,7 +61,12 @@ describe('Escalation Flow Integration Tests', () => {
         chatContext,
         userContext,
         [], // Message history
-        undefined, // Customer user
+        { 
+          id: ESCALATION_TEST_CONFIG.CUSTOMER_USER.ID,
+          firstName: ESCALATION_TEST_CONFIG.CUSTOMER_USER.WHATSAPP_NAME.split(' ')[0],
+          lastName: ESCALATION_TEST_CONFIG.CUSTOMER_USER.WHATSAPP_NAME.split(' ')[1] || '',
+          phone: ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE
+        }, // Customer user
         ESCALATION_TEST_CONFIG.LUISA_BUSINESS.WHATSAPP_PHONE_NUMBER_ID,
         ESCALATION_TEST_CONFIG.CUSTOMER_USER.WHATSAPP_NAME
       );
@@ -85,17 +92,11 @@ describe('Escalation Flow Integration Tests', () => {
 
     it('should handle human request escalation with Spanish language', async () => {
       // 1. SETUP: Spanish context
-      const chatContext = EscalationContextBuilder.createTestChatContext({
-        language: 'es',
-        sessionId: await EscalationDatabaseHelpers.createTestChatSession()
-      });
-      
       const participant = EscalationContextBuilder.createTestParticipant();
-      const userContext = new UserContext({
-        id: 'test-user-context-es',
-        businessId: ESCALATION_TEST_CONFIG.LUISA_BUSINESS.ID,
-        sessionContext: {}
-      });
+      const { context: chatContext, sessionId: realSessionId, userContext, customerUser } = await getOrCreateChatContext(participant);
+      
+      // Force Spanish language in context
+      chatContext.participantPreferences.language = 'es';
 
       // 2. ESCALATION TRIGGER: Customer requests human in Spanish
       console.log('🔍 Testing: Customer requests human help in Spanish');
@@ -107,7 +108,12 @@ describe('Escalation Flow Integration Tests', () => {
         chatContext,
         userContext,
         [],
-        undefined,
+        { 
+          id: ESCALATION_TEST_CONFIG.CUSTOMER_USER.ID,
+          firstName: ESCALATION_TEST_CONFIG.CUSTOMER_USER.WHATSAPP_NAME.split(' ')[0],
+          lastName: ESCALATION_TEST_CONFIG.CUSTOMER_USER.WHATSAPP_NAME.split(' ')[1] || '',
+          phone: ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE
+        },
         ESCALATION_TEST_CONFIG.LUISA_BUSINESS.WHATSAPP_PHONE_NUMBER_ID,
         ESCALATION_TEST_CONFIG.CUSTOMER_USER.WHATSAPP_NAME
       );
@@ -126,21 +132,13 @@ describe('Escalation Flow Integration Tests', () => {
 
     it('should handle frustration pattern escalation', async () => {
       // 1. SETUP: Context with frustrated message history
-      const chatContext = EscalationContextBuilder.createTestChatContext({
-        sessionId: await EscalationDatabaseHelpers.createTestChatSession()
-      });
-      
       const participant = EscalationContextBuilder.createTestParticipant();
-      const userContext = new UserContext({
-        id: 'test-user-context-frustration',
-        businessId: ESCALATION_TEST_CONFIG.LUISA_BUSINESS.ID,
-        sessionContext: {}
-      });
+      const { context: chatContext, sessionId: realSessionId, userContext, customerUser } = await getOrCreateChatContext(participant);
 
       // 2. ESCALATION TRIGGER: Build up frustration pattern
       console.log('🔍 Testing: Building frustration pattern (3+ messages)');
       const frustratedHistory = EscalationContextBuilder.createFrustrationMessageHistory(3);
-      const finalFrustratedMessage = 'This is absolutely terrible service!';
+              const finalFrustratedMessage = ESCALATION_TEST_CONFIG.ESCALATION_TRIGGERS.FRUSTRATION_MESSAGES[2];
       
       const escalationResult = await handleEscalationOrAdminCommand(
         finalFrustratedMessage,
@@ -148,7 +146,12 @@ describe('Escalation Flow Integration Tests', () => {
         chatContext,
         userContext,
         frustratedHistory,
-        undefined,
+        { 
+          id: ESCALATION_TEST_CONFIG.CUSTOMER_USER.ID,
+          firstName: ESCALATION_TEST_CONFIG.CUSTOMER_USER.WHATSAPP_NAME.split(' ')[0],
+          lastName: ESCALATION_TEST_CONFIG.CUSTOMER_USER.WHATSAPP_NAME.split(' ')[1] || '',
+          phone: ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE
+        },
         ESCALATION_TEST_CONFIG.LUISA_BUSINESS.WHATSAPP_PHONE_NUMBER_ID,
         ESCALATION_TEST_CONFIG.CUSTOMER_USER.WHATSAPP_NAME
       );
@@ -180,8 +183,9 @@ describe('Escalation Flow Integration Tests', () => {
       }
 
       // 1. SETUP: Create escalation notification
-      const sessionId = await EscalationDatabaseHelpers.createTestChatSession();
-      const notificationId = `test-notification-${Date.now()}`;
+      const participant = EscalationContextBuilder.createTestParticipant();
+      const { context: chatContext, sessionId, userContext, customerUser } = await getOrCreateChatContext(participant);
+      const notificationId = createTestNotificationId();
 
       // 2. PROXY SETUP: Start proxy mode with template
       console.log('📤 Starting proxy mode with template');
@@ -282,7 +286,12 @@ describe('Escalation Flow Integration Tests', () => {
         invalidContext,
         userContext,
         [],
-        undefined,
+        { 
+          id: ESCALATION_TEST_CONFIG.CUSTOMER_USER.ID,
+          firstName: ESCALATION_TEST_CONFIG.CUSTOMER_USER.WHATSAPP_NAME.split(' ')[0],
+          lastName: ESCALATION_TEST_CONFIG.CUSTOMER_USER.WHATSAPP_NAME.split(' ')[1] || '',
+          phone: ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE
+        },
         ESCALATION_TEST_CONFIG.LUISA_BUSINESS.WHATSAPP_PHONE_NUMBER_ID,
         ESCALATION_TEST_CONFIG.CUSTOMER_USER.WHATSAPP_NAME
       );
@@ -293,16 +302,8 @@ describe('Escalation Flow Integration Tests', () => {
     });
 
     it('should not escalate for sticker messages', async () => {
-      const chatContext = EscalationContextBuilder.createTestChatContext({
-        sessionId: await EscalationDatabaseHelpers.createTestChatSession()
-      });
-      
       const participant = EscalationContextBuilder.createTestParticipant();
-      const userContext = new UserContext({
-        id: 'test-sticker',
-        businessId: ESCALATION_TEST_CONFIG.LUISA_BUSINESS.ID,
-        sessionContext: {}
-      });
+      const { context: chatContext, sessionId: realSessionId, userContext, customerUser } = await getOrCreateChatContext(participant);
 
       const escalationResult = await handleEscalationOrAdminCommand(
         '[STICKER] 😀',
@@ -310,7 +311,12 @@ describe('Escalation Flow Integration Tests', () => {
         chatContext,
         userContext,
         [],
-        undefined,
+        { 
+          id: ESCALATION_TEST_CONFIG.CUSTOMER_USER.ID,
+          firstName: ESCALATION_TEST_CONFIG.CUSTOMER_USER.WHATSAPP_NAME.split(' ')[0],
+          lastName: ESCALATION_TEST_CONFIG.CUSTOMER_USER.WHATSAPP_NAME.split(' ')[1] || '',
+          phone: ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE
+        },
         ESCALATION_TEST_CONFIG.LUISA_BUSINESS.WHATSAPP_PHONE_NUMBER_ID,
         ESCALATION_TEST_CONFIG.CUSTOMER_USER.WHATSAPP_NAME
       );

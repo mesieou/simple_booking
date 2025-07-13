@@ -9,6 +9,7 @@ import { getEnvironmentServiceRoleClient } from '@/lib/database/supabase/environ
 import { Business } from '@/lib/database/models/business';
 import { User } from '@/lib/database/models/user';
 import { getEscalationTemplateName } from '@/lib/bot-engine/escalation/types';
+import { randomUUID } from 'crypto';
 
 export interface ValidatedTestData {
   business: {
@@ -64,21 +65,14 @@ export async function getValidatedTestData(): Promise<ValidatedTestData> {
       throw new Error(`❌ Business ${EXISTING_IDS.BUSINESS_ID} not found in database.`);
     }
 
-    // Fix missing WhatsApp configuration if needed
-    if (business.interfaceType === 'whatsapp' && !business.whatsappNumber) {
-      console.log('🔧 Adding missing WhatsApp number to business...');
-      const { error: updateError } = await supabase
-        .from('businesses')
-        .update({ 
-          whatsappNumber: business.phone, // Use business phone as WhatsApp number
-          updatedAt: new Date().toISOString() 
-        })
-        .eq('id', EXISTING_IDS.BUSINESS_ID);
-
-      if (updateError) {
-        throw new Error(`❌ Failed to update business WhatsApp config: ${updateError.message}`);
+    // Validate WhatsApp configuration exists (no modifications to existing data)
+    if (business.interfaceType === 'whatsapp') {
+      if (!business.whatsappNumber) {
+        business.whatsappNumber = business.phone; // Use phone as fallback for test
       }
-      business.whatsappNumber = business.phone;
+      if (!business.whatsappPhoneNumberId) {
+        business.whatsappPhoneNumberId = '684078768113901'; // Dev WhatsApp Business API ID
+      }
     }
 
 
@@ -120,7 +114,7 @@ export async function getValidatedTestData(): Promise<ValidatedTestData> {
         name: business.name,
         phone: business.phone,
         whatsappNumber: business.whatsappNumber || business.phone,
-        whatsappPhoneNumberId: business.whatsappPhoneNumberId || 'test-phone-number-id-123',
+        whatsappPhoneNumberId: business.whatsappPhoneNumberId || '684078768113901',
         email: business.email
       },
       adminUser: {
@@ -247,8 +241,10 @@ export async function initializeEscalationTestConfig(): Promise<void> {
   ESCALATION_TEST_CONFIG.ADMIN_USER.PHONE = validatedData.adminUser.phone;
   ESCALATION_TEST_CONFIG.ADMIN_USER.WHATSAPP_NAME = `${validatedData.adminUser.firstName} ${validatedData.adminUser.lastName}`;
 
-  ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE = validatedData.customerUser.phone;
-  ESCALATION_TEST_CONFIG.CUSTOMER_USER.NORMALIZED_PHONE = validatedData.customerUser.phone.replace(/[^\d]/g, '');
+  // Use a different phone number for customer to avoid conflicts with admin phone
+  const customerTestPhone = '+61400000123'; // Different from admin phone
+  ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE = customerTestPhone;
+  ESCALATION_TEST_CONFIG.CUSTOMER_USER.NORMALIZED_PHONE = customerTestPhone.replace(/[^\d]/g, '');
   ESCALATION_TEST_CONFIG.CUSTOMER_USER.WHATSAPP_NAME = `${validatedData.customerUser.firstName} ${validatedData.customerUser.lastName}`;
 
   console.log('✅ Escalation test configuration initialized with database data');
@@ -265,12 +261,12 @@ export function getNormalizedPhone(phone: string): string {
  * Helper to create test session ID
  */
 export function createTestSessionId(): string {
-  return `test-session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  return randomUUID();
 }
 
 /**
  * Helper to create test notification ID
  */
 export function createTestNotificationId(): string {
-  return `test-notification-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  return randomUUID();
 } 

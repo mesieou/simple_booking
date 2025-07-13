@@ -47,12 +47,15 @@ async function validateTestSetup() {
 }
 
 // Run the validation
-validateTestSetup()
-  .then(() => {
-    console.log('\n✅ Validation complete');
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error('❌ Validation failed:', error);
-    process.exit(1);
-  }); 
+// Only run validation when this file is executed directly, not when imported
+if (require.main === module) {
+  validateTestSetup()
+    .then(() => {
+      console.log('\n✅ Validation complete');
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error('❌ Validation failed:', error);
+      process.exit(1);
+    });
+} 

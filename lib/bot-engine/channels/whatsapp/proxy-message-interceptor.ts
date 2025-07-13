@@ -26,18 +26,18 @@ export class ProxyMessageHandler {
         error: proxyResult.error
       });
       
-      // If proxy ended, let the message continue through normal processing
+      // If proxy ended, stop processing - admin already got confirmation
       if (proxyResult.proxyEnded) {
-        WhatsAppHandlerLogger.flow('Proxy mode ended - continuing with normal bot processing', {
+        WhatsAppHandlerLogger.flow('Proxy mode ended - stopping message processing', {
           sessionId,
           userId: participant.customerWhatsappNumber
         });
         
         return {
-          shouldContinue: true,
+          shouldContinue: false,
           wasHandled: true,
           handlerType: 'proxy_ended',
-          message: 'Proxy mode ended, continuing with bot'
+          message: 'Proxy mode ended, admin already received confirmation'
         };
       }
       
