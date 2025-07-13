@@ -203,7 +203,8 @@ async function checkForEscalationTrigger(
         finalBusinessPhoneNumberId, 
         chatSessionId, 
         currentContext.currentParticipant.customerWhatsappNumber, 
-        escalationReason
+        escalationReason,
+        incomingUserMessage // Pass the current message that triggered the escalation
       );
       return {
         isEscalated: true,
@@ -231,17 +232,22 @@ async function sendEscalationNotificationWithTracking(
   businessPhoneNumberId: string,
   chatSessionId: string,
   customerPhoneNumber?: string,
-  escalationReason?: string
+  escalationReason?: string,
+  currentUserMessage?: string // Add parameter for the current message that triggered escalation
 ) {
   console.log(`${LOG_PREFIX} Sending escalation notification for session: ${chatSessionId}`);
   console.log(`${LOG_PREFIX} Target phone: ${businessPhoneNumber}, Notification ID: ${notificationId}`);
   
-  // Get the last customer message for proxy escalation
-  const lastCustomerMessage: string = messageHistory.length > 0 
-    ? (typeof messageHistory[messageHistory.length - 1].content === 'string' 
-       ? messageHistory[messageHistory.length - 1].content as string
-       : '[Complex message]')
-    : 'No message available';
+  // Use the current message that triggered the escalation, or fallback to history
+  const lastCustomerMessage: string = currentUserMessage && currentUserMessage.trim() 
+    ? currentUserMessage.trim()
+    : messageHistory.length > 0 
+      ? (typeof messageHistory[messageHistory.length - 1].content === 'string' 
+         ? messageHistory[messageHistory.length - 1].content as string
+         : '[Complex message]')
+      : 'No message available';
+  
+  console.log(`${LOG_PREFIX} Using message for template: "${lastCustomerMessage}" (source: ${currentUserMessage ? 'current' : 'history'})`);
   
   try {
     // 🆕 PRIMARY: Try proxy escalation first (template-based)
