@@ -1,4 +1,4 @@
-import { BotResponse } from '@/lib/cross-channel-interfaces/standardized-conversation-interface';
+import { BotResponse, ParsedMessage } from '@/lib/cross-channel-interfaces/standardized-conversation-interface';
 import { ChatContext, ConversationalParticipant } from '@/lib/bot-engine/types';
 import { UserContext } from '@/lib/database/models/user-context';
 import { Notification } from '@/lib/database/models/notification';
@@ -31,7 +31,9 @@ export async function sendEscalationTemplateWithProxy(
   businessPhoneNumberId: string,
   chatSessionId: string,
   notificationId: string,
-  language: string = 'en'
+  language: string = 'en',
+  messageHistory?: ChatMessage[],
+  currentParsedMessage?: ParsedMessage
 ): Promise<ProxyEscalationResult> {
   console.log(`${LOG_PREFIX} Starting proxy escalation for session: ${chatSessionId}`);
   console.log(`${LOG_PREFIX} Target admin: ${businessPhoneNumber}, Notification: ${notificationId}`);
@@ -44,7 +46,9 @@ export async function sendEscalationTemplateWithProxy(
       customerName,
       lastCustomerMessage,
       chatSessionId,
-      language
+      language,
+      messageHistory,
+      currentParsedMessage
     );
     
     if (!templateMessageId) {
@@ -98,8 +102,7 @@ export async function sendEscalationTemplateWithProxy(
       success: false,
       templateSent: false,
       proxyModeStarted: false,
-      error: errorMessage,
-      notificationId: notificationId
+      error: errorMessage
     };
   }
 }

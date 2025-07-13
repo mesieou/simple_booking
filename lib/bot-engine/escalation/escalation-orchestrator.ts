@@ -1,4 +1,4 @@
-import { BotResponse } from '@/lib/cross-channel-interfaces/standardized-conversation-interface';
+import { BotResponse, ParsedMessage } from '@/lib/cross-channel-interfaces/standardized-conversation-interface';
 import { ChatContext, ConversationalParticipant } from '@/lib/bot-engine/types';
 import { UserContext } from '@/lib/database/models/user-context';
 import { WhatsappSender } from '@/lib/bot-engine/channels/whatsapp/whatsapp-message-sender';
@@ -97,7 +97,8 @@ export async function handleEscalationOrAdminCommand(
   history: ChatMessage[],
   customerUser?: { firstName: string; lastName: string; id: string },
   businessPhoneNumberId?: string,
-  whatsappUserName?: string
+  whatsappUserName?: string,
+  currentParsedMessage?: ParsedMessage
 ): Promise<EscalationResult> {
   // Check if it's a user message that should trigger an escalation.
   const escalationResult = await checkForEscalationTrigger(
@@ -106,7 +107,8 @@ export async function handleEscalationOrAdminCommand(
     history,
     customerUser,
     businessPhoneNumberId,
-    whatsappUserName
+    whatsappUserName,
+    currentParsedMessage
   );
   return escalationResult;
 }
@@ -121,7 +123,8 @@ async function checkForEscalationTrigger(
   messageHistory: ChatMessage[],
   customerUser?: { firstName: string; lastName: string; id: string },
   businessPhoneNumberId?: string,
-  whatsappUserName?: string
+  whatsappUserName?: string,
+  currentParsedMessage?: ParsedMessage
 ): Promise<EscalationResult> {
   console.log(`${LOG_PREFIX} Starting escalation analysis for: "${incomingUserMessage}"`);
 
@@ -204,7 +207,8 @@ async function checkForEscalationTrigger(
         chatSessionId, 
         currentContext.currentParticipant.customerWhatsappNumber, 
         escalationReason,
-        incomingUserMessage // Pass the current message that triggered the escalation
+        incomingUserMessage, // Pass the current message that triggered the escalation
+        currentParsedMessage // Pass the current ParsedMessage for media extraction
       );
       return {
         isEscalated: true,
@@ -233,7 +237,8 @@ async function sendEscalationNotificationWithTracking(
   chatSessionId: string,
   customerPhoneNumber?: string,
   escalationReason?: string,
-  currentUserMessage?: string // Add parameter for the current message that triggered escalation
+  currentUserMessage?: string, // Add parameter for the current message that triggered escalation
+  currentParsedMessage?: ParsedMessage // Add parameter for the current ParsedMessage
 ) {
   console.log(`${LOG_PREFIX} Sending escalation notification for session: ${chatSessionId}`);
   console.log(`${LOG_PREFIX} Target phone: ${businessPhoneNumber}, Notification ID: ${notificationId}`);
@@ -259,7 +264,9 @@ async function sendEscalationNotificationWithTracking(
       businessPhoneNumberId,
       chatSessionId,
       notificationId,
-      language
+      language,
+      messageHistory,
+      currentParsedMessage
     );
     
     if (proxyResult.success && proxyResult.templateSent) {

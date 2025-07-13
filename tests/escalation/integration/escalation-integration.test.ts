@@ -198,6 +198,121 @@ describe('Escalation Integration Tests', () => {
       }
     });
 
+    it('should handle escalation with media attachments directly in template', async () => {
+      // Mock the WhatsApp sender to capture calls
+      const mockSendTemplateMessage = jest.fn().mockResolvedValue('template-message-id');
+      const mockSendMessage = jest.fn().mockResolvedValue('text-message-id');
+      
+      const { WhatsappSender } = require('@/lib/bot-engine/channels/whatsapp/whatsapp-message-sender');
+      WhatsappSender.mockImplementation(() => ({
+        sendTemplateMessage: mockSendTemplateMessage,
+        sendMessage: mockSendMessage
+      }));
+
+      // Create chat context for escalation
+      const participant: ConversationalParticipant = {
+        id: getNormalizedPhone(ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE),
+        type: 'customer',
+        customerWhatsappNumber: getNormalizedPhone(ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE),
+        businessWhatsappNumber: getNormalizedPhone(ESCALATION_TEST_CONFIG.LUISA_BUSINESS.PHONE),
+        associatedBusinessId: testBusiness.id!
+      };
+
+      const chatContext: ChatContext = {
+        currentParticipant: participant,
+        currentConversationSession: {
+          id: testChatSession.id!,
+          channel: 'whatsapp',
+          channelUserId: getNormalizedPhone(ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE),
+          businessId: testBusiness.id!,
+          startedAt: new Date().toISOString(),
+          lastActivityAt: new Date().toISOString(),
+          isActive: true
+        },
+        frequentlyDiscussedTopics: [],
+        participantPreferences: { language: 'en', timezone: 'UTC', notificationSettings: {} }
+      };
+
+      const userContext = new UserContext({
+        id: 'test-context',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        channelUserId: getNormalizedPhone(ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE),
+        businessId: testBusiness.id!,
+        currentGoal: null,
+        previousGoal: null,
+        participantPreferences: null,
+        frequentlyDiscussedTopics: null,
+        sessionData: null
+      });
+
+      // Create message history (simple, no media needed here)
+      const messageHistory = [
+        { role: 'user', content: 'Hello', timestamp: new Date().toISOString() },
+        { role: 'bot', content: 'Hi! How can I help?', timestamp: new Date().toISOString() }
+      ];
+
+      // Create current message with media attachment (this triggers escalation)
+      const currentMessageWithMedia = {
+        channelType: 'whatsapp' as const,
+        messageId: 'test-message-id',
+        senderId: getNormalizedPhone(ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE),
+        userName: ESCALATION_TEST_CONFIG.CUSTOMER_USER.WHATSAPP_NAME,
+        recipientId: ESCALATION_TEST_CONFIG.LUISA_BUSINESS.WHATSAPP_PHONE_NUMBER_ID,
+        timestamp: new Date(),
+        text: '[IMAGE] How does this look',
+        attachments: [
+          {
+            type: 'image' as const,
+            payload: {
+              storedUrl: 'https://example.com/test-image.jpg',
+              originalFilename: 'image.jpg'
+            },
+            caption: 'How does this look'
+          }
+        ],
+        originalPayload: {}
+      };
+
+      // Trigger escalation with media
+      const escalationResult = await handleEscalationOrAdminCommand(
+        '[IMAGE] How does this look',
+        participant,
+        chatContext,
+        userContext,
+        messageHistory,
+        {
+          firstName: testCustomer.firstName,
+          lastName: testCustomer.lastName,
+          id: testCustomer.id
+        },
+        ESCALATION_TEST_CONFIG.LUISA_BUSINESS.WHATSAPP_PHONE_NUMBER_ID,
+        ESCALATION_TEST_CONFIG.CUSTOMER_USER.WHATSAPP_NAME,
+        currentMessageWithMedia
+      );
+
+      // Verify escalation was triggered
+      expect(escalationResult.isEscalated).toBe(true);
+      
+      // Verify template was sent with media parameter
+      expect(mockSendTemplateMessage).toHaveBeenCalledWith(
+        expect.any(String), // admin phone
+        'escalation',
+        'en',
+        expect.any(Array), // body parameters
+        expect.any(String), // business phone number id
+        expect.any(Array), // header parameters
+        expect.objectContaining({ // header media parameter
+          type: 'image',
+          url: 'https://example.com/test-image.jpg'
+        })
+      );
+      
+      // Verify only the template was sent (no follow-up messages for media)
+      expect(mockSendTemplateMessage).toHaveBeenCalledTimes(1);
+      expect(mockSendMessage).not.toHaveBeenCalled();
+    });
+
     it('should prevent all the bugs we encountered', async () => {
       // Bug 1: User lookup finding super admin instead of customer
       const customerLookup = await User.findUserByCustomerWhatsappNumber(getNormalizedPhone(ESCALATION_TEST_CONFIG.CUSTOMER_USER.PHONE));
@@ -220,12 +335,8 @@ describe('Escalation Integration Tests', () => {
         body: ['customerName', 'conversationHistory', 'currentMessage'] // {{1}}, {{2}}, {{3}}
       };
       
-      expect(templateStructure.header).toHaveLength(1);
-      expect(templateStructure.body).toHaveLength(3);
-      expect(templateStructure.body[0]).toBe(templateStructure.header[0]); // Name reused
-      
-      // Bug 4: Session cache should be cleared when no customer found
-      // This is tested implicitly by the user lookup working correctly
+      expect(templateStructure.header).toEqual(['customerName']);
+      expect(templateStructure.body).toEqual(['customerName', 'conversationHistory', 'currentMessage']);
     });
   });
 

@@ -202,7 +202,8 @@ export class EscalationCommandHandler {
           id: customerUser.id
         } : undefined,
         parsedMessage.recipientId,
-        parsedMessage.userName
+        parsedMessage.userName,
+        parsedMessage // Pass the current ParsedMessage for media extraction
       );
 
       if (escalationResult.isEscalated) {

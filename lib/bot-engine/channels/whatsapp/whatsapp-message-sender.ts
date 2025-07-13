@@ -283,7 +283,12 @@ export class WhatsappSender implements IMessageSender {
     languageCode: string,
     parameters: string[],
     businessPhoneNumberId: string,
-    headerParameters: string[] = []
+    headerParameters: string[] = [],
+    headerMedia?: {
+      type: 'image' | 'video' | 'document';
+      url: string;
+      filename?: string;
+    }
   ): Promise<string | null> {
     try {
       this.validateConfiguration();
@@ -291,11 +296,39 @@ export class WhatsappSender implements IMessageSender {
       // Build components array
       const components: any[] = [];
       
-      // Add header parameters if provided
-      if (headerParameters.length > 0) {
+      // Add header parameters if provided (text + optional media)
+      if (headerParameters.length > 0 || headerMedia) {
+        const headerParameterList: any[] = [];
+        
+        // Add text parameters first
+        headerParameters.forEach(param => {
+          headerParameterList.push({ type: "text", text: cleanForTemplateParameter(param) });
+        });
+        
+        // Add media parameter if provided
+        if (headerMedia) {
+          const mediaParam: any = {
+            type: headerMedia.type
+          };
+          
+          // Build media object based on type
+          if (headerMedia.type === 'image') {
+            mediaParam.image = { link: headerMedia.url };
+          } else if (headerMedia.type === 'video') {
+            mediaParam.video = { link: headerMedia.url };
+          } else if (headerMedia.type === 'document') {
+            mediaParam.document = { 
+              link: headerMedia.url,
+              filename: headerMedia.filename || 'attachment'
+            };
+          }
+          
+          headerParameterList.push(mediaParam);
+        }
+        
         components.push({
           type: "header",
-          parameters: headerParameters.map(param => ({ type: "text", text: cleanForTemplateParameter(param) }))
+          parameters: headerParameterList
         });
       }
       
@@ -330,6 +363,58 @@ export class WhatsappSender implements IMessageSender {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
       console.error(`[WhatsappSender] ❌ Failed to send template message to ${recipientId}:`, errorMessage);
+      throw error;
+    }
+  }
+
+  /**
+   * Sends a WhatsApp media message (image, video, document, audio)
+   */
+  async sendMediaMessage(
+    recipientId: string,
+    mediaType: 'image' | 'video' | 'document' | 'audio',
+    mediaUrl: string,
+    businessPhoneNumberId: string,
+    caption?: string,
+    filename?: string
+  ): Promise<string | null> {
+    try {
+      this.validateConfiguration();
+      
+      // Build media payload based on type
+      const mediaPayload: any = {
+        messaging_product: "whatsapp",
+        to: recipientId,
+        type: mediaType
+      };
+      
+      // Add media-specific properties
+      const mediaObject: any = {
+        link: mediaUrl
+      };
+      
+      // Add caption if provided (for image, video, document)
+      if (caption && ['image', 'video', 'document'].includes(mediaType)) {
+        mediaObject.caption = caption;
+      }
+      
+      // Add filename for documents
+      if (filename && mediaType === 'document') {
+        mediaObject.filename = filename;
+      }
+      
+      mediaPayload[mediaType] = mediaObject;
+      
+      console.log(`[WhatsappSender] Sending ${mediaType} media to ${recipientId}:`, JSON.stringify(mediaPayload, null, 2));
+      
+      const whatsappMessageId = await this.sendToWhatsappApi(mediaPayload, businessPhoneNumberId);
+      console.log(`[WhatsappSender] ✅ Media message sent successfully (WhatsApp ID: ${whatsappMessageId || 'unknown'})`);
+      
+      return whatsappMessageId;
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      console.error(`[WhatsappSender] ❌ Failed to send media message to ${recipientId}:`, errorMessage);
       throw error;
     }
   }
