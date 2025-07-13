@@ -317,10 +317,28 @@ async function forwardAdminMessageToCustomer(
       return false;
     }
     
+    let messageToSend = parsedMessage.text;
+    
+    // Check if message has image attachment and include image link
+    if (parsedMessage.attachments && parsedMessage.attachments.length > 0) {
+      const imageAttachment = parsedMessage.attachments.find(attachment => 
+        attachment.type === 'image' &&
+        (attachment.payload?.storedUrl || attachment.payload?.url)
+      );
+      
+      if (imageAttachment) {
+        const imageUrl = imageAttachment.payload?.storedUrl || imageAttachment.payload?.url;
+        if (imageUrl) {
+          messageToSend += `\n\n📸 Image: ${imageUrl}`;
+          console.log(`${LOG_PREFIX} Including image link in admin message to customer: ${imageUrl}`);
+        }
+      }
+    }
+    
     const sender = new WhatsappSender();
     const messageId = await sender.sendMessage(
       proxySession.customerPhone,
-      { text: parsedMessage.text },
+      { text: messageToSend },
       businessPhoneNumberId
     );
     
@@ -349,7 +367,23 @@ async function forwardCustomerMessageToAdmin(
     
     // Format message with customer context and emoticon
     const customerName = await getCustomerName(proxySession.sessionId);
-    const forwardedMessage = `👤 ${customerName} said: "${parsedMessage.text}"`;
+    let forwardedMessage = `👤 ${customerName} said: "${parsedMessage.text}"`;
+    
+    // Check if message has image attachment and include image link
+    if (parsedMessage.attachments && parsedMessage.attachments.length > 0) {
+      const imageAttachment = parsedMessage.attachments.find(attachment => 
+        attachment.type === 'image' &&
+        (attachment.payload?.storedUrl || attachment.payload?.url)
+      );
+      
+      if (imageAttachment) {
+        const imageUrl = imageAttachment.payload?.storedUrl || imageAttachment.payload?.url;
+        if (imageUrl) {
+          forwardedMessage += `\n\n📸 Image: ${imageUrl}`;
+          console.log(`${LOG_PREFIX} Including image link in forwarded message: ${imageUrl}`);
+        }
+      }
+    }
     
     const sender = new WhatsappSender();
     const messageId = await sender.sendMessage(
