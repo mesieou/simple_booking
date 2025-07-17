@@ -35,7 +35,8 @@ export async function handleFaqOrChitchat(
     return userCreationResult;
   }
 
-  let chatbotResponseText: string;
+  // Initialize with a default fallback value
+  let chatbotResponseText = "I'm not sure how to respond to that, but I'm here to help!";
 
   // Create language instruction for AI
   const languageInstruction = userLanguage === 'es' 
@@ -43,39 +44,16 @@ export async function handleFaqOrChitchat(
     : 'IMPORTANT: Respond ALWAYS in ENGLISH.';
 
   try {
-    // Get relevant context using RAG
+    // Get relevant context using RAG (which already does smart classification)
     const ragResults = await RAGfunction(businessId, userMessage);
     
     // Check if we have a known user for personalization
     const sessionUserInfo = chatContext.currentConversationSession?.userData;
     const customerName = sessionUserInfo?.customerName;
     
-    // Check if this is a booking-related request from a known user
-    const isBookingRequest = /book|appointment|reserve|schedule|available|availability/i.test(userMessage);
+    console.log(`[handleFaqOrChitchat] Found ${ragResults?.length || 0} relevant results for: "${userMessage}"`);
     
-    if (customerName && isBookingRequest && ragResults && ragResults.length > 0) {
-      console.log(`[handleFaqOrChitchat] Detected booking request from known user: ${customerName}`);
-      
-      // Extract available times from RAG results for personalized message
-      const context = ragResults.map(r => r.content).join('\n---\n');
-      const timesMatch = context.match(/(\d{1,2}:\d{2}\s*(AM|PM))/gi);
-      const availableTimes = timesMatch ? timesMatch.slice(0, 6).join(', ') : '8:00 AM, 9:00 AM, 10:00 AM, 11:00 AM, 12:00 PM';
-      
-      // Use personalized booking availability message
-      const { BOOKING_TRANSLATIONS } = await import('@/lib/bot-engine/config/translations');
-      const translations = BOOKING_TRANSLATIONS[userLanguage as keyof typeof BOOKING_TRANSLATIONS] || BOOKING_TRANSLATIONS['en'];
-      
-      if (translations?.MESSAGES?.BOOKING_AVAILABILITY_PERSONALIZED) {
-        chatbotResponseText = translations.MESSAGES.BOOKING_AVAILABILITY_PERSONALIZED
-          .replace('{name}', customerName)
-          .replace('{times}', availableTimes);
-      } else {
-        // Fallback if translation not found
-        chatbotResponseText = userLanguage === 'es' 
-          ? `📅 ¡Hola ${customerName}! Por supuesto, me encantaría ayudarte a reservar otra cita. Tenemos excelente disponibilidad hoy con espacios a las ${availableTimes}. ¡Por favor déjame saber qué fecha y hora te funcionan mejor! 😊`
-          : `📅 Hello ${customerName}! Of course, I'd be happy to help you book another appointment. We have excellent availability today with slots at ${availableTimes}. Please let me know what date and time work best for you, and I'll get that booked right away! 😊`;
-      }
-    } else {
+    if (ragResults && ragResults.length > 0) {
       // Continue with normal FAQ processing but with personalization
       // Create a simple text representation of the conversation history for the AI
       let systemPrompt: string;
@@ -118,7 +96,11 @@ export async function handleFaqOrChitchat(
         
         ${languageInstruction}
         
-        **IMPORTANT**: After answering the question, ALWAYS offer to help the user book an appointment for the services we DO offer.
+        **BOOKING DIRECTION (CRITICAL)**:
+        - NEVER ask users to "tell me your preferred date/time" or "let me know when you'd like to book"
+        - NEVER create expectations that they can book via text messages
+        - ALWAYS end responses with: "Click the 'Book an Appointment' button below to get started!"
+        - The booking process requires clicking the button, not text responses
         
         **FORMATTING RULES FOR WHATSAPP**:
         - To make text bold, wrap it in single asterisks: *your bold text*.
@@ -148,7 +130,11 @@ export async function handleFaqOrChitchat(
         
         ${languageInstruction}
         
-        **IMPORTANT**: After your response, ALWAYS offer to help the user book an appointment, as this is your main function.
+        **BOOKING DIRECTION (CRITICAL)**:
+        - NEVER ask users to "tell me your preferred date/time" or "let me know when you'd like to book"
+        - NEVER create expectations that they can book via text messages
+        - ALWAYS end responses with: "Click the 'Book an Appointment' button below to get started!"
+        - The booking process requires clicking the button, not text responses
 
         **FORMATTING RULES FOR WHATSAPP**:
         - To make text bold, wrap it in single asterisks: *your bold text*.
@@ -402,6 +388,7 @@ async function handleUserCreationIfNeeded(
     return null; // Continue with normal FAQ flow
   }
 }
+
 
 /**
  * Uses LLM to assess if a user's message is a name or another type of message

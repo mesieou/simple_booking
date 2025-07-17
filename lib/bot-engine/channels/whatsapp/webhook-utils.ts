@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { Business } from '@/lib/database/models/business';
 import { type WebhookAPIBody } from './whatsapp-message-logger';
+import { getCurrentEnvironment } from '@/lib/database/supabase/environment';
 
 const LOG_PREFIX = "[Webhook Utils]";
 
@@ -144,15 +145,21 @@ export class WebhookRouter {
     
     console.log(`${LOG_PREFIX} Processing webhook for phone_number_id: ${phoneNumberId}`);
     
-    // Check for dev/testing numbers - skip in production
+    // Check for dev/testing numbers - skip ONLY in production
+    const currentEnvironment = getCurrentEnvironment();
     if (PhoneNumberIdUtils.isDevNumber(phoneNumberId)) {
-      console.log(`${LOG_PREFIX} Dev/testing number detected: ${phoneNumberId} - skipping in production`);
-      return {
-        success: true,
-        phoneNumberId,
-        routingType: 'dev',
-        message: `Dev/testing number ${phoneNumberId} - ignored in production, handled by dev webhook`
-      };
+      if (currentEnvironment === 'production') {
+        console.log(`${LOG_PREFIX} Dev/testing number detected: ${phoneNumberId} - skipping in production`);
+        return {
+          success: true,
+          phoneNumberId,
+          routingType: 'dev',
+          message: `Dev/testing number ${phoneNumberId} - ignored in production, handled by dev webhook`
+        };
+      } else {
+        console.log(`${LOG_PREFIX} Dev/testing number detected: ${phoneNumberId} - processing in ${currentEnvironment} environment`);
+        // Continue processing in development/local environments
+      }
     }
     
     // Look up business by phone_number_id

@@ -20,7 +20,7 @@ export interface LuisaTestBusinessSeedResult {
 /**
  * Creates a complete test business for Luisa (Beauty Asiul) with:
  * - Business profile with all schema fields
- * - 12 hair & nail services (prioritized for WhatsApp)
+ * - 13 nail & hair services organized by category with accurate pricing
  * - Calendar settings and availability
  * - 4 comprehensive knowledge base documents
  * - PDF content processing from public/Customer-Service-Handbook.pdf
@@ -157,12 +157,12 @@ export async function createLuisaTestBusiness(
     console.log('[SEED] Creating services...');
   const serviceIds: string[] = [];
   const servicesData: Omit<ServiceData, 'businessId' | 'id'>[] = [
-    // Nail Services (prioritized first)
+    // NAIL SERVICES - Manicures (5 services)
     {
       name: 'Basic Manicure',
       pricingType: 'fixed' as PricingType,
       fixedPrice: 30.00,
-      description: 'Classic manicure treatment.',
+      description: 'Cleaning, exfoliation, and moisturizing.',
       durationEstimate: 35, 
       mobile: false,
     },
@@ -170,65 +170,74 @@ export async function createLuisaTestBusiness(
       name: 'Express Manicure',
       pricingType: 'fixed' as PricingType,
       fixedPrice: 35.00,
-      description: 'Quick manicure treatment.',
-      durationEstimate: 35, 
+      description: 'Cleaning, exfoliation, moisturizing, nail polish.',
+      durationEstimate: 40, 
       mobile: false,
     },
     {
       name: 'Gel Manicure',
       pricingType: 'fixed' as PricingType,
       fixedPrice: 40.00,
-      description: 'Manicure with long-lasting gel polish.',
+      description: 'Cleaning, exfoliation, moisturizing, gel.',
       durationEstimate: 60, 
-      mobile: false,
-    },
-    {
-      name: 'Basic Pedicure',
-      pricingType: 'fixed' as PricingType,
-      fixedPrice: 45.00,
-      description: 'Classic pedicure treatment.',
-      durationEstimate: 35, 
-      mobile: false, 
-    },
-    {
-      name: 'Gel Pedicure',
-      pricingType: 'fixed' as PricingType,
-      fixedPrice: 50.00,
-      description: 'Pedicure with long-lasting gel polish.',
-      durationEstimate: 60,
       mobile: false,
     },
     {
       name: 'Press on Manicure',
       pricingType: 'fixed' as PricingType,
       fixedPrice: 80.00,
-      description: 'Professional press-on nail application.',
-      durationEstimate: 60, 
+      description: 'Cleaning, exfoliation, moisturizing, press-on nail extension, gel, nail art.',
+      durationEstimate: 90, 
       mobile: false,
     },
-    // Hair Services
+    {
+      name: 'Nail Art',
+      pricingType: 'fixed' as PricingType,
+      fixedPrice: 5.00,
+      description: 'Nail art design (2 nails $5 / 5-10 nails $10).',
+      durationEstimate: 20, 
+      mobile: false,
+    },
+    // NAIL SERVICES - Pedicures (2 services)
+    {
+      name: 'Basic Pedicure',
+      pricingType: 'fixed' as PricingType,
+      fixedPrice: 45.00,
+      description: 'Cleaning, exfoliation, moisturizing, nail polish.',
+      durationEstimate: 45, 
+      mobile: false, 
+    },
+    {
+      name: 'Gel Pedicure',
+      pricingType: 'fixed' as PricingType,
+      fixedPrice: 50.00,
+      description: 'Cleaning, exfoliation, moisturizing, gel.',
+      durationEstimate: 60,
+      mobile: false,
+    },
+    // HAIR SERVICES (6 services)
     {
       name: 'Ladies Haircut',
       pricingType: 'fixed' as PricingType,
       fixedPrice: 50.00,
-      description: 'Professional ladies haircut and styling.',
-      durationEstimate: 60, 
+      description: 'Professional ladies haircut.',
+      durationEstimate: 30, 
       mobile: false,
     },
     {
       name: 'Hair Styling',
       pricingType: 'fixed' as PricingType,
       fixedPrice: 50.00,
-      description: 'Professional hair styling service.',
-      durationEstimate: 45, 
+      description: 'Complete styling with braids, brushing, or updos.',
+      durationEstimate: 60, 
       mobile: false,
     },
     {
       name: 'Braids',
       pricingType: 'fixed' as PricingType,
       fixedPrice: 30.00,
-      description: 'Professional braiding service.',
-      durationEstimate: 90, 
+      description: '1-3 braids (30 min).',
+      durationEstimate: 30, 
       mobile: false,
     },
     {

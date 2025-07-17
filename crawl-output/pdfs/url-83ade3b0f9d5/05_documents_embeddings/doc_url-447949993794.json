@@ -1,12 +1,12 @@
 {
-  "businessId": "ef97961f-18ad-4304-9d9d-6cd38308d65f",
+  "businessId": "f72b60fe-f6c7-4d38-84bb-16356fe79cca",
   "content": "11. Does Luisa provide mobile services?",
   "title": "Luisa FAQ whatsapp conversations (1).pdf - Page 2 - faq (Chunk 7, Pre 0)",
   "source": "pdf-Luisa FAQ whatsapp conversations (1).pdf#page=2",
   "type": "pdf",
   "category": "faq",
   "contentHash": "64f054623cf90cecb5f6b24859e39f4f23224a2830bed3e70b34148bc09b8592",
-  "confidence": 0.8,
+  "confidence": 0.9,
   "preChunkSourceIndex": 0,
   "embeddingInputText": "11. Does Luisa provide mobile services?",
   "embedding": [

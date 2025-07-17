@@ -20,12 +20,12 @@
     "totalEmbeddings": 12,
     "processedEmbeddings": 12,
     "failedEmbeddings": 0,
-    "startTime": 1752221718581,
+    "startTime": 1752739030375,
     "baseOutputPath": "/Users/juanbernal/code/mesieou/2025/simple_booking/crawl-output",
     "domainProcessingSummary": {},
-    "endTime": 1752221748313
+    "endTime": 1752739065121
   },
-  "durationSeconds": 29.732,
+  "durationSeconds": 34.746,
   "allFoundUrls": [
     "pdf-Luisa FAQ whatsapp conversations (1).pdf#page=1",
     "pdf-Luisa FAQ whatsapp conversations (1).pdf#page=2",

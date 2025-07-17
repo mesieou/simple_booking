@@ -21,7 +21,7 @@ const openai = new OpenAI({
 
 // Simple in-memory cache for intent classification to avoid redundant LLM calls
 const intentCache = new Map<string, { 
-  classification: {isAvailability: boolean, isContact: boolean, isService: boolean}, 
+  classification: {isAvailability: boolean, isBusiness: boolean, isService: boolean}, 
   timestamp: number 
 }>();
 const CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes
@@ -369,7 +369,7 @@ function cosineSimilarity(vecA: number[], vecB: number[]): number {
  */
 async function smartQueryClassification(userMessage: string): Promise<{
   isAvailability: boolean;
-  isContact: boolean; 
+  isBusiness: boolean; 
   isService: boolean;
 }> {
   const cacheKey = userMessage.toLowerCase().trim();
@@ -379,25 +379,38 @@ async function smartQueryClassification(userMessage: string): Promise<{
   const cached = intentCache.get(cacheKey);
   if (cached && (now - cached.timestamp) < CACHE_DURATION_MS) {
     console.log(`[Smart Classification] Cache hit for "${userMessage.substring(0, 30)}..."`);
-    return cached.classification;
+    // Ensure all required properties are present for type safety
+    return {
+      isAvailability: cached.classification.isAvailability,
+      isBusiness: cached.classification.isBusiness,
+      isService: cached.classification.isService,
+    };
   }
   
   try {
     const systemPrompt = `You are a smart query classifier for a booking system. Determine what type of information the user needs:
 
 AVAILABILITY: When user asks about scheduling, dates, times, when something is available, booking appointments
-CONTACT: When user asks about phone, email, address, location, how to reach the business  
-SERVICE: When user asks about what services are offered, prices, costs, what the business does
+BUSINESS: When user asks ONLY about direct contact info (phone, email, address) or payment setup (deposits, payment methods, stripe status)
+SERVICE: When user asks about what specific services are offered, individual service prices, what the business does
 
 Examples:
-- "When are you available?" → AVAILABILITY: true, CONTACT: false, SERVICE: false
-- "Para cuando tendrías cita?" → AVAILABILITY: true, CONTACT: false, SERVICE: false  
-- "What's your phone number?" → AVAILABILITY: false, CONTACT: true, SERVICE: false
-- "How much for a haircut?" → AVAILABILITY: false, CONTACT: false, SERVICE: true
-- "What services do you offer?" → AVAILABILITY: false, CONTACT: false, SERVICE: true
-- "Hello" → AVAILABILITY: false, CONTACT: false, SERVICE: false
+- "When are you available?" → AVAILABILITY: true, BUSINESS: false, SERVICE: false
+- "Para cuando tendrías cita?" → AVAILABILITY: true, BUSINESS: false, SERVICE: false  
+- "What's your phone number?" → AVAILABILITY: false, BUSINESS: true, SERVICE: false
+- "What's your email?" → AVAILABILITY: false, BUSINESS: true, SERVICE: false
+- "What's your address?" → AVAILABILITY: false, BUSINESS: true, SERVICE: false
+- "Is there any deposit?" → AVAILABILITY: false, BUSINESS: true, SERVICE: false
+- "Do you require deposits?" → AVAILABILITY: false, BUSINESS: true, SERVICE: false
+- "What payment methods do you accept?" → AVAILABILITY: false, BUSINESS: true, SERVICE: false
+- "How much for a haircut?" → AVAILABILITY: false, BUSINESS: false, SERVICE: true
+- "What services do you offer?" → AVAILABILITY: false, BUSINESS: false, SERVICE: true
+- "What is your cancellation policy?" → AVAILABILITY: false, BUSINESS: false, SERVICE: false
+- "What are your terms and conditions?" → AVAILABILITY: false, BUSINESS: false, SERVICE: false
+- "What is your refund policy?" → AVAILABILITY: false, BUSINESS: false, SERVICE: false
+- "Hello" → AVAILABILITY: false, BUSINESS: false, SERVICE: false
 
-Respond with ONLY JSON: {"availability": true/false, "contact": true/false, "service": true/false}`;
+Respond with ONLY JSON: {"availability": true/false, "business": true/false, "service": true/false}`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
@@ -416,14 +429,21 @@ Respond with ONLY JSON: {"availability": true/false, "contact": true/false, "ser
     const parsed = JSON.parse(result);
     const classification = {
       isAvailability: parsed.availability || false,
-      isContact: parsed.contact || false,
+      isBusiness: parsed.business || false,
       isService: parsed.service || false
     };
     
     // Cache the result
-    intentCache.set(cacheKey, { classification, timestamp: now });
+    intentCache.set(cacheKey, {
+      classification: {
+        isAvailability: classification.isAvailability,
+        isBusiness: classification.isBusiness,
+        isService: classification.isService,
+      },
+      timestamp: now
+    });
     
-    console.log(`[Smart Classification] "${userMessage.substring(0, 50)}..." → Availability: ${classification.isAvailability}, Contact: ${classification.isContact}, Service: ${classification.isService}`);
+    console.log(`[Smart Classification] "${userMessage.substring(0, 50)}..." → Availability: ${classification.isAvailability}, Business: ${classification.isBusiness}, Service: ${classification.isService}`);
     
     return classification;
     
@@ -434,7 +454,7 @@ Respond with ONLY JSON: {"availability": true/false, "contact": true/false, "ser
     const lowerMessage = userMessage.toLowerCase();
     return {
       isAvailability: ['available', 'appointment', 'book', 'when', 'cita', 'fecha', 'hora'].some(w => lowerMessage.includes(w)),
-      isContact: ['phone', 'email', 'address', 'location', 'contact', 'teléfono', 'dirección'].some(w => lowerMessage.includes(w)),
+      isBusiness: ['phone number', 'email', 'address', 'contact info', 'deposit', 'payment method', 'teléfono', 'dirección', 'depósito', 'método de pago'].some(w => lowerMessage.includes(w)),
       isService: ['service', 'price', 'cost', 'offer', 'do you do', 'servicio', 'precio', 'costo'].some(w => lowerMessage.includes(w))
     };
   }
@@ -463,9 +483,9 @@ export async function RAGfunction(
   
   // Step 1: Smart LLM classification to understand what user needs
   const intent = await smartQueryClassification(userMessage);
-  const isBusinessQuery = intent.isAvailability || intent.isContact || intent.isService;
+  const isBusinessQuery = intent.isAvailability || intent.isBusiness || intent.isService;
   
-  console.log(`[RAGfunction] Smart classification - Business query: ${isBusinessQuery}, Availability: ${intent.isAvailability}, Contact: ${intent.isContact}, Service: ${intent.isService}`);
+  console.log(`[RAGfunction] Smart classification - Business query: ${isBusinessQuery}, Availability: ${intent.isAvailability}, Business: ${intent.isBusiness}, Service: ${intent.isService}`);
   
   try {
     const userEmbedding = await generateEmbedding(userMessage);
@@ -475,8 +495,8 @@ export async function RAGfunction(
     if (isBusinessQuery) {
       console.log(`[RAGfunction] Fetching structured business data...`);
       
-      // Get business info for contact queries
-      if (intent.isContact) {
+      // Get business info for business queries
+      if (intent.isBusiness) {
         try {
           const business = await Business.getById(businessId);
           if (business) {
@@ -491,10 +511,10 @@ export async function RAGfunction(
               similarityScore: similarity * 3.0, // High priority boost
               type: 'business',
               source: 'Business Information',
-              category: 'Contact',
+              category: 'Business',
               confidenceScore: 1.0,
             });
-            console.log(`[RAGfunction] Added business contact information`);
+            console.log(`[RAGfunction] Added business information`);
           }
         } catch (error) {
           console.error('[RAGfunction] Error fetching business data:', error);
