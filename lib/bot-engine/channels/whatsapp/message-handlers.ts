@@ -66,11 +66,14 @@ export class EscalationHandler {
         }, { escalationStatus });
         
         if (chatContext.currentConversationSession) {
+          // Find the active goal to preserve it during escalation
+          const activeGoal = chatContext.currentConversationSession.activeGoals.find(g => g.goalStatus === 'inProgress');
+          
           await persistSessionState(
             sessionId, 
             userContext, 
             chatContext.currentConversationSession, 
-            undefined,
+            activeGoal, // Pass the active goal to preserve it
             parsedMessage.text || '', 
             '', // No bot response
             undefined, // fullHistory is optional and will be reconstructed from activeGoals
@@ -141,11 +144,14 @@ export class StickerHandler {
       }, { stickerContent: parsedMessage.text });
       
       if (chatContext.currentConversationSession) {
+        // Find the active goal to preserve it during sticker processing
+        const activeGoal = chatContext.currentConversationSession.activeGoals.find(g => g.goalStatus === 'inProgress');
+        
         await persistSessionState(
           sessionId, 
           userContext, 
           chatContext.currentConversationSession, 
-          undefined,
+          activeGoal, // Pass the active goal to preserve it
           parsedMessage.text || '', 
           '',
           undefined, // fullHistory is optional and will be reconstructed from activeGoals
@@ -225,11 +231,14 @@ export class EscalationCommandHandler {
             console.error(`[EscalationCommandHandler] Failed to update session status:`, error);
           }
           
+          // Find the active goal to preserve it during escalation
+          const activeGoal = chatContext.currentConversationSession.activeGoals.find(g => g.goalStatus === 'inProgress');
+          
           await persistSessionState(
             context.sessionId, 
             userContext, 
             chatContext.currentConversationSession, 
-            undefined, 
+            activeGoal, // Pass the active goal to preserve it
             parsedMessage.text || '', 
             escalationResult.response,
             undefined, // fullHistory is optional and will be reconstructed from activeGoals
@@ -289,11 +298,14 @@ export class AudioHandler {
         await sender.sendMessage(parsedMessage.senderId, { text: audioTranscriptionResult.transcribedMessage }, parsedMessage.recipientId);
         
         if (chatContext.currentConversationSession) {
+          // Find the active goal to preserve it during audio processing
+          const activeGoal = chatContext.currentConversationSession.activeGoals.find(g => g.goalStatus === 'inProgress');
+          
           await persistSessionState(
             sessionId, 
             userContext, 
             chatContext.currentConversationSession, 
-            undefined,
+            activeGoal, // Pass the active goal to preserve it
             parsedMessage.text || '', 
             { text: audioTranscriptionResult.transcribedMessage },
             undefined, // fullHistory is optional and will be reconstructed from activeGoals
@@ -361,11 +373,61 @@ export class ConversationFlowHandler {
     // Check if message is payment completion
     const messageIsPaymentCompletion = (parsedMessage.text || '').startsWith('PAYMENT_COMPLETED_');
     
-    const isBookingRelated = messageContainsBookingPayload || 
-                           messageContainsUUID || 
-                           messageContainsBookingRelatedPayload ||
-                           messageIsPaymentCompletion ||
-                           (userCurrentGoal && userCurrentGoal.goalType === 'serviceBooking');
+    // Define explicit booking actions (clear system interactions)
+    const isExplicitBookingAction = messageContainsBookingPayload || 
+                                   messageContainsUUID || 
+                                   messageContainsBookingRelatedPayload ||
+                                   messageIsPaymentCompletion;
+    
+    let shouldRouteToBooking = isExplicitBookingAction;
+    let routingReason = '';
+    
+    // If there's an active booking goal but no explicit booking action, use LLM to analyze
+    if (!isExplicitBookingAction && userCurrentGoal && userCurrentGoal.goalType === 'serviceBooking') {
+      try {
+        // Use existing LLM service to analyze conversation flow for ALL booking steps
+        const { IntelligentLLMService } = await import('@/lib/bot-engine/services/llm-service');
+        const llmService = new IntelligentLLMService();
+        
+        // Build message history for LLM analysis
+        const messageHistory = userCurrentGoal.messageHistory.map(msg => ({
+          role: msg.speakerRole === 'user' ? 'user' as const : 'assistant' as const,
+          content: msg.content,
+          timestamp: msg.messageTimestamp
+        }));
+        
+        const conversationDecision = await llmService.analyzeConversationFlow(
+          parsedMessage.text || '',
+          userCurrentGoal,
+          chatContext,
+          messageHistory
+        );
+        
+        WhatsAppHandlerLogger.flow('LLM conversation flow analysis', {
+          sessionId,
+          userId: context.participant.customerWhatsappNumber
+        }, {
+          action: conversationDecision.action,
+          confidence: conversationDecision.confidence,
+          reasoning: conversationDecision.reasoning
+        });
+        
+        // If LLM says "continue" (question detected), route to FAQ handler
+        // All other actions (advance, go_back, etc.) go to booking flow
+        shouldRouteToBooking = conversationDecision.action !== 'continue';
+        routingReason = conversationDecision.action === 'continue' ? 'question_detected_by_llm' : 'booking_action_detected_by_llm';
+        
+      } catch (error) {
+        console.error('[ConversationFlowHandler] Error in LLM analysis:', error);
+        // Fallback to booking flow if LLM analysis fails
+        shouldRouteToBooking = true;
+        routingReason = 'llm_analysis_failed_fallback';
+      }
+    } else if (!userCurrentGoal) {
+      routingReason = 'no_active_goal';
+    } else {
+      routingReason = isExplicitBookingAction ? 'explicit_booking_action' : 'no_booking_context';
+    }
     
     // Log routing decision with detailed context
     WhatsAppHandlerLogger.flow('Message routing analysis completed', {
@@ -375,18 +437,20 @@ export class ConversationFlowHandler {
       messagePreview: parsedMessage.text?.substring(0, 50),
       hasBookingGoal: !!userCurrentGoal,
       goalType: userCurrentGoal?.goalType,
-      isBookingRelated,
+      shouldRouteToBooking,
+      routingReason,
       routing: {
         containsPayload: messageContainsBookingPayload,
         containsUUID: messageContainsUUID,
         containsBookingPayload: messageContainsBookingRelatedPayload,
-        isPaymentCompletion: messageIsPaymentCompletion
+        isPaymentCompletion: messageIsPaymentCompletion,
+        isExplicitBookingAction
       }
     });
     
     let botResponse: BotResponse | null = null;
     
-    if (isBookingRelated) {
+    if (shouldRouteToBooking) {
       WhatsAppHandlerLogger.journey('Routing to booking flow', {
         sessionId,
         userId: context.participant.customerWhatsappNumber,
@@ -394,7 +458,8 @@ export class ConversationFlowHandler {
       }, {
         routingReason: messageIsPaymentCompletion ? 'payment_completion' : 
                       messageContainsBookingPayload ? 'explicit_booking_start' :
-                      userCurrentGoal ? 'existing_booking_goal' : 'booking_related_content'
+                      isExplicitBookingAction ? 'explicit_booking_action' :
+                      routingReason
       });
       
       if (messageContainsBookingPayload && userCurrentGoal) {
@@ -417,12 +482,23 @@ export class ConversationFlowHandler {
         existingContext // Pass the existing context to prevent creating a new one
       );
       
+      // CRITICAL FIX: Sync the updated goal state back to chatContext after booking flow processing
+      // This ensures that any subsequent FAQ handling gets the most recent goal state
+      if (existingContext.context.currentConversationSession) {
+        chatContext.currentConversationSession.activeGoals = existingContext.context.currentConversationSession.activeGoals;
+        
+        console.log('[ConversationFlowHandler] Synced goal state after booking flow processing:', {
+          activeGoalsCount: chatContext.currentConversationSession.activeGoals.length,
+          hasInProgressGoal: chatContext.currentConversationSession.activeGoals.some(g => g.goalStatus === 'inProgress')
+        });
+      }
+      
     } else {
       WhatsAppHandlerLogger.journey('Routing to FAQ/Chitchat handler', {
         sessionId,
         userId: context.participant.customerWhatsappNumber
       }, {
-        reason: 'no_booking_context',
+        reason: routingReason,
         messagePreview: parsedMessage.text?.substring(0, 30)
       });
       
@@ -431,11 +507,15 @@ export class ConversationFlowHandler {
       
       if (botResponse.text && chatContext.currentConversationSession) {
         WhatsAppHandlerLogger.debug('FAQ response persisting session state', { sessionId });
+        
+        // Find the active goal to preserve it during FAQ processing
+        const activeGoal = chatContext.currentConversationSession.activeGoals.find(g => g.goalStatus === 'inProgress');
+        
         await persistSessionState(
           sessionId, 
           userContext, 
           chatContext.currentConversationSession, 
-          undefined,
+          activeGoal, // Pass the active goal to preserve it
           parsedMessage.text || '', 
           botResponse,
           undefined, // fullHistory is optional and will be reconstructed from activeGoals
@@ -448,7 +528,7 @@ export class ConversationFlowHandler {
       shouldContinue: true,
       response: botResponse || undefined,
       wasHandled: true,
-      handlerType: isBookingRelated ? 'booking_flow' : 'faq_chitchat'
+      handlerType: shouldRouteToBooking ? 'booking_flow' : 'faq_chitchat'
     };
   }
 }

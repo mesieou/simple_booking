@@ -53,6 +53,11 @@ export async function handleFaqOrChitchat(
     
     console.log(`[handleFaqOrChitchat] Found ${ragResults?.length || 0} relevant results for: "${userMessage}"`);
     
+    // Check if there's an active booking goal to determine context (used by both RAG and chitchat)
+    const activeBookingGoal = chatContext.currentConversationSession?.activeGoals.find(g => 
+      g.goalStatus === 'inProgress' && g.goalType === 'serviceBooking'
+    );
+    
     if (ragResults && ragResults.length > 0) {
       // Continue with normal FAQ processing but with personalization
       // Create a simple text representation of the conversation history for the AI
@@ -96,11 +101,16 @@ export async function handleFaqOrChitchat(
         
         ${languageInstruction}
         
-        **BOOKING DIRECTION (CRITICAL)**:
-        - NEVER ask users to "tell me your preferred date/time" or "let me know when you'd like to book"
-        - NEVER create expectations that they can book via text messages
-        - ALWAYS end responses with: "Click the 'Book an Appointment' button below to get started!"
-        - The booking process requires clicking the button, not text responses
+        **BOOKING DIRECTION (CONTEXT-AWARE)**:
+        ${activeBookingGoal ? 
+          `- The user is currently in a booking process, so DO NOT mention "Book an Appointment" or redirect them to booking
+          - Simply answer their question directly and end naturally
+          - The booking context will be added automatically after your response` :
+          `- NEVER ask users to "tell me your preferred date/time" or "let me know when you'd like to book"
+          - NEVER create expectations that they can book via text messages
+          - ALWAYS end responses with: "Click the 'Book an Appointment' button below to get started!"
+          - The booking process requires clicking the button, not text responses`
+        }
         
         **FORMATTING RULES FOR WHATSAPP**:
         - To make text bold, wrap it in single asterisks: *your bold text*.
@@ -130,11 +140,16 @@ export async function handleFaqOrChitchat(
         
         ${languageInstruction}
         
-        **BOOKING DIRECTION (CRITICAL)**:
-        - NEVER ask users to "tell me your preferred date/time" or "let me know when you'd like to book"
-        - NEVER create expectations that they can book via text messages
-        - ALWAYS end responses with: "Click the 'Book an Appointment' button below to get started!"
-        - The booking process requires clicking the button, not text responses
+        **BOOKING DIRECTION (CONTEXT-AWARE)**:
+        ${activeBookingGoal ? 
+          `- The user is currently in a booking process, so DO NOT mention "Book an Appointment" or redirect them to booking
+          - Simply answer their question directly and end naturally
+          - The booking context will be added automatically after your response` :
+          `- NEVER ask users to "tell me your preferred date/time" or "let me know when you'd like to book"
+          - NEVER create expectations that they can book via text messages
+          - ALWAYS end responses with: "Click the 'Book an Appointment' button below to get started!"
+          - The booking process requires clicking the button, not text responses`
+        }
 
         **FORMATTING RULES FOR WHATSAPP**:
         - To make text bold, wrap it in single asterisks: *your bold text*.
@@ -157,21 +172,8 @@ export async function handleFaqOrChitchat(
     chatbotResponseText = "I'm sorry, I had a little trouble understanding that. Could you try asking in a different way?";
   }
   
-  // Create localized button text
-  const buttonText = userLanguage === 'es' ? 'Reservar una cita' : 'Book an Appointment';
-  const buttonDescription = userLanguage === 'es' ? 'Iniciar el proceso de reserva' : 'Start the booking process';
-
-  return {
-    text: chatbotResponseText,
-    buttons: [
-      {
-        buttonText,
-        buttonValue: START_BOOKING_PAYLOAD,
-        buttonType: "postback",
-        buttonDescription,
-      },
-    ],
-  };
+  // Context-aware FAQ response - handle both inside and outside booking flow
+  return await generateContextAwareFAQResponse(chatbotResponseText, chatContext, userLanguage);
 }
 
 /**
@@ -270,7 +272,13 @@ async function handleUserCreationIfNeeded(
             
             ${languageInstruction}
             
-            **IMPORTANT**: After answering the question, ALWAYS offer to help the user book an appointment for the services we DO offer.
+            **BOOKING DIRECTION (CONTEXT-AWARE)**:
+            ${activeBookingGoal ? 
+              `- The user is currently in a booking process, so simply answer their question directly and end naturally
+              - The booking context will be added automatically after your response` :
+              `- After answering the question, ALWAYS offer to help the user book an appointment for the services we DO offer
+              - The booking buttons will be added automatically after your response`
+            }
             
             **FORMATTING RULES FOR WHATSAPP**:
             - To make text bold, wrap it in single asterisks: *your bold text*.
@@ -302,21 +310,8 @@ async function handleUserCreationIfNeeded(
               : `Nice to meet you, ${newUser.firstName}! Let me help you with your question.`;
           }
           
-          // Create localized button text
-          const buttonText = userLanguage === 'es' ? 'Reservar una cita' : 'Book an Appointment';
-          const buttonDescription = userLanguage === 'es' ? 'Iniciar el proceso de reserva' : 'Start the booking process';
-
-          return {
-            text: responseText,
-            buttons: [
-              {
-                buttonText,
-                buttonValue: START_BOOKING_PAYLOAD,
-                buttonType: "postback",
-                buttonDescription,
-              },
-            ],
-          };
+          // Context-aware FAQ response for user creation flow too
+          return await generateContextAwareFAQResponse(responseText, chatContext, userLanguage);
         } else {
           // No original question stored, give generic welcome
           const welcomeMessage = userLanguage === 'es' 
@@ -454,5 +449,128 @@ Answer ONLY with "yes" if it's a name or "no" if it's not a name.`;
     console.error('[assessIfMessageIsName] Error with LLM assessment:', error);
     // Fallback to basic validation if LLM fails
     return message.length >= 2 && message.length <= 50 && !message.includes('?') && !message.includes('@');
+  }
+}
+
+/**
+ * Generates context-aware FAQ response with appropriate buttons
+ */
+async function generateContextAwareFAQResponse(
+  faqAnswerText: string,
+  chatContext: ChatContext,
+  userLanguage: string
+): Promise<BotResponse> {
+  // Check if there's an active booking goal
+  const activeBookingGoal = chatContext.currentConversationSession?.activeGoals.find(g => 
+    g.goalStatus === 'inProgress' && g.goalType === 'serviceBooking'
+  );
+  
+  if (activeBookingGoal) {
+    // User is in booking flow - add booking context and show current step options
+    console.log(`[generateContextAwareFAQResponse] Active booking goal detected, adding booking context`);
+    
+    try {
+      // Get current step information
+      const { conversationFlowBlueprints } = await import('@/lib/bot-engine/config/blueprints');
+      const { botTasks } = await import('@/lib/bot-engine/config/tasks');
+      
+      const currentFlow = conversationFlowBlueprints[activeBookingGoal.flowKey];
+      const currentStepName = currentFlow[activeBookingGoal.currentStepIndex];
+      const currentStepHandler = botTasks[currentStepName];
+      
+      // Get step-friendly names
+      const stepDisplayNames: { [key: string]: { en: string; es: string } } = {
+        'selectService': { en: 'selecting a service', es: 'seleccionando un servicio' },
+        'addAdditionalServices': { en: 'adding additional services', es: 'agregando servicios adicionales' },
+        'showAvailableTimes': { en: 'selecting appointment time', es: 'seleccionando hora de cita' },
+        'handleTimeChoice': { en: 'selecting appointment time', es: 'seleccionando hora de cita' },
+        'selectSpecificTime': { en: 'selecting specific time', es: 'seleccionando hora específica' },
+        'selectDate': { en: 'selecting appointment date', es: 'seleccionando fecha de cita' },
+        'askPickupAddress': { en: 'providing pickup address', es: 'proporcionando dirección de recogida' },
+        'askDropoffAddress': { en: 'providing dropoff address', es: 'proporcionando dirección de entrega' },
+        'quoteSummary': { en: 'reviewing booking summary', es: 'revisando resumen de reserva' },
+        'handleQuoteChoice': { en: 'confirming booking', es: 'confirmando reserva' }
+      };
+      
+      const currentStepDisplay = stepDisplayNames[currentStepName] 
+        ? stepDisplayNames[currentStepName][userLanguage]
+        : (userLanguage === 'es' ? 'completando tu reserva' : 'completing your booking');
+      
+      // Get selected services for context (handle both single and multiple services)
+      const selectedServices = activeBookingGoal.collectedData.selectedServices || [];
+      const singleService = activeBookingGoal.collectedData.selectedService;
+      
+      // If we have selectedServices array, use it; otherwise fall back to single service
+      let servicesText = '';
+      if (selectedServices.length > 0) {
+        if (selectedServices.length === 1) {
+          servicesText = selectedServices[0].name || selectedServices[0];
+        } else {
+          // Format multiple services nicely
+          const serviceNames = selectedServices.map(s => s.name || s);
+          servicesText = serviceNames.join(' and ');
+        }
+      } else if (singleService) {
+        servicesText = singleService.name || singleService;
+      }
+      
+      // Create booking context message
+      let bookingContextMessage = '';
+      if (servicesText) {
+        bookingContextMessage = userLanguage === 'es' 
+          ? `\n\n📋 Estás reservando *${servicesText}* y actualmente estás ${currentStepDisplay}. Para continuar, selecciona una de las opciones a continuación:`
+          : `\n\n📋 You are booking *${servicesText}* and currently ${currentStepDisplay}. To continue, select from the options below:`;
+      } else {
+        bookingContextMessage = userLanguage === 'es' 
+          ? `\n\n📋 Actualmente estás ${currentStepDisplay}. Para continuar, selecciona una de las opciones a continuación:`
+          : `\n\n📋 You are currently ${currentStepDisplay}. To continue, select from the options below:`;
+      }
+      
+      // Get current step buttons
+      let stepButtons: any[] = [];
+      if (currentStepHandler.fixedUiButtons) {
+        if (typeof currentStepHandler.fixedUiButtons === 'function') {
+          stepButtons = await currentStepHandler.fixedUiButtons(activeBookingGoal.collectedData, chatContext);
+        } else {
+          stepButtons = currentStepHandler.fixedUiButtons;
+        }
+      }
+      
+      // Convert step buttons to the expected format
+      const formattedButtons = stepButtons.map(button => ({
+        buttonText: button.text || button.buttonText || 'Option',
+        buttonValue: button.value || button.buttonValue || button.id || 'unknown',
+        buttonType: "postback" as const,
+        buttonDescription: button.description || button.buttonDescription || button.desc || '',
+      }));
+      
+      return {
+        text: faqAnswerText + bookingContextMessage,
+        buttons: formattedButtons.length > 0 ? formattedButtons : undefined
+      };
+      
+    } catch (error) {
+      console.error('[generateContextAwareFAQResponse] Error getting booking context:', error);
+      // Fallback to basic response without booking context
+      return {
+        text: faqAnswerText
+      };
+    }
+  } else {
+    // No active booking goal - show standard "Book an Appointment" button
+    const buttonText = userLanguage === 'es' ? 'Reservar una cita' : 'Book an Appointment';
+    const buttonDescription = userLanguage === 'es' ? 'Iniciar el proceso de reserva' : 'Start the booking process';
+
+    return {
+      text: faqAnswerText,
+      buttons: [
+        {
+          buttonText,
+          buttonValue: START_BOOKING_PAYLOAD,
+          buttonType: "postback",
+          buttonDescription,
+        },
+      ],
+    };
   }
 }

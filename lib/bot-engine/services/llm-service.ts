@@ -101,7 +101,8 @@ INTENT CLASSIFICATION:
    - Even if asking about different services than current booking
    - Questions are information-seeking within current conversation
    - Pattern: Contains question words or ends with "?"
-   - **Examples**: "do you do haircuts?", "what's your price?", "are you open Sunday?"
+   - **Examples**: "do you do haircuts?", "what's your price?", "are you open Sunday?", "where are you located?"
+   - **CRITICAL: Distinguish from direct answers - "do you do manicures?" is a question, "manicure" is a service selection**
 
 2. **NAVIGATION BACK TO MODIFY CURRENT BOOKING → "go_back"**
    - User wants to change/modify something in their current booking
@@ -123,9 +124,11 @@ INTENT CLASSIFICATION:
    - "restart", "start over", "let's start fresh", "begin again"
    - User wants to completely reset and start the entire booking process from scratch
 
-5. **DIRECT ANSWERS → "continue" or "advance"**
+5. **DIRECT ANSWERS → "advance"**
    - Answering current step question
    - Providing requested information
+   - **CRITICAL: During service selection steps (selectService, addAdditionalServices), single service names are DIRECT ANSWERS, not questions**
+   - **Examples during service selection**: "manicure", "pedicure", "haircut", "gel manicure" → "advance"
 
 **CONTEXT ANALYSIS FOR GO_BACK:**
 - If user is currently in service selection and says "change service" → interpret as clarification, use "continue"
@@ -156,6 +159,14 @@ INTENT CLASSIFICATION:
 - Selected Service: ${currentGoal.collectedData.selectedService?.name || 'None'}
 - Selected Date: ${currentGoal.collectedData.selectedDate || 'None'}
 - Selected Time: ${currentGoal.collectedData.selectedTime || 'None'}
+
+**STEP-SPECIFIC GUIDANCE:**
+${currentStepName === 'selectService' ? '- User is selecting their first service. Single service names like "manicure" are direct answers (advance). Questions like "do you do manicures?" are FAQ (continue)' : ''}
+${currentStepName === 'addAdditionalServices' ? '- User is adding additional services. Single service names like "pedicure" are direct answers (advance). Questions like "what services do you offer?" are FAQ (continue)' : ''}
+${currentStepName === 'showAvailableTimes' || currentStepName === 'handleTimeChoice' || currentStepName === 'selectSpecificTime' ? '- User is selecting appointment time. Navigation like "go back", "change service" is booking action. General questions like "what are your hours?" are FAQ (continue)' : ''}
+${currentStepName.includes('Date') ? '- User is selecting date. Navigation like "go back", "different time" is booking action. General questions like "when are you open?" are FAQ (continue)' : ''}
+${currentStepName.includes('Address') || currentStepName.includes('Location') ? '- User is providing address/location. Navigation like "go back", "change service" is booking action. General questions like "where are you located?" are FAQ (continue)' : ''}
+${currentStepName === 'quoteSummary' || currentStepName === 'handleQuoteChoice' ? '- User is reviewing booking summary. Navigation like "edit service", "change time" is booking action. General questions are FAQ (continue)' : ''}
 
 Return ONLY JSON:
 {

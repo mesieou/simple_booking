@@ -45,11 +45,14 @@ export class ProxyMessageHandler {
       if (proxyResult.messageForwarded) {
         // Save the user message if we have session context
         if (chatContext.currentConversationSession) {
+          // Find the active goal to preserve it during proxy processing
+          const activeGoal = chatContext.currentConversationSession.activeGoals.find(g => g.goalStatus === 'inProgress');
+          
           await persistSessionState(
             sessionId, 
             userContext, 
             chatContext.currentConversationSession, 
-            undefined,
+            activeGoal, // Pass the active goal to preserve it
             parsedMessage.text || '', 
             '', // No bot response during proxy
             undefined,

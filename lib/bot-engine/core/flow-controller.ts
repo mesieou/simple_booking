@@ -462,23 +462,34 @@ export class FlowController {
                                       { ...userCurrentGoal.collectedData, ...targetStepResult.extractedInformation } :
                                       targetStepResult as Record<string, any>;
       
+      // SIMPLIFIED: Use simple, direct acknowledgments instead of complex LLM responses
       let responseToUser: string;
-      try {
-        const contextualResponse = await this.llmService.generateContextualResponse(
-          userCurrentGoal,
-          currentContext,
-          'User wants to go back and change something',
-          conversationDecision,
-          userCurrentGoal.messageHistory.map(msg => ({
-            role: msg.speakerRole === 'user' ? 'user' as const : 'assistant' as const,
-            content: msg.content,
-            timestamp: msg.messageTimestamp
-          })),
-          customerUser
-        );
-        responseToUser = contextualResponse.text;
-      } catch (error) {
-        responseToUser = userCurrentGoal.collectedData.confirmationMessage || "Let's update your selection.";
+      const customerName = customerUser ? customerUser.firstName : '';
+      const language = currentContext.participantPreferences.language || 'en';
+      
+      // Generate simple step-specific acknowledgments
+      if (targetStepName === 'selectService') {
+        responseToUser = language === 'es' 
+          ? `Por supuesto${customerName ? `, ${customerName}` : ''}! Selecciona el servicio que prefieras:`
+          : `Sure thing${customerName ? `, ${customerName}` : ''}! Please select the service you'd like:`;
+      } else if (targetStepName === 'showAvailableTimes' || targetStepName === 'handleTimeChoice') {
+        responseToUser = language === 'es' 
+          ? `Perfecto${customerName ? `, ${customerName}` : ''}! Selecciona el horario que prefieras:`
+          : `Perfect${customerName ? `, ${customerName}` : ''}! Please choose your preferred time:`;
+      } else if (targetStepName === 'askPickupAddress') {
+        responseToUser = language === 'es' 
+          ? `Claro${customerName ? `, ${customerName}` : ''}! Proporciona la dirección de recogida:`
+          : `Of course${customerName ? `, ${customerName}` : ''}! Please provide the pickup address:`;
+      } else if (targetStepName === 'askDropoffAddress') {
+        responseToUser = language === 'es' 
+          ? `Sin problema${customerName ? `, ${customerName}` : ''}! Proporciona la dirección de entrega:`
+          : `No problem${customerName ? `, ${customerName}` : ''}! Please provide the dropoff address:`;
+      } else {
+        // Fallback to step confirmation message or generic acknowledgment
+        responseToUser = userCurrentGoal.collectedData.confirmationMessage || 
+          (language === 'es' 
+            ? `Claro${customerName ? `, ${customerName}` : ''}! Vamos a actualizar eso.`
+            : `Sure thing${customerName ? `, ${customerName}` : ''}! Let's update that.`);
       }
       
       let uiButtonsToDisplay: ButtonConfig[] | undefined;
