@@ -8,147 +8,170 @@ import { createLogger } from '@/lib/bot-engine/utils/logger';
 
 const QuoteSummaryLogger = createLogger('QuoteSummary');
 
-// Simple validation - check everything in one place
-const validateBookingData = (currentGoalData: any, businessType: string, businessId: string, userId: string): boolean => {
-  // Always need these basics
-  const hasServices = (currentGoalData.selectedServices?.length > 0) || currentGoalData.selectedService;
-  const hasDate = currentGoalData.selectedDate;
-  const hasTime = currentGoalData.selectedTime;
-  const hasBusinessId = businessId && businessId !== '';
-  const hasUserId = userId && userId !== '';
-  
-  // Basic requirements for everyone
-  if (!hasServices || !hasDate || !hasTime || !hasBusinessId || !hasUserId) {
-    return false;
-  }
-  
-  // Business-specific requirements
-  if (businessType?.toLowerCase() === 'removalist') {
-    // Removalists need pickup and dropoff addresses
-    // Check for the actual field names set by address collection steps
-    const hasPickUp = currentGoalData.finalServiceAddress || currentGoalData.pickupAddress;
-    const hasDropOff = currentGoalData.finalDropoffAddress || currentGoalData.dropoffAddress;
-    return hasPickUp && hasDropOff;
-  }
-  
-  if (businessType?.toLowerCase() === 'salon') {
-    // Salons don't need any addresses - just the basics above
-    return true;
-  }
-  
-  // Default: assume it's like a removalist (safer)
-  const hasPickUp = currentGoalData.finalServiceAddress || currentGoalData.pickupAddress;
-  const hasDropOff = currentGoalData.finalDropoffAddress || currentGoalData.dropoffAddress;
-  return hasPickUp && hasDropOff;
-};
+// =============================================================================
+// CORE BUSINESS LOGIC - SEPARATED FOR CLARITY
+// =============================================================================
 
-// Check if input is a service ID (UUID format)
-const isServiceId = (input: string): boolean => {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(input);
-};
+class QuoteManager {
+  static async shouldUpdateExistingQuote(currentGoalData: any): Promise<{ shouldUpdate: boolean; existingQuote?: any }> {
+    // Simple check: Do we have a pending quote?
+    const existingQuote = currentGoalData.persistedQuote;
+    
+    QuoteSummaryLogger.info('Checking for existing quote', {}, {
+      hasExistingQuote: !!existingQuote,
+      existingQuoteId: existingQuote?.id,
+      existingQuoteStatus: existingQuote?.status
+    });
+    
+    if (!existingQuote || existingQuote.status !== 'pending') {
+      QuoteSummaryLogger.info('No valid existing quote found', {}, {
+        reason: !existingQuote ? 'no_quote' : 'not_pending_status'
+      });
+      return { shouldUpdate: false };
+    }
 
-// Handle service selection change - restart booking with new service
-const handleServiceChange = async (serviceId: string, currentGoalData: any, context: any) => {
-  const availableServices = currentGoalData.availableServices;
-  const { ServiceDataProcessor } = await import('./booking-utils');
-  const selectedServiceData = ServiceDataProcessor.findServiceById(serviceId, availableServices);
-  
-  if (!selectedServiceData) {
-    QuoteSummaryLogger.warn('Service not found', context, { serviceId });
-    return {
-      ...currentGoalData,
-      confirmationMessage: 'Sorry, that service is not available. Please use the buttons below.'
-    };
-  }
-  
-  QuoteSummaryLogger.journey('Service changed - restarting booking', context, { 
-    newServiceName: selectedServiceData.name 
-  });
-  
-  return {
-    availableServices,
-    selectedService: ServiceDataProcessor.extractServiceDetails(selectedServiceData),
-    // Clear booking data to restart process
-    selectedDate: undefined,
-    selectedTime: undefined,
-    finalServiceAddress: undefined,
-    serviceLocation: undefined,
-    persistedQuote: undefined,
-    quoteId: undefined,
-    bookingSummary: undefined,
-    restartBookingFlow: true,
-    shouldAutoAdvance: true,
-    confirmationMessage: `Great! Let's book a ${selectedServiceData.name} appointment.`
-  };
-};
-
-// Calculate combined quote for multiple services
-const calculateCombinedQuote = async (services: any[], businessId: string, currentGoalData: any, context: any): Promise<QuoteEstimation> => {
-  let totalServiceCost = 0;
-  let totalDuration = 0;
-  let hasMobileService = false;
-  
-  // Sum up all service costs and durations
-  for (const serviceData of services) {
-    const service = new Service({
-      id: serviceData.id,
-      name: serviceData.name,
-      durationEstimate: serviceData.durationEstimate,
-      fixedPrice: serviceData.fixedPrice,
-      pricingType: serviceData.pricingType,
-      mobile: serviceData.mobile,
-      ratePerMinute: serviceData.ratePerMinute,
-      baseCharge: serviceData.baseCharge,
-      businessId
+    // Compare services: current vs existing
+    const currentServices = currentGoalData.selectedServices || 
+                           (currentGoalData.selectedService ? [currentGoalData.selectedService] : []);
+    const currentServiceIds = currentServices.map((s: any) => s.id).filter(Boolean).sort();
+    const existingServiceIds = (existingQuote.serviceIds || []).sort();
+    
+    const servicesChanged = JSON.stringify(currentServiceIds) !== JSON.stringify(existingServiceIds);
+    
+    // Also check if time/date changed (should update quote for new times)
+    const timeChanged = existingQuote.proposedDateTime && currentGoalData.selectedDate && currentGoalData.selectedTime &&
+      (existingQuote.proposedDateTime !== `${currentGoalData.selectedDate}T${currentGoalData.selectedTime}:00`);
+    
+    const shouldUpdate = servicesChanged || timeChanged;
+    
+    QuoteSummaryLogger.info('Quote update check', {}, {
+      existingQuoteId: existingQuote.id,
+      currentServices: currentServiceIds,
+      existingServices: existingServiceIds,
+      servicesChanged,
+      timeChanged,
+      shouldUpdate
     });
 
-    const serviceQuote = computeQuoteEstimation(service, 0);
-    totalServiceCost += serviceQuote.serviceCost;
-    totalDuration += serviceData.durationEstimate || 0;
-    
-    if (serviceData.mobile) {
-      hasMobileService = true;
-    }
+    return { 
+      shouldUpdate,
+      existingQuote: shouldUpdate ? existingQuote : null
+    };
   }
 
-  // Calculate travel cost once for mobile services
-  let travelCost = 0;
-  let travelTime = 0;
-  
-  if (hasMobileService) {
-    const firstMobileService = services.find(s => s.mobile);
-    if (firstMobileService) {
-      // Get pickup and dropoff addresses
-      const pickUp = currentGoalData.finalServiceAddress || currentGoalData.pickupAddress;
-      const dropOff = currentGoalData.finalDropoffAddress || currentGoalData.dropoffAddress;
+  static async updateQuote(quoteId: string, currentGoalData: any, businessId: string): Promise<any> {
+    const services = currentGoalData.selectedServices || 
+                    (currentGoalData.selectedService ? [currentGoalData.selectedService] : []);
+    
+    // Calculate new quote estimation
+    const quoteEstimation = await QuoteCalculator.calculate(services, businessId, currentGoalData);
+    
+    // Create updated quote data
+    const businessAddress = await BusinessHelper.getAddress(businessId);
+    const updatedQuoteData = QuoteDataBuilder.build(services, quoteEstimation, currentGoalData, businessAddress, businessId);
+    
+    // Update in database
+    const updatedQuote = await Quote.update(quoteId, updatedQuoteData, { useServiceRole: true });
+    
+    QuoteSummaryLogger.info('Quote updated successfully', {}, { 
+      quoteId: updatedQuote.id,
+      serviceCount: services.length
+    });
+
+    return updatedQuote;
+  }
+
+  static async createQuote(currentGoalData: any, businessId: string): Promise<any> {
+    const services = currentGoalData.selectedServices || 
+                    (currentGoalData.selectedService ? [currentGoalData.selectedService] : []);
+    
+    const quoteEstimation = await QuoteCalculator.calculate(services, businessId, currentGoalData);
+    const businessAddress = await BusinessHelper.getAddress(businessId);
+    const quoteData = QuoteDataBuilder.build(services, quoteEstimation, currentGoalData, businessAddress, businessId);
+    
+    const hasMobileService = services.some((s: any) => s.mobile);
+    const quote = new Quote(quoteData, hasMobileService);
+    const savedQuote = await quote.add({ useServiceRole: true });
+    
+    QuoteSummaryLogger.info('Quote created successfully', {}, { 
+      quoteId: savedQuote.id,
+      serviceCount: services.length
+    });
+
+    return savedQuote;
+  }
+}
+
+class QuoteCalculator {
+  static async calculate(services: any[], businessId: string, currentGoalData: any): Promise<QuoteEstimation> {
+    let totalServiceCost = 0;
+    let totalDuration = 0;
+    let hasMobileService = false;
+    
+    // Calculate service costs
+    for (const serviceData of services) {
+      const service = new Service({
+        id: serviceData.id,
+        name: serviceData.name,
+        durationEstimate: serviceData.durationEstimate,
+        fixedPrice: serviceData.fixedPrice,
+        pricingType: serviceData.pricingType,
+        mobile: serviceData.mobile,
+        ratePerMinute: serviceData.ratePerMinute,
+        baseCharge: serviceData.baseCharge,
+        businessId
+      });
+
+      const serviceQuote = computeQuoteEstimation(service, 0);
+      totalServiceCost += serviceQuote.serviceCost;
+      totalDuration += serviceData.durationEstimate || 0;
       
-      if (pickUp && dropOff && pickUp !== dropOff) {
-        // Calculate real travel time using Google Maps API
-        const { fetchDirectGoogleMapsDistance } = await import('@/lib/general-helpers/google-distance-calculator');
-        const mapsData = await fetchDirectGoogleMapsDistance(pickUp, dropOff);
-        
-        if (mapsData.status !== 'OK' || !mapsData.rows?.[0]?.elements?.[0] || mapsData.rows[0].elements[0].status !== 'OK') {
-          const errorMessage = mapsData.error_message || `Google Maps API returned status: ${mapsData.status}`;
-          QuoteSummaryLogger.error('Google Maps API failed to calculate travel time', context, {
-            mapsStatus: mapsData.status,
-            errorMessage: mapsData.error_message,
-            pickUp,
-            dropOff
-          });
-          throw new Error(`Unable to calculate travel time between addresses: ${errorMessage}`);
-        }
-        
-        const element = mapsData.rows[0].elements[0];
-        travelTime = Math.ceil(element.duration.value / 60); // Convert seconds to minutes
-        
-        QuoteSummaryLogger.info(`Real travel time calculated: ${travelTime} minutes for ${pickUp} to ${dropOff}`, context);
-      } else {
-        QuoteSummaryLogger.info('Same pickup/dropoff or missing addresses, using minimal travel time', context);
-        travelTime = 5; // Minimal travel time for same location
+      if (serviceData.mobile) {
+        hasMobileService = true;
+      }
+    }
+
+    // Calculate travel cost for mobile services
+    let travelCost = 0;
+    let travelTime = 0;
+    
+    if (hasMobileService) {
+      const travelResult = await this.calculateTravelCost(services, currentGoalData);
+      travelCost = travelResult.cost;
+      travelTime = travelResult.time;
+      totalDuration += travelTime;
+    }
+
+    return {
+      serviceCost: totalServiceCost,
+      travelCost,
+      totalJobCost: totalServiceCost + travelCost,
+      totalJobDuration: totalDuration,
+      travelTime
+    };
+  }
+
+  private static async calculateTravelCost(services: any[], currentGoalData: any): Promise<{ cost: number; time: number }> {
+    const firstMobileService = services.find(s => s.mobile);
+    if (!firstMobileService) return { cost: 0, time: 0 };
+
+    const pickUp = currentGoalData.finalServiceAddress || currentGoalData.pickupAddress;
+    const dropOff = currentGoalData.finalDropoffAddress || currentGoalData.dropoffAddress;
+    
+    if (!pickUp || !dropOff || pickUp === dropOff) {
+      return { cost: 0, time: 5 }; // Minimal time for same location
+    }
+
+    try {
+      const { fetchDirectGoogleMapsDistance } = await import('@/lib/general-helpers/google-distance-calculator');
+      const mapsData = await fetchDirectGoogleMapsDistance(pickUp, dropOff);
+      
+      if (mapsData.status !== 'OK' || !mapsData.rows?.[0]?.elements?.[0] || mapsData.rows[0].elements[0].status !== 'OK') {
+        throw new Error(`Google Maps API error: ${mapsData.status}`);
       }
       
-      // Calculate travel cost with real travel time
+      const travelTime = Math.ceil(mapsData.rows[0].elements[0].duration.value / 60);
+      
       const tempService = new Service({
         id: firstMobileService.id,
         name: firstMobileService.name,
@@ -158,244 +181,228 @@ const calculateCombinedQuote = async (services: any[], businessId: string, curre
         mobile: firstMobileService.mobile,
         ratePerMinute: firstMobileService.ratePerMinute,
         baseCharge: firstMobileService.baseCharge,
-        businessId
+        businessId: firstMobileService.businessId
       });
+      
       const travelQuote = computeQuoteEstimation(tempService, travelTime);
-      travelCost = travelQuote.travelCost;
-      totalDuration += travelTime;
+      return { cost: travelQuote.travelCost, time: travelTime };
+      
+    } catch (error) {
+      QuoteSummaryLogger.error('Travel calculation failed', {}, { error: error instanceof Error ? error.message : String(error) });
+      throw error;
+    }
+  }
+}
+
+class QuoteDataBuilder {
+  static build(services: any[], quoteEstimation: QuoteEstimation, currentGoalData: any, businessAddress: string, businessId: string): QuoteData {
+    const pickUp = currentGoalData.finalServiceAddress || currentGoalData.pickupAddress || businessAddress;
+    const dropOff = currentGoalData.finalDropoffAddress || currentGoalData.dropoffAddress || businessAddress;
+    
+    return {
+      userId: currentGoalData.userId,
+      pickUp,
+      dropOff,
+      businessId,
+      serviceIds: services.map(s => s.id),
+      travelTimeEstimate: quoteEstimation.travelTime,
+      totalJobDurationEstimation: quoteEstimation.totalJobDuration,
+      travelCostEstimate: quoteEstimation.travelCost,
+      totalJobCostEstimation: quoteEstimation.totalJobCost,
+      status: 'pending'
+    };
+  }
+}
+
+class BusinessHelper {
+  static async getInfo(businessId: string): Promise<{ type: string; paymentMethod?: string; address: string }> {
+    try {
+      const business = await Business.getById(businessId);
+      return {
+        type: business.businessCategory || 'unknown',
+        paymentMethod: business.preferredPaymentMethod,
+        address: business.businessAddress || business.name || 'Business Location'
+      };
+    } catch (error) {
+      QuoteSummaryLogger.warn('Could not fetch business info', {}, { error: error instanceof Error ? error.message : String(error) });
+      return { type: 'unknown', address: 'Business Location' };
     }
   }
 
-  return {
-    serviceCost: totalServiceCost,
-    travelCost,
-    totalJobCost: totalServiceCost + travelCost,
-    totalJobDuration: totalDuration,
-    travelTime
-  };
-};
+  static async getAddress(businessId: string): Promise<string> {
+    const info = await this.getInfo(businessId);
+    return info.address;
+  }
+}
 
-// Create quote data for database persistence
-const createQuoteData = (
-  services: any[], 
-  quoteEstimation: QuoteEstimation, 
-  currentGoalData: any, 
-  businessAddress: string,
-  businessId: string,
-  userId: string
-): QuoteData => {
-  // Use pickup/dropoff from goalData if available, otherwise use business address as fallback
-  // Check the actual field names set by address collection steps
-  const pickUp = currentGoalData.finalServiceAddress || currentGoalData.pickupAddress || businessAddress;
-  const dropOff = currentGoalData.finalDropoffAddress || currentGoalData.dropoffAddress || businessAddress;
-  
-  return {
-    userId,
-    pickUp,
-    dropOff,
-    businessId,
-    serviceIds: services.map(s => s.id),
-    travelTimeEstimate: quoteEstimation.travelTime,
-    totalJobDurationEstimation: quoteEstimation.totalJobDuration,
-    travelCostEstimate: quoteEstimation.travelCost,
-    totalJobCostEstimation: quoteEstimation.totalJobCost,
-    status: 'pending'
-  };
-};
+class PaymentCalculator {
+  static async getDetails(quoteId: string): Promise<{ depositAmount?: number; remainingBalance?: number; requiresDeposit: boolean }> {
+    try {
+      const quote = await Quote.getById(quoteId);
+      const paymentDetails = await quote.calculatePaymentDetails();
+      
+      return {
+        depositAmount: paymentDetails.depositAmount,
+        remainingBalance: paymentDetails.remainingBalance,
+        requiresDeposit: (paymentDetails.depositAmount ?? 0) > 0
+      };
+    } catch (error) {
+      QuoteSummaryLogger.warn('Could not calculate payment details', {}, { error: error instanceof Error ? error.message : String(error) });
+      return { requiresDeposit: false };
+    }
+  }
+}
 
-// Format time display (24hr to 12hr format)
-const formatTimeDisplay = (time24: string): string => {
-  const [hour24, minute] = time24.split(':');
-  const hour12 = parseInt(hour24) === 0 ? 12 : parseInt(hour24) > 12 ? parseInt(hour24) - 12 : parseInt(hour24);
-  const ampm = parseInt(hour24) >= 12 ? 'PM' : 'AM';
-  return `${hour12}:${minute} ${ampm}`;
-};
-
-// Calculate estimated completion time
-const calculateCompletionTime = (startTime: string, durationMinutes: number): string => {
-  const [hours, minutes] = startTime.split(':').map(Number);
-  const startDate = new Date();
-  startDate.setHours(hours, minutes, 0, 0);
-  const endDate = new Date(startDate.getTime() + durationMinutes * 60000);
-  return `${endDate.getHours().toString().padStart(2, '0')}:${endDate.getMinutes().toString().padStart(2, '0')}`;
-};
-
-// Create formatted summary message
-const createSummaryMessage = (
-  services: any[],
-  quoteEstimation: QuoteEstimation,
-  currentGoalData: any,
-  translations: any,
-  language: string,
-  businessType: string
-): string => {
-  const customerName = currentGoalData.customerName || 'Customer';
-  const selectedDate = currentGoalData.selectedDate;
-  const selectedTime = currentGoalData.selectedTime;
-  
-  // Format date and time
-  const dateObj = new Date(selectedDate);
-  const formattedDate = dateObj.toLocaleDateString('en-US', { 
-    weekday: 'long', 
-    month: 'long', 
-    day: 'numeric',
-    year: 'numeric'
-  });
-  const formattedTime = formatTimeDisplay(selectedTime);
-  const estimatedEndTime = calculateCompletionTime(selectedTime, quoteEstimation.totalJobDuration);
-  
-  // Build summary message
-  let message = `📋 ${customerName}, here's your Booking Quote Summary\n\n`;
-  
-  // Services section
-  const serviceLabel = services.length > 1 ? '💼 Services:' : '💼 Service:';
-  message += `${serviceLabel}\n`;
-  
-  if (services.length === 1) {
-    const service = services[0];
-    if (service.pricingType === 'per_minute') {
-      message += `${service.name} - $${service.ratePerMinute.toFixed(2)} per minute\n`;
-      message += `\nCosts:\n`;
-      if (quoteEstimation.travelCost > 0) {
-        message += `Travel Cost: ${quoteEstimation.travelTime} mins × $${service.ratePerMinute.toFixed(2)} = $${quoteEstimation.travelCost.toFixed(2)}\n`;
-      }
-      message += `Estimated Labour: ${service.durationEstimate} mins × $${service.ratePerMinute.toFixed(2)} = $${quoteEstimation.serviceCost.toFixed(2)}\n`;
-      message += `💰 Total Estimated cost = $${quoteEstimation.totalJobCost.toFixed(2)}`;
+class MessageGenerator {
+  static async generate(services: any[], quoteEstimation: QuoteEstimation, quote: any, currentGoalData: any, chatContext: any): Promise<string> {
+    const { getUserLanguage, BOOKING_TRANSLATIONS } = await import('./booking-utils');
+    const language = getUserLanguage(chatContext);
+    const translations = BOOKING_TRANSLATIONS[language] || BOOKING_TRANSLATIONS['en'];
+    
+    const businessInfo = await BusinessHelper.getInfo(chatContext.currentParticipant?.associatedBusinessId);
+    const paymentDetails = await PaymentCalculator.getDetails(quote.id);
+    
+    // Generate base message
+    let message = this.createBaseMessage(services, quoteEstimation, currentGoalData, businessInfo.type);
+    
+    // Add payment details
+    message = this.addPaymentDetails(message, paymentDetails, language, businessInfo.type, businessInfo.paymentMethod);
+    
+    // Add quote ID and prompt
+    message += `\n📄 Quote ID: ${quote.id}\n\n`;
+    
+    if (paymentDetails.requiresDeposit && paymentDetails.depositAmount) {
+      const readyPrompt = language === 'es' ? '🔒 ¿Listo para asegurar tu reserva?' : '🔒 Ready to secure your booking?';
+      message += readyPrompt;
     } else {
-      message += `   ${service.name} - $${service.fixedPrice.toFixed(2)}`;
-      if (quoteEstimation.travelCost > 0) {
-        message += `\n🚗 Travel: ${quoteEstimation.travelTime} mins × $${service.ratePerMinute.toFixed(2)} = $${quoteEstimation.travelCost.toFixed(2)}`;
-      }
-      message += `\n💰 Total Cost: $${quoteEstimation.totalJobCost.toFixed(2)}`;
+      message += `✅ Would you like to confirm this quote?`;
     }
-  } else {
-    services.forEach((service, index) => {
-      const cost = service.pricingType === 'per_minute' 
-        ? `$${service.ratePerMinute.toFixed(2)} per minute`
-        : `$${service.fixedPrice.toFixed(2)}`;
-      message += `   ${index + 1}. ${service.name} - ${cost}\n`;
-    });
-    if (quoteEstimation.travelCost > 0) {
-      message += `🚗 Travel: ${quoteEstimation.travelTime} mins × $${services.find(s => s.mobile)?.ratePerMinute.toFixed(2)} = $${quoteEstimation.travelCost.toFixed(2)}\n`;
-    }
-    message += `💰 Total Cost: $${quoteEstimation.totalJobCost.toFixed(2)}`;
-  }
-  
-  // Date and time details
-  message += `\n\n📅 Date: ${formattedDate}\n`;
-  message += `⏰ Time: ${formattedTime} (${quoteEstimation.totalJobDuration} minutes)\n`;
-  message += `🏁 Estimated completion: ${estimatedEndTime}\n`;
-  
-  // Location details (only for removalists - mobile services)
-  if (businessType?.toLowerCase() === 'removalist') {
-    // Check the actual field names set by address collection steps
-    const pickUp = currentGoalData.finalServiceAddress || currentGoalData.pickupAddress;
-    const dropOff = currentGoalData.finalDropoffAddress || currentGoalData.dropoffAddress;
-    if (pickUp && dropOff && pickUp !== dropOff) {
-      message += `📍 From: ${pickUp}\n`;
-      message += `📍 To: ${dropOff}\n`;
-    } else if (pickUp) {
-      message += `📍 Location: ${pickUp}\n`;
-    }
-  }
-  
-  return message;
-};
-
-// Add payment details to summary message
-const addPaymentDetails = (
-  message: string,
-  requiresDeposit: boolean,
-  depositAmount: number | undefined,
-  remainingBalance: number | undefined,
-  language: string,
-  businessType: string
-): string => {
-  if (!requiresDeposit || !depositAmount || depositAmount <= 0) {
+    
     return message;
   }
-  
-  const bookingFee = 4;
-  const totalPayNow = depositAmount + bookingFee;
-  
-  // Use "Estimate Remaining Balance" for removalists, "Balance Due" for others
-  const isRemovalist = businessType?.toLowerCase() === 'removalist';
-  
-  const labels = language === 'es' ? {
-    paymentDetails: 'Detalles de Pago',
-    deposit: 'Depósito',
-    bookingFee: 'Tarifa de Reserva',
-    payNow: 'Pagar Ahora',
-    balanceDue: isRemovalist ? 'Saldo Restante Estimado' : 'Saldo Pendiente'
-  } : {
-    paymentDetails: 'Payment Details',
-    deposit: 'Deposit',
-    bookingFee: 'Booking Fee',
-    payNow: 'Pay Now',
-    balanceDue: isRemovalist ? 'Estimate Remaining Balance' : 'Balance Due'
-  };
-  
-  message += `\n💳 *${labels.paymentDetails}:*\n`;
-  message += `   • ${labels.deposit}: $${depositAmount.toFixed(2)}\n`;
-  message += `   • ${labels.bookingFee}: $${bookingFee.toFixed(2)}\n`;
-  message += `   • ${labels.payNow}: $${totalPayNow.toFixed(2)}\n`;
-  
-  if (remainingBalance !== undefined && remainingBalance >= 0) {
-    message += `   • ${labels.balanceDue}: $${remainingBalance.toFixed(2)} (cash/card)\n`;
-  }
-  
-  return message;
-};
 
-// Get payment details from quote
-const getPaymentDetails = async (quoteId: string, context: any): Promise<{
-  depositAmount: number | undefined;
-  remainingBalance: number | undefined;
-  requiresDeposit: boolean;
-}> => {
-  try {
-    const quote = await Quote.getById(quoteId);
-    const paymentDetails = await quote.calculatePaymentDetails();
+  private static createBaseMessage(services: any[], quoteEstimation: QuoteEstimation, currentGoalData: any, businessType: string): string {
+    const customerName = currentGoalData.customerName || 'Customer';
+    const selectedDate = currentGoalData.selectedDate;
+    const selectedTime = currentGoalData.selectedTime;
     
-    return {
-      depositAmount: paymentDetails.depositAmount,
-      remainingBalance: paymentDetails.remainingBalance,
-      requiresDeposit: (paymentDetails.depositAmount ?? 0) > 0
-    };
-  } catch (error) {
-    QuoteSummaryLogger.warn('Could not calculate payment details', context, { 
-      error: error instanceof Error ? error.message : String(error)
+    // Format date and time
+    const dateObj = new Date(selectedDate);
+    const formattedDate = dateObj.toLocaleDateString('en-US', { 
+      weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
     });
+    const formattedTime = this.formatTime(selectedTime);
+    const estimatedEndTime = this.calculateEndTime(selectedTime, quoteEstimation.totalJobDuration);
+    
+    let message = `📋 ${customerName}, here's your Booking Quote Summary\n\n`;
+    
+    // Services section
+    if (services.length === 1) {
+      const service = services[0];
+      message += `💼 Service:\n   ${service.name} - $${service.fixedPrice.toFixed(2)}`;
+      if (quoteEstimation.travelCost > 0) {
+        message += `\n🚗 Travel: $${quoteEstimation.travelCost.toFixed(2)}`;
+      }
+      message += `\n💰 Total Cost: $${quoteEstimation.totalJobCost.toFixed(2)}`;
+    } else {
+      message += `💼 Services:\n`;
+      services.forEach((service, index) => {
+        message += `   ${index + 1}. ${service.name} - $${service.fixedPrice.toFixed(2)}\n`;
+      });
+      if (quoteEstimation.travelCost > 0) {
+        message += `🚗 Travel: $${quoteEstimation.travelCost.toFixed(2)}\n`;
+      }
+      message += `💰 Total Cost: $${quoteEstimation.totalJobCost.toFixed(2)}`;
+    }
+    
+    // Date and time
+    message += `\n\n📅 Date: ${formattedDate}\n`;
+    message += `⏰ Time: ${formattedTime} (${quoteEstimation.totalJobDuration} minutes)\n`;
+    message += `🏁 Estimated completion: ${estimatedEndTime}`;
+    
+    return message;
+  }
+
+  private static addPaymentDetails(message: string, paymentDetails: any, language: string, businessType: string, preferredPaymentMethod?: string): string {
+    if (!paymentDetails.requiresDeposit || !paymentDetails.depositAmount || paymentDetails.depositAmount <= 0) {
+      return message;
+    }
+    
+    const bookingFee = 4;
+    const totalPayNow = paymentDetails.depositAmount + bookingFee;
+    const isRemovalist = businessType?.toLowerCase() === 'removalist';
+    
+    const labels = language === 'es' ? {
+      paymentDetails: 'Detalles de Pago',
+      deposit: 'Depósito',
+      bookingFee: 'Tarifa de Reserva',
+      payNow: 'Pagar Ahora',
+      balanceDue: isRemovalist ? 'Saldo Restante Estimado' : 'Saldo Pendiente'
+    } : {
+      paymentDetails: 'Payment Details',
+      deposit: 'Deposit',
+      bookingFee: 'Booking Fee',
+      payNow: 'Pay Now',
+      balanceDue: isRemovalist ? 'Estimate Remaining Balance' : 'Balance Due'
+    };
+    
+    message += `\n💳 *${labels.paymentDetails}:*\n`;
+    message += `   • ${labels.deposit}: $${paymentDetails.depositAmount.toFixed(2)}\n`;
+    message += `   • ${labels.bookingFee}: $${bookingFee.toFixed(2)}\n`;
+    message += `   • ${labels.payNow}: $${totalPayNow.toFixed(2)}\n`;
+    
+    if (paymentDetails.remainingBalance !== undefined && paymentDetails.remainingBalance >= 0) {
+      const paymentMethodDisplay = preferredPaymentMethod || (language === 'es' ? 'efectivo/tarjeta' : 'cash/card');
+      message += `   • ${labels.balanceDue}: $${paymentDetails.remainingBalance.toFixed(2)} (${paymentMethodDisplay})`;
+    }
+    
+    return message;
+  }
+
+  private static formatTime(time24: string): string {
+    const [hour24, minute] = time24.split(':');
+    const hour12 = parseInt(hour24) === 0 ? 12 : parseInt(hour24) > 12 ? parseInt(hour24) - 12 : parseInt(hour24);
+    const ampm = parseInt(hour24) >= 12 ? 'PM' : 'AM';
+    return `${hour12}:${minute} ${ampm}`;
+  }
+
+  private static calculateEndTime(startTime: string, durationMinutes: number): string {
+    const [hours, minutes] = startTime.split(':').map(Number);
+    const startDate = new Date();
+    startDate.setHours(hours, minutes, 0, 0);
+    const endDate = new Date(startDate.getTime() + durationMinutes * 60000);
+    return `${endDate.getHours().toString().padStart(2, '0')}:${endDate.getMinutes().toString().padStart(2, '0')}`;
+  }
+}
+
+class BookingSummaryBuilder {
+  static build(services: any[], quoteEstimation: QuoteEstimation, paymentDetails: any): any {
     return {
-      depositAmount: undefined,
-      remainingBalance: undefined,
-      requiresDeposit: false
+      serviceCost: quoteEstimation.serviceCost,
+      travelCost: quoteEstimation.travelCost,
+      totalCost: quoteEstimation.totalJobCost,
+      duration: quoteEstimation.totalJobDuration,
+      travelTime: quoteEstimation.travelTime,
+      ...paymentDetails,
+      totalPaymentAmount: paymentDetails.requiresDeposit && paymentDetails.depositAmount ? paymentDetails.depositAmount + 4 : undefined,
+      serviceCount: services.length,
+      services: services.map((s: any) => ({
+        id: s.id,
+        name: s.name,
+        duration: s.durationEstimate,
+        cost: s.fixedPrice || (s.ratePerMinute * s.durationEstimate),
+        pricingType: s.pricingType
+      }))
     };
   }
-};
+}
 
-// Get business address for quote persistence
-const getBusinessAddress = async (businessId: string, context: any): Promise<string> => {
-  try {
-    const business = await Business.getById(businessId);
-    return business.businessAddress || business.name || 'Business Location';
-  } catch (error) {
-    QuoteSummaryLogger.warn('Could not fetch business address', context, { 
-      error: error instanceof Error ? error.message : String(error)
-    });
-    return 'Business Location';
-  }
-};
+// =============================================================================
+// MAIN HANDLER - NOW CLEAN AND SIMPLE
+// =============================================================================
 
-// Main step handler for quote summary
 export const quoteSummaryHandler: IndividualStepHandler = {
-  
-  // Validate user input - accept empty input, button clicks, or service IDs
   validateUserInput: async (userInput, currentGoalData) => {
-    const context = { userId: currentGoalData.userId };
-    
-    QuoteSummaryLogger.debug('Validating user input', context, { userInput });
-    
     // Accept empty input for first display
     if (!userInput || userInput === "") {
       return { isValidInput: true };
@@ -406,235 +413,143 @@ export const quoteSummaryHandler: IndividualStepHandler = {
       return { isValidInput: false, validationErrorMessage: '' };
     }
     
-    // Accept service ID selections
-    if (isServiceId(userInput)) {
+    // Accept service ID selections (for service changes)
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(userInput)) {
       return { isValidInput: true };
     }
     
-    // Reject other input types
     return { 
       isValidInput: false,
       validationErrorMessage: 'Please use the buttons below to confirm or edit your quote.' 
     };
   },
-  
-  // Process validated input - create quote and generate summary
+
   processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
-    const context = {
-      userId: currentGoalData.userId,
-      businessId: chatContext.currentParticipant?.associatedBusinessId
-    };
+    const businessId = chatContext.currentParticipant?.associatedBusinessId;
+    const userId = currentGoalData.userId;
     
-    QuoteSummaryLogger.flow('Processing validated input', context, { validatedInput });
-    
-    // Handle service selection change
-    if (isServiceId(validatedInput)) {
-      return await handleServiceChange(validatedInput, currentGoalData, context);
+    QuoteSummaryLogger.flow('Quote summary processing started', {}, { 
+      hasExistingQuote: !!currentGoalData.persistedQuote,
+      serviceCount: (currentGoalData.selectedServices || []).length 
+    });
+
+    // Handle service changes (restart flow)
+    if (validatedInput && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(validatedInput)) {
+      return {
+        ...currentGoalData,
+        persistedQuote: undefined,
+        quoteId: undefined,
+        bookingSummary: undefined,
+        restartBookingFlow: true,
+        shouldAutoAdvance: true,
+        confirmationMessage: 'Let\'s update your service selection...'
+      };
     }
-    
+
     // Return existing data if not empty input
     if (validatedInput !== "") {
       return currentGoalData;
     }
-    
-    // Return existing quote if already processed
-    if (currentGoalData.persistedQuote && currentGoalData.bookingSummary) {
-      QuoteSummaryLogger.info('Quote already processed', context);
-      return { ...currentGoalData, shouldAutoAdvance: false };
-    }
-    
-         // Get business info for validation
-     const businessId = chatContext.currentParticipant?.associatedBusinessId;
-     let businessType = 'unknown';
-     try {
-       if (businessId) {
-         const business = await Business.getById(businessId);
-         businessType = business.businessCategory || 'unknown';
-         QuoteSummaryLogger.info(`Business type detection: ID=${businessId}, Type=${businessType}, BusinessName=${business.name}`, context);
-       } else {
-         QuoteSummaryLogger.warn('No businessId provided for business type detection', context);
-       }
-     } catch (error) {
-       QuoteSummaryLogger.warn('Could not fetch business type', context, { 
-         error: error instanceof Error ? error.message : String(error)
-       });
-     }
-    
-         // Validate required booking data
-     const userId = currentGoalData.userId;
-     
-     if (!businessId) {
-       QuoteSummaryLogger.error('No businessId available for validation', context);
-       return {
-         ...currentGoalData,
-         summaryError: 'Business information is missing. Please try again.',
-         confirmationMessage: 'Business information is missing. Please try again.'
-       };
-     }
-     
-     if (!validateBookingData(currentGoalData, businessType, businessId, userId)) {
-       // Check the actual field names for better error reporting
-       const pickUp = currentGoalData.finalServiceAddress || currentGoalData.pickupAddress;
-       const dropOff = currentGoalData.finalDropoffAddress || currentGoalData.dropoffAddress;
-       
-       QuoteSummaryLogger.warn(`Missing required booking data for ${businessType} - Services: ${currentGoalData.selectedServices?.map((s: any) => s.name) || currentGoalData.selectedService?.name || 'none'}, Date: ${currentGoalData.selectedDate || 'none'}, Time: ${currentGoalData.selectedTime || 'none'}, PickUp: ${pickUp || 'none'}, DropOff: ${dropOff || 'none'}`, context, { 
-         businessType,
-         hasSelectedServices: !!currentGoalData.selectedServices?.length,
-         hasSelectedService: !!currentGoalData.selectedService,
-         hasSelectedDate: !!currentGoalData.selectedDate,
-         hasSelectedTime: !!currentGoalData.selectedTime,
-         hasPickUp: !!pickUp,
-         hasDropOff: !!dropOff,
-         hasUserId: !!currentGoalData.userId,
-         businessId: businessId || 'missing',
-         userId: userId || 'missing',
-         goalDataKeys: Object.keys(currentGoalData),
-         // Debug: show all address-related fields
-         finalServiceAddress: currentGoalData.finalServiceAddress || 'missing',
-         finalDropoffAddress: currentGoalData.finalDropoffAddress || 'missing',
-         pickupAddress: currentGoalData.pickupAddress || 'missing',
-         dropoffAddress: currentGoalData.dropoffAddress || 'missing',
-         customerAddress: currentGoalData.customerAddress || 'missing'
-       });
-       // Provide specific error message based on what's missing
-       let errorMessage = 'Missing booking information';
-       
-       if (businessType?.toLowerCase() === 'removalist') {
-         if (!pickUp || !dropOff) {
-           errorMessage = 'We need your pickup and dropoff addresses to generate a quote. Please provide your moving details.';
-         }
-       }
-       
-       return {
-         ...currentGoalData,
-         summaryError: errorMessage,
-         confirmationMessage: errorMessage
-       };
-     }
 
     try {
-      // Get services to process
-      const services = currentGoalData.selectedServices || 
-                      (currentGoalData.selectedService ? [currentGoalData.selectedService] : []);
+      // 1. Check if we should update existing quote or create new one
+      const { shouldUpdate, existingQuote } = await QuoteManager.shouldUpdateExistingQuote(currentGoalData);
       
-      QuoteSummaryLogger.journey('Starting quote calculation', context, { 
-        serviceCount: services.length 
+      let quote;
+      let quoteEstimation;
+      
+      QuoteSummaryLogger.info('Quote processing decision', {}, {
+        shouldUpdate,
+        hasExistingQuote: !!existingQuote,
+        hasPersistentQuote: !!currentGoalData.persistedQuote,
+        action: shouldUpdate && existingQuote ? 'update' : currentGoalData.persistedQuote ? 'reuse' : 'create'
       });
       
-      // Calculate combined quote with real travel time
-      const quoteEstimation = await calculateCombinedQuote(services, businessId, currentGoalData, context);
-      
-      // Get business address
-      const businessAddress = await getBusinessAddress(businessId, context);
-      
-             // Create and persist quote
-       const quoteData = createQuoteData(services, quoteEstimation, currentGoalData, businessAddress, businessId, userId);
-       const hasMobileService = services.some((s: any) => s.mobile);
-       const quote = new Quote(quoteData, hasMobileService);
-       const savedQuote = await quote.add({ useServiceRole: true });
-      
-      QuoteSummaryLogger.journey('Quote created successfully', context, { 
-        quoteId: savedQuote.id 
-      });
-      
-      // Get payment details
-      let paymentDetails;
-      if (savedQuote.id) {
-        paymentDetails = await getPaymentDetails(savedQuote.id, context);
+      if (shouldUpdate && existingQuote) {
+        // Update existing quote
+        if (!businessId) {
+          QuoteSummaryLogger.error('Cannot update quote: businessId is undefined', {}, { quoteId: existingQuote.id });
+          throw new Error('Business ID is required to update quote');
+        }
+        
+        QuoteSummaryLogger.info('Updating existing quote', {}, { quoteId: existingQuote.id });
+        quote = await QuoteManager.updateQuote(existingQuote.id, currentGoalData, businessId);
+        quoteEstimation = await QuoteCalculator.calculate(
+          currentGoalData.selectedServices || [currentGoalData.selectedService], 
+          businessId, 
+          currentGoalData
+        );
+      } else if (currentGoalData.persistedQuote) {
+        // Use existing quote (no changes)
+        if (!businessId) {
+          QuoteSummaryLogger.error('Cannot calculate quote: businessId is undefined', {}, { quoteId: currentGoalData.persistedQuote.id });
+          throw new Error('Business ID is required to calculate quote');
+        }
+        
+        QuoteSummaryLogger.info('Reusing existing quote', {}, { quoteId: currentGoalData.persistedQuote.id });
+        quote = currentGoalData.persistedQuote;
+        quoteEstimation = await QuoteCalculator.calculate(
+          currentGoalData.selectedServices || [currentGoalData.selectedService], 
+          businessId, 
+          currentGoalData
+        );
       } else {
-        QuoteSummaryLogger.warn('No quote ID available for payment details', context);
-        paymentDetails = {
-          depositAmount: undefined,
-          remainingBalance: undefined,
-          requiresDeposit: false
-        };
+        // Create new quote
+        if (!businessId) {
+          QuoteSummaryLogger.error('Cannot create quote: businessId is undefined', {}, { reason: 'no_existing_quote' });
+          throw new Error('Business ID is required to create quote');
+        }
+        
+        QuoteSummaryLogger.info('Creating new quote', {}, { reason: 'no_existing_quote' });
+        quote = await QuoteManager.createQuote(currentGoalData, businessId);
+        quoteEstimation = await QuoteCalculator.calculate(
+          currentGoalData.selectedServices || [currentGoalData.selectedService], 
+          businessId, 
+          currentGoalData
+        );
       }
-      
-      // Create summary message
-      const { getUserLanguage, BOOKING_TRANSLATIONS } = await import('./booking-utils');
-      const language = getUserLanguage(chatContext);
-      const translations = BOOKING_TRANSLATIONS[language] || BOOKING_TRANSLATIONS['en'];
-      
-             let summaryMessage = createSummaryMessage(
-         services,
-         quoteEstimation,
-         currentGoalData,
-         translations,
-         language,
-         businessType
-       );
-      
-      // Add payment details if required
-      summaryMessage = addPaymentDetails(
-        summaryMessage,
-        paymentDetails.requiresDeposit,
-        paymentDetails.depositAmount,
-        paymentDetails.remainingBalance,
-        language,
-        businessType
-      );
-      
-      // Add quote ID and confirmation prompt
-      summaryMessage += `\n📄 Quote ID: ${savedQuote.id}\n\n`;
-      
-      if (paymentDetails.requiresDeposit && paymentDetails.depositAmount) {
-        const readyPrompt = language === 'es' 
-          ? '🔒 ¿Listo para asegurar tu reserva?' 
-          : '🔒 Ready to secure your booking?';
-        summaryMessage += readyPrompt;
-      } else {
-        summaryMessage += `✅ Would you like to confirm this quote?`;
-      }
-      
-      // Prepare booking summary data
-      const bookingSummary = {
-        serviceCost: quoteEstimation.serviceCost,
-        travelCost: quoteEstimation.travelCost,
+
+      // 2. Get payment details
+      const paymentDetails = await PaymentCalculator.getDetails(quote.id);
+
+      // 3. Generate message
+      const services = currentGoalData.selectedServices || [currentGoalData.selectedService];
+      const confirmationMessage = await MessageGenerator.generate(services, quoteEstimation, quote, currentGoalData, chatContext);
+
+      // 4. Build booking summary
+      const bookingSummary = BookingSummaryBuilder.build(services, quoteEstimation, paymentDetails);
+
+      QuoteSummaryLogger.info('Quote summary completed successfully', {}, { 
+        quoteId: quote.id,
         totalCost: quoteEstimation.totalJobCost,
-        duration: quoteEstimation.totalJobDuration,
-        ...paymentDetails,
-        totalPaymentAmount: paymentDetails.requiresDeposit && paymentDetails.depositAmount ? paymentDetails.depositAmount + 4 : undefined,
-        serviceCount: services.length,
-        services: services.map((s: any) => ({
-          id: s.id,
-          name: s.name,
-          duration: s.durationEstimate,
-          cost: s.fixedPrice || (s.ratePerMinute * s.durationEstimate),
-          pricingType: s.pricingType
-        }))
-      };
-      
-      QuoteSummaryLogger.journey('Quote processing completed', context, { 
-        quoteId: savedQuote.id,
         requiresDeposit: paymentDetails.requiresDeposit
       });
-      
+
       return {
         ...currentGoalData,
-        persistedQuote: savedQuote,
-        quoteId: savedQuote.id,
+        persistedQuote: quote,
+        quoteId: quote.id,
         quoteEstimation,
-        ...paymentDetails,
-        selectedServices: services,
         bookingSummary,
+        ...paymentDetails,
         shouldAutoAdvance: false,
-        confirmationMessage: summaryMessage
+        confirmationMessage
       };
 
     } catch (error) {
-      QuoteSummaryLogger.error('Error creating quote', context, { 
+      QuoteSummaryLogger.error('Quote processing failed', {}, { 
         error: error instanceof Error ? error.message : String(error)
       });
       
       return {
         ...currentGoalData,
-        summaryError: 'Failed to create quote and summary. Please try again.',
-        confirmationMessage: getLocalizedText(chatContext, 'MESSAGES.ISSUE_PREPARING_QUOTE')
+        summaryError: 'Failed to generate quote. Please try again.',
+        confirmationMessage: 'Sorry, there was an issue generating your quote. Please try again.'
       };
     }
   },
-  
-  // Generate appropriate UI buttons based on deposit requirements
+
   fixedUiButtons: async (currentGoalData, chatContext) => {
     if (currentGoalData.summaryError) {
       return [{ buttonText: getLocalizedText(chatContext, 'BUTTONS.TRY_AGAIN'), buttonValue: 'restart_booking' }];
@@ -649,9 +564,7 @@ export const quoteSummaryHandler: IndividualStepHandler = {
         const { getUserLanguage } = await import('./booking-utils');
         const language = getUserLanguage(chatContext);
         const paymentAmount = totalPaymentAmount.toFixed(2);
-        const payDepositText = language === 'es' 
-          ? `💳 $${paymentAmount}` 
-          : `💳 Pay $${paymentAmount}`;
+        const payDepositText = language === 'es' ? `💳 $${paymentAmount}` : `💳 Pay $${paymentAmount}`;
         
         return [
           { buttonText: payDepositText, buttonValue: 'confirm_quote' },
@@ -660,7 +573,6 @@ export const quoteSummaryHandler: IndividualStepHandler = {
       }
     }
     
-    // No deposit required - show regular confirm button
     return [
       { buttonText: getLocalizedText(chatContext, 'BUTTONS.CONFIRM'), buttonValue: 'confirm_quote' },
       { buttonText: getLocalizedText(chatContext, 'BUTTONS.EDIT'), buttonValue: 'edit_quote' }

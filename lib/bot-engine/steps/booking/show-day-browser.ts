@@ -82,23 +82,47 @@ export const showDayBrowserHandler: IndividualStepHandler = {
       };
     }
     
+    // Get business timezone (same pattern as other availability services)
+    const userIdOfBusinessOwner = await AvailabilityService.findUserIdByBusinessWhatsappNumber(businessWhatsappNumberCustomersMessagedTo, chatContext);
+    const businessId = chatContext.currentParticipant.associatedBusinessId;
+    
+    let providerTimezone = 'UTC';
+    if (userIdOfBusinessOwner && businessId) {
+      try {
+        const { CalendarSettings } = await import('@/lib/database/models/calendar-settings');
+        const calendarSettings = await CalendarSettings.getByUserAndBusiness(userIdOfBusinessOwner, businessId);
+        providerTimezone = calendarSettings?.settings?.timezone || 'UTC';
+        console.log('[ShowDayBrowser] Using business timezone:', providerTimezone);
+      } catch (error) {
+        console.warn('[ShowDayBrowser] Could not get business timezone, using UTC:', error);
+      }
+    }
+    
     const availableDaysForThisBusiness = [];
     
-    // Check next 10 days for any availability
+    // Check next 10 days for any availability using business timezone
+    const { DateTime } = await import('luxon');
+    const nowInBusinessTz = DateTime.now().setZone(providerTimezone);
+    
     for (let i = 0; i < 10; i++) {
-      const today = new Date();
-      today.setDate(today.getDate() + i);
-      const date = new Date(today);
+      // Calculate date in business timezone
+      const targetDate = nowInBusinessTz.plus({ days: i }).startOf('day');
+      const dateString = targetDate.toISODate(); // YYYY-MM-DD format in business timezone
       
-      const dateString = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+      // Skip if dateString is null (invalid date)
+      if (!dateString) {
+        console.error(`[ShowDayBrowser] Invalid date calculated for day ${i}, skipping`);
+        continue;
+      }
       
       console.log(`[ShowDayBrowser] === DAY ${i} DEBUG ===`);
-      console.log(`[ShowDayBrowser] Today reference: ${new Date().toISOString()}`);
-      console.log(`[ShowDayBrowser] Adding ${i} days to today`);
-      console.log(`[ShowDayBrowser] Calculated date object: ${date.toISOString()}`);
+      console.log(`[ShowDayBrowser] Business timezone: ${providerTimezone}`);
+      console.log(`[ShowDayBrowser] Current time in business timezone: ${nowInBusinessTz.toISO()}`);
+      console.log(`[ShowDayBrowser] Adding ${i} days to today in business timezone`);
+      console.log(`[ShowDayBrowser] Calculated date in business timezone: ${targetDate.toISO()}`);
       console.log(`[ShowDayBrowser] Date string for availability check: ${dateString}`);
-      console.log(`[ShowDayBrowser] Date.getDay() (0=Sun, 6=Sat): ${date.getDay()}`);
-      console.log(`[ShowDayBrowser] Date breakdown - Year: ${date.getFullYear()}, Month: ${date.getMonth() + 1}, Day: ${date.getDate()}`);
+      console.log(`[ShowDayBrowser] Date.weekday (1=Mon, 7=Sun): ${targetDate.weekday}`);
+      console.log(`[ShowDayBrowser] Date breakdown - Year: ${targetDate.year}, Month: ${targetDate.month}, Day: ${targetDate.day}`);
       
       try {
         const businessHasAvailabilityOnThisDate = await AvailabilityService.validateCustomDateForBusinessWhatsapp(
@@ -116,8 +140,11 @@ export const showDayBrowserHandler: IndividualStepHandler = {
         } else {
           const language = getUserLanguage(chatContext);
           const locale = language === 'es' ? 'es-ES' : 'en-GB';
-          displayText = date.toLocaleDateString(locale, { 
-            weekday: 'short', day: 'numeric', month: 'short'
+          // Convert to JavaScript Date for display formatting (keeps timezone info)
+          const jsDate = targetDate.toJSDate();
+          displayText = jsDate.toLocaleDateString(locale, { 
+            weekday: 'short', day: 'numeric', month: 'short',
+            timeZone: providerTimezone // Ensure display uses business timezone
           });
         }
         
@@ -128,11 +155,7 @@ export const showDayBrowserHandler: IndividualStepHandler = {
           console.log(`[ShowDayBrowser] === ADDING AVAILABLE DAY ===`);
           console.log(`[ShowDayBrowser] Date value (what goes in button): ${dateString}`);
           console.log(`[ShowDayBrowser] Display text (what user sees): ${displayText}`);
-          console.log(`[ShowDayBrowser] Date object for display: ${date.toISOString()}`);
-          console.log(`[ShowDayBrowser] toLocaleDateString result: ${date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}`);
-          console.log(`[ShowDayBrowser] Weekday: ${date.toLocaleDateString('en-GB', { weekday: 'short' })}`);
-          console.log(`[ShowDayBrowser] Day of month: ${date.toLocaleDateString('en-GB', { day: 'numeric' })}`);
-          console.log(`[ShowDayBrowser] Month: ${date.toLocaleDateString('en-GB', { month: 'short' })}`);
+          console.log(`[ShowDayBrowser] Date object in business timezone: ${targetDate.toISO()}`);
           console.log(`[ShowDayBrowser] === END AVAILABLE DAY ===`);
           
           availableDaysForThisBusiness.push({

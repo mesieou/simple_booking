@@ -185,12 +185,18 @@ export class Quote {
     }
 
     // Update quote
-    static async update(id: string, quoteData: QuoteData): Promise<Quote> {
+    static async update(id: string, quoteData: QuoteData, options?: { useServiceRole?: boolean }): Promise<Quote> {
         if (!Quote.isValidUUID(id)) {
             handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
-        const supa = await getEnvironmentServerClient();
+        // Use service role client for bot operations or when explicitly requested
+        const supa = options?.useServiceRole ? getEnvironmentServiceRoleClient() : await getEnvironmentServerClient();
+        
+        if (options?.useServiceRole) {
+            console.log('[Quote.update] Using service role client (bypasses RLS for quote update)');
+        }
+        
         const quote = {
             "pickUp": quoteData.pickUp,
             "dropOff": quoteData.dropOff,

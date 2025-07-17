@@ -168,6 +168,36 @@ export const createBookingHandler: IndividualStepHandler = {
       const savedBooking = await newBooking.add() as BookingData & { id: string };
       console.log('[CreateBooking] Booking successfully created:', savedBooking.id);
 
+      // CRITICAL SECURITY FIX: Mark quote as "accepted" since it's now used for a confirmed booking
+      try {
+        // First check if quote still exists before updating
+        const existingQuote = await Quote.getById(quoteId);
+        if (existingQuote) {
+          const updatedQuoteData = {
+            userId: quote.userId,
+            pickUp: quote.pickUp,
+            dropOff: quote.dropOff,
+            businessId: quote.businessId,
+            serviceIds: quote.serviceIds,
+            travelTimeEstimate: quote.travelTimeEstimate,
+            totalJobDurationEstimation: quote.totalJobDurationEstimation,
+            travelCostEstimate: quote.travelCostEstimate,
+            totalJobCostEstimation: quote.totalJobCostEstimation,
+            depositAmount: quote.depositAmount,
+            remainingBalance: quote.remainingBalance,
+            proposedDateTime: quote.proposedDateTime,
+            status: 'accepted' // Mark as accepted since it's now used for a confirmed booking
+          };
+          await Quote.update(quoteId, updatedQuoteData, { useServiceRole: true });
+          console.log(`[CreateBooking] Quote ${quoteId} marked as 'accepted' after booking creation`);
+        } else {
+          console.log(`[CreateBooking] Quote ${quoteId} no longer exists - skipping status update`);
+        }
+      } catch (error) {
+        console.warn(`[CreateBooking] Could not update quote status for ${quoteId} - continuing with booking:`, error instanceof Error ? error.message : String(error));
+        // Continue processing as the booking was successful
+      }
+
       // Get service details for confirmation message
       const service = await Service.getById(serviceId);
       if (!service) {
@@ -312,7 +342,7 @@ export const createBookingHandler: IndividualStepHandler = {
       }
 
       // Get customer name for personalized confirmation
-      const customerName = currentGoalData.customerName || '{name}';
+      const customerName = currentGoalData.customerName || 'Customer';
       
       let confirmationMessage = `${paymentMessage}${t.BOOKING_CONFIRMATION.TITLE.replace('{name}', customerName)}\n\n` +
           `${servicesDisplayFormatted}\n` +
@@ -348,6 +378,9 @@ export const createBookingHandler: IndividualStepHandler = {
       confirmationMessage += `${t.BOOKING_CONFIRMATION.BOOKING_ID} ${bookingConfirmationDetails.bookingId}\n\n` +
           `${t.BOOKING_CONFIRMATION.LOOKING_FORWARD}`;
       
+      // FINAL FIX: Replace ALL remaining {name} placeholders in the entire message
+      confirmationMessage = confirmationMessage.replace(/{name}/g, customerName);
+      
       console.log(`[CreateBooking] Generated full confirmation for booking ${bookingConfirmationDetails.bookingId}. Goal completed.`);
       
       return {
@@ -356,7 +389,12 @@ export const createBookingHandler: IndividualStepHandler = {
         persistedBooking: savedBooking,
         bookingConfirmationDetails: bookingConfirmationDetails,
         paymentCompleted: isPaymentCompletion,
-        confirmationMessage: confirmationMessage
+        confirmationMessage: confirmationMessage,
+        // CRITICAL SECURITY FIX: Clear quote data to prevent future modifications of confirmed bookings
+        persistedQuote: undefined,
+        quoteId: undefined,
+        bookingSummary: undefined,
+        quoteEstimation: undefined
       };
 
     } catch (error) {

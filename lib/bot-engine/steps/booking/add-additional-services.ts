@@ -159,6 +159,7 @@ export const addAdditionalServicesHandler: IndividualStepHandler = {
           finalServiceAddress,
           serviceLocation,
           addServicesState: 'completed', // Mark as completed
+          servicesChanged: true, // Simple flag - let flow controller handle the rest
           confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.MULTIPLE_SERVICES_CONFIRMED', {
             name: currentGoalData.customerName || '{name}',
             count: selectedServices.length.toString()
@@ -200,6 +201,7 @@ export const addAdditionalServicesHandler: IndividualStepHandler = {
           selectedServices: newSelectedServices,
           selectedService: newSelectedServices[0], // Keep first service for backward compatibility
           addServicesState: 'confirming', // Return to confirmation state
+          servicesChanged: true, // Simple flag - let flow controller handle the rest
           confirmationMessage
         };
       }

@@ -78,6 +78,23 @@ export class FlowController {
       hasCompleteBookingData: !!(goalData.selectedService && goalData.selectedDate && goalData.selectedTime)
     });
     
+    // Handle services changed flag - clear timing data if services were modified
+    if (goalData.servicesChanged) {
+      console.log('[FlowController] Services changed - clearing timing and quote data');
+      goalData.selectedDate = undefined;
+      goalData.selectedTime = undefined;
+      goalData.availableSlots = undefined;
+      goalData.bookingSummary = undefined; // Clear summary but preserve quote for updating
+      // Keep persistedQuote and quoteId so the quote can be updated instead of recreated
+      goalData.servicesChanged = false; // Reset flag
+      FlowControllerLogger.info('Cleared timing data due to service changes', {
+        goalType: userCurrentGoal.goalType
+      }, { 
+        preservedQuoteId: goalData.quoteId,
+        preservedQuote: !!goalData.persistedQuote
+      });
+    }
+    
     if (goalData.browseModeSelected) {
       FlowControllerLogger.flow('Browse mode navigation active', {
         goalType: userCurrentGoal.goalType
