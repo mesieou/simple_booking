@@ -484,7 +484,7 @@ export class ConversationFlowHandler {
       
       // CRITICAL FIX: Sync the updated goal state back to chatContext after booking flow processing
       // This ensures that any subsequent FAQ handling gets the most recent goal state
-      if (existingContext.context.currentConversationSession) {
+      if (existingContext.context.currentConversationSession && chatContext.currentConversationSession) {
         chatContext.currentConversationSession.activeGoals = existingContext.context.currentConversationSession.activeGoals;
         
         console.log('[ConversationFlowHandler] Synced goal state after booking flow processing:', {

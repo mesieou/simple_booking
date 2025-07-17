@@ -234,6 +234,11 @@ async function handleUserCreationIfNeeded(
           const businessId = chatContext.currentParticipant.associatedBusinessId;
           const ragResults = await RAGfunction(businessId!, sessionUserInfo.originalQuestion);
           
+          // Check if there's an active booking goal for context
+          const activeBookingGoal = chatContext.currentConversationSession?.activeGoals.find(g => 
+            g.goalStatus === 'inProgress' && g.goalType === 'serviceBooking'
+          );
+          
           let responseText: string;
           
           if (ragResults && ragResults.length > 0) {
@@ -493,7 +498,7 @@ async function generateContextAwareFAQResponse(
       };
       
       const currentStepDisplay = stepDisplayNames[currentStepName] 
-        ? stepDisplayNames[currentStepName][userLanguage]
+        ? stepDisplayNames[currentStepName][userLanguage as 'en' | 'es'] || stepDisplayNames[currentStepName]['en']
         : (userLanguage === 'es' ? 'completando tu reserva' : 'completing your booking');
       
       // Get selected services for context (handle both single and multiple services)
@@ -507,7 +512,7 @@ async function generateContextAwareFAQResponse(
           servicesText = selectedServices[0].name || selectedServices[0];
         } else {
           // Format multiple services nicely
-          const serviceNames = selectedServices.map(s => s.name || s);
+          const serviceNames = selectedServices.map((s: any) => s.name || s);
           servicesText = serviceNames.join(' and ');
         }
       } else if (singleService) {
