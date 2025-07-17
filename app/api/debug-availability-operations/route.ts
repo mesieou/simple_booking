@@ -27,11 +27,15 @@ export async function GET(request: Request) {
       return { success: true, data: user ? { id: user.id, firstName: user.firstName, role: user.role } : null };
     });
 
-    if (!results.tests.getUser.success) {
+    if (!results.tests.getUser.success || !results.tests.getUser.data) {
       return NextResponse.json(results);
     }
 
     const user = await User.getById(luisaId);
+    if (!user) {
+      results.tests.getUser.data = null;
+      return NextResponse.json(results);
+    }
 
     // Test 2: Get Business  
     console.log('Testing Business.getById...');
@@ -53,11 +57,16 @@ export async function GET(request: Request) {
       };
     });
 
-    if (!results.tests.getCalendarSettings.success || !results.tests.getCalendarSettings.data) {
+    if (!results.tests.getCalendarSettings.success) {
       return NextResponse.json(results);
     }
 
     const calendarSettings = await CalendarSettings.getByUserAndBusiness(user.id, user.businessId);
+    if (!calendarSettings) {
+      results.tests.getCalendarSettings.data = null;
+      return NextResponse.json(results);
+    }
+    
     const providerTZ = calendarSettings.settings?.timezone ?? 'UTC';
     const today = DateTime.now().setZone(providerTZ);
     const todayStr = today.toFormat("yyyy-MM-dd");
