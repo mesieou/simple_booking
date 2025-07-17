@@ -300,7 +300,7 @@ export async function rollAvailabilityOptimized(
   console.log(`[CRON-ROLLOVER] Today is ${today.toISODate()}. Rolling availability forward one day.`);
 
   // 1. Delete ALL past availability (< today) - this is safe since past slots are useless
-  await AvailabilitySlots.deleteBefore(user.id, todayStr);
+  await AvailabilitySlots.deleteBefore(user.id, todayStr, { useServiceRole: true });
 
   // 2. Check if we need to add the NEW day (today + 30)
   const newDay = today.plus({ days: 30 });
@@ -380,7 +380,7 @@ export async function rollAvailability(
   console.log(`[CRON-ROLLOVER] Business ID: ${user.businessId}`);
 
   // 1. Delete ALL past availability (< today) - this is safe since past slots are useless
-  await AvailabilitySlots.deleteBefore(user.id, todayStr);
+  await AvailabilitySlots.deleteBefore(user.id, todayStr, { useServiceRole: true });
 
   // 2. Ensure we have 30 days of availability from today
   let daysAdded = 0;

@@ -293,8 +293,12 @@ export class AvailabilitySlots {
     }
 
     // Delete all availability slots before a specific date
-    static async deleteBefore(providerId: string, beforeDate: string): Promise<void> {
-        const supa = await getEnvironmentServerClient();
+    static async deleteBefore(providerId: string, beforeDate: string, options?: { useServiceRole?: boolean }): Promise<void> {
+        const supa = options?.useServiceRole ? getEnvironmentServiceRoleClient() : await getEnvironmentServerClient();
+        
+        if (options?.useServiceRole) {
+            console.log('[AvailabilitySlots.deleteBefore] Using service role client (bypasses RLS for deletion)');
+        }
         
         const { error } = await supa
             .from("availabilitySlots")

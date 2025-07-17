@@ -82,7 +82,7 @@ export async function GET(request: Request) {
     // Test 4: Test deleteBefore (the problematic operation)
     console.log('Testing AvailabilitySlots.deleteBefore...');
     results.tests.deleteBefore = await testOperation(async () => {
-      await AvailabilitySlots.deleteBefore(user.id, todayStr);
+      await AvailabilitySlots.deleteBefore(user.id, todayStr, { useServiceRole: true });
       return { success: true, message: 'Delete operation completed' };
     });
 
