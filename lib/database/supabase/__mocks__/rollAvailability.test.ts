@@ -1,6 +1,6 @@
 import { User } from "../../database/models/user";
 import { Business } from "../../database/models/business";
-import { rollAvailability, rollAllProvidersAvailability, computeInitialAvailability } from "../../helpers/availability";
+import { rollAvailability, computeInitialAvailability } from "../../helpers/availability";
 import { CalendarSettings } from "../../database/models/calendar-settings";
 import { DateTime } from "luxon";
 import { AvailabilitySlots } from "../../database/models/availability-slots";

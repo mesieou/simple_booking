@@ -133,9 +133,9 @@ async function testCronEndpoints() {
   console.log('# Test status:');
   console.log(`curl ${baseUrl}/api/cron/status`);
   console.log('');
-  console.log('# Test single batch:');
+  console.log('# Test with dry run (no changes):');
   console.log(`curl -H "Authorization: Bearer $CRON_SECRET" \\`);
-  console.log(`"${baseUrl}/api/cron/daily-roll-availability-batch?batchSize=3&batchIndex=0"`);
+  console.log(`"${baseUrl}/api/cron/roll-availability-test?dryRun=true"`);
   console.log('');
   console.log('# Test full coordinator:');
   console.log(`curl -H "Authorization: Bearer $CRON_SECRET" \\`);

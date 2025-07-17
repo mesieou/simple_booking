@@ -342,7 +342,7 @@ export async function rollAvailabilityOptimized(
           slots: availableSlots
         });
         
-        await newAvailabilitySlot.add();
+        await newAvailabilitySlot.add({ useServiceRole: true });
         console.log(`[CRON-ROLLOVER] Added availability for ${newDayStr} (${dayKey})`);
       }
     } else {
@@ -366,7 +366,7 @@ export async function rollAvailability(
     user.businessId
   );
 
-  // This should not happen if called from rollAllProvidersAvailability, but safety check
+  // This should not happen if called from the coordinator, but safety check
   if (!calendarSettings) {
     throw new Error(`[rollAvailability] No calendar settings found for provider ${user.id}`);
   }
@@ -429,7 +429,7 @@ export async function rollAvailability(
           slots: availableSlots
         });
         
-        await newAvailabilitySlot.add();
+        await newAvailabilitySlot.add({ useServiceRole: true });
         daysAdded++;
         console.log(`[CRON-ROLLOVER] Added availability for ${dayStr} (${dayKey})`);
       }
@@ -439,73 +439,6 @@ export async function rollAvailability(
   }
 
   console.log(`[CRON-ROLLOVER] Completed availability roll for provider ${user.id}. Added ${daysAdded} new days.`);
-}
-
-// Roll availability forward for all providers with timeout protection
-export async function rollAllProvidersAvailability(maxTimeoutMs: number = 45000): Promise<void> {
-  const startTime = Date.now();
-  const providers = await User.getAllProviders();
-  
-  let processed = 0;
-  let skipped = 0;
-  let errors = 0;
-  let timedOut = false;
-  
-  console.log(`[CRON] Starting availability roll for ${providers.length} providers (max timeout: ${maxTimeoutMs}ms)`);
-  
-  // Roll availability for each provider with timeout check
-  for (let i = 0; i < providers.length; i++) {
-    const provider = providers[i];
-    const elapsedTime = Date.now() - startTime;
-    
-    // Check if we're approaching timeout (leave 5 seconds buffer)
-    if (elapsedTime > maxTimeoutMs - 5000) {
-      console.warn(`[CRON-TIMEOUT] Stopping early to avoid timeout. Processed ${processed}/${providers.length} providers`);
-      timedOut = true;
-      break;
-    }
-    
-    try {
-      const business = await Business.getById(provider.businessId);
-      if (!business) {
-        console.error(`[CRON-ERROR] Business not found for provider ${provider.id}`);
-        errors++;
-        continue;
-      }
-      
-      // Check if provider has calendar settings before processing
-      const calendarSettings = await CalendarSettings.getByUserAndBusiness(
-        provider.id,
-        provider.businessId
-      );
-      
-      if (!calendarSettings) {
-        console.error(`[CRON-ERROR] Provider ${provider.id} has no calendar settings. Please configure calendar settings for this provider.`);
-        skipped++;
-        continue;
-      }
-      
-      await rollAvailability(provider, business);
-      processed++;
-      
-      // Log progress every 5 providers
-      if ((processed + skipped + errors) % 5 === 0) {
-        console.log(`[CRON-PROGRESS] Processed ${processed + skipped + errors}/${providers.length} providers (${Date.now() - startTime}ms elapsed)`);
-      }
-      
-    } catch (error) {
-      console.error(`[CRON-ERROR] Failed to roll availability for provider ${provider.id}:`, error);
-      errors++;
-      continue;
-    }
-  }
-  
-  const totalTime = Date.now() - startTime;
-  console.log(`[CRON] Availability roll completed in ${totalTime}ms: ${processed} processed, ${skipped} skipped, ${errors} errors${timedOut ? ' (TIMED OUT)' : ''}`);
-  
-  if (timedOut) {
-    throw new Error(`Processing timed out after ${totalTime}ms. Only processed ${processed}/${providers.length} providers.`);
-  }
 }
 
 // NEW FUNCTIONS FOR CHATBOT DATE/TIME SUGGESTION (Added [Current Date])

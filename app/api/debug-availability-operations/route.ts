@@ -101,7 +101,7 @@ export async function GET(request: Request) {
         date: newDayStr,
         slots: { "60": ["09:00", "10:00"] } // Simple test slot
       });
-      await testSlot.add();
+      await testSlot.add({ useServiceRole: true });
       return { success: true, message: 'New slot created successfully' };
     });
 
