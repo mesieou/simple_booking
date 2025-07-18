@@ -8,14 +8,12 @@
  * 4. History-Aware Responses: Generates responses based on conversation history
  */
 
-import { executeChatCompletion, OpenAIChatMessage } from "@/lib/shared/llm/openai/openai-core";
-import { 
-  ChatContext, 
-  UserGoal, 
-  LLMProcessingResult,
-} from '@/lib/bot-engine/types';
-import { conversationFlowBlueprints } from '@/lib/bot-engine/config/blueprints';
-import { botTasks } from '@/lib/bot-engine/config/tasks';
+import { type ConversationalParticipant, type ChatContext, type UserGoal, type LLMProcessingResult } from "@/lib/bot-engine/types";
+import { conversationFlowBlueprints } from "@/lib/bot-engine/config/blueprints";
+import { botTasks } from "@/lib/bot-engine/config/tasks";
+import { executeChatCompletion } from "@/lib/shared/llm/openai/openai-core";
+import { filterLLMContext, type LLMContextOptions } from "@/lib/bot-engine/session/state-persister";
+import type { ChatMessage } from "@/lib/database/models/chat-session";
 
 export interface ConversationDecision {
   action: 'continue' | 'advance' | 'go_back' | 'switch_topic' | 'restart';
@@ -179,9 +177,22 @@ Return ONLY JSON:
   "extractedData": {}
 }`;
 
-    const historyText = messageHistory
-      .slice(-6) // Last 6 messages for context
-      .map(msg => `${msg.role}: ${msg.content}`)
+    // Convert messageHistory to ChatMessage format for filtering
+    const chatMessages: ChatMessage[] = messageHistory.map(msg => ({
+      role: msg.role === 'user' ? 'user' as const : 'bot' as const,
+      content: msg.content,
+      timestamp: msg.timestamp.toISOString()
+    }));
+
+    // Use intelligent context filtering for conversation flow analysis
+    const filteredMessages = filterLLMContext(chatMessages, {
+      useCase: 'conversation_flow',
+      maxMessages: 6,
+      maxTokensEstimate: 800 // Conservative limit for flow analysis
+    });
+
+    const historyText = filteredMessages
+      .map(msg => `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`)
       .join('\n');
 
     const userPrompt = `CONVERSATION HISTORY:
@@ -386,9 +397,21 @@ Return ONLY a JSON object:
   "customButtons": [{"buttonText": "Option", "buttonValue": "value", "buttonDescription": "desc"}]
 }`;
 
-    const historyText = messageHistory
-      .slice(-4)
-      .map(msg => `${msg.role}: ${msg.content}`)
+    // Convert messageHistory to ChatMessage format for filtering
+    const chatMessages: ChatMessage[] = messageHistory.map(msg => ({
+      role: msg.role === 'user' ? 'user' as const : 'bot' as const,
+      content: msg.content,
+      timestamp: msg.timestamp.toISOString()
+    }));
+
+    // Use intelligent context filtering for contextual responses
+    const filteredMessages = filterLLMContext(chatMessages, {
+      useCase: 'contextual_response',
+      maxTokensEstimate: 1200 // Higher limit for contextual responses
+    });
+
+    const historyText = filteredMessages
+      .map(msg => `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`)
       .join('\n');
 
     const userPrompt = `RECENT CONVERSATION:
@@ -538,7 +561,19 @@ Using the comprehensive knowledge base above, answer the user's question with sp
       formatted += `CONVERSATION CONTEXT (for reference only - DO NOT treat assistant messages as customer input):\n`;
       formatted += `--- IMPORTANT: Only the CURRENT USER MESSAGE is what the customer is asking NOW ---\n`;
       
-      const recentMessages = context.messageHistory.slice(-6); // Reduced from 8 to 6 to focus on more recent context
+      // Convert to ChatMessage format for intelligent filtering
+      const chatMessages: ChatMessage[] = context.messageHistory.map(msg => ({
+        role: msg.role === 'user' ? 'user' as const : 'bot' as const,
+        content: msg.content,
+        timestamp: msg.timestamp.toISOString()
+      }));
+
+      // Use intelligent context filtering for LLM context formatting
+      const recentMessages = filterLLMContext(chatMessages, {
+        useCase: 'contextual_response',
+        maxMessages: 6,
+        maxTokensEstimate: 800 // Conservative limit for context formatting
+      });
       
       let customerMessages: string[] = [];
       let assistantMessages: string[] = [];
@@ -546,9 +581,11 @@ Using the comprehensive knowledge base above, answer the user's question with sp
       // Separate customer messages from assistant messages
       recentMessages.forEach(msg => {
         if (msg.role === 'user') {
-          customerMessages.push(`Customer said: "${msg.content}"`);
+          const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
+          customerMessages.push(`Customer said: "${content}"`);
         } else {
-          assistantMessages.push(`Assistant replied: "${msg.content}"`);
+          const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
+          assistantMessages.push(`Assistant replied: "${content}"`);
         }
       });
       
@@ -807,9 +844,22 @@ CRITICAL RULES:
 - Provide the summary even if the user is just being aggressive without stating a problem. In that case, summarize the situation (e.g., "The user is expressing frustration and using aggressive language.").
 `;
 
-    const historyText = messageHistory
-      .slice(-6)
-      .map(msg => `${msg.role}: ${msg.content}`)
+    // Convert to ChatMessage format for intelligent filtering
+    const chatMessages: ChatMessage[] = messageHistory.map(msg => ({
+      role: msg.role === 'user' ? 'user' as const : 'bot' as const,
+      content: msg.content,
+      timestamp: new Date().toISOString()
+    }));
+
+    // Use intelligent context filtering for escalation analysis
+    const filteredMessages = filterLLMContext(chatMessages, {
+      useCase: 'escalation_analysis',
+      maxMessages: 6,
+      maxTokensEstimate: 600 // Conservative limit for escalation analysis
+    });
+
+    const historyText = filteredMessages
+      .map(msg => `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`)
       .join('\n');
 
     const userPrompt = `CONVERSATION HISTORY:

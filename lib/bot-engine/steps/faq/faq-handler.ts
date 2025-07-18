@@ -1,8 +1,9 @@
-import { type BotResponse } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
-import { type ChatContext } from "@/lib/bot-engine/types";
-import { type ChatMessage } from "@/lib/database/models/chat-session";
+import { ChatContext } from "@/lib/bot-engine/types";
+import { BotResponse } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
+import { ChatMessage } from "@/lib/database/models/chat-session";
 import { RAGfunction } from "@/lib/shared/llm/functions/embeddings";
-import { executeChatCompletion, type OpenAIChatMessage } from "@/lib/shared/llm/openai/openai-core";
+import { executeChatCompletion } from "@/lib/shared/llm/openai/openai-core";
+import { filterLLMContext } from "@/lib/bot-engine/session/state-persister";
 import { START_BOOKING_PAYLOAD } from "@/lib/bot-engine/config/constants";
 
 /**
@@ -63,8 +64,14 @@ export async function handleFaqOrChitchat(
       // Create a simple text representation of the conversation history for the AI
       let systemPrompt: string;
 
-      const historyText = messageHistory
-        .slice(-6) // Get the last 6 messages for context
+      // Use intelligent context filtering for FAQ responses
+      const filteredMessages = filterLLMContext(messageHistory, {
+        useCase: 'contextual_response',
+        maxMessages: 6,
+        maxTokensEstimate: 1000 // Reasonable limit for FAQ context
+      });
+
+      const historyText = filteredMessages
         .map(msg => `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`)
         .join('\n');
 
@@ -158,7 +165,7 @@ export async function handleFaqOrChitchat(
         `;
       }
 
-      const messages: OpenAIChatMessage[] = [
+      const messages: any[] = [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userMessage }
       ];
@@ -296,7 +303,7 @@ async function handleUserCreationIfNeeded(
             ${context}
             ---`;
 
-            const messages: OpenAIChatMessage[] = [
+            const messages: any[] = [
               { role: 'system', content: systemPrompt },
               { role: 'user', content: sessionUserInfo.originalQuestion }
             ];
@@ -440,7 +447,7 @@ Message to evaluate: "${message}"
 
 Answer ONLY with "yes" if it's a name or "no" if it's not a name.`;
 
-    const messages: OpenAIChatMessage[] = [
+    const messages: any[] = [
       { role: 'user', content: prompt }
     ];
 

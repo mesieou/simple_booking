@@ -55,47 +55,61 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Find the attending notification for this session
-    // Use conditional filtering based on user role for security
-    let notificationQuery = supaServiceRole
-      .from("notifications")
-      .select("*")
-      .eq("chatSessionId", sessionId)
-      .eq("status", "attending");
+    // Check if current user has control of this session
+    const { data: sessionControl, error: controlCheckError } = await supaServiceRole
+      .from("chatSessions")
+      .select("controlledByUserId")
+      .eq("id", sessionId)
+      .single();
 
-    // For regular users, add business filter for security
-    // For superadmins, allow access to notifications from any business
-    if (!isSuperAdmin) {
-      notificationQuery = notificationQuery.eq("businessId", userBusinessId);
+    if (controlCheckError) {
+      return NextResponse.json({ error: "Error checking session control" }, { status: 500 });
     }
 
-    const { data: notificationData, error: notificationError } = await notificationQuery
+    if (!sessionControl.controlledByUserId) {
+      return NextResponse.json({ error: "No one currently has control of this chat session" }, { status: 404 });
+    }
+
+    if (sessionControl.controlledByUserId !== user.id) {
+      return NextResponse.json({ error: "You don't have control of this chat session" }, { status: 403 });
+    }
+
+    // Release admin control
+    const { error: releaseError } = await supaServiceRole
+      .from("chatSessions")
+      .update({ 
+        controlledByUserId: null,
+        controlTakenAt: null,
+        updatedAt: new Date().toISOString()
+      })
+      .eq("id", sessionId);
+
+    if (releaseError) {
+      return NextResponse.json({ error: "Failed to release control" }, { status: 500 });
+    }
+
+    // If there was an attending escalation notification, mark it as resolved
+    const { data: escalationNotification } = await supaServiceRole
+      .from("notifications")
+      .select("id")
+      .eq("chatSessionId", sessionId)
+      .eq("status", "attending")
       .order("createdAt", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    if (notificationError) {
-      return NextResponse.json({ error: "Error checking notifications" }, { status: 500 });
+    if (escalationNotification) {
+      await supaServiceRole
+        .from("notifications")
+        .update({ status: "provided_help" })
+        .eq("id", escalationNotification.id);
     }
 
-    if (!notificationData) {
-      return NextResponse.json({ error: "No active assistance session found for this chat" }, { status: 404 });
-    }
-
-    // Update notification status to 'provided_help' to indicate assistance is complete
-    const { error: updateError } = await supaServiceRole
-      .from("notifications")
-      .update({ status: "provided_help" })
-      .eq("id", notificationData.id);
-
-    if (updateError) {
-      return NextResponse.json({ error: "Failed to finish assistance" }, { status: 500 });
-    }
+    console.log(`[FinishAssistance] User ${user.id} released control of session ${sessionId}`);
 
     return NextResponse.json({ 
       success: true, 
-      message: "Assistance completed. The bot will now resume normal operation.",
-      notificationId: notificationData.id 
+      message: "Control released. The bot will now resume normal operation."
     });
 
   } catch (error) {

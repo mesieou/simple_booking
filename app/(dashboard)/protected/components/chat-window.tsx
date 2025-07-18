@@ -112,8 +112,11 @@ type ChatWindowProps = {
 interface ChatStatus {
   hasEscalation: boolean;
   escalationStatus: string | null;
+  isUnderAdminControl: boolean;
+  controlledByUserId: string | null;
+  controlTakenAt: string | null;
+  isCurrentUserInControl: boolean;
   canTakeControl: boolean;
-  isAttending: boolean;
   canSendMessages: boolean;
   notificationId: string | null;
 }
@@ -424,9 +427,12 @@ export function ChatWindow({
           setChatStatus({
             hasEscalation: conversation.hasEscalation,
             escalationStatus: conversation.escalationStatus,
-            canTakeControl: conversation.escalationStatus === 'pending',
-            isAttending: conversation.escalationStatus === 'attending',
-            canSendMessages: conversation.escalationStatus === 'attending',
+            isUnderAdminControl: false, // We don't have this from conversation data
+            controlledByUserId: null,
+            controlTakenAt: null,
+            isCurrentUserInControl: false,
+            canTakeControl: true, // Default to allowing take control
+            canSendMessages: false, // Default to not allowing messages without control
             notificationId: null, // We don't have this from conversation data
           });
         }
@@ -439,9 +445,12 @@ export function ChatWindow({
         setChatStatus({
           hasEscalation: conversation.hasEscalation,
           escalationStatus: conversation.escalationStatus,
-          canTakeControl: conversation.escalationStatus === 'pending',
-          isAttending: conversation.escalationStatus === 'attending',
-          canSendMessages: conversation.escalationStatus === 'attending',
+          isUnderAdminControl: false, // We don't have this from conversation data
+          controlledByUserId: null,
+          controlTakenAt: null,
+          isCurrentUserInControl: false,
+          canTakeControl: true, // Default to allowing take control
+          canSendMessages: false, // Default to not allowing messages without control
           notificationId: null, // We don't have this from conversation data
         });
       }
@@ -581,13 +590,13 @@ export function ChatWindow({
               </button>
             )}
             
-            {chatStatus?.isAttending && (
+            {chatStatus?.isCurrentUserInControl && (
               <button
                 onClick={handleFinishAssistance}
                 disabled={actionLoading}
                 className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {actionLoading ? "Finishing..." : "Finish Assistance"}
+                {actionLoading ? "Finishing..." : "Release Control"}
               </button>
             )}
           </div>

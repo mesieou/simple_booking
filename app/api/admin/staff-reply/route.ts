@@ -71,36 +71,24 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Verify that staff is currently attending this session
-    // Use conditional filtering based on user role for security
-    let notificationQuery = supaServiceRole
-      .from("notifications")
-      .select("*")
-      .eq("chatSessionId", sessionId)
-      .eq("status", "attending");
+    // Verify that current user has control of this session
+    const { data: sessionControl, error: controlCheckError } = await supaServiceRole
+      .from("chatSessions")
+      .select("controlledByUserId")
+      .eq("id", sessionId)
+      .single();
 
-    // For regular users, add business filter for security
-    // For superadmins, allow access to notifications from any business
-    if (!isSuperAdmin) {
-      notificationQuery = notificationQuery.eq("businessId", userBusinessId);
+    if (controlCheckError) {
+      console.error("[StaffReply] Failed to check session control:", controlCheckError);
+      return NextResponse.json({ error: "Error checking session control" }, { status: 500 });
     }
 
-    const { data: notificationData, error: notificationError } = await notificationQuery
-      .order("createdAt", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (notificationError) {
-      console.error("[StaffReply] Failed to check attendance status:", notificationError);
-      return NextResponse.json({ error: "Error checking attendance status" }, { status: 500 });
-    }
-
-    if (!notificationData) {
-      console.error("[StaffReply] No attending notification found for session:", sessionId);
+    if (!sessionControl.controlledByUserId || sessionControl.controlledByUserId !== user.id) {
+      console.error("[StaffReply] User does not have control of session:", sessionId);
       return NextResponse.json({ error: "You must take control of this chat before sending messages" }, { status: 403 });
     }
 
-    console.log("[StaffReply] Staff is attending session, proceeding with message");
+    console.log("[StaffReply] User has control of session, proceeding with message");
 
     // Get businessPhoneNumberId using intelligent multi-approach strategy
     let businessPhoneNumberId: string | null | undefined;

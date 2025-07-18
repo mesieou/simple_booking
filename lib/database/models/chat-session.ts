@@ -44,6 +44,8 @@ export interface ChatSessionDBSchema {
   summarySession?: string | null; // Text summary of the session
   feedbackDataAveraged?: Record<string, any> | null; // jsonb, aggregated feedback data
   overallChatScore?: number | null; // int2, score for the chat session
+  controlledByUserId?: string | null; // uuid, foreign key to users.id - admin who has control
+  controlTakenAt?: string | null; // timestamptz, when admin control was taken
   createdAt: string; // timestamptz, when the record was created/session started
   updatedAt: string; // timestamptz, when the record was last updated
 }
@@ -80,6 +82,8 @@ export class ChatSession {
   summarySession?: string | null;
   feedbackDataAveraged?: Record<string, any> | null;
   overallChatScore?: number | null;
+  controlledByUserId?: string | null;
+  controlTakenAt?: string | null;
   createdAt: string;
   updatedAt: string;
 
@@ -96,6 +100,8 @@ export class ChatSession {
     this.summarySession = data.summarySession;
     this.feedbackDataAveraged = data.feedbackDataAveraged;
     this.overallChatScore = data.overallChatScore;
+    this.controlledByUserId = data.controlledByUserId;
+    this.controlTakenAt = data.controlTakenAt;
     this.createdAt = data.createdAt;
     this.updatedAt = data.updatedAt;
   }
@@ -334,6 +340,106 @@ export class ChatSession {
     }
 
     return new ChatSession(data);
+  }
+
+  /**
+   * Take admin control of a chat session
+   */
+  static async takeControl(sessionId: string, userId: string): Promise<ChatSession> {
+    if (!this.isValidUUID(sessionId)) {
+      throw new Error(`Invalid session ID: ${sessionId}`);
+    }
+    if (!this.isValidUUID(userId)) {
+      throw new Error(`Invalid user ID: ${userId}`);
+    }
+    
+    const supa = getEnvironmentServiceRoleClient();
+    const { data, error } = await supa
+      .from('chatSessions')
+      .update({ 
+        controlledByUserId: userId,
+        controlTakenAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      })
+      .eq('id', sessionId)
+      .select()
+      .single();
+
+    if (error) {
+      handleModelError(`Failed to take control of session ${sessionId}`, error);
+    }
+
+    if (!data) {
+      handleModelError(`Chat session with id ${sessionId} not found`, new Error('Chat session not found'));
+    }
+
+    return new ChatSession(data);
+  }
+
+  /**
+   * Release admin control of a chat session
+   */
+  static async releaseControl(sessionId: string): Promise<ChatSession> {
+    if (!this.isValidUUID(sessionId)) {
+      throw new Error(`Invalid session ID: ${sessionId}`);
+    }
+    
+    const supa = getEnvironmentServiceRoleClient();
+    const { data, error } = await supa
+      .from('chatSessions')
+      .update({ 
+        controlledByUserId: null,
+        controlTakenAt: null,
+        updatedAt: new Date().toISOString()
+      })
+      .eq('id', sessionId)
+      .select()
+      .single();
+
+    if (error) {
+      handleModelError(`Failed to release control of session ${sessionId}`, error);
+    }
+
+    if (!data) {
+      handleModelError(`Chat session with id ${sessionId} not found`, new Error('Chat session not found'));
+    }
+
+    return new ChatSession(data);
+  }
+
+  /**
+   * Checks if a chat session is currently under admin control
+   * This is used to determine if the bot should be blocked from responding
+   * @param sessionId The ID of the chat session to check
+   * @returns Promise<boolean> - true if under admin control, false otherwise
+   */
+  static async isUnderAdminControl(sessionId: string): Promise<boolean> {
+    if (!this.isValidUUID(sessionId)) {
+      console.warn(`[ChatSessionModel] Invalid UUID for admin control check: ${sessionId}`);
+      return false;
+    }
+
+    try {
+      const supa = getEnvironmentServiceRoleClient();
+      const { data, error } = await supa
+        .from('chatSessions')
+        .select('controlledByUserId')
+        .eq('id', sessionId)
+        .single();
+
+      if (error) {
+        console.error(`[ChatSessionModel] Error checking admin control:`, error);
+        // In case of error, we'll assume no admin control to avoid blocking the bot unnecessarily
+        return false;
+      }
+
+      // If controlledByUserId exists and is not null, session is under admin control
+      return !!data?.controlledByUserId;
+    } catch (error) {
+      console.error(`[ChatSessionModel] Exception checking admin control:`, error);
+      // In case of exception, we'll assume no admin control to avoid blocking the bot unnecessarily
+      return false;
+    }
   }
 
   static async getAll(): Promise<ChatSession[]> {

@@ -116,7 +116,7 @@ function pullSchema(environment) {
 function pushSchema(environment) {
   const project = PROJECTS[environment];
   execCommand(
-    `supabase db push --linked`,
+    `supabase db push --linked --include-all`,
     `Pushing schema to ${project.name} (${environment})`,
     environment
   );

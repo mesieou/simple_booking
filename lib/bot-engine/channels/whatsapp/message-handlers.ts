@@ -18,6 +18,7 @@ import { WhatsappSender } from "./whatsapp-message-sender";
 import { START_BOOKING_PAYLOAD } from "@/lib/bot-engine/config/constants";
 import { WhatsAppHandlerLogger } from "@/lib/bot-engine/utils/logger";
 import { ProxyMessageHandler } from './proxy-message-interceptor';
+import { ChatMessage } from "@/lib/database/models/chat-session";
 
 export interface MessageHandlerContext {
   parsedMessage: ParsedMessage;
@@ -43,6 +44,42 @@ export interface MessageHandlerResult {
 export class EscalationHandler {
   static async handle(context: MessageHandlerContext): Promise<MessageHandlerResult> {
     const { parsedMessage, sessionId, chatContext, userContext, historyForLLM } = context;
+    
+    // Check if session is under admin control (takes priority over escalation)
+    const { ChatSession } = await import('@/lib/database/models/chat-session');
+    const isUnderAdminControl = await ChatSession.isUnderAdminControl(sessionId);
+    
+    if (isUnderAdminControl) {
+      WhatsAppHandlerLogger.journey('Bot silenced - session under admin control', {
+        sessionId,
+        userId: context.participant.customerWhatsappNumber
+      }, { 
+        messagePreview: parsedMessage.text?.substring(0, 30) 
+      });
+
+      if (chatContext.currentConversationSession) {
+        // Find the active goal to preserve it during admin control
+        const activeGoal = chatContext.currentConversationSession.activeGoals.find(g => g.goalStatus === 'inProgress');
+        
+        await persistSessionState(
+          sessionId, 
+          userContext, 
+          chatContext.currentConversationSession, 
+          activeGoal, // Pass the active goal to preserve it
+          parsedMessage.text || '', 
+          '', // No bot response
+          undefined, // fullHistory is optional and will be reconstructed from activeGoals
+          parsedMessage
+        );
+      }
+
+      return {
+        shouldContinue: false,
+        wasHandled: true,
+        handlerType: 'admin_control_active',
+        message: 'Bot silenced due to admin control'
+      };
+    }
     
     // Check if bot is in escalation mode
     const escalationStatus = await Notification.getEscalationStatus(sessionId);
@@ -502,7 +539,21 @@ export class ConversationFlowHandler {
         messagePreview: parsedMessage.text?.substring(0, 30)
       });
       
-      const faqResponse = await handleFaqOrChitchat(chatContext, parsedMessage.text || '', []);
+      // Fetch complete message history for FAQ context
+      let completeMessageHistory: ChatMessage[] = [];
+      try {
+        const { ChatSession } = await import('@/lib/database/models/chat-session');
+        const currentSession = await ChatSession.getById(sessionId);
+        if (currentSession && currentSession.allMessages) {
+          completeMessageHistory = currentSession.allMessages;
+          console.log(`[ConversationFlowHandler] Retrieved ${completeMessageHistory.length} messages for FAQ context`);
+        }
+      } catch (error) {
+        console.error(`[ConversationFlowHandler] Error fetching complete message history for FAQ:`, error);
+        // Continue with empty array if fetch fails
+      }
+
+      const faqResponse = await handleFaqOrChitchat(chatContext, parsedMessage.text || '', completeMessageHistory);
       botResponse = faqResponse;
       
       if (botResponse.text && chatContext.currentConversationSession) {

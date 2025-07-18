@@ -38,13 +38,13 @@ export async function GET(req: NextRequest) {
 
     console.log("[ChatStatus] User role:", userData?.role, "isSuperAdmin:", isSuperAdmin, "businessId:", userBusinessId);
 
-    // Verify the chat session belongs to the staff's business
+    // Verify the chat session belongs to the staff's business and get control status
     console.log("[ChatStatus] Verifying session ownership for sessionId:", sessionId);
     // Use service role client to bypass RLS for session queries (consistent with other admin endpoints)
     const supaServiceRole = getEnvironmentServiceRoleClient();
     const { data: sessionData, error: sessionError } = await supaServiceRole
       .from("chatSessions")
-      .select("businessId")
+      .select("businessId, controlledByUserId, controlTakenAt")
       .eq("id", sessionId)
       .single();
 
@@ -101,12 +101,20 @@ export async function GET(req: NextRequest) {
 
     console.log("[ChatStatus] Notification data:", notificationData);
 
+    // Determine control status
+    const isUnderAdminControl = !!sessionData.controlledByUserId;
+    const isCurrentUserInControl = sessionData.controlledByUserId === user.id;
+    const hasEscalation = !!notificationData;
+
     const status = {
-      hasEscalation: !!notificationData,
+      hasEscalation: hasEscalation,
       escalationStatus: notificationData?.status || null,
-      canTakeControl: notificationData?.status === "pending",
-      isAttending: notificationData?.status === "attending",
-      canSendMessages: notificationData?.status === "attending",
+      isUnderAdminControl: isUnderAdminControl,
+      controlledByUserId: sessionData.controlledByUserId,
+      controlTakenAt: sessionData.controlTakenAt,
+      isCurrentUserInControl: isCurrentUserInControl,
+      canTakeControl: !isUnderAdminControl || isCurrentUserInControl, // Can take control if no one has it, or current user already has it
+      canSendMessages: isCurrentUserInControl, // Can only send messages if current user has control
       notificationId: notificationData?.id || null
     };
 

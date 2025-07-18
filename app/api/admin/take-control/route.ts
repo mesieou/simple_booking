@@ -60,47 +60,61 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Find the pending notification for this session
-    // Use conditional filtering based on user role for security
-    let notificationQuery = supaServiceRole
-      .from("notifications")
-      .select("*")
-      .eq("chatSessionId", sessionId)
-      .eq("status", "pending");
+    // Check if session is already under admin control
+    const { data: currentSession, error: sessionCheckError } = await supaServiceRole
+      .from("chatSessions")
+      .select("controlledByUserId, controlTakenAt")
+      .eq("id", sessionId)
+      .single();
 
-    // For regular users, add business filter for security
-    // For superadmins, allow access to notifications from any business
-    if (!isSuperAdmin) {
-      notificationQuery = notificationQuery.eq("businessId", userBusinessId);
+    if (sessionCheckError) {
+      return NextResponse.json({ error: "Error checking session control status" }, { status: 500 });
     }
 
-    const { data: notificationData, error: notificationError } = await notificationQuery
+    if (currentSession.controlledByUserId && currentSession.controlledByUserId !== user.id) {
+      return NextResponse.json({ 
+        error: "This chat is already under control by another admin",
+        controlledBy: currentSession.controlledByUserId 
+      }, { status: 409 });
+    }
+
+    // Take control by updating the chat session
+    const { error: controlError } = await supaServiceRole
+      .from("chatSessions")
+      .update({ 
+        controlledByUserId: user.id,
+        controlTakenAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      })
+      .eq("id", sessionId);
+
+    if (controlError) {
+      console.error("[TakeControl] Failed to set session control:", controlError);
+      return NextResponse.json({ error: "Failed to take control of chat session" }, { status: 500 });
+    }
+
+    // If there's an existing escalation notification, update it to attending
+    const { data: escalationNotification } = await supaServiceRole
+      .from("notifications")
+      .select("id, status")
+      .eq("chatSessionId", sessionId)
+      .eq("status", "pending")
       .order("createdAt", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    if (notificationError) {
-      return NextResponse.json({ error: "Error checking notifications" }, { status: 500 });
+    if (escalationNotification) {
+      await supaServiceRole
+        .from("notifications")
+        .update({ status: "attending" })
+        .eq("id", escalationNotification.id);
     }
 
-    if (!notificationData) {
-      return NextResponse.json({ error: "No pending escalation found for this chat" }, { status: 404 });
-    }
-
-    // Update notification status to indicate staff is attending
-    const { error: updateError } = await supaServiceRole
-      .from("notifications")
-      .update({ status: "attending" })
-      .eq("id", notificationData.id);
-
-    if (updateError) {
-      return NextResponse.json({ error: "Failed to take control of chat" }, { status: 500 });
-    }
+    console.log(`[TakeControl] User ${user.id} took control of session ${sessionId}`);
 
     return NextResponse.json({ 
       success: true, 
-      message: "You are now in control of this chat",
-      notificationId: notificationData.id 
+      message: "You are now in control of this chat"
     });
 
   } catch (error) {
