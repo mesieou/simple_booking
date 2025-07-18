@@ -35,6 +35,19 @@ export async function signUpAction(formData: FormData) {
     throw new Error("Failed to create user");
   }
 
+  // Check if user already exists (Supabase returns success for existing users)
+  if (data.user && !data.session) {
+    throw new Error("An account with this email already exists. Please sign in instead.");
+  }
+
+  // Check if user was created but needs email confirmation
+  if (data.user && !data.user.email_confirmed_at) {
+    redirect("/sign-in?message=Check your email to confirm your account");
+  } else if (data.session) {
+    // User was created and is already signed in
+    redirect("/protected");
+  }
+
   redirect("/sign-in?message=Check your email to confirm your account");
 }
 

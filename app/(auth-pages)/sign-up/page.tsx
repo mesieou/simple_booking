@@ -46,7 +46,7 @@ export default function SignUp() {
       // Use consistent site URL configuration
       const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://skedy.io';
       
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -65,16 +65,45 @@ export default function SignUp() {
         throw error;
       }
 
-      // Refresh the session to update the auth context
-      await refreshSession();
-      
-      // Show success message
-      toast({
-        title: "Sign up successful",
-        description: "Please check your email to complete the registration. You'll be automatically signed in after verification.",
-      });
+      // Check if user already exists (Supabase returns success for existing users)
+      if (data.user && !data.session) {
+        // User exists but no session means they need to confirm email or sign in
+        toast({
+          title: "Account already exists",
+          description: "An account with this email already exists. Please sign in instead.",
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
 
-      // The middleware will handle the redirect
+      // Check if user was created but needs email confirmation
+      if (data.user && !data.user.email_confirmed_at) {
+        // Refresh the session to update the auth context
+        await refreshSession();
+        
+        // Show success message for new user
+        toast({
+          title: "Sign up successful",
+          description: "Please check your email to complete the registration. You'll be automatically signed in after verification.",
+        });
+      } else if (data.session) {
+        // User was created and is already signed in
+        toast({
+          title: "Sign up successful",
+          description: "Your account has been created and you're now signed in!",
+        });
+        
+        // Redirect to protected area
+        if (returnUrl) {
+          const decodedReturnUrl = decodeURIComponent(returnUrl);
+          router.push(decodedReturnUrl);
+        } else {
+          router.push('/protected');
+        }
+      }
+
+      // The middleware will handle the redirect for email confirmation cases
     } catch (error: any) {
       toast({
         title: "Sign up error",
