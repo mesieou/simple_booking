@@ -6,6 +6,9 @@ const NOTIFICATIONS_TABLE_NAME = 'notifications';
 
 export type NotificationStatus = 'pending' | 'attending' | 'provided_help' | 'ignored' | 'wrong_activation';
 
+// NEW: Notification types for different purposes
+export type NotificationType = 'escalation' | 'booking' | 'system';
+
 // NEW: Delivery status tracking
 export type DeliveryStatus = 'pending' | 'sent' | 'delivered' | 'read' | 'failed' | 'retry_scheduled';
 
@@ -16,6 +19,8 @@ export interface NotificationData {
   chatSessionId: string;
   message: string;
   status: NotificationStatus;
+  // NEW: Notification type to distinguish between different notification purposes
+  notificationType?: NotificationType;
   // NEW: Delivery tracking fields
   deliveryStatus?: DeliveryStatus;
   deliveryAttempts?: number;
@@ -47,6 +52,8 @@ export class Notification {
   chatSessionId: string;
   message: string;
   status: NotificationStatus;
+  // NEW: Notification type
+  notificationType?: NotificationType;
   // NEW: Delivery tracking properties
   deliveryStatus?: DeliveryStatus;
   deliveryAttempts?: number;
@@ -64,6 +71,7 @@ export class Notification {
     this.chatSessionId = data.chatSessionId;
     this.message = data.message;
     this.status = data.status;
+    this.notificationType = data.notificationType;
     this.deliveryStatus = data.deliveryStatus;
     this.deliveryAttempts = data.deliveryAttempts;
     this.lastDeliveryAttempt = data.lastDeliveryAttempt;
@@ -80,6 +88,8 @@ export class Notification {
       chatSessionId: row.chatSessionId,
       message: row.message,
       status: row.status,
+      // NEW: Map notification type
+      notificationType: row.notificationType,
       // NEW: Map delivery fields
       deliveryStatus: row.deliveryStatus,
       deliveryAttempts: row.deliveryAttempts,
@@ -95,6 +105,7 @@ export class Notification {
     chatSessionId: string;
     message: string;
     status: NotificationStatus;
+    notificationType?: NotificationType;
   }): Promise<Notification> {
     const supabase = getEnvironmentServiceRoleClient();
     const { data: row, error } = await supabase
@@ -104,6 +115,7 @@ export class Notification {
         chatSessionId: data.chatSessionId,
         message: data.message,
         status: data.status,
+        notificationType: data.notificationType || 'escalation', // Default to escalation for backward compatibility
       })
       .select()
       .single();

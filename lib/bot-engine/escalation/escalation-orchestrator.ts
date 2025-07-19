@@ -155,7 +155,7 @@ async function checkForEscalationTrigger(
       phoneNumber: currentContext.currentParticipant.customerWhatsappNumber
     });
     
-    const language = currentContext.participantPreferences.language === 'es' ? 'es' : 'en';
+    const language = 'en'; // Always use English templates since only English templates exist
     const t = i18n[language];
     
     try {
@@ -332,7 +332,7 @@ async function sendEscalationNotification(
   customerPhoneNumber?: string,
   escalationReason?: string
 ): Promise<string | null> {
-  const lang = language === 'es' ? 'es' : 'en';
+  const lang = 'en'; // Always use English for consistency
   const t = i18n[lang];
   const sender = new WhatsappSender();
   const dashboardLink = `${getSiteUrl()}/protected?sessionId=${chatSessionId}`;

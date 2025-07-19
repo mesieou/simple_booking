@@ -6,6 +6,7 @@ import { Service } from '@/lib/database/models/service';
 import { Business } from '@/lib/database/models/business';
 import { CalendarSettings } from '@/lib/database/models/calendar-settings';
 import { DateTime } from 'luxon';
+import { GenericNotificationService } from '@/lib/bot-engine/services/generic-notification-service';
 
 // Simple phone number formatting utility
 const formatPhoneForDisplay = (normalizedPhone: string): string => {
@@ -167,6 +168,14 @@ export const createBookingHandler: IndividualStepHandler = {
       const newBooking = new Booking(bookingData);
       const savedBooking = await newBooking.add() as BookingData & { id: string };
       console.log('[CreateBooking] Booking successfully created:', savedBooking.id);
+      
+      // Send booking notifications to admin and super admin
+      try {
+        await sendBookingNotifications(savedBooking, currentGoalData, chatContext);
+      } catch (notificationError) {
+        console.error('[CreateBooking] Failed to send booking notifications:', notificationError);
+        // Don't fail the booking creation if notifications fail
+      }
 
       // CRITICAL SECURITY FIX: Mark quote as "accepted" since it's now used for a confirmed booking
       try {
@@ -408,3 +417,100 @@ export const createBookingHandler: IndividualStepHandler = {
     }
   }
 };
+
+// Helper function to send booking notifications
+async function sendBookingNotifications(
+  savedBooking: BookingData & { id: string },
+  currentGoalData: any,
+  chatContext: any
+): Promise<void> {
+  console.log('[CreateBooking] Sending booking notifications...');
+  
+  try {
+    // Get quote details for comprehensive notification
+    const quote = await Quote.getById(savedBooking.quoteId);
+    if (!quote) {
+      console.warn('[CreateBooking] Could not fetch quote for notification');
+      return;
+    }
+    
+    // Get service details
+    const service = await Service.getById(quote.getPrimaryServiceId());
+    if (!service) {
+      console.warn('[CreateBooking] Could not fetch service for notification');
+      return;
+    }
+    
+    // Get customer name and phone
+    const customerName = currentGoalData.customerName || 'Customer';
+    const customerPhone = chatContext.currentParticipant.customerWhatsappNumber || '';
+    const formattedCustomerPhone = customerPhone ? formatPhoneForDisplay(customerPhone) : '';
+    
+    // Get selected services display
+    const selectedServices = currentGoalData.selectedServices || [currentGoalData.selectedService].filter(Boolean);
+    const serviceDetails = currentGoalData.serviceDetails || [];
+    
+    // Format services display
+    const formatServicesForNotification = (services: any[], details: any[]) => {
+      if (services.length === 1) {
+        return services[0]?.name || service.name;
+      }
+      
+      if (details && details.length > 0) {
+        return details.map((detail: any, index: number) => 
+          `${index + 1}. ${detail.name} - $${detail.cost.toFixed(2)}`
+        ).join('\n');
+      }
+      
+      return services.map((service: any, index: number) => 
+        `${index + 1}. ${service?.name || 'Service'}`
+      ).join('\n');
+    };
+    
+    // Create booking datetime object for formatting
+    const bookingDateTime = DateTime.fromISO(savedBooking.dateTime);
+    
+    // Calculate payment details from quote
+    let amountPaid = 0;
+    let amountOwed = quote.totalJobCostEstimation;
+    
+    try {
+      const paymentDetails = await quote.calculatePaymentDetails();
+      if (paymentDetails.depositAmount && paymentDetails.depositAmount > 0) {
+        const bookingFee = 4;
+        amountPaid = paymentDetails.depositAmount + bookingFee;
+        amountOwed = paymentDetails.remainingBalance || 0;
+      }
+    } catch (error) {
+      console.warn('[CreateBooking] Could not calculate payment details for notification');
+    }
+    
+    // Prepare booking details for notification
+    const bookingDetails = {
+      bookingId: savedBooking.id,
+      customerName,
+      customerPhone: formattedCustomerPhone,
+      serviceName: service.name,
+      servicesDisplay: formatServicesForNotification(selectedServices, serviceDetails),
+      isMultiService: selectedServices.length > 1,
+      formattedDate: bookingDateTime.toLocaleString(DateTime.DATE_FULL),
+      formattedTime: bookingDateTime.toLocaleString(DateTime.TIME_SIMPLE),
+      location: service.mobile ? quote.dropOff : quote.pickUp,
+      totalCost: quote.totalJobCostEstimation,
+      amountPaid: amountPaid,
+      amountOwed: amountOwed
+    };
+    
+    // Send notification using the generic notification service
+    await GenericNotificationService.sendBookingNotification(
+      savedBooking.businessId,
+      bookingDetails
+    );
+    
+    console.log('[CreateBooking] ✅ Booking notifications sent successfully');
+    
+  } catch (error) {
+    console.error('[CreateBooking] Error sending booking notifications:', error);
+    throw error;
+  }
+}
