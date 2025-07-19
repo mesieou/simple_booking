@@ -175,7 +175,7 @@ export class GenericNotificationService {
       // Create notification record in database
       const notification = await Notification.create({
         businessId,
-        chatSessionId: chatSessionId || 'system-generated', // Use system-generated for non-chat notifications
+        chatSessionId: chatSessionId || null, // Allow NULL for non-chat notifications like bookings
         message: content.message,
         status: 'pending',
         notificationType: type

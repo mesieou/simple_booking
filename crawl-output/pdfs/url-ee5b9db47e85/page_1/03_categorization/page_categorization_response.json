@@ -20,10 +20,10 @@
     },
     {
       "chunkOrder": 3,
-      "chunkText": "3. What is Luisa’s deposit policy? ● A 50% deposit is required to secure an appointment. Deposit can be paid via bank transfer to: makefile CopyEdit Name: Lisa Bernal Number: +61 451 375 263 ● ● The deposit is refundable only if: ○ The cancellation is made at least 24 hours in advance, or ○ The appointment is rescheduled more than 24 hours ahead.",
+      "chunkText": "3. What is Luisa’s deposit policy? ● A 50% deposit is required to secure an appointment. Deposit can be paid via bank transfer to: makefile Copy Edit Name: Lisa Bernal Number: +61 451 375 263 ● ● The deposit is refundable only if: ○ The cancellation is made at least 24 hours in advance, or ○ The appointment is rescheduled more than 24 hours ahead.",
       "category": 6,
       "categoryName": "terms & conditions / legal policies",
-      "confidence": 0.95,
+      "confidence": 0.85,
       "preChunkSourceIndex": 0
     },
     {
@@ -31,7 +31,7 @@
       "chunkText": "4. What if I can’t pay the deposit? Some clients have been allowed to pay the full amount in cash on the day of the appointment if they don’t have a local bank account (e.g., only Bancolombia available). Luisa seems flexible on this on a case-by-case basis.",
       "category": 5,
       "categoryName": "faq",
-      "confidence": 0.85,
+      "confidence": 0.9,
       "preChunkSourceIndex": 0
     }
   ],

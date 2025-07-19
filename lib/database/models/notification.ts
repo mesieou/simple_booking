@@ -16,7 +16,7 @@ export interface NotificationData {
   id: string;
   createdAt: string;
   businessId: string;
-  chatSessionId: string;
+  chatSessionId: string | null;
   message: string;
   status: NotificationStatus;
   // NEW: Notification type to distinguish between different notification purposes
@@ -34,7 +34,7 @@ export interface DashboardNotificationData {
   id: string;
   createdAt: string;
   businessId: string;
-  chatSessionId: string;
+  chatSessionId: string | null;
   message: string;
   status: NotificationStatus;
   channelUserId: string;
@@ -49,7 +49,7 @@ export class Notification {
   id: string;
   createdAt: string;
   businessId: string;
-  chatSessionId: string;
+  chatSessionId: string | null;
   message: string;
   status: NotificationStatus;
   // NEW: Notification type
@@ -102,7 +102,7 @@ export class Notification {
 
   static async create(data: {
     businessId: string;
-    chatSessionId: string;
+    chatSessionId: string | null;
     message: string;
     status: NotificationStatus;
     notificationType?: NotificationType;
