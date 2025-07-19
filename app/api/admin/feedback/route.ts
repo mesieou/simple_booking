@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ChatSession } from '@/lib/database/models/chat-session';
 import { getEnvironmentServerClient, getEnvironmentServiceRoleClient } from '@/lib/database/supabase/environment';
-import { WhatsappSender } from '@/lib/bot-engine/channels/whatsapp/whatsapp-message-sender';
+import { GenericNotificationService } from '@/lib/bot-engine/services/generic-notification-service';
 import { Business } from '@/lib/database/models/business';
 
 interface FeedbackRequest {
@@ -12,20 +12,6 @@ interface FeedbackRequest {
   timestamp: string;
 }
 
-// Admin numbers for negative feedback notifications
-const ADMIN_NOTIFICATION_NUMBERS = [
-  '+61450549485',
-  '+61473164581',
-  '+573043368483',  // Your cousin's number
-];
-
-// Helper function to get admin notification numbers
-function getAdminNotificationNumbers(): string[] {
-  // You can add logic here to fetch admin numbers from database in the future
-  // For now, return the static list
-  return ADMIN_NOTIFICATION_NUMBERS.filter(num => num && num.length > 0);
-}
-
 async function sendNegativeFeedbackNotification(
   sessionId: string,
   messageContent: string,
@@ -34,67 +20,50 @@ async function sendNegativeFeedbackNotification(
   businessId: string
 ) {
   try {
-    console.log('[Feedback Notification] Sending negative feedback alert to admins');
+    console.log('[Feedback Notification] Sending negative feedback alert to super admins');
 
-    // Get business WhatsApp configuration
-    const business = await Business.getById(businessId);
-    let businessPhoneNumberId = business?.whatsappPhoneNumberId;
+    // Format notification content
+    const title = "🚨 NEGATIVE BOT FEEDBACK ALERT 🚨";
     
-    // Fallback to environment variable if no business-specific config
-    if (!businessPhoneNumberId) {
-      businessPhoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-    }
-
-    if (!businessPhoneNumberId) {
-      console.error('[Feedback Notification] No WhatsApp Phone Number ID configured');
-      return;
-    }
-
-    // Create notification message
-    const notificationMessage = `🚨 *NEGATIVE BOT FEEDBACK ALERT* 🚨
-
-📱 *Customer:* ${customerPhoneNumber}
-📝 *Session ID:* ${sessionId}
-🏢 *Business ID:* ${businessId}
-
-🤖 *Bot Message:*
-"${messageContent}"
-
-${feedbackText ? `💬 *Admin Feedback:*
-"${feedbackText}"` : ''}
-
-⏰ *Time:* ${new Date().toLocaleString()}
-
-🔗 *Action Required:* Please review this conversation in the admin dashboard to improve bot responses.
-
----
-This is an automated alert for negative bot feedback.`;
-
-    const whatsappSender = new WhatsappSender();
-    const adminNumbers = getAdminNotificationNumbers();
+    let message = `📱 **Customer:** ${customerPhoneNumber}\n`;
+    message += `📝 **Session ID:** ${sessionId}\n`;
+    message += `🏢 **Business ID:** ${businessId}\n\n`;
     
-    console.log(`[Feedback Notification] Sending to ${adminNumbers.length} admin(s):`, adminNumbers);
+    message += `🤖 **Bot Message:**\n`;
+    message += `"${messageContent}"\n\n`;
+    
+    if (feedbackText) {
+      message += `💬 **Admin Feedback:**\n`;
+      message += `"${feedbackText}"\n\n`;
+    }
+    
+    message += `⏰ **Time:** ${new Date().toLocaleString()}\n\n`;
+    message += `🔗 **Action Required:** Please review this conversation in the admin dashboard to improve bot responses.\n\n`;
+    message += `---\n`;
+    message += `This is an automated alert for negative bot feedback.`;
 
-    // Send notification to all admin numbers
-    const notificationPromises = adminNumbers.map(async (adminNumber) => {
-      try {
-        console.log(`[Feedback Notification] Sending alert to admin: ${adminNumber}`);
-        await whatsappSender.sendMessage(
-          adminNumber,
-          { text: notificationMessage },
-          businessPhoneNumberId!
-        );
-        console.log(`[Feedback Notification] Alert sent successfully to ${adminNumber}`);
-      } catch (error) {
-        console.error(`[Feedback Notification] Failed to send alert to ${adminNumber}:`, error);
+    // Use the new GenericNotificationService to send to super admins
+    await GenericNotificationService.sendNotification({
+      type: 'system', // Use 'system' type for negative feedback
+      businessId,
+      chatSessionId: sessionId,
+      content: {
+        title,
+        message,
+        details: {
+          feedbackType: 'thumbs_down',
+          customerPhoneNumber,
+          messageContent,
+          feedbackText,
+          timestamp: new Date().toISOString()
+        }
       }
     });
 
-    await Promise.allSettled(notificationPromises);
-    console.log('[Feedback Notification] Notification process completed');
+    console.log('[Feedback Notification] ✅ Negative feedback notification sent to super admins');
 
   } catch (error) {
-    console.error('[Feedback Notification] Error in notification system:', error);
+    console.error('[Feedback Notification] ❌ Error in notification system:', error);
     // Don't throw - notification failure shouldn't block feedback saving
   }
 }

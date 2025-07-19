@@ -13,8 +13,8 @@
     {
       "chunkOrder": 2,
       "chunkText": "2. Does Luisa accept walk-ins or same-day bookings? Luisa may accept same-day bookings if she has availability, but it's always best to confirm through WhatsApp. She frequently shares availability for same-day or next-day appointments when asked.",
-      "category": 3,
-      "categoryName": "booking or scheduling",
+      "category": 5,
+      "categoryName": "faq",
       "confidence": 0.9,
       "preChunkSourceIndex": 0
     },

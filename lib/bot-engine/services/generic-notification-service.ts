@@ -40,7 +40,7 @@ export class GenericNotificationService {
     
     try {
       // Find recipients if not provided
-      const targetRecipients = recipients || await this.findNotificationRecipients(businessId);
+      const targetRecipients = recipients || await this.findNotificationRecipients(businessId, type);
       
       if (targetRecipients.length === 0) {
         console.warn(`${LOG_PREFIX} No recipients found for ${type} notification`);
@@ -63,19 +63,26 @@ export class GenericNotificationService {
   /**
    * Finds appropriate recipients for notifications
    */
-  static async findNotificationRecipients(businessId: string): Promise<NotificationRecipient[]> {
+  static async findNotificationRecipients(businessId: string, type?: NotificationType): Promise<NotificationRecipient[]> {
     const recipients: NotificationRecipient[] = [];
     
     try {
-      // Find business admin/provider
+      // For system notifications (like negative feedback), only send to super admins
+      if (type === 'system') {
+        const superAdmins = await this.findSuperAdmins();
+        recipients.push(...superAdmins);
+        console.log(`${LOG_PREFIX} System notification: Found ${recipients.length} super admin recipients`);
+        return recipients;
+      }
+      
+      // For other notifications (booking, escalation), send to both business admins and super admins
       const businessAdmins = await this.findBusinessAdmins(businessId);
       recipients.push(...businessAdmins);
       
-      // Find super admin
       const superAdmins = await this.findSuperAdmins();
       recipients.push(...superAdmins);
       
-      console.log(`${LOG_PREFIX} Found ${recipients.length} notification recipients`);
+      console.log(`${LOG_PREFIX} Found ${recipients.length} notification recipients (${businessAdmins.length} business admins, ${superAdmins.length} super admins)`);
       return recipients;
       
     } catch (error) {
