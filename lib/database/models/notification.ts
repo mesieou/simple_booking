@@ -171,14 +171,18 @@ export class Notification {
       throw updateError;
     }
 
-    // 2. Update the associated chat session status to completed
-    try {
-      const { ChatSession } = await import('./chat-session');
-      await ChatSession.updateStatus(notification.chatSessionId, 'completed');
-      console.log(`[NotificationDB] Updated chat session ${notification.chatSessionId} status to 'completed'.`);
-    } catch (sessionError) {
-      console.error(`[NotificationDB] Failed to update chat session ${notification.chatSessionId}:`, sessionError);
-      // Log error but proceed as notification resolution is more critical
+    // 2. Update the associated chat session status to completed (only if session exists)
+    if (notification.chatSessionId) {
+      try {
+        const { ChatSession } = await import('./chat-session');
+        await ChatSession.updateStatus(notification.chatSessionId, 'completed');
+        console.log(`[NotificationDB] Updated chat session ${notification.chatSessionId} status to 'completed'.`);
+      } catch (sessionError) {
+        console.error(`[NotificationDB] Failed to update chat session ${notification.chatSessionId}:`, sessionError);
+        // Log error but proceed as notification resolution is more critical
+      }
+    } else {
+      console.log(`[NotificationDB] No chat session to update for notification ${notification.id}`);
     }
 
     return this.fromRow(updatedRow);

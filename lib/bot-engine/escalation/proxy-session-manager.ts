@@ -91,11 +91,13 @@ export async function getProxySessionByAdmin(adminPhone: string): Promise<ProxyS
     if (!notification) return null;
     
     // Get customer phone from session data
-    const customerPhone = await getCustomerPhoneFromSession(notification.chatSessionId);
+    const customerPhone = notification.chatSessionId ? 
+      await getCustomerPhoneFromSession(notification.chatSessionId) : 
+      null;
     
     return {
       notificationId: notification.id,
-      sessionId: notification.chatSessionId,
+      sessionId: notification.chatSessionId || '', // Handle null case
       adminPhone: adminPhone,
       customerPhone: customerPhone || '', // Now properly retrieved from session
       businessPhoneNumberId: '', // We'll get this from business
