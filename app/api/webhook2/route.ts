@@ -280,7 +280,7 @@ export async function POST(req: NextRequest) {
 
       const participant: ConversationalParticipant = {
         id: parsedMessage.senderId,
-        type: isAdmin ? 'business' : 'customer',
+        type: 'customer', // Always treat as customer for booking flow - admin detection is handled separately
         businessWhatsappNumber: parsedMessage.businessWhatsappNumber,
         customerWhatsappNumber: parsedMessage.customerWhatsappNumber,
         creationTimestamp: parsedMessage.timestamp ? new Date(parsedMessage.timestamp) : new Date(),

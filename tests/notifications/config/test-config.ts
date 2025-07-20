@@ -32,105 +32,225 @@ export const NOTIFICATION_TEST_CONFIG = {
     NAME: 'Test Customer'
   },
 
-  // Test Booking Data
-  TEST_BOOKING: {
-    ID: randomUUID(),
-    QUOTE_ID: randomUUID(),
-    SERVICE_NAME: 'Gel Manicure',
-    FORMATTED_DATE: 'July 21, 2025',
-    FORMATTED_TIME: '8:00 AM',
-    TOTAL_COST: 44.00,
-    AMOUNT_PAID: 24.00,
-    AMOUNT_OWED: 20.00,
-    LOCATION: 'Apt 111, 9 Dryburgh st, West Melbourne, VIC 3003'
-  },
-
   // Test Session Data
   TEST_SESSION: {
     ID: randomUUID(),
-    CHANNEL_USER_ID: '61452490450'
+    CUSTOMER_PHONE: '+61452490450'
   },
 
-  // Test Environment Variables
-  ENV: {
-    WHATSAPP_PHONE_NUMBER_ID: '684078768113901',
-    SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY!
+  // Test Booking Data
+  TEST_BOOKING: {
+    ID: 'bk_' + randomUUID().substring(0, 8),
+    SERVICE_NAME: 'Gel Manicure',
+    DATE: '2025-07-21',
+    TIME: '08:00',
+    COST: 44.00,
+    PAID: 24.00,
+    OWED: 20.00
   },
 
-  // Expected notification messages
+  // Mock Recipients for Template Testing
+  MOCK_RECIPIENTS: {
+    ADMIN: {
+      userId: 'e4112649-a883-4f4d-a8f5-3f71cadf0863',
+      phoneNumber: '+61452678816',
+      name: 'Luisa Bernal',
+      role: 'admin',
+      isBusinessAdmin: true,
+      isSuperAdmin: false
+    },
+    SUPER_ADMIN: {
+      userId: 'c9107c0b-a48f-4925-8ec9-52fcf4bfdaco',
+      phoneNumber: '+61450549485',
+      name: 'juan bernal',
+      role: 'super_admin',
+      isBusinessAdmin: false,
+      isSuperAdmin: true
+    }
+  },
+
+  // Expected Message Content
   EXPECTED_MESSAGES: {
     BOOKING_NOTIFICATION_TITLE: '🎉 New Booking Confirmed!',
-    ESCALATION_NOTIFICATION_TITLE: '🚨 Customer Needs Assistance',
-    FEEDBACK_NOTIFICATION_TITLE: '🚨 NEGATIVE BOT FEEDBACK ALERT 🚨'
+    FEEDBACK_NOTIFICATION_TITLE: '⚠️ Negative Feedback Alert',
+    ESCALATION_NOTIFICATION_TITLE: '🚨 Human Assistance Required 🚨'
   }
 };
 
 /**
- * Mock WhatsApp Sender for testing
+ * Mock WhatsApp Sender for testing templates
  */
 export class MockWhatsAppSender {
-  static lastMessage: any = null;
-  static lastPhoneNumber: string | null = null;
-  static shouldFail = false;
-  static failureReason = 'Mock failure';
-
-  async sendMessage(phoneNumber: string, message: any, phoneNumberId: string): Promise<string | null> {
-    MockWhatsAppSender.lastMessage = message;
-    MockWhatsAppSender.lastPhoneNumber = phoneNumber;
-    
-    if (MockWhatsAppSender.shouldFail) {
-      throw new Error(MockWhatsAppSender.failureReason);
-    }
-    
-    return `mock-message-id-${Date.now()}`;
-  }
+  private static templateCalls: Array<{
+    recipientPhone: string;
+    templateName: string;
+    languageCode: string;
+    bodyParams: string[];
+    businessPhoneNumberId: string;
+    headerParams: string[];
+    headerMedia?: any;
+  }> = [];
+  
+  private static regularCalls: Array<{
+    recipientPhone: string;
+    message: any;
+    businessPhoneNumberId: string;
+  }> = [];
+  
+  private static shouldSucceed = true;
+  private static successMessageId = 'wamid_mock_success';
+  private static errorMessage = 'Mock template error';
 
   static reset() {
-    this.lastMessage = null;
-    this.lastPhoneNumber = null;
-    this.shouldFail = false;
-    this.failureReason = 'Mock failure';
+    this.templateCalls = [];
+    this.regularCalls = [];
+    this.shouldSucceed = true;
+    this.successMessageId = 'wamid_mock_success';
+    this.errorMessage = 'Mock template error';
+  }
+
+  static mockTemplateSuccess(messageId: string) {
+    this.shouldSucceed = true;
+    this.successMessageId = messageId;
+  }
+
+  static mockTemplateError(error: string) {
+    this.shouldSucceed = false;
+    this.errorMessage = error;
+  }
+
+  static getTemplateCalls() {
+    return this.templateCalls;
+  }
+
+  static getRegularCalls() {
+    return this.regularCalls;
+  }
+
+  // Mock sendTemplateMessage method
+  async sendTemplateMessage(
+    recipientId: string,
+    templateName: string,
+    languageCode: string,
+    bodyParameters: string[],
+    businessPhoneNumberId: string,
+    headerParameters: string[] = [],
+    headerMedia?: any
+  ): Promise<string | null> {
+    
+    // Record the call
+    MockWhatsAppSender.templateCalls.push({
+      recipientPhone: recipientId,
+      templateName,
+      languageCode,
+      bodyParams: bodyParameters,
+      businessPhoneNumberId,
+      headerParams: headerParameters,
+      headerMedia
+    });
+
+    if (!MockWhatsAppSender.shouldSucceed) {
+      throw new Error(MockWhatsAppSender.errorMessage);
+    }
+
+    return MockWhatsAppSender.successMessageId;
+  }
+
+  // Mock regular sendMessage method
+  async sendMessage(
+    recipientId: string,
+    message: any,
+    businessPhoneNumberId: string
+  ): Promise<string | null> {
+    
+    // Record the call
+    MockWhatsAppSender.regularCalls.push({
+      recipientPhone: recipientId,
+      message,
+      businessPhoneNumberId
+    });
+
+    if (!MockWhatsAppSender.shouldSucceed) {
+      throw new Error(MockWhatsAppSender.errorMessage);
+    }
+
+    return MockWhatsAppSender.successMessageId;
   }
 }
 
 /**
- * Test utilities for database operations
+ * Test utilities for notification testing
  */
-export const TestUtils = {
+export class TestUtils {
+  
   /**
-   * Create a test notification record directly
+   * Clean up test data from database
    */
-  async createTestNotification(chatSessionId: string | null = null) {
-    const { Notification } = await import('@/lib/database/models/notification');
-    
-    return await Notification.create({
-      businessId: NOTIFICATION_TEST_CONFIG.TEST_BUSINESS.ID,
-      chatSessionId: chatSessionId,
-      message: 'Test notification message',
-      status: 'pending',
-      notificationType: 'booking'
-    });
-  },
+  static async cleanupTestData(): Promise<void> {
+    try {
+      const { getEnvironmentServiceRoleClient } = await import('@/lib/database/supabase/environment');
+      const supa = getEnvironmentServiceRoleClient();
+      
+      // Clean up test notifications
+      await supa
+        .from('notifications')
+        .delete()
+        .eq('businessId', NOTIFICATION_TEST_CONFIG.TEST_BUSINESS.ID)
+        .gte('created_at', new Date(Date.now() - 5 * 60 * 1000).toISOString()); // Last 5 minutes
+      
+    } catch (error) {
+      console.warn('[TestUtils] Could not clean up test data:', error);
+    }
+  }
 
   /**
-   * Clean up test data
+   * Get recent notifications for testing
    */
-  async cleanupTestData() {
-    const { getEnvironmentServiceRoleClient } = await import('@/lib/database/supabase/environment');
-    const supa = getEnvironmentServiceRoleClient();
-    
-    // Clean up test notifications
-    await supa
-      .from('notifications')
-      .delete()
-      .ilike('message', '%test%');
-  },
+  static async getRecentNotifications(): Promise<Array<{
+    id: string;
+    businessId: string;
+    chatSessionId: string | null;
+    message: string;
+    status: string;
+    notificationType: string;
+    createdAt: string;
+  }>> {
+    try {
+      const { getEnvironmentServiceRoleClient } = await import('@/lib/database/supabase/environment');
+      const supa = getEnvironmentServiceRoleClient();
+      
+      const { data, error } = await supa
+        .from('notifications')
+        .select('*')
+        .eq('businessId', NOTIFICATION_TEST_CONFIG.TEST_BUSINESS.ID)
+        .gte('created_at', new Date(Date.now() - 5 * 60 * 1000).toISOString()) // Last 5 minutes
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('[TestUtils] Error fetching recent notifications:', error);
+        return [];
+      }
+      
+      return (data || []).map(row => ({
+        id: row.id,
+        businessId: row.businessId,
+        chatSessionId: row.chatSessionId,
+        message: row.message,
+        status: row.status,
+        notificationType: row.notificationType || 'escalation',
+        createdAt: row.created_at
+      }));
+      
+    } catch (error) {
+      console.error('[TestUtils] Exception fetching recent notifications:', error);
+      return [];
+    }
+  }
 
   /**
-   * Generate test booking details
+   * Generate test booking details for consistent testing
    */
-  generateTestBookingDetails(overrides: any = {}) {
+  static generateTestBookingDetails() {
     return {
       bookingId: NOTIFICATION_TEST_CONFIG.TEST_BOOKING.ID,
       customerName: NOTIFICATION_TEST_CONFIG.TEST_CUSTOMER_USER.NAME,
@@ -138,13 +258,85 @@ export const TestUtils = {
       serviceName: NOTIFICATION_TEST_CONFIG.TEST_BOOKING.SERVICE_NAME,
       servicesDisplay: NOTIFICATION_TEST_CONFIG.TEST_BOOKING.SERVICE_NAME,
       isMultiService: false,
-      formattedDate: NOTIFICATION_TEST_CONFIG.TEST_BOOKING.FORMATTED_DATE,
-      formattedTime: NOTIFICATION_TEST_CONFIG.TEST_BOOKING.FORMATTED_TIME,
-      location: NOTIFICATION_TEST_CONFIG.TEST_BOOKING.LOCATION,
-      totalCost: NOTIFICATION_TEST_CONFIG.TEST_BOOKING.TOTAL_COST,
-      amountPaid: NOTIFICATION_TEST_CONFIG.TEST_BOOKING.AMOUNT_PAID,
-      amountOwed: NOTIFICATION_TEST_CONFIG.TEST_BOOKING.AMOUNT_OWED,
-      ...overrides
+      formattedDate: 'July 21, 2025',
+      formattedTime: '8:00 AM',
+      location: 'Apt 111, 9 Dryburgh st, West Melbourne, VIC 3003',
+      totalCost: NOTIFICATION_TEST_CONFIG.TEST_BOOKING.COST,
+      amountPaid: NOTIFICATION_TEST_CONFIG.TEST_BOOKING.PAID,
+      amountOwed: NOTIFICATION_TEST_CONFIG.TEST_BOOKING.OWED
     };
   }
-}; 
+
+  /**
+   * Generate test feedback details for consistent testing
+   */
+  static generateTestFeedbackDetails() {
+    return {
+      customerName: NOTIFICATION_TEST_CONFIG.TEST_CUSTOMER_USER.NAME,
+      feedbackText: 'The service was not what I expected and I am disappointed.',
+      businessName: NOTIFICATION_TEST_CONFIG.TEST_BUSINESS.NAME,
+      timestamp: new Date().toLocaleDateString()
+    };
+  }
+
+  /**
+   * Validate template call structure
+   */
+  static validateTemplateCall(call: any, expectedTemplate: string, expectedHeaderCount: number, expectedBodyCount: number) {
+    expect(call).toBeDefined();
+    expect(call.templateName).toBe(expectedTemplate);
+    expect(call.languageCode).toBe('en');
+    expect(call.headerParams).toHaveLength(expectedHeaderCount);
+    expect(call.bodyParams).toHaveLength(expectedBodyCount);
+    
+    // Validate no empty parameters
+    for (const param of call.headerParams) {
+      expect(param).toBeTruthy();
+      expect(param.trim().length).toBeGreaterThan(0);
+    }
+    
+    for (const param of call.bodyParams) {
+      expect(param).toBeTruthy();
+      expect(param.trim().length).toBeGreaterThan(0);
+    }
+  }
+
+  /**
+   * Validate WhatsApp parameter compliance
+   */
+  static validateWhatsAppCompliance(params: string[]) {
+    for (const param of params) {
+      // Check for forbidden characters
+      expect(param).not.toContain('\n');
+      expect(param).not.toContain('\t');
+      
+      // Check length limits
+      expect(param.length).toBeLessThanOrEqual(1024);
+      
+      // Check for excessive spaces
+      expect(param).not.toMatch(/\s{4,}/);
+    }
+  }
+
+  /**
+   * Wait for async operations to complete
+   */
+  static async waitForAsync(ms: number = 100): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Create a test notification directly in database
+   */
+  static async createTestNotification(type: 'booking' | 'system' | 'escalation', chatSessionId?: string) {
+    const { Notification } = await import('@/lib/database/models/notification');
+    
+    return await Notification.create({
+      businessId: NOTIFICATION_TEST_CONFIG.TEST_BUSINESS.ID,
+      chatSessionId: chatSessionId || null,
+      message: `Test ${type} notification`,
+      status: 'pending',
+      notificationType: type
+    });
+  }
+} 

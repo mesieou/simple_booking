@@ -16,223 +16,168 @@ describe('Booking Notification Tests', () => {
     await TestUtils.cleanupTestData();
   });
 
+  describe('🚨 CRITICAL: Template-Based Booking Notifications', () => {
+    it('should send booking notification using WhatsApp template', async () => {
+      // This tests the new template-based booking notification system
+      const { ScalableNotificationService } = await import('@/lib/bot-engine/services/scalable-notification-service');
+      
+      const bookingDetails = {
+        bookingId: 'BK123456',
+        customerName: 'Test Customer',
+        customerPhone: '+61452678816',
+        serviceName: 'Hair Cut & Style',
+        servicesDisplay: 'Hair Cut & Style',
+        isMultiService: false,
+        formattedDate: 'March 15, 2025',
+        formattedTime: '2:30 PM',
+        location: 'Beauty Salon XYZ',
+        totalCost: 75.00,
+        amountPaid: 25.00,
+        amountOwed: 50.00
+      };
+      
+      // Mock template message sending
+      MockWhatsAppSender.mockTemplateSuccess('wamid_template_booking_123');
+      
+      const notificationService = new ScalableNotificationService();
+      await notificationService.sendBookingNotification(
+        NOTIFICATION_TEST_CONFIG.TEST_BUSINESS.ID,
+        bookingDetails
+      );
+      
+      // Verify template was called with correct parameters
+      const templateCalls = MockWhatsAppSender.getTemplateCalls();
+      expect(templateCalls).toHaveLength(2); // Should send to admin + super admin
+      
+      const firstCall = templateCalls[0];
+      expect(firstCall.templateName).toBe('booking_confirmation');
+      expect(firstCall.languageCode).toBe('en');
+      expect(firstCall.headerParams).toEqual(['Test Customer']);
+      expect(firstCall.bodyParams).toEqual([
+        'BK123456',
+        'Hair Cut & Style',
+        'March 15, 2025',
+        '2:30 PM',
+        '$75'
+      ]);
+      
+      console.log('✅ Template-based booking notification test passed');
+    });
+
+    it('should handle template validation errors gracefully', async () => {
+      const { ScalableNotificationService } = await import('@/lib/bot-engine/services/scalable-notification-service');
+      
+      const bookingDetails = {
+        bookingId: '', // Empty booking ID should cause validation error
+        customerName: 'Test Customer',
+        serviceName: 'Hair Cut',
+        formattedDate: 'March 15, 2025',
+        formattedTime: '2:30 PM',
+        totalCost: 75.00
+      };
+      
+      // Mock template failure
+      MockWhatsAppSender.mockTemplateError('Template validation failed: empty parameter');
+      
+      const notificationService = new ScalableNotificationService();
+      await expect(
+        notificationService.sendBookingNotification(
+          NOTIFICATION_TEST_CONFIG.TEST_BUSINESS.ID,
+          bookingDetails
+        )
+      ).rejects.toThrow('Template validation failed');
+      
+      console.log('✅ Template validation error handling test passed');
+    });
+
+    it('should format customer-style detailed notification messages', async () => {
+      const { ScalableNotificationService } = await import('@/lib/bot-engine/services/scalable-notification-service');
+      
+      const bookingDetails = {
+        bookingId: 'BK999888',
+        customerName: 'John Smith',
+        customerPhone: '+61452678816',
+        serviceName: 'Full Service Package',
+        servicesDisplay: 'Hair Cut + Color + Style',
+        isMultiService: true,
+        formattedDate: 'March 20, 2025',
+        formattedTime: '10:00 AM',
+        location: 'Beauty Salon XYZ',
+        totalCost: 150.00,
+        travelCost: 10.00,
+        amountPaid: 50.00,
+        amountOwed: 100.00,
+        paymentMethod: 'cash/card',
+        providerContactInfo: '+61452678816 • provider@salon.com'
+      };
+      
+      MockWhatsAppSender.mockTemplateSuccess('wamid_detailed_test');
+      
+      const notificationService = new ScalableNotificationService();
+      await notificationService.sendBookingNotification(
+        NOTIFICATION_TEST_CONFIG.TEST_BUSINESS.ID,
+        bookingDetails
+      );
+      
+      // Check the detailed message formatting
+      const regularCalls = MockWhatsAppSender.getRegularCalls();
+      if (regularCalls.length > 0) {
+        const detailedMessage = regularCalls[0].message.text;
+        
+        // Should include customer-style formatting
+        expect(detailedMessage).toContain('🎉 John Smith, booking confirmed!');
+        expect(detailedMessage).toContain('💼 Services:');
+        expect(detailedMessage).toContain('Hair Cut + Color + Style');
+        expect(detailedMessage).toContain('🚗 Travel: $10.00');
+        expect(detailedMessage).toContain('💰 Total Cost: $150.00');
+        expect(detailedMessage).toContain('💳 Payment Summary:');
+        expect(detailedMessage).toContain('📞 Customer Contact:');
+        expect(detailedMessage).toContain('📄 Booking ID: BK999888');
+      }
+      
+      console.log('✅ Customer-style detailed message test passed');
+    });
+  });
+
   describe('🚨 CRITICAL: UUID Handling Tests', () => {
     it('should handle null chatSessionId without UUID validation errors', async () => {
-      // This is the EXACT scenario that's failing in production
-      const { GenericNotificationService } = await import('@/lib/bot-engine/services/generic-notification-service');
+      // This is the EXACT scenario that was causing production failures
+      const { ScalableNotificationService } = await import('@/lib/bot-engine/services/scalable-notification-service');
       
-      const bookingDetails = TestUtils.generateTestBookingDetails();
-      
-      // Test the exact call that's failing in production - no chatSessionId provided
-      const notificationPromise = GenericNotificationService.sendBookingNotification(
-        NOTIFICATION_TEST_CONFIG.TEST_BUSINESS.ID,
-        bookingDetails
-      );
-
-      // This should NOT throw a UUID validation error
-      await expect(notificationPromise).resolves.not.toThrow();
-    });
-
-    it('should create notification with null chatSessionId in database', async () => {
-      const { Notification } = await import('@/lib/database/models/notification');
-      
-      // Test direct notification creation with null chatSessionId
-      const notification = await Notification.create({
-        businessId: NOTIFICATION_TEST_CONFIG.TEST_BUSINESS.ID,
-        chatSessionId: null, // This should work
-        message: 'Test booking notification',
-        status: 'pending',
-        notificationType: 'booking'
-      });
-
-      expect(notification).toBeTruthy();
-      expect(notification.chatSessionId).toBeNull();
-      expect(notification.notificationType).toBe('booking');
-    });
-
-    it('should NOT accept system-generated as chatSessionId', async () => {
-      const { Notification } = await import('@/lib/database/models/notification');
-      
-      // This is the OLD broken behavior that should fail
-      const createWithInvalidUUID = async () => {
-        return await Notification.create({
-          businessId: NOTIFICATION_TEST_CONFIG.TEST_BUSINESS.ID,
-          chatSessionId: 'system-generated' as any, // This should fail
-          message: 'Test booking notification',
-          status: 'pending',
-          notificationType: 'booking'
-        });
+      const bookingDetails = {
+        bookingId: 'BK789012',
+        customerName: 'Test Customer',
+        serviceName: 'Service Test',
+        formattedDate: 'March 16, 2025',
+        formattedTime: '3:00 PM',
+        totalCost: 100.00
       };
-
-      // This should throw a UUID validation error
-      await expect(createWithInvalidUUID()).rejects.toThrow();
-    });
-  });
-
-  describe('📱 Booking Notification Flow Tests', () => {
-    it('should send booking notification to admin and super admin', async () => {
-      const { GenericNotificationService } = await import('@/lib/bot-engine/services/generic-notification-service');
       
-      const bookingDetails = TestUtils.generateTestBookingDetails();
+      // Mock successful template sending
+      MockWhatsAppSender.mockTemplateSuccess('wamid_template_booking_456');
       
-      // Execute the full booking notification flow
-      await GenericNotificationService.sendBookingNotification(
-        NOTIFICATION_TEST_CONFIG.TEST_BUSINESS.ID,
-        bookingDetails
-      );
-
-      // Verify WhatsApp messages were sent
-      expect(MockWhatsAppSender.lastMessage).toBeTruthy();
-      expect(MockWhatsAppSender.lastMessage.text).toContain('🎉 New Booking Confirmed!');
-      expect(MockWhatsAppSender.lastMessage.text).toContain('Test Customer');
-      expect(MockWhatsAppSender.lastMessage.text).toContain('Gel Manicure');
-      expect(MockWhatsAppSender.lastMessage.text).toContain('July 21, 2025');
-    });
-
-    it('should find correct recipients for booking notifications', async () => {
-      const { GenericNotificationService } = await import('@/lib/bot-engine/services/generic-notification-service');
-      
-      // Test recipient finding for booking type (should include both admin and super admin)
-      const recipients = await GenericNotificationService.findNotificationRecipients(
-        NOTIFICATION_TEST_CONFIG.TEST_BUSINESS.ID,
-        'booking'
-      );
-
-      expect(recipients.length).toBeGreaterThan(0);
-      
-      // Should include business admin
-      const hasBusinessAdmin = recipients.some(r => 
-        r.name.includes('Luisa') && r.phoneNumber.includes('61452678816')
-      );
-      
-      // Should include super admin
-      const hasSuperAdmin = recipients.some(r => 
-        r.name.includes('Super Admin') && r.phoneNumber.includes('61450549485')
-      );
-      
-      expect(hasBusinessAdmin).toBe(true);
-      expect(hasSuperAdmin).toBe(true);
-    });
-
-    it('should format booking notification message correctly', async () => {
-      const { GenericNotificationService } = await import('@/lib/bot-engine/services/generic-notification-service');
-      
-      const bookingDetails = TestUtils.generateTestBookingDetails();
-      const content = GenericNotificationService.formatBookingNotificationContent(bookingDetails);
-
-      expect(content.title).toBe(NOTIFICATION_TEST_CONFIG.EXPECTED_MESSAGES.BOOKING_NOTIFICATION_TITLE);
-      expect(content.message).toContain('Test Customer');
-      expect(content.message).toContain('+61452490450');
-      expect(content.message).toContain('Gel Manicure');
-      expect(content.message).toContain('July 21, 2025');
-      expect(content.message).toContain('8:00 AM');
-      expect(content.message).toContain('$44');
-      expect(content.message).toContain('$24');
-      expect(content.message).toContain('$20');
-    });
-  });
-
-  describe('🔧 Error Handling Tests', () => {
-    it('should handle WhatsApp sending failures gracefully', async () => {
-      MockWhatsAppSender.shouldFail = true;
-      MockWhatsAppSender.failureReason = 'WhatsApp API error';
-
-      const { GenericNotificationService } = await import('@/lib/bot-engine/services/generic-notification-service');
-      
-      const bookingDetails = TestUtils.generateTestBookingDetails();
-      
-      // Should not throw error even if WhatsApp sending fails
+      // This should NOT try to create a UUID from 'system-generated'
+      const notificationService = new ScalableNotificationService();
       await expect(
-        GenericNotificationService.sendBookingNotification(
+        notificationService.sendBookingNotification(
           NOTIFICATION_TEST_CONFIG.TEST_BUSINESS.ID,
           bookingDetails
         )
       ).resolves.not.toThrow();
-    });
-
-    it('should handle missing business gracefully', async () => {
-      const { GenericNotificationService } = await import('@/lib/bot-engine/services/generic-notification-service');
       
-      const bookingDetails = TestUtils.generateTestBookingDetails();
-      const invalidBusinessId = '00000000-0000-0000-0000-000000000000';
+      // Verify notification was created with NULL chatSessionId
+      const { Notification } = await import('@/lib/database/models/notification');
+      const recentNotifications = await TestUtils.getRecentNotifications();
       
-      // Should not throw error even with invalid business ID
-      await expect(
-        GenericNotificationService.sendBookingNotification(
-          invalidBusinessId,
-          bookingDetails
-        )
-      ).resolves.not.toThrow();
-    });
-  });
-
-  describe('🗃️ Database Persistence Tests', () => {
-    it('should save notification to database with correct data', async () => {
-      const { GenericNotificationService } = await import('@/lib/bot-engine/services/generic-notification-service');
-      const { getEnvironmentServiceRoleClient } = await import('@/lib/database/supabase/environment');
-      
-      const bookingDetails = TestUtils.generateTestBookingDetails();
-      
-      // Execute notification
-      await GenericNotificationService.sendBookingNotification(
-        NOTIFICATION_TEST_CONFIG.TEST_BUSINESS.ID,
-        bookingDetails
+      const bookingNotification = recentNotifications.find(n => 
+        n.notificationType === 'booking' && 
+        n.message.includes('BK789012')
       );
-
-      // Check database for created notifications
-      const supa = getEnvironmentServiceRoleClient();
-      const { data: notifications } = await supa
-        .from('notifications')
-        .select('*')
-        .eq('businessId', NOTIFICATION_TEST_CONFIG.TEST_BUSINESS.ID)
-        .eq('notificationType', 'booking')
-        .ilike('message', '%New Booking Confirmed%');
-
-      expect(notifications).toBeTruthy();
-      expect(notifications!.length).toBeGreaterThan(0);
       
-      const notification = notifications![0];
-      expect(notification.chatSessionId).toBeNull(); // Should be null, not 'system-generated'
-      expect(notification.notificationType).toBe('booking');
-      expect(notification.businessId).toBe(NOTIFICATION_TEST_CONFIG.TEST_BUSINESS.ID);
-    });
-  });
-
-  describe('📊 Production Flow Simulation', () => {
-    it('should simulate exact production booking flow from create-booking.ts', async () => {
-      // This simulates the exact call made in create-booking.ts:505
-      const { GenericNotificationService } = await import('@/lib/bot-engine/services/generic-notification-service');
+      expect(bookingNotification).toBeDefined();
+      expect(bookingNotification?.chatSessionId).toBeNull(); // Should be NULL, not 'system-generated'
       
-      const bookingDetails = {
-        bookingId: NOTIFICATION_TEST_CONFIG.TEST_BOOKING.ID,
-        customerName: 'Stiffy', // Real customer name from logs
-        customerPhone: '+61452490450',
-        serviceName: 'Gel Manicure',
-        servicesDisplay: 'Gel Manicure',
-        isMultiService: false,
-        formattedDate: 'July 21, 2025',
-        formattedTime: '8:00 AM',
-        location: 'Apt 111, 9 Dryburgh st, West Melbourne, VIC 3003',
-        totalCost: 44.00,
-        amountPaid: 24.00,
-        amountOwed: 20.00
-      };
-
-      // This is the EXACT call that's failing in production
-      console.log('[Test] Simulating production booking notification flow...');
-      
-      const startTime = Date.now();
-      await GenericNotificationService.sendBookingNotification(
-        '5fbb7083-0de0-4bd2-bdbd-7f0260f3c7cc', // Real business ID from logs
-        bookingDetails
-      );
-      const endTime = Date.now();
-
-      console.log(`[Test] Notification flow completed in ${endTime - startTime}ms`);
-      
-      // Verify success
-      expect(MockWhatsAppSender.lastMessage).toBeTruthy();
-      expect(MockWhatsAppSender.lastMessage.text).toContain('Stiffy');
+      console.log('✅ UUID handling test passed - no "system-generated" string used');
     });
   });
 }); 

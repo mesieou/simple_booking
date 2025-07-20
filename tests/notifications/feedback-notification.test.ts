@@ -16,259 +16,170 @@ describe('Feedback Notification Tests', () => {
     await TestUtils.cleanupTestData();
   });
 
+  describe('🚨 CRITICAL: Template-Based Feedback Notifications', () => {
+    it('should send negative feedback notification using WhatsApp template', async () => {
+      const { ScalableNotificationService } = await import('@/lib/bot-engine/services/scalable-notification-service');
+      
+      const feedbackDetails = {
+        customerName: 'Unhappy Customer',
+        feedbackText: 'The service was terrible and I am very disappointed.',
+        businessName: 'Beauty Salon XYZ',
+        timestamp: 'March 15, 2025'
+      };
+      
+      // Mock template message sending
+      MockWhatsAppSender.mockTemplateSuccess('wamid_template_feedback_123');
+      
+      const notificationService = new ScalableNotificationService();
+      await notificationService.sendFeedbackNotification(
+        NOTIFICATION_TEST_CONFIG.TEST_BUSINESS.ID,
+        feedbackDetails
+      );
+      
+      // Verify template was called with correct parameters
+      const templateCalls = MockWhatsAppSender.getTemplateCalls();
+      expect(templateCalls).toHaveLength(1); // Should only send to super admin for system notifications
+      
+      const firstCall = templateCalls[0];
+      expect(firstCall.templateName).toBe('negative_feedback_alert');
+      expect(firstCall.languageCode).toBe('en');
+      expect(firstCall.headerParams).toEqual([]); // No header parameters for this template
+      expect(firstCall.bodyParams).toEqual([
+        'Unhappy Customer',
+        'Beauty Salon XYZ',
+        'March 15, 2025',
+        'The service was terrible and I am very disappointed.'
+      ]);
+      
+      // Verify it was sent to super admin only
+      expect(templateCalls[0].recipientPhone).toBe(NOTIFICATION_TEST_CONFIG.TEST_SUPER_ADMIN_USER.PHONE);
+      
+      console.log('✅ Template-based feedback notification test passed');
+    });
+
+    it('should only send feedback notifications to super admins', async () => {
+      const { ScalableNotificationService } = await import('@/lib/bot-engine/services/scalable-notification-service');
+      
+      const feedbackDetails = {
+        customerName: 'Test Customer',
+        feedbackText: 'Negative feedback content',
+        businessName: 'Test Business',
+      };
+      
+      MockWhatsAppSender.mockTemplateSuccess('wamid_template_feedback_456');
+      
+      const notificationService = new ScalableNotificationService();
+      await notificationService.sendFeedbackNotification(
+        NOTIFICATION_TEST_CONFIG.TEST_BUSINESS.ID,
+        feedbackDetails
+      );
+      
+      const templateCalls = MockWhatsAppSender.getTemplateCalls();
+      
+      // Should only have 1 call (to super admin), not 2 (admin + super admin)
+      expect(templateCalls).toHaveLength(1);
+      expect(templateCalls[0].recipientPhone).toBe(NOTIFICATION_TEST_CONFIG.TEST_SUPER_ADMIN_USER.PHONE);
+      
+      console.log('✅ Super admin only notification test passed');
+    });
+  });
+
   describe('🚨 CRITICAL: System Notification Type Tests', () => {
-    it('should send feedback notifications only to super admins', async () => {
-      const { GenericNotificationService } = await import('@/lib/bot-engine/services/generic-notification-service');
+    it('should create system type notifications for feedback', async () => {
+      const { ScalableNotificationService } = await import('@/lib/bot-engine/services/scalable-notification-service');
       
-      // Test recipient finding for system type (should include ONLY super admins)
-      const recipients = await GenericNotificationService.findNotificationRecipients(
+      const feedbackDetails = {
+        customerName: 'Test Customer',
+        feedbackText: 'Service was poor',
+        businessName: 'Test Business'
+      };
+      
+      MockWhatsAppSender.mockTemplateSuccess('wamid_template_feedback_789');
+      
+      const notificationService = new ScalableNotificationService();
+      await notificationService.sendFeedbackNotification(
         NOTIFICATION_TEST_CONFIG.TEST_BUSINESS.ID,
-        'system'
-      );
-
-      expect(recipients.length).toBeGreaterThan(0);
-      
-      // Should NOT include business admin for system notifications
-      const hasBusinessAdmin = recipients.some(r => 
-        r.name.includes('Luisa') && r.phoneNumber.includes('61452678816')
+        feedbackDetails
       );
       
-      // Should include super admin
-      const hasSuperAdmin = recipients.some(r => 
-        r.name.includes('Super Admin') && r.phoneNumber.includes('61450549485')
-      );
+      const recentNotifications = await TestUtils.getRecentNotifications();
+      const feedbackNotifications = recentNotifications.filter(n => n.notificationType === 'system');
       
-      expect(hasBusinessAdmin).toBe(false); // Business admin should NOT receive system notifications
-      expect(hasSuperAdmin).toBe(true); // Super admin should receive system notifications
-    });
-  });
-
-  describe('👎 Negative Feedback Notification Flow Tests', () => {
-    it('should send negative feedback notification to super admin only', async () => {
-      const { GenericNotificationService } = await import('@/lib/bot-engine/services/generic-notification-service');
+      expect(feedbackNotifications.length).toBeGreaterThanOrEqual(1);
       
-      const feedbackContent = {
-        title: '🚨 NEGATIVE BOT FEEDBACK ALERT 🚨',
-        message: `📱 **Customer:** +61452490450\n📝 **Session ID:** ${NOTIFICATION_TEST_CONFIG.TEST_SESSION.ID}\n🏢 **Business ID:** ${NOTIFICATION_TEST_CONFIG.TEST_BUSINESS.ID}\n\n🤖 **Bot Message:**\n"I'm sorry, I don't understand your request."\n\n💬 **Admin Feedback:**\n"Bot response was not helpful"\n\n⏰ **Time:** ${new Date().toLocaleString()}\n\n🔗 **Action Required:** Please review this conversation in the admin dashboard to improve bot responses.\n\n---\nThis is an automated alert for negative bot feedback.`,
-        details: {
-          feedbackType: 'thumbs_down',
-          customerPhoneNumber: '+61452490450',
-          messageContent: "I'm sorry, I don't understand your request.",
-          feedbackText: 'Bot response was not helpful',
-          timestamp: new Date().toISOString()
-        }
-      };
-
-      await GenericNotificationService.sendNotification({
-        type: 'system',
-        businessId: NOTIFICATION_TEST_CONFIG.TEST_BUSINESS.ID,
-        chatSessionId: NOTIFICATION_TEST_CONFIG.TEST_SESSION.ID,
-        content: feedbackContent
-      });
-
-      // Verify WhatsApp message was sent
-      expect(MockWhatsAppSender.lastMessage).toBeTruthy();
-      expect(MockWhatsAppSender.lastMessage.text).toContain('🚨 NEGATIVE BOT FEEDBACK ALERT 🚨');
-      expect(MockWhatsAppSender.lastMessage.text).toContain('+61452490450');
-      expect(MockWhatsAppSender.lastMessage.text).toContain('Bot response was not helpful');
-    });
-
-    it('should create feedback notification with correct UUID handling', async () => {
-      const { Notification } = await import('@/lib/database/models/notification');
-      
-      // Test feedback notification creation
-      const notification = await Notification.create({
-        businessId: NOTIFICATION_TEST_CONFIG.TEST_BUSINESS.ID,
-        chatSessionId: NOTIFICATION_TEST_CONFIG.TEST_SESSION.ID,
-        message: 'Negative feedback alert: Customer was not satisfied with bot response',
-        status: 'pending',
-        notificationType: 'system'
-      });
-
-      expect(notification).toBeTruthy();
-      expect(notification.chatSessionId).toBe(NOTIFICATION_TEST_CONFIG.TEST_SESSION.ID);
-      expect(notification.notificationType).toBe('system');
-    });
-  });
-
-  describe('📊 Production Feedback Flow Simulation', () => {
-    it('should simulate exact feedback flow from feedback/route.ts', async () => {
-      // Simulate the API call that triggers feedback notifications
-      const sessionId = NOTIFICATION_TEST_CONFIG.TEST_SESSION.ID;
-      const messageContent = "I understand you're looking for appointment booking. Let me help you find available times.";
-      const feedbackText = "Bot didn't understand my specific request for next Tuesday";
-      const customerPhoneNumber = '+61452490450';
-      const businessId = NOTIFICATION_TEST_CONFIG.TEST_BUSINESS.ID;
-
-      // Simulate the sendNegativeFeedbackNotification function
-      const { GenericNotificationService } = await import('@/lib/bot-engine/services/generic-notification-service');
-      
-      const title = "🚨 NEGATIVE BOT FEEDBACK ALERT 🚨";
-      
-      let message = `📱 **Customer:** ${customerPhoneNumber}\n`;
-      message += `📝 **Session ID:** ${sessionId}\n`;
-      message += `🏢 **Business ID:** ${businessId}\n\n`;
-      
-      message += `🤖 **Bot Message:**\n`;
-      message += `"${messageContent}"\n\n`;
-      
-      if (feedbackText) {
-        message += `💬 **Admin Feedback:**\n`;
-        message += `"${feedbackText}"\n\n`;
-      }
-      
-      message += `⏰ **Time:** ${new Date().toLocaleString()}\n\n`;
-      message += `🔗 **Action Required:** Please review this conversation in the admin dashboard to improve bot responses.\n\n`;
-      message += `---\n`;
-      message += `This is an automated alert for negative bot feedback.`;
-
-      console.log('[Test] Simulating production feedback notification flow...');
-      
-      const startTime = Date.now();
-      await GenericNotificationService.sendNotification({
-        type: 'system', // Use 'system' type for negative feedback
-        businessId,
-        chatSessionId: sessionId,
-        content: {
-          title,
-          message,
-          details: {
-            feedbackType: 'thumbs_down',
-            customerPhoneNumber,
-            messageContent,
-            feedbackText,
-            timestamp: new Date().toISOString()
-          }
-        }
-      });
-      const endTime = Date.now();
-
-      console.log(`[Test] Feedback notification completed in ${endTime - startTime}ms`);
-      
-      // Verify success
-      expect(MockWhatsAppSender.lastMessage).toBeTruthy();
-      expect(MockWhatsAppSender.lastMessage.text).toContain('NEGATIVE BOT FEEDBACK ALERT');
-      expect(MockWhatsAppSender.lastMessage.text).toContain(customerPhoneNumber);
-      expect(MockWhatsAppSender.lastMessage.text).toContain(feedbackText);
-      expect(MockWhatsAppSender.lastMessage.text).toContain(messageContent);
-    });
-  });
-
-  describe('🗃️ Database Integration Tests', () => {
-    it('should save feedback notification to database with system type', async () => {
-      const { GenericNotificationService } = await import('@/lib/bot-engine/services/generic-notification-service');
-      const { getEnvironmentServiceRoleClient } = await import('@/lib/database/supabase/environment');
-      
-      const feedbackContent = {
-        title: '🚨 NEGATIVE BOT FEEDBACK ALERT 🚨',
-        message: 'Test feedback notification',
-        details: { feedbackType: 'thumbs_down' }
-      };
-
-      await GenericNotificationService.sendNotification({
-        type: 'system',
-        businessId: NOTIFICATION_TEST_CONFIG.TEST_BUSINESS.ID,
-        chatSessionId: NOTIFICATION_TEST_CONFIG.TEST_SESSION.ID,
-        content: feedbackContent
-      });
-
-      // Check database for created notifications
-      const supa = getEnvironmentServiceRoleClient();
-      const { data: notifications } = await supa
-        .from('notifications')
-        .select('*')
-        .eq('businessId', NOTIFICATION_TEST_CONFIG.TEST_BUSINESS.ID)
-        .eq('notificationType', 'system')
-        .ilike('message', '%Test feedback notification%');
-
-      expect(notifications).toBeTruthy();
-      expect(notifications!.length).toBeGreaterThan(0);
-      
-      const notification = notifications![0];
-      expect(notification.chatSessionId).toBe(NOTIFICATION_TEST_CONFIG.TEST_SESSION.ID);
-      expect(notification.notificationType).toBe('system');
+      const notification = feedbackNotifications[0];
       expect(notification.businessId).toBe(NOTIFICATION_TEST_CONFIG.TEST_BUSINESS.ID);
+      expect(notification.chatSessionId).toBeNull(); // Feedback doesn't have chat sessions
+      expect(notification.notificationType).toBe('system');
+      expect(notification.status).toBe('pending');
+      
+      console.log('✅ System notification type test passed');
+    });
+
+    it('should handle null chatSessionId for system notifications without UUID errors', async () => {
+      // This tests that system notifications don't have the UUID issue
+      const { ScalableNotificationService } = await import('@/lib/bot-engine/services/scalable-notification-service');
+      
+      const feedbackDetails = {
+        customerName: 'Critical Test Customer',
+        feedbackText: 'This is a test for UUID handling',
+        businessName: 'Critical Test Business'
+      };
+      
+      MockWhatsAppSender.mockTemplateSuccess('wamid_template_feedback_critical');
+      
+      // This should NOT try to create a UUID from 'system-generated'
+      const notificationService = new ScalableNotificationService();
+      await expect(
+        notificationService.sendFeedbackNotification(
+          NOTIFICATION_TEST_CONFIG.TEST_BUSINESS.ID,
+          feedbackDetails
+        )
+      ).resolves.not.toThrow();
+      
+      // Verify notification was created with NULL chatSessionId
+      const recentNotifications = await TestUtils.getRecentNotifications();
+      const systemNotification = recentNotifications.find(n => 
+        n.notificationType === 'system' && 
+        n.message.includes('Critical Test Customer')
+      );
+      
+      expect(systemNotification).toBeDefined();
+      expect(systemNotification?.chatSessionId).toBeNull(); // Should be NULL, not 'system-generated'
+      
+      console.log('✅ System notification UUID handling test passed');
     });
   });
 
-  describe('🔧 Feedback Error Handling Tests', () => {
-    it('should handle WhatsApp sending failures in feedback notifications', async () => {
-      MockWhatsAppSender.shouldFail = true;
-      MockWhatsAppSender.failureReason = 'Feedback WhatsApp API error';
-
-      const { GenericNotificationService } = await import('@/lib/bot-engine/services/generic-notification-service');
+  describe('📋 Template Content Tests', () => {
+    it('should clean feedback text for WhatsApp template compliance', async () => {
+      const { ScalableNotificationService } = await import('@/lib/bot-engine/services/scalable-notification-service');
       
-      const feedbackContent = {
-        title: '🚨 NEGATIVE BOT FEEDBACK ALERT 🚨',
-        message: 'Test feedback with failure',
-        details: { feedbackType: 'thumbs_down' }
+      const feedbackDetails = {
+        customerName: 'Test Customer',
+        feedbackText: 'This feedback has\nnewlines and\ttabs and    multiple spaces that need cleaning',
+        businessName: 'Test Business',
+        timestamp: 'March 23, 2025'
       };
-
-      // Should not throw error even if WhatsApp sending fails
-      await expect(
-        GenericNotificationService.sendNotification({
-          type: 'system',
-          businessId: NOTIFICATION_TEST_CONFIG.TEST_BUSINESS.ID,
-          chatSessionId: NOTIFICATION_TEST_CONFIG.TEST_SESSION.ID,
-          content: feedbackContent
-        })
-      ).resolves.not.toThrow();
-    });
-
-    it('should handle feedback notifications without chat session', async () => {
-      const { GenericNotificationService } = await import('@/lib/bot-engine/services/generic-notification-service');
       
-      const feedbackContent = {
-        title: '🚨 NEGATIVE BOT FEEDBACK ALERT 🚨',
-        message: 'System feedback without session',
-        details: { feedbackType: 'system_error' }
-      };
-
-      // Should handle null chatSessionId for system notifications
-      await expect(
-        GenericNotificationService.sendNotification({
-          type: 'system',
-          businessId: NOTIFICATION_TEST_CONFIG.TEST_BUSINESS.ID,
-          chatSessionId: null, // No session for system notifications
-          content: feedbackContent
-        })
-      ).resolves.not.toThrow();
-    });
-  });
-
-  describe('🔍 Comparison Tests', () => {
-    it('should differentiate between notification types correctly', async () => {
-      const { GenericNotificationService } = await import('@/lib/bot-engine/services/generic-notification-service');
+      MockWhatsAppSender.mockTemplateSuccess('wamid_clean_feedback_test');
       
-      // Test booking type recipients (admin + super admin)
-      const bookingRecipients = await GenericNotificationService.findNotificationRecipients(
+      const notificationService = new ScalableNotificationService();
+      await notificationService.sendFeedbackNotification(
         NOTIFICATION_TEST_CONFIG.TEST_BUSINESS.ID,
-        'booking'
+        feedbackDetails
       );
       
-      // Test escalation type recipients (admin + super admin)
-      const escalationRecipients = await GenericNotificationService.findNotificationRecipients(
-        NOTIFICATION_TEST_CONFIG.TEST_BUSINESS.ID,
-        'escalation'
-      );
+      const templateCalls = MockWhatsAppSender.getTemplateCalls();
+      const call = templateCalls[0];
       
-      // Test system type recipients (super admin only)
-      const systemRecipients = await GenericNotificationService.findNotificationRecipients(
-        NOTIFICATION_TEST_CONFIG.TEST_BUSINESS.ID,
-        'system'
-      );
-
-      // Booking and escalation should have same recipients (admin + super admin)
-      expect(bookingRecipients.length).toBe(escalationRecipients.length);
+      // Check that feedback text is cleaned for WhatsApp
+      const cleanedFeedbackText = call.bodyParams[3];
+      expect(cleanedFeedbackText).not.toContain('\n');
+      expect(cleanedFeedbackText).not.toContain('\t');
+      expect(cleanedFeedbackText).toBe('This feedback has newlines and tabs and multiple spaces that need cleaning');
       
-      // System should have fewer recipients (super admin only)
-      expect(systemRecipients.length).toBeLessThan(bookingRecipients.length);
-      
-      // System recipients should only include super admin
-      const systemHasBusinessAdmin = systemRecipients.some(r => 
-        r.name.includes('Luisa') && r.phoneNumber.includes('61452678816')
-      );
-      expect(systemHasBusinessAdmin).toBe(false);
+      console.log('✅ Feedback text cleaning test passed');
     });
   });
 }); 
