@@ -94,8 +94,8 @@ export async function GET(req: NextRequest) {
     config,
     endpoints: {
       sendTemplate: "POST /api/test-whatsapp",
-      webhook: "POST /api/webhook2",
-      webhookVerify: "GET /api/webhook2"
+      webhook: "POST /api/whatsapp-webhook",
+      webhookVerify: "GET /api/whatsapp-webhook"
     },
     usage: {
       sendTemplate: {

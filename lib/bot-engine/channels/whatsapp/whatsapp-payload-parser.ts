@@ -30,13 +30,15 @@ export interface WhatsappPayloadHandlers<T> {
  * @template T The return type of the handler functions.
  * @param payload The raw WebhookAPIBody from WhatsApp.
  * @param handlers An object containing handler functions for messages and status updates.
+ * @param businessId The real business ID from the database (optional, will fallback to generated ID)
  * @returns A promise that resolves with the return value of the executed handler, or null if not actionable.
  */
 export async function processWhatsappPayload<T>(
   payload: WebhookAPIBody,
-  handlers: WhatsappPayloadHandlers<T>
+  handlers: WhatsappPayloadHandlers<T>,
+  businessId?: string
 ): Promise<T | null> {
-  const parseResult = await parseWhatsappMessage(payload);
+  const parseResult = await parseWhatsappMessage(payload, businessId);
 
   if (!parseResult) {
     return null; // Payload was not actionable.
@@ -55,9 +57,10 @@ export async function processWhatsappPayload<T>(
  * (Internal) Parses an incoming WhatsApp webhook payload into a standardized format.
  * Called by `processWhatsappPayload`.
  * @param payload The raw WebhookAPIBody from WhatsApp.
+ * @param businessId The real business ID from the database (not generated)
  * @returns A ParsedMessage for user messages, a ParsedStatusUpdate for status changes, or null.
  */
-export async function parseWhatsappMessage(payload: WebhookAPIBody): Promise<ParsedMessage | ParsedStatusUpdate | null> {
+export async function parseWhatsappMessage(payload: WebhookAPIBody, businessId?: string): Promise<ParsedMessage | ParsedStatusUpdate | null> {
   if (payload.object !== "whatsapp_business_account") {
     return null;
   }
@@ -105,8 +108,10 @@ export async function parseWhatsappMessage(payload: WebhookAPIBody): Promise<Par
     const attachments: ParsedMessage['attachments'] = [];
 
     // We'll need these for media storage
-    const businessId = extractBusinessIdFromPayload(payload);
     const sessionId = `temp_${waMessage.from}_${Date.now()}`; // Temporary session ID for storage
+    
+    // Use real business ID if provided, fallback to generated ID for backward compatibility
+    const storageBusinessId = businessId || extractBusinessIdFromPayload(payload);
 
     switch (waMessage.type) {
       case 'text':
@@ -120,7 +125,7 @@ export async function parseWhatsappMessage(payload: WebhookAPIBody): Promise<Par
           const storedImage = await downloadAndStoreWhatsappMedia(
             waMessage.image.id,
             'image',
-            businessId,
+            storageBusinessId,
             sessionId
           );
           
@@ -148,7 +153,7 @@ export async function parseWhatsappMessage(payload: WebhookAPIBody): Promise<Par
           const storedAudio = await downloadAndStoreWhatsappMedia(
             waMessage.audio.id,
             'audio',
-            businessId,
+            storageBusinessId,
             sessionId
           );
           
@@ -172,7 +177,7 @@ export async function parseWhatsappMessage(payload: WebhookAPIBody): Promise<Par
           const storedVideo = await downloadAndStoreWhatsappMedia(
             waMessage.video.id,
             'video',
-            businessId,
+            storageBusinessId,
             sessionId
           );
           
@@ -198,7 +203,7 @@ export async function parseWhatsappMessage(payload: WebhookAPIBody): Promise<Par
           const storedDocument = await downloadAndStoreWhatsappMedia(
             waMessage.document.id,
             'document',
-            businessId,
+            storageBusinessId,
             sessionId
           );
           
@@ -224,7 +229,7 @@ export async function parseWhatsappMessage(payload: WebhookAPIBody): Promise<Par
           const storedSticker = await downloadAndStoreWhatsappMedia(
             waMessage.sticker.id,
             'sticker',
-            businessId,
+            storageBusinessId,
             sessionId
           );
           
@@ -348,11 +353,12 @@ export async function parseWhatsappMessage(payload: WebhookAPIBody): Promise<Par
 }
 
 /**
- * Helper function to extract business ID from WhatsApp payload
- * For now, we'll use a placeholder - this should be mapped to actual business logic
+ * Helper function to extract business ID from WhatsApp payload (FALLBACK ONLY)
+ * This creates a temporary business identifier for backward compatibility.
+ * NEW CODE: Pass the real business.id from the webhook instead of using this fallback.
+ * Note: This fallback creates IDs like "business_phone123" which won't match real database IDs.
  */
 function extractBusinessIdFromPayload(payload: WebhookAPIBody): string {
-  // TODO: Map phone number ID to business ID using your business logic
   const phoneNumberId = payload.entry?.[0]?.changes?.[0]?.value?.metadata?.phone_number_id;
   return `business_${phoneNumberId || 'unknown'}`;
 } 

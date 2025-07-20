@@ -5,8 +5,8 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   const status = {
     timestamp: new Date().toISOString(),
-    endpoint: "/api/webhook2",
-    fullUrl: "https://skedy.io/api/webhook2",
+    endpoint: "/api/whatsapp-webhook",
+    fullUrl: "https://skedy.io/api/whatsapp-webhook",
     environment: {
       USE_WABA_WEBHOOK: process.env.USE_WABA_WEBHOOK,
       WHATSAPP_API_VERSION: process.env.WHATSAPP_API_VERSION || "v23.0",

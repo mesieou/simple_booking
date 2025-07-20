@@ -32,8 +32,8 @@ const testWebhookMessage = async (phoneNumberId, message, isDevNumber = false) =
   };
 
   const webhookUrl = process.env.NODE_ENV === 'production' 
-    ? 'https://skedy.io/api/webhook2'
-    : 'http://localhost:3000/api/webhook2';
+  ? 'https://skedy.io/api/whatsapp-webhook'
+  : 'http://localhost:3000/api/whatsapp-webhook';
 
   console.log(`🧪 Testing ${isDevNumber ? 'DEV' : 'PRODUCTION'} number: ${phoneNumberId}`);
   console.log(`📨 Message: "${message}"`);

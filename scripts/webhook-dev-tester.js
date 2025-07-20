@@ -72,9 +72,9 @@ const sendWebhookTest = async (phoneNumberId, message, testType) => {
   };
 
   // Determine webhook URL based on environment
-  const webhookUrl = process.env.NODE_ENV === 'production' 
-    ? 'https://skedy.io/api/webhook2'  // Your custom domain
-    : 'http://localhost:3000/api/webhook2';
+      const webhookUrl = process.env.NODE_ENV === 'production'
+      ? 'https://skedy.io/api/whatsapp-webhook'  // Your custom domain
+      : 'http://localhost:3000/api/whatsapp-webhook';
 
   console.log(`\n${config.color}🧪 Testing: ${config.description}${RESET_COLOR}`);
   console.log(`📞 Phone Number ID: ${phoneNumberId}`);

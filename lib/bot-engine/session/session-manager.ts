@@ -3,7 +3,7 @@ import {
   ChatContext,
   UserGoal,
   ChatConversationSession,
-  BOT_CONFIG,
+  getBotConfig,
 } from "@/lib/bot-engine/types";
 import { extractSessionHistoryAndContext } from "@/lib/shared/llm/functions/extract-history-and-context.ts";
 import { UserContext } from "@/lib/database/models/user-context";
@@ -15,7 +15,8 @@ import { getCurrentEnvironment } from "@/lib/database/supabase/environment";
 // Converts database models to internal session format
 function convertToInternalSession(
   historyAndContext: any,
-  participant: ConversationalParticipant
+  participant: ConversationalParticipant,
+  botConfig: { DEFAULT_LANGUAGE: string; DEFAULT_TIMEZONE: string; SESSION_TIMEOUT_HOURS: number }
 ): ChatConversationSession {
   const activeGoals: UserGoal[] = [];
 
@@ -88,7 +89,7 @@ function convertToInternalSession(
     sessionMetadata: {
       languagePreference:
         historyAndContext.userContext.participantPreferences?.language ||
-        BOT_CONFIG.DEFAULT_LANGUAGE,
+        botConfig.DEFAULT_LANGUAGE, // 🎯 Now uses business config
     },
     userData: userData, // Restore the userData field
   };
@@ -109,40 +110,53 @@ export async function getOrCreateChatContext(
   
   console.log(`${LOG_PREFIX} Creating chat context for participant: ${participant.id}`);
   
-  // 1. Identificar dinámicamente el negocio a través del número de WhatsApp.
-  if (!participant.businessWhatsappNumber) {
+  let associatedBusinessId: string;
+  let business: Business | null;
+
+  // 🎯 MULTI-CHANNEL BUSINESS IDENTIFICATION
+  if (participant.associatedBusinessId) {
+    // Universal approach: businessId already provided (web, messenger, SMS, etc.)
+    associatedBusinessId = participant.associatedBusinessId;
+    console.log(`${LOG_PREFIX} Using provided businessId: ${associatedBusinessId}`);
+    
+    business = await Business.getById(associatedBusinessId);
+    if (!business || !business.id) {
+      throw new Error(
+        `[getOrCreateChatContext] Critical: Could not find business with ID ${associatedBusinessId}`
+      );
+    }
+  } else if (participant.businessWhatsappNumber) {
+    // WhatsApp fallback: lookup business by WhatsApp number
+    console.log(`${LOG_PREFIX} Falling back to WhatsApp number lookup for: ${participant.businessWhatsappNumber}`);
+    
+    // Normalize the WhatsApp number to ensure it has a '+' prefix for DB lookup.
+    let numberToSearch = participant.businessWhatsappNumber;
+    if (!numberToSearch.startsWith("+")) {
+      numberToSearch = `+${numberToSearch}`;
+    }
+
+    business = await Business.getByWhatsappNumber(numberToSearch);
+    if (!business || !business.id) {
+      console.error(
+        `[getOrCreateChatContext] Critical: Could not find business associated with WhatsApp number ${numberToSearch}`
+      );
+      throw new Error(
+        `[getOrCreateChatContext] Critical: Could not find business associated with WhatsApp number ${participant.businessWhatsappNumber}`
+      );
+    }
+    associatedBusinessId = business.id;
+  } else {
+    // No business identifier provided
     throw new Error(
-      "[getOrCreateChatContext] Critical: businessWhatsappNumber is missing from participant."
+      "[getOrCreateChatContext] Critical: No business identifier provided. Need either associatedBusinessId or businessWhatsappNumber."
     );
   }
 
-  // Normalize the WhatsApp number to ensure it has a '+' prefix for DB lookup.
-  let numberToSearch = participant.businessWhatsappNumber;
-  if (!numberToSearch.startsWith("+")) {
-    numberToSearch = `+${numberToSearch}`;
-  }
+  console.log(`${LOG_PREFIX} Successfully identified business: ${business.name} (ID: ${associatedBusinessId})`);
 
-  // Diagnostic log to confirm the number being searched.
-  console.log(
-    `[getOrCreateChatContext] Attempting to find business with normalized number: ${numberToSearch}`
-  );
-
-  const business = await Business.getByWhatsappNumber(numberToSearch);
-
-  if (!business || !business.id) {
-    // Si no se encuentra el negocio, no podemos continuar.
-    // Log the exact number that was searched for to make debugging easier.
-    console.error(
-      `[getOrCreateChatContext] Critical: Could not find business associated with WhatsApp number ${numberToSearch}. Please ensure the number is registered correctly in the database.`
-    );
-    throw new Error(
-      `[getOrCreateChatContext] Critical: Could not find business associated with WhatsApp number ${participant.businessWhatsappNumber}`
-    );
-  }
-  const associatedBusinessId = business.id;
-  console.log(
-    `[getOrCreateChatContext] Dynamically identified business ID: ${associatedBusinessId}`
-  );
+  // 🎯 Get business-specific configuration
+  const botConfig = await getBotConfig(associatedBusinessId);
+  console.log(`${LOG_PREFIX} Using business timezone: ${botConfig.DEFAULT_TIMEZONE}`);
 
   // 🆕 PROXY SESSION CHECK: If this is an admin message, check for active proxy session first
   if (participant.type === 'business') {
@@ -169,7 +183,7 @@ export async function getOrCreateChatContext(
           "whatsapp",
           proxySession.customerPhone,
           associatedBusinessId || "",
-          BOT_CONFIG.SESSION_TIMEOUT_HOURS,
+          botConfig.SESSION_TIMEOUT_HOURS, // 🎯 Use business config
           {}
         );
         
@@ -182,7 +196,8 @@ export async function getOrCreateChatContext(
           
           const currentSession = convertToInternalSession(
             customerContext,
-            adminParticipant
+            adminParticipant,
+            botConfig
           );
           
           const context: ChatContext = {
@@ -193,8 +208,8 @@ export async function getOrCreateChatContext(
               ? customerContext.userContext.frequentlyDiscussedTopics.split(", ").filter((topic: string) => topic.trim() !== "")
               : ["general queries", "booking help"],
             participantPreferences: customerContext.userContext.participantPreferences || {
-              language: BOT_CONFIG.DEFAULT_LANGUAGE,
-              timezone: BOT_CONFIG.DEFAULT_TIMEZONE,
+              language: botConfig.DEFAULT_LANGUAGE,   // 🎯 Use business config
+              timezone: botConfig.DEFAULT_TIMEZONE,   // 🎯 Use business config  
               notificationSettings: { email: true },
             },
           };
@@ -239,7 +254,7 @@ export async function getOrCreateChatContext(
     "whatsapp",
     participant.customerWhatsappNumber || participant.id,
     associatedBusinessId || "", // Pass empty string if null
-    BOT_CONFIG.SESSION_TIMEOUT_HOURS,
+    botConfig.SESSION_TIMEOUT_HOURS, // 🎯 Use business config
     {}
   );
 
@@ -280,7 +295,8 @@ export async function getOrCreateChatContext(
 
   const currentSession = convertToInternalSession(
     historyAndContext,
-    participantWithBusinessId
+    participantWithBusinessId,
+    botConfig
   );
 
   const frequentlyDiscussedTopics = historyAndContext.userContext
@@ -297,8 +313,8 @@ export async function getOrCreateChatContext(
     frequentlyDiscussedTopics: frequentlyDiscussedTopics,
     participantPreferences: historyAndContext.userContext
       .participantPreferences || {
-      language: BOT_CONFIG.DEFAULT_LANGUAGE,
-      timezone: BOT_CONFIG.DEFAULT_TIMEZONE,
+      language: botConfig.DEFAULT_LANGUAGE,   // 🎯 Use business config
+      timezone: botConfig.DEFAULT_TIMEZONE,   // 🎯 Use business config  
       notificationSettings: { email: true },
     },
   };

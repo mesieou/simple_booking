@@ -57,7 +57,7 @@ export default function TestWhatsAppPage() {
     setResult(null);
     
     try {
-      const response = await fetch('/api/webhook2?hub.mode=subscribe&hub.challenge=test123&hub.verify_token=test');
+      const response = await fetch('/api/whatsapp-webhook?hub.mode=subscribe&hub.challenge=test123&hub.verify_token=test');
       const data = await response.text();
       setResult({ status: response.status, data });
     } catch (err) {
@@ -221,7 +221,7 @@ export default function TestWhatsAppPage() {
         <div className="bg-yellow-50 border border-yellow-200 p-6 rounded-lg">
           <h2 className="text-xl font-semibold mb-4 text-yellow-800">Debugging Information</h2>
           <div className="space-y-2 text-sm text-yellow-700">
-            <p><strong>Webhook URL:</strong> https://skedy.io/api/webhook2</p>
+                            <p><strong>Webhook URL:</strong> https://skedy.io/api/whatsapp-webhook</p>
             <p><strong>Test Endpoint:</strong> https://skedy.io/api/test-whatsapp</p>
             <p><strong>Vercel Logs:</strong> Check your Vercel dashboard for function logs</p>
             <p><strong>Environment Variables:</strong> Make sure WHATSAPP_PERMANENT_TOKEN is set</p>

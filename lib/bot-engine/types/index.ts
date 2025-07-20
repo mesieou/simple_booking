@@ -2,12 +2,18 @@ export type ConversationalParticipantType = 'business' | 'customer';
 export type UserGoalType = 'accountManagement' | 'serviceBooking' | 'frequentlyAskedQuestion' | 'humanAgentEscalation';
 export type GoalActionType = 'create' | 'delete' | 'update';
 
-// Configuration constants
-export const BOT_CONFIG = {
-  DEFAULT_TIMEZONE: 'Australia/Melbourne',
-  DEFAULT_LANGUAGE: 'en',
-  SESSION_TIMEOUT_HOURS: 24
-} as const;
+// Configuration constants - now business-aware for timezone
+export const getBotConfig = async (businessId: string) => {
+  // Import here to avoid circular dependencies
+  const { Business } = await import('@/lib/database/models/business');
+  const business = await Business.getById(businessId);
+  
+  return {
+    DEFAULT_TIMEZONE: business.timeZone,  // 🎯 Now business-specific!
+    DEFAULT_LANGUAGE: 'en',              // Keep simple - language detection handles this
+    SESSION_TIMEOUT_HOURS: 24            // Keep simple - same for all businesses
+  };
+};
 
 export interface ConversationalParticipant {
   id: string;

@@ -95,7 +95,7 @@ class LogFilterManager {
       throttleMs: 2000
     },
     {
-      pattern: /POST \/api\/webhook2 200 in \d+ms/,
+      pattern: /POST \/api\/whatsapp-webhook 200 in \d+ms/,
       level: ['log', 'info'],
       action: 'suppress'
     },
