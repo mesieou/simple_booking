@@ -343,18 +343,30 @@ export async function createLuisaTestBusiness(
     const crawlerResult = await triggerPdfContentCrawler(createdBusiness.id);
     console.log('[SEED] PDF content crawler completed:', crawlerResult.message || 'Success');
     
+    // Verify that the crawler actually processed content
+    if (!crawlerResult || !crawlerResult.result || crawlerResult.result.pageCount === 0) {
+      throw new Error(`PDF crawler failed to process any content: ${JSON.stringify(crawlerResult)}`);
+    }
+    
     // Check if embeddings were created
     const { data: embeddings, error: embeddingsError } = await supa
       .from('embeddings')
       .select('id')
       .eq('businessId', createdBusiness.id);
       
-    if (!embeddingsError && embeddings) {
-      console.log(`[SEED] Created ${embeddings.length} embeddings for RAG functionality`);
+    if (embeddingsError) {
+      throw new Error(`Failed to query embeddings: ${embeddingsError.message}`);
     }
+    
+    if (!embeddings || embeddings.length === 0) {
+      throw new Error('No embeddings were created from PDF processing');
+    }
+    
+    console.log(`[SEED] ✅ Created ${embeddings.length} embeddings for RAG functionality`);
   } catch (error) {
-    console.warn('[SEED] PDF content crawler failed (non-critical):', error instanceof Error ? error.message : String(error));
-    console.log('[SEED] Documents were still created successfully for manual processing');
+    console.error('[SEED] ❌ PDF content crawler failed - this is CRITICAL for business functionality');
+    console.error('[SEED] Error details:', error instanceof Error ? error.message : String(error));
+    throw new Error(`Luisa business seed failed: PDF crawler error - ${error instanceof Error ? error.message : String(error)}`);
   }
   
     return {

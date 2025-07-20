@@ -30,7 +30,7 @@ async function createSuperAdmin() {
     
     // Generate a unique ID for the super admin
     const superAdminId = uuidv4();
-    const email = 'admin@skedy.io';
+    const email = 'admin@gmail.com'; // Changed from @skedy.io to work with Supabase
     const password = 'skedy1010';
     
     // Step 1: Check if user already exists
