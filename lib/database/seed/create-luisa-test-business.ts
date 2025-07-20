@@ -391,12 +391,12 @@ export async function createLuisaTestBusiness(
  */
 async function triggerPdfContentCrawler(businessId: string): Promise<any> {
   try {
-    console.log('[SEED] Loading Luisa FAQ whatsapp conversations (1).pdf for processing...');
+    console.log('[SEED] Loading luisa-faq.pdf for processing...');
     
-    // Load the actual PDF file from the public folder
+    // Load the actual PDF file from the root folder
     const fs = require('fs');
     const path = require('path');
-    const pdfPath = path.join(process.cwd(), 'public', 'Luisa FAQ whatsapp conversations (1).pdf');
+    const pdfPath = path.join(process.cwd(), 'luisa-faq.pdf');
     
     if (!fs.existsSync(pdfPath)) {
       throw new Error(`PDF file not found at: ${pdfPath}`);
@@ -412,7 +412,7 @@ async function triggerPdfContentCrawler(businessId: string): Promise<any> {
     const pdfBlob = new Blob([pdfBuffer], { type: 'application/pdf' });
     
     // Create a File object from the Blob
-    const pdfFile = new File([pdfBlob], 'Luisa FAQ whatsapp conversations (1).pdf', { 
+    const pdfFile = new File([pdfBlob], 'luisa-faq.pdf', { 
       type: 'application/pdf' 
     });
     

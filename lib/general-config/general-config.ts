@@ -134,7 +134,7 @@ export const URL_VALIDATION_CONFIG = {
 // URL Fetcher Configuration
 export const URL_FETCHER_CONFIG = {
   MIN_CONTENT_LENGTH: 40,
-  CRAWL_OUTPUT_DIR: 'crawl-output',
+  CRAWL_OUTPUT_DIR: process.env.NODE_ENV === 'production' || process.env.VERCEL ? '/tmp/crawl-output' : 'crawl-output',
   CONTENT_TYPES: {
     HTML: 'text/html'
   },
