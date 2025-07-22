@@ -87,8 +87,8 @@ export async function createRemovalistTestBusiness(supabase?: SupabaseClient): P
       phone: '+61412882145',
       timeZone: 'Australia/Sydney',
       interfaceType: 'whatsapp',
-      whatsappNumber: '+61466502512',
-      whatsappPhoneNumberId: '684078768113901', // WhatsApp Business API phone number ID
+      whatsappNumber: '+61468968600',
+      whatsappPhoneNumberId: '751020648089986', // WhatsApp Business API phone number ID from Meta Dashboard
       businessAddress: '1/99 old geelong rd, Laverton, VIC 3028',
       websiteUrl: 'https://timosremovals.com.au',
       businessCategory: 'removalist', // Set business category for removalist
@@ -441,8 +441,8 @@ export async function createRemovalistBusinessForProduction(
     phone: '+61412882145',
     timeZone: 'Australia/Sydney',
     interfaceType: 'whatsapp',
-    whatsappNumber: '+61466502512', 
-    whatsappPhoneNumberId: '684078768113901', // Real WhatsApp Business API phone number ID
+    whatsappNumber: '+61468968600', 
+         whatsappPhoneNumberId: '751020648089986', // Real WhatsApp Business API phone number ID from Meta Dashboard
     businessAddress: '1/99 old geelong rd, Laverton, VIC 3028',
     websiteUrl: 'https://timosremovals.com.au',
     businessCategory: 'removalist',

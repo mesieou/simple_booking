@@ -96,13 +96,25 @@ export const bookingConfirmationHandler: IndividualStepHandler = {
     const arrivalInstructions = hasMobileService 
       ? getLocalizedText(chatContext, 'BOOKING_CONFIRMATION.MOBILE_INSTRUCTIONS')
       : getLocalizedText(chatContext, 'BOOKING_CONFIRMATION.SALON_INSTRUCTIONS');
-    
+
     // Use new organized format similar to quote
     const serviceLabel = isMultiService 
       ? getLocalizedText(chatContext, 'BOOKING_CONFIRMATION.SERVICES')
       : getLocalizedText(chatContext, 'BOOKING_CONFIRMATION.SERVICE');
     
-    const customerName = currentGoalData.customerName || '{name}';
+    // Simple pattern - check goal data, then session, then fallback (ONLY CHANGE)
+    const customerName = currentGoalData.customerName || 
+                        chatContext?.currentConversationSession?.userData?.customerName || 
+                        'there';
+    
+    console.log('[BookingConfirmation] DEBUG - Customer name resolution:', {
+      fromGoalData: currentGoalData.customerName,
+      fromSession: chatContext?.currentConversationSession?.userData?.customerName,
+      finalName: customerName,
+      hasGoalData: !!currentGoalData.customerName,
+      hasSessionData: !!chatContext?.currentConversationSession?.userData?.customerName
+    });
+    
     let confirmationMessage = `${getLocalizedTextWithVars(chatContext, 'BOOKING_CONFIRMATION.TITLE', { name: customerName })}\n\n`;
     confirmationMessage += `${serviceLabel}\n   ${servicesDisplay}\n`;
     confirmationMessage += bookingSummary.travelCost && parseFloat(bookingSummary.travelCost.replace('$', '')) > 0 
@@ -143,6 +155,7 @@ export const bookingConfirmationHandler: IndividualStepHandler = {
     
     return {
       ...currentGoalData,
+      customerName, // Store the resolved name in goal data
       confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.BOOKING_CONFIRMATION', { name: customerName })
     };
   }

@@ -4,17 +4,22 @@
  * Check all businesses in the database
  */
 
+// Load environment variables from .env.local
+require('dotenv').config({ path: '.env.local' });
+
 const { createClient } = require('@supabase/supabase-js');
 
 async function checkBusinesses() {
   try {
-    console.log('🔍 Checking all businesses in database...');
+    console.log('🔍 Checking all businesses in PRODUCTION database...');
     
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseUrl = process.env.SUPABASE_PROD_URL;
+    const serviceRoleKey = process.env.SUPABASE_PROD_SERVICE_ROLE_KEY;
     
     if (!supabaseUrl || !serviceRoleKey) {
-      console.error('❌ Missing environment variables');
+      console.error('❌ Missing PRODUCTION environment variables');
+      console.error('   SUPABASE_PROD_URL:', !!supabaseUrl);
+      console.error('   SUPABASE_PROD_SERVICE_ROLE_KEY:', !!serviceRoleKey);
       return;
     }
     
@@ -25,7 +30,7 @@ async function checkBusinesses() {
       }
     });
     
-    console.log('✅ Connected to Supabase');
+    console.log('✅ Connected to PRODUCTION Supabase');
     
     // Get all businesses
     const { data: businesses, error } = await supabase

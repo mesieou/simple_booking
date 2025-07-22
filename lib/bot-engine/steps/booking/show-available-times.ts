@@ -53,9 +53,22 @@ export const showAvailableTimesHandler: IndividualStepHandler = {
     console.log('[ShowAvailableTimes] Total service duration for availability check:', totalServiceDuration, 'minutes');
     
     if (!businessWhatsappNumberCustomersMessagedTo || totalServiceDuration <= 0) {
-      const customerName = currentGoalData.customerName || '{name}';
+      // Simple pattern - check goal data, then session, then fallback (ONLY CHANGE)
+      const customerName = currentGoalData.customerName || 
+                          chatContext?.currentConversationSession?.userData?.customerName || 
+                          'there';
+      
+      console.log('[ShowAvailableTimes] DEBUG - Customer name resolution (error case):', {
+        fromGoalData: currentGoalData.customerName,
+        fromSession: chatContext?.currentConversationSession?.userData?.customerName,
+        finalName: customerName,
+        hasGoalData: !!currentGoalData.customerName,
+        hasSessionData: !!chatContext?.currentConversationSession?.userData?.customerName
+      });
+      
       return {
         ...currentGoalData,
+        customerName, // Store the resolved name in goal data
         availabilityError: 'Configuration error - missing business or service information',
         confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.CONFIGURATION_ERROR', { name: customerName })
       };
@@ -69,9 +82,22 @@ export const showAvailableTimesHandler: IndividualStepHandler = {
     
     console.log('[ShowAvailableTimes] Next 2 whole hour slots:', next2WholeHourSlots);
     
-    const customerName = currentGoalData.customerName || '{name}';
+    // Simple pattern - check goal data, then session, then fallback (ONLY CHANGE)
+    const customerName = currentGoalData.customerName || 
+                        chatContext?.currentConversationSession?.userData?.customerName || 
+                        'there';
+    
+    console.log('[ShowAvailableTimes] DEBUG - Customer name resolution:', {
+      fromGoalData: currentGoalData.customerName,
+      fromSession: chatContext?.currentConversationSession?.userData?.customerName,
+      finalName: customerName,
+      hasGoalData: !!currentGoalData.customerName,
+      hasSessionData: !!chatContext?.currentConversationSession?.userData?.customerName
+    });
+    
     return {
       ...currentGoalData,
+      customerName, // Store the resolved name in goal data
       next2WholeHourSlots: next2WholeHourSlots,
       confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.AVAILABLE_TIMES', { name: customerName }),
       listSectionTitle: getLocalizedText(chatContext, 'LIST_SECTIONS.AVAILABLE_OPTIONS')

@@ -16,11 +16,9 @@ export const selectServiceHandler: IndividualStepHandler = {
   processAndExtractData: async (validatedInput, currentGoalData, chatContext) => {
     const businessId = chatContext.currentParticipant.associatedBusinessId;
     const availableServices = currentGoalData.availableServices || [];
-    const customerName = currentGoalData.customerName;
 
     console.log('[SelectService] Processing initial service selection');
     console.log('[SelectService] Validated input:', validatedInput);
-    console.log('[SelectService] Customer name available:', customerName);
 
     // Handle first display - fetch services if needed
     if (validatedInput === "") {
@@ -32,16 +30,25 @@ export const selectServiceHandler: IndividualStepHandler = {
           return { ...currentGoalData, serviceError: error };
         }
         
-        // Create personalized message if customer name is available
-        let confirmationMessage;
-        if (customerName) {
-          confirmationMessage = getLocalizedTextWithVars(chatContext, 'MESSAGES.SELECT_SERVICE_PERSONALIZED', { name: customerName });
-        } else {
-          confirmationMessage = getLocalizedTextWithVars(chatContext, 'MESSAGES.SELECT_SERVICE_PERSONALIZED', { name: '{name}' });
-        }
+        // Simple pattern - check goal data, then session, then fallback
+        const resolvedCustomerName = currentGoalData.customerName || 
+                                    chatContext?.currentConversationSession?.userData?.customerName || 
+                                    'there';
+        
+        console.log('[SelectService] DEBUG - Customer name resolution (first display):', {
+          fromGoalData: currentGoalData.customerName,
+          fromSession: chatContext?.currentConversationSession?.userData?.customerName,
+          finalName: resolvedCustomerName,
+          hasGoalData: !!currentGoalData.customerName,
+          hasSessionData: !!chatContext?.currentConversationSession?.userData?.customerName
+        });
+        
+        // Create personalized message
+        const confirmationMessage = getLocalizedTextWithVars(chatContext, 'MESSAGES.SELECT_SERVICE_PERSONALIZED', { name: resolvedCustomerName });
         
         return { 
           ...currentGoalData, 
+          customerName: resolvedCustomerName, // Store the resolved name in goal data
           availableServices: services,
           confirmationMessage,
           listActionText: getLocalizedText(chatContext, 'BUTTONS.SELECT'),
@@ -50,15 +57,24 @@ export const selectServiceHandler: IndividualStepHandler = {
       }
       
       // Services already loaded, show them with personalized message
-      let confirmationMessage;
-      if (customerName) {
-        confirmationMessage = getLocalizedTextWithVars(chatContext, 'MESSAGES.SELECT_SERVICE_PERSONALIZED', { name: customerName });
-      } else {
-        confirmationMessage = getLocalizedTextWithVars(chatContext, 'MESSAGES.SELECT_SERVICE_PERSONALIZED', { name: '{name}' });
-      }
+      // Simple pattern - check goal data, then session, then fallback
+      const resolvedCustomerName = currentGoalData.customerName || 
+                                  chatContext?.currentConversationSession?.userData?.customerName || 
+                                  'there';
+      
+      console.log('[SelectService] DEBUG - Customer name resolution (services loaded):', {
+        fromGoalData: currentGoalData.customerName,
+        fromSession: chatContext?.currentConversationSession?.userData?.customerName,
+        finalName: resolvedCustomerName,
+        hasGoalData: !!currentGoalData.customerName,
+        hasSessionData: !!chatContext?.currentConversationSession?.userData?.customerName
+      });
+      
+      const confirmationMessage = getLocalizedTextWithVars(chatContext, 'MESSAGES.SELECT_SERVICE_PERSONALIZED', { name: resolvedCustomerName });
       
       return {
         ...currentGoalData,
+        customerName: resolvedCustomerName, // Store the resolved name in goal data
         confirmationMessage,
         listActionText: getLocalizedText(chatContext, 'BUTTONS.SELECT'),
         listSectionTitle: getLocalizedText(chatContext, 'LIST_SECTIONS.SERVICES')
@@ -75,9 +91,14 @@ export const selectServiceHandler: IndividualStepHandler = {
         
         const extractedService = ServiceDataProcessor.extractServiceDetails(selectedServiceData);
         
+        // Simple pattern - check goal data, then session, then fallback
+        const customerName = currentGoalData.customerName || 
+                            chatContext?.currentConversationSession?.userData?.customerName || 
+                            'there';
+        
         // Create personalized confirmation message
         let confirmationMessage;
-        if (customerName) {
+        if (customerName && customerName !== 'there') {
           confirmationMessage = getLocalizedTextWithVars(chatContext, 'MESSAGES.SERVICE_SELECTED_PERSONALIZED', { 
             name: customerName, 
             serviceName: selectedServiceData.name 
@@ -96,9 +117,24 @@ export const selectServiceHandler: IndividualStepHandler = {
     }
 
     console.log('[SelectService] Fallback - returning error state');
+    
+    // Simple pattern - check goal data, then session, then fallback
+    const resolvedCustomerName = currentGoalData.customerName || 
+                                chatContext?.currentConversationSession?.userData?.customerName || 
+                                'there';
+    
+    console.log('[SelectService] DEBUG - Customer name resolution (error state):', {
+      fromGoalData: currentGoalData.customerName,
+      fromSession: chatContext?.currentConversationSession?.userData?.customerName,
+      finalName: resolvedCustomerName,
+      hasGoalData: !!currentGoalData.customerName,
+      hasSessionData: !!chatContext?.currentConversationSession?.userData?.customerName
+    });
+    
     return { 
       ...currentGoalData, 
-      serviceError: getLocalizedTextWithVars(chatContext, 'ERROR_MESSAGES.SERVICE_SELECTION_ERROR', { name: customerName || '{name}' })
+      customerName: resolvedCustomerName, // Store the resolved name in goal data
+      serviceError: getLocalizedTextWithVars(chatContext, 'ERROR_MESSAGES.SERVICE_SELECTION_ERROR', { name: resolvedCustomerName })
     };
   },
   

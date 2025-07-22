@@ -13,7 +13,19 @@ export const askPickupAddressHandler: IndividualStepHandler = {
     
     // Only do minimal length check - let Google API be the authoritative validator
     if (!userInput || userInput.trim().length < 5) {
-      const customerName = currentGoalData.customerName || '{name}';
+      // Simple pattern - check goal data, then session, then fallback
+      const customerName = currentGoalData.customerName || 
+                          chatContext?.currentConversationSession?.userData?.customerName || 
+                          'there';
+      
+      console.log('[AskPickupAddress] DEBUG - Customer name resolution:', {
+        fromGoalData: currentGoalData.customerName,
+        fromSession: chatContext?.currentConversationSession?.userData?.customerName,
+        finalName: customerName,
+        hasGoalData: !!currentGoalData.customerName,
+        hasSessionData: !!chatContext?.currentConversationSession?.userData?.customerName
+      });
+      
       console.log('[AskPickupAddress] Validation failed - input too short');
       return {
         isValidInput: false,
@@ -46,10 +58,23 @@ export const askPickupAddressHandler: IndividualStepHandler = {
     }
     
     // Handle first display (empty input)
-    const customerName = currentGoalData?.customerName || '{name}';
+    // Simple pattern - check goal data, then session, then fallback
+    const customerName = currentGoalData.customerName || 
+                        chatContext?.currentConversationSession?.userData?.customerName || 
+                        'there';
+    
+    console.log('[AskPickupAddress] DEBUG - Customer name resolution:', {
+      fromGoalData: currentGoalData.customerName,
+      fromSession: chatContext?.currentConversationSession?.userData?.customerName,
+      finalName: customerName,
+      hasGoalData: !!currentGoalData.customerName,
+      hasSessionData: !!chatContext?.currentConversationSession?.userData?.customerName
+    });
+    
     console.log('[AskPickupAddress] No validated input - showing initial prompt');
     return {
       ...currentGoalData,
+      customerName, // Store the resolved name in goal data
       confirmationMessage: getLocalizedTextWithVars(chatContext, 'MESSAGES.PICKUP_ADDRESS_REQUEST', { name: customerName })
     };
   }
