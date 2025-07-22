@@ -1,0 +1,141 @@
+{
+  "sourceUrl": "pdf-Removalist-FAQ-Handbook.pdf#page=1",
+  "pageTitle": "Removalist-FAQ-Handbook.pdf - Page 1",
+  "isPdf": true,
+  "totalLlmChunks": 19,
+  "documents": [
+    {
+      "documentId": "2fcaf48d-d526-4e34-9921-c68d519830bb",
+      "chunkOrder": 1,
+      "category": "faq",
+      "originalTextLength": 64,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "ee042bc2-bd8c-4d4e-9950-b9f8c1e361ea",
+      "chunkOrder": 2,
+      "category": "pricing or quotes",
+      "originalTextLength": 1101,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "a06dbd80-6586-4d8b-90f0-3dafc67389e9",
+      "chunkOrder": 3,
+      "category": "Uncategorized",
+      "originalTextLength": 776,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "1c818b72-1e40-4804-ab04-248bf3aa2ac9",
+      "chunkOrder": 1,
+      "category": "Uncategorized",
+      "originalTextLength": 373,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "a3144478-8106-4424-aa62-3246cf04f340",
+      "chunkOrder": 2,
+      "category": "faq",
+      "originalTextLength": 241,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "c4e5ebed-807a-48b6-aae8-1e1ee2d9906b",
+      "chunkOrder": 3,
+      "category": "booking or scheduling",
+      "originalTextLength": 694,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "adbad62a-4a6d-4237-8160-faecb24f6f7f",
+      "chunkOrder": 4,
+      "category": "pricing or quotes",
+      "originalTextLength": 311,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "b0c41533-9438-4fef-8b57-d8233e18fcd0",
+      "chunkOrder": 1,
+      "category": "faq",
+      "originalTextLength": 209,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "162a1b76-3b08-4de1-b544-a144e456857f",
+      "chunkOrder": 2,
+      "category": "faq",
+      "originalTextLength": 256,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "8c5e38ed-abda-42a3-a333-4a50ac6d2c04",
+      "chunkOrder": 3,
+      "category": "faq",
+      "originalTextLength": 217,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "c04934a9-7fc5-4fee-9b26-30bf565716e7",
+      "chunkOrder": 4,
+      "category": "faq",
+      "originalTextLength": 218,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "2939b9ad-3c33-413e-b435-b895bef93ed9",
+      "chunkOrder": 5,
+      "category": "faq",
+      "originalTextLength": 248,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "631220e0-2dde-429f-908e-7f4305ba3e5d",
+      "chunkOrder": 6,
+      "category": "faq",
+      "originalTextLength": 166,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "f196d687-f0af-46f5-83f5-bc59eaeb86dc",
+      "chunkOrder": 7,
+      "category": "Uncategorized",
+      "originalTextLength": 197,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "d89b086f-0334-4eb7-af21-89d89893e7ab",
+      "chunkOrder": 8,
+      "category": "Uncategorized",
+      "originalTextLength": 173,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "9067f79b-7bc8-40e5-b199-0bc2fa8e52f1",
+      "chunkOrder": 9,
+      "category": "terms & conditions / legal policies",
+      "originalTextLength": 193,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "278a3efb-2fa2-4df1-a327-ad68eea4321a",
+      "chunkOrder": 1,
+      "category": "faq",
+      "originalTextLength": 190,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "0944d605-9a6b-4d40-b893-502f1b8a72ae",
+      "chunkOrder": 2,
+      "category": "contact",
+      "originalTextLength": 408,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "b252b808-0d19-43db-bf07-9e0cfa08bce1",
+      "chunkOrder": 3,
+      "category": "General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories.",
+      "originalTextLength": 350,
+      "preChunkSourceIndex": 0
+    }
+  ]
+}

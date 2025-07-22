@@ -1,8 +1,8 @@
 {
   "processingStats": {
-    "totalUrls": 3,
+    "totalUrls": 4,
     "processedUrls": [
-      "pdf-Luisa FAQ whatsapp conversations (1).pdf"
+      "pdf-Removalist-FAQ-Handbook.pdf"
     ],
     "filteredUrls": [],
     "skippedUrls": [],
@@ -17,23 +17,24 @@
     "totalDocuments": 0,
     "processedDocuments": 0,
     "failedDocuments": 0,
-    "totalEmbeddings": 12,
-    "processedEmbeddings": 12,
+    "totalEmbeddings": 19,
+    "processedEmbeddings": 19,
     "failedEmbeddings": 0,
-    "startTime": 1752918550437,
+    "startTime": 1753166347969,
     "baseOutputPath": "/Users/juanbernal/code/mesieou/2025/simple_booking/crawl-output",
     "domainProcessingSummary": {},
-    "endTime": 1752918567643
+    "endTime": 1753166418073
   },
-  "durationSeconds": 17.206,
+  "durationSeconds": 70.104,
   "allFoundUrls": [
-    "pdf-Luisa FAQ whatsapp conversations (1).pdf#page=1",
-    "pdf-Luisa FAQ whatsapp conversations (1).pdf#page=2",
-    "pdf-Luisa FAQ whatsapp conversations (1).pdf#page=3"
+    "pdf-Removalist-FAQ-Handbook.pdf#page=1",
+    "pdf-Removalist-FAQ-Handbook.pdf#page=2",
+    "pdf-Removalist-FAQ-Handbook.pdf#page=3",
+    "pdf-Removalist-FAQ-Handbook.pdf#page=4"
   ],
   "urlLogs": [
     {
-      "url": "pdf-Luisa FAQ whatsapp conversations (1).pdf",
+      "url": "pdf-Removalist-FAQ-Handbook.pdf",
       "status": "processed",
       "prompt": "",
       "result": ""

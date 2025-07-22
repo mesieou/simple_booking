@@ -1,0 +1,31 @@
+{
+  "modelUsed": "gpt-4o",
+  "originalContentCharacterLength": 2031,
+  "llmSegmentedChunks": [
+    {
+      "chunkOrder": 1,
+      "chunkText": "Q: What if weather affects my move? A: We operate in most weather conditions. In extreme weather (severe storms, flooding), we may need to reschedule for safety reasons at no penalty to you.",
+      "category": 5,
+      "categoryName": "faq",
+      "confidence": 0.9,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 2,
+      "chunkText": "CONTACT INFORMATION Business: Timos Removals Phone: +61 412 882 145 WhatsApp: +61 466 502 512 Email: info@timosremovals.com.au Address: 1/99 Old Geelong Road, Laverton, VIC 3028 Website: https://timosremovals.com.au Business Hours: Monday to Sunday: 6:00 AM - 6:00 PM (including public holidays) For urgent moves or after-hours inquiries, please send a WhatsApp message and we'll respond as soon as possible.",
+      "category": 2,
+      "categoryName": "contact",
+      "confidence": 1,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 3,
+      "chunkText": "TIPS FOR A SMOOTH MOVE 1. Book early for better time slots 2. Pack efficiently in sturdy boxes 3. Label fragile items clearly 4. Take photos of valuable items before moving 5. Keep important documents with you 6. Arrange childcare if you have young children 7. Have refreshments available for the moving team 8. Do a final walkthrough before we leave",
+      "category": 7,
+      "categoryName": "General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories.",
+      "confidence": 0.85,
+      "preChunkSourceIndex": 0
+    }
+  ],
+  "promptUsedLength": 4850
+}
