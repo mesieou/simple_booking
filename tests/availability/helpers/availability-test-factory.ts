@@ -492,19 +492,25 @@ export const quickCleanupTestData = async (): Promise<void> => {
       'calendarSettings'
     ];
 
-    // Delete from tables that reference businesses with test data
-    for (const table of tables) {
-      const { error } = await supabase
-        .from(table)
-        .delete()
-        .in('businessId', supabase
-          .from('businesses')
-          .select('id')
-          .or('name.ilike.%Test Business%,email.ilike.%@test.com')
-        );
+    // Get test business IDs first
+    const { data: testBusinesses } = await supabase
+      .from('businesses')
+      .select('id')
+      .or('name.ilike.%Test Business%,email.ilike.%@test.com');
+
+    if (testBusinesses && testBusinesses.length > 0) {
+      const businessIds = testBusinesses.map(b => b.id);
       
-      if (error) {
-        console.warn(`Warning cleaning up ${table}:`, error);
+      // Delete from tables that reference businesses with test data
+      for (const table of tables) {
+        const { error } = await supabase
+          .from(table)
+          .delete()
+          .in('businessId', businessIds);
+        
+        if (error) {
+          console.warn(`Warning cleaning up ${table}:`, error);
+        }
       }
     }
 
@@ -535,4 +541,184 @@ export const expectAvailabilitySlots = (slots: AvailabilitySlots, expectedDate: 
 
 export const expectNoAvailabilitySlots = (slots: AvailabilitySlots[] | null) => {
   expect(slots).toEqual([]);
+}; 
+
+/**
+ * Aggressively cleans up ALL test auth users
+ * This is more thorough than the business-specific cleanup
+ */
+export const cleanupAllTestAuthUsers = async (): Promise<void> => {
+  const supabase = getEnvironmentServiceRoleClient();
+  console.log('🧹 Starting aggressive test auth user cleanup...');
+
+  try {
+    // Get ALL auth users with pagination support
+    let allUsers: any[] = [];
+    let page = 1;
+    const perPage = 1000; // Max per page for Supabase
+    
+    console.log('📄 Fetching all auth users with pagination...');
+    
+    while (true) {
+      const { data: authUsers, error: listError } = await supabase.auth.admin.listUsers({
+        page: page,
+        perPage: perPage
+      });
+      
+      if (listError) {
+        console.error(`Failed to list auth users (page ${page}):`, listError);
+        break;
+      }
+
+      if (!authUsers?.users || authUsers.users.length === 0) {
+        console.log(`📄 Page ${page}: No more users found`);
+        break;
+      }
+
+      console.log(`📄 Page ${page}: Found ${authUsers.users.length} users`);
+      allUsers.push(...authUsers.users);
+      
+      // If we got less than perPage users, we've reached the end
+      if (authUsers.users.length < perPage) {
+        break;
+      }
+      
+      page++;
+    }
+
+    console.log(`📊 Total auth users found across all pages: ${allUsers.length}`);
+
+    if (allUsers.length === 0) {
+      console.log('No auth users found');
+      return;
+    }
+
+    // Show sample of users for debugging
+    console.log('📋 Sample of first 10 users found:');
+    allUsers.slice(0, 10).forEach((user: any, index: number) => {
+      console.log(`  ${index + 1}. ${user.email} (${user.user_metadata?.firstName || 'no-name'})`);
+    });
+
+    // Filter test users by email patterns and metadata
+    const testUsers = allUsers.filter((user: any) => {
+      const email = user.email || '';
+      const metadata = user.user_metadata || {};
+      const displayName = user.user_metadata?.firstName || '';
+      
+      // Skip real users (like Luisa)
+      if (email === 'luisa.dev@beautyasiul.com' || email.includes('beautyasiul')) {
+        return false;
+      }
+      
+      return (
+        // Email domain patterns
+        email.includes('@test.com') ||
+        
+        // Email prefix patterns (from availability tests)
+        email.includes('test-') ||
+        email.includes('provider') ||
+        email.includes('customer-') ||
+        email.includes('multicalendarchanges') ||
+        email.includes('calendarbusiness') ||
+        email.includes('bookingbusiness') ||
+        email.includes('singlerollover') ||
+        email.includes('multirollover') ||
+        email.includes('multibooking') ||
+        email.includes('bookingimpact') ||
+        email.includes('business-') ||
+        email.includes('-provider') ||
+        
+        // Patterns with timestamps (like 175327492...)
+        /[a-zA-Z]+-\d{13,}/.test(email) ||
+        
+        // Display name patterns
+        displayName.includes('Test') ||
+        displayName.includes('Provider') ||
+        displayName.includes('Owner') ||
+        displayName.includes('Customer') ||
+        
+        // Metadata patterns
+        metadata.isTest === true ||
+        metadata.role === 'provider' ||
+        metadata.role === 'customer' ||
+        metadata.role === 'admin/provider'
+      );
+    });
+
+    console.log(`Found ${testUsers.length} test auth users to delete out of ${allUsers.length} total users`);
+
+    if (testUsers.length === 0) {
+      console.log('No test auth users found to clean up');
+      return;
+    }
+
+    // Delete test users in batches to avoid overwhelming the API
+    const batchSize = 10;
+    let deletedCount = 0;
+    let failedCount = 0;
+
+    for (let i = 0; i < testUsers.length; i += batchSize) {
+      const batch = testUsers.slice(i, i + batchSize);
+      console.log(`Processing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(testUsers.length/batchSize)} (${batch.length} users)`);
+
+      const deletePromises = batch.map(async (user: any) => {
+        try {
+          const { error } = await supabase.auth.admin.deleteUser(user.id);
+          if (error) {
+            console.warn(`Failed to delete user ${user.email}: ${error.message}`);
+            return { success: false, user: user.email };
+          }
+          return { success: true, user: user.email };
+        } catch (error) {
+          console.warn(`Exception deleting user ${user.email}:`, error);
+          return { success: false, user: user.email };
+        }
+      });
+
+      const results = await Promise.all(deletePromises);
+      
+      const batchSuccess = results.filter(r => r.success).length;
+      const batchFailed = results.filter(r => !r.success).length;
+      
+      deletedCount += batchSuccess;
+      failedCount += batchFailed;
+
+      console.log(`✅ Batch completed: ${batchSuccess} deleted, ${batchFailed} failed`);
+
+      // Wait between batches to avoid rate limiting
+      if (i + batchSize < testUsers.length) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+
+    console.log(`🎉 Auth user cleanup completed: ${deletedCount} deleted, ${failedCount} failed`);
+
+    if (failedCount > 0) {
+      console.warn(`⚠️ ${failedCount} auth users could not be deleted. They may need manual cleanup.`);
+    }
+
+  } catch (error) {
+    console.error('❌ Error in auth user cleanup:', error);
+    throw error;
+  }
+};
+
+/**
+ * Enhanced comprehensive cleanup that includes aggressive auth user cleanup
+ */
+export const cleanupAllTestDataWithAuthUsers = async (): Promise<void> => {
+  console.log('🧹 Starting COMPREHENSIVE test data and auth user cleanup...');
+  
+  try {
+    // First clean up database records
+    await cleanupAllTestData();
+    
+    // Then aggressively clean up auth users
+    await cleanupAllTestAuthUsers();
+    
+    console.log('🎉 Comprehensive cleanup with auth users completed!');
+  } catch (error) {
+    console.error('❌ Error in comprehensive cleanup:', error);
+    throw error;
+  }
 }; 

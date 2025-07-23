@@ -1,12 +1,12 @@
 {
-  "businessId": "df68bbab-8469-42cd-9af9-0e48d7577a8c",
+  "businessId": "f39ec9f0-ca54-4368-a071-650fe4a592eb",
   "content": "Q: Which areas do you service? A: We are based in Laverton and primarily service Melbourne metropolitan area within reasonable distance from our base. We focus on providing excellent local service.",
-  "title": "Removalist-FAQ-Handbook.pdf - Page 3 - Uncategorized (Chunk 7, Pre 0)",
+  "title": "Removalist-FAQ-Handbook.pdf - Page 3 - faq (Chunk 7, Pre 0)",
   "source": "pdf-Removalist-FAQ-Handbook.pdf#page=3",
   "type": "pdf",
-  "category": "Uncategorized",
+  "category": "faq",
   "contentHash": "4bbc60fdf70a21e103187bb3b2bc5892a77e7920e9c809414b7d78ea8d3a2557",
-  "confidence": 0.85,
+  "confidence": 0.9,
   "preChunkSourceIndex": 0,
   "embeddingInputText": "Q: Which areas do you service? A: We are based in Laverton and primarily service Melbourne metropolitan area within reasonable distance from our base. We focus on providing excellent local service.",
   "embedding": [

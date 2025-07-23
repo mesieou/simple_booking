@@ -53,24 +53,24 @@
     {
       "chunkOrder": 7,
       "chunkText": "Q: Which areas do you service? A: We are based in Laverton and primarily service Melbourne metropolitan area within reasonable distance from our base. We focus on providing excellent local service.",
-      "category": 0,
-      "categoryName": "services offered",
-      "confidence": 0.85,
+      "category": 5,
+      "categoryName": "faq",
+      "confidence": 0.9,
       "preChunkSourceIndex": 0
     },
     {
       "chunkOrder": 8,
       "chunkText": "Q: Do you do interstate moves? A: No, we do not provide interstate moving services. We specialize in local Melbourne moves to ensure quality service and competitive pricing.",
-      "category": 0,
-      "categoryName": "services offered",
-      "confidence": 0.85,
+      "category": 5,
+      "categoryName": "faq",
+      "confidence": 0.9,
       "preChunkSourceIndex": 0
     },
     {
       "chunkOrder": 9,
       "chunkText": "Q: Can I cancel my booking? A: Cancellations more than 3 days in advance receive a full deposit refund. Cancellations within 3 days forfeit the deposit. Same-day cancellations are not refunded.",
-      "category": 6,
-      "categoryName": "terms & conditions / legal policies",
+      "category": 5,
+      "categoryName": "faq",
       "confidence": 0.9,
       "preChunkSourceIndex": 0
     }

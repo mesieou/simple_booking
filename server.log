@@ -4556,3 +4556,1387 @@ Import trace for requested module:
  ✓ Compiled in 388ms (1137 modules)
 <w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/Users/juanbernal/code/mesieou/2025/simple_booking/.next/cache/webpack/client-development/12.pack.gz_' -> '/Users/juanbernal/code/mesieou/2025/simple_booking/.next/cache/webpack/client-development/12.pack.gz'
  ✓ Compiled in 193ms (1137 modules)
+ ✓ Compiled /api/seed/luisa in 418ms (1480 modules)
+ GET /api/seed/luisa 200 in 559ms
+💄 Starting Luisa business seed for DEVELOPMENT...
+🧹 Cleaning up old Luisa business data in DEV environment...
+[CLEANUP] Starting cleanup of Luisa's test business data...
+[CLEANUP] Searching for existing Luisa business data...
+[CLEANUP] Found 2 business(es) to clean up:
+  - dsfd (mesieou@gmail.com) - ID: 58771fee-cc13-4990-a654-794f821cca3b
+  - Beauty Asiul (DEV) (luisa.dev@beautyasiul.com) - ID: 162cd203-b632-44e4-a9d5-081e247421bd
+[CLEANUP] 🧹 Cleaning up business: dsfd - ID: 58771fee-cc13-4990-a654-794f821cca3b
+[SEED] Starting cleanup for business ID: 58771fee-cc13-4990-a654-794f821cca3b...
+[SEED] Note: Error deleting availability slots for business 58771fee-cc13-4990-a654-794f821cca3b: column availabilitySlots.providerId does not exist
+[SEED] Successfully cleaned up business 58771fee-cc13-4990-a654-794f821cca3b and all related data.
+[CLEANUP] ✅ Successfully cleaned up business: dsfd
+[CLEANUP] 🧹 Cleaning up business: Beauty Asiul (DEV) - ID: 162cd203-b632-44e4-a9d5-081e247421bd
+[SEED] Starting cleanup for business ID: 162cd203-b632-44e4-a9d5-081e247421bd...
+[SEED] Note: Error deleting availability slots for business 162cd203-b632-44e4-a9d5-081e247421bd: column availabilitySlots.providerId does not exist
+[SEED] Successfully cleaned up business 162cd203-b632-44e4-a9d5-081e247421bd and all related data.
+[CLEANUP] ✅ Successfully cleaned up business: Beauty Asiul (DEV)
+[CLEANUP] 🎉 All Luisa business data cleaned up successfully!
+✅ Old business data cleaned up successfully
+📱 Using phone: +61452490450
+📱 Using WhatsApp: +15551890570
+📞 Using Phone Number ID: 684078768113901
+[SEED] Starting database seeding for Luisa's Business (Beauty Asiul)...
+[SEED] Environment: {
+  supabaseUrl: 'Using provided client',
+  hasServiceRoleKey: true,
+  usingProvidedClient: true,
+  productionUrl: 'https://itjtaeggupasvrepfkcw.supabase.co',
+  hasProductionServiceRoleKey: true,
+  hasCustomConfig: true
+}
+[SEED] Using business configuration: {
+  name: 'Beauty Asiul (DEV)',
+  email: 'luisa.dev@beautyasiul.com',
+  phone: '+61452490450',
+  whatsappNumber: '+15551890570',
+  whatsappPhoneNumberId: '684078768113901'
+}
+[SEED] Checking for existing Luisa business data to clean up...
+[SEED] No existing Luisa business data found to clean up.
+[SEED] Creating new business...
+[SEED] Business 'Beauty Asiul (DEV)' created with ID: 5652c914-dc3c-4dc8-a906-6c14c0ec58b8
+[SEED] Creating owner provider...
+[SEED] About to create user with data: {
+  email: 'luisa.dev@beautyasiul.com',
+  whatsappNumber: '+15551890570',
+  businessId: '5652c914-dc3c-4dc8-a906-6c14c0ec58b8'
+}
+[User.add] No existing auth user found. Creating new one.
+[User.add] About to upsert user profile: {
+  id: '979de18b-c6c9-43d9-a8a9-fa821ae3af9d',
+  firstName: 'Luisa',
+  lastName: 'Bernal',
+  role: 'admin/provider',
+  businessId: '5652c914-dc3c-4dc8-a906-6c14c0ec58b8',
+  email: 'luisa.dev@beautyasiul.com',
+  phoneNormalized: '61452490450',
+  whatsAppNumberNormalized: '15551890570'
+}
+[User.add] Using adminSupa client (bypasses RLS for user creation)
+[SEED] User 'Luisa Bernal' created with ID: 979de18b-c6c9-43d9-a8a9-fa821ae3af9d
+[SEED] Creating services...
+[SEED] Service 'Basic Manicure' created with ID: 1f3fd964-35d3-4c60-b082-294e3fc3aae6
+[SEED] Service 'Express Manicure' created with ID: 97f29c27-8ea8-4cca-b8b7-04f7339401cd
+[SEED] Service 'Gel Manicure' created with ID: cf9f3d08-4111-4783-ad1c-079d960a2395
+[SEED] Service 'Press on Manicure' created with ID: 2595aae6-f474-46f1-8194-07bb4d47f94f
+[SEED] Service 'Nail Art' created with ID: 411696fe-8863-4efc-99cc-52d4d0d4fb66
+[SEED] Service 'Basic Pedicure' created with ID: eb2b0050-e2a1-4696-880a-4fb5e084dc2e
+[SEED] Service 'Gel Pedicure' created with ID: c249bc8e-f041-4ad7-b2b7-468f396b6439
+[SEED] Service 'Ladies Haircut' created with ID: 33cfcd92-8e30-4287-8e03-d3e2d9c9ae92
+[SEED] Service 'Hair Styling' created with ID: e4e2b840-1f36-4181-b131-dd77cde7aeac
+[SEED] Service 'Braids' created with ID: 461cc4bc-3684-454f-aa66-d61e4e1df9fb
+[SEED] Service 'Blow Dry' created with ID: 0d67c1ba-43ce-46a5-8877-635b333b3e41
+[SEED] Service 'Waves' created with ID: 3eaa03a8-295b-47e5-a42b-31bdab702620
+[SEED] Service 'Treatments' created with ID: dcbe882b-2619-4804-b41d-46015b113408
+[SEED] Creating calendar settings...
+[SEED] Calendar settings created with ID: 0f593992-44eb-4615-8958-b29eb28f92dc
+[SEED] Skipping manual document creation - will use PDF processing
+[SEED] Creating initial availability slots...
+[computeAggregatedAvailability] Found 1 providers for business 5652c914-dc3c-4dc8-a906-6c14c0ec58b8
+[Environment] Using development environment for server client
+[SEED] Created initial availability for 26 days
+[SEED] Database seeding completed successfully!
+[SEED] Triggering PDF content crawler for document embeddings...
+[SEED] Loading luisa-faq.pdf for processing...
+[SEED] Loaded PDF file: 78733 bytes
+[SEED] Calling PDF content crawler API: http://localhost:3000/api/content-crawler/pdf
+ ○ Compiling /api/content-crawler/pdf ...
+ ✓ Compiled /api/content-crawler/pdf in 683ms (1639 modules)
+[Crawl Setup] Deleting existing output directory: /Users/juanbernal/code/mesieou/2025/simple_booking/crawl-output
+[Crawl Setup] Successfully deleted /Users/juanbernal/code/mesieou/2025/simple_booking/crawl-output
+[LOGGER] Initialized. Output path: /Users/juanbernal/code/mesieou/2025/simple_booking/crawl-output
+[Crawl Setup] Logger initialized. Output path: /Users/juanbernal/code/mesieou/2025/simple_booking/crawl-output
+Warning: Setting up fake worker.
+[LOGGER] URL processed: pdf-luisa-faq.pdf
+[ProcessContent] Global embedding state cleared
+[ProcessContent] In-memory Session initialized: 0e6e6bca-50fa-4174-85d6-3a9e8c63a0dd, Business ID: 5652c914-dc3c-4dc8-a906-6c14c0ec58b8
+[ProcessContent] Content processing initialized. Session ID: 0e6e6bca-50fa-4174-85d6-3a9e8c63a0dd
+[PDF Crawler] DB Session initialized: 0e6e6bca-50fa-4174-85d6-3a9e8c63a0dd. ProcessingState created.
+[PDF Crawler] Generating LLM chunks for page: pdf-luisa-faq.pdf#page=1 (LLM Chunk Gen SID: eb227709-481d-4e90-9c39-42829a16ff28)
+[PageContentProcessor-PDFSingle] Starting LLM chunk generation for page: pdf-luisa-faq.pdf#page=1 (SID: eb227709-481d-4e90-9c39-42829a16ff28, Domain: luisa-faq.pdf)
+[PageContentProcessor-PDFSingle] Pre-splitting content for: pdf-luisa-faq.pdf#page=1 (Original length: 2121 chars)
+[PageContentProcessor-PDFSingle] URL pdf-luisa-faq.pdf#page=1 was pre-split into 1 chunk(s) for LLM processing.
+[PageContentProcessor-PDFSingle] Processing 1 pre-chunks with concurrency 1 for: pdf-luisa-faq.pdf#page=1
+[PageContentProcessor-PDFSingle] Segmenting and categorizing pre-chunk 1/1 for: pdf-luisa-faq.pdf#page=1 (Length: 2121 chars)
+[LLMSegmenterCategorizer] Calling actualCategorizeWebsiteContent from content-analysis.ts for URL: pdf-luisa-faq.pdf#page=1
+[Categorizer] Starting categorizeWebsiteContent for businessId=5652c914-dc3c-4dc8-a906-6c14c0ec58b8, url=pdf-luisa-faq.pdf#page=1
+[Categorizer] Raw response for businessId=5652c914-dc3c-4dc8-a906-6c14c0ec58b8, url=pdf-luisa-faq.pdf#page=1: ```json
+[
+  {
+    "category": 5,
+    "content": "1. Where does Luisa work from? Luisa does not operate from a public salon or studio. She provides services from her apartment located at: Apt 11/9 Dryburgh St, Apt 111, West Melbourne VIC 3003",
+    "confidence": 0.9,
+    "confidenceReason": "The content addresses a common question about the location of Luisa's services, fitting the FAQ category."
+  },
+  {
+    "category": 5,
+    "content": "2. Does Luisa accept walk-ins or same-day bookings? Luisa...
+[Categorizer] Raw response length: 1829 characters
+[JSON Parser] Attempting to parse (first 500 chars): ```json
+[
+  {
+    "category": 5,
+    "content": "1. Where does Luisa work from? Luisa does not operate from a public salon or studio. She provides services from her apartment located at: Apt 11/9 Dryburgh St, Apt 111, West Melbourne VIC 3003",
+    "confidence": 0.9,
+    "confidenceReason": "The content addresses a common question about the location of Luisa's services, fitting the FAQ category."
+  },
+  {
+    "category": 5,
+    "content": "2. Does Luisa accept walk-ins or same-day bookings? Luisa...
+[JSON Parser] Initial parse failed, attempting to extract JSON array
+[JSON Parser] Extracted JSON (first 500 chars): [
+  {
+    "category": 5,
+    "content": "1. Where does Luisa work from? Luisa does not operate from a public salon or studio. She provides services from her apartment located at: Apt 11/9 Dryburgh St, Apt 111, West Melbourne VIC 3003",
+    "confidence": 0.9,
+    "confidenceReason": "The content addresses a common question about the location of Luisa's services, fitting the FAQ category."
+  },
+  {
+    "category": 5,
+    "content": "2. Does Luisa accept walk-ins or same-day bookings? Luisa may acc...
+[Categorizer] Parsed 4 items from LLM response
+[PageContentProcessor-PDFSingle] Pre-chunk 1/1 for URL pdf-luisa-faq.pdf#page=1 yielded 4 LLM-defined sub-chunks.
+[PageContentProcessor-PDFSingle] Finished LLM chunk generation for page: pdf-luisa-faq.pdf#page=1. Generated 4 chunks.
+[PDF Crawler] Generated 4 LLM chunks for pdf-luisa-faq.pdf#page=1.
+[ProcessContentPerPage] Processing 4 chunks for page: pdf-luisa-faq.pdf#page=1
+[ProcessContent] Step 1: Preparing initial DocumentData objects from LLM chunks...
+[ProcessContent] Step 1 completed. 4 documents created and ready for embedding. 0 duplicates skipped.
+[ProcessContent] Step 2: Generating embeddings for 4 documents...
+[ProcessContent] After filtering: 4 documents need embeddings (filtered out 0)
+[ProcessContent] Processing 4 embedding tasks with concurrency 4
+[EmbeddingCreator] Calling generateEmbedding for: pdf-luisa-faq.pdf#page=1, interactionId: d8e1daeb9afffaf7e0e01f451b093fe2e9cd720a10b60ee6af3c860e8297d5b2_embedding, text (first 80 chars): "1. Where does Luisa work from? Luisa does not operate from a public salon or stu..."
+[generateEmbedding] Attempting for text (first 80 chars): "1. Where does Luisa work from? Luisa does not operate from a public salon or stu..."
+[EmbeddingCreator] Calling generateEmbedding for: pdf-luisa-faq.pdf#page=1, interactionId: a7d3815be28272b80a3180b3c68ea2b53d9e817ab0a97f6fdb2d58884a62d3c5_embedding, text (first 80 chars): "2. Does Luisa accept walk-ins or same-day bookings? Luisa may accept same-day bo..."
+[generateEmbedding] Attempting for text (first 80 chars): "2. Does Luisa accept walk-ins or same-day bookings? Luisa may accept same-day bo..."
+[EmbeddingCreator] Calling generateEmbedding for: pdf-luisa-faq.pdf#page=1, interactionId: e374652180692cd0eee78fa83381a6081242eee40b14b407e0c75fa91c04440a_embedding, text (first 80 chars): "3. What is Luisa’s deposit policy? ● A 50% deposit is required to secure an appo..."
+[generateEmbedding] Attempting for text (first 80 chars): "3. What is Luisa’s deposit policy? ● A 50% deposit is required to secure an appo..."
+[EmbeddingCreator] Calling generateEmbedding for: pdf-luisa-faq.pdf#page=1, interactionId: d8f0982b48289709948600fbafebc768623da93ac468652ffc1f9d1bac9b7059_embedding, text (first 80 chars): "4. What if I can’t pay the deposit? Some clients have been allowed to pay the fu..."
+[generateEmbedding] Attempting for text (first 80 chars): "4. What if I can’t pay the deposit? Some clients have been allowed to pay the fu..."
+[generateEmbedding] SUCCESS for text (first 80 chars): "3. What is Luisa’s deposit policy? ● A 50% deposit is required to secure an appo..."
+[EmbeddingCreator] generateEmbedding SUCCEEDED for e374652180692cd0eee78fa83381a6081242eee40b14b407e0c75fa91c04440a_embedding. Result vector (first 3 elements): [
+  -0.042299628257751465,
+  -0.008409037254750729,
+  -0.0005818060599267483
+]
+[Embedding] Successfully generated embedding for doc hash e374652180692cd0eee78fa83381a6081242eee40b14b407e0c75fa91c04440a from source pdf-luisa-faq.pdf#page=1 in 459ms.
+[generateEmbedding] SUCCESS for text (first 80 chars): "1. Where does Luisa work from? Luisa does not operate from a public salon or stu..."
+[EmbeddingCreator] generateEmbedding SUCCEEDED for d8e1daeb9afffaf7e0e01f451b093fe2e9cd720a10b60ee6af3c860e8297d5b2_embedding. Result vector (first 3 elements): [ -0.08066321164369583, -0.030090665444731712, 0.06685690581798553 ]
+[Embedding] Successfully generated embedding for doc hash d8e1daeb9afffaf7e0e01f451b093fe2e9cd720a10b60ee6af3c860e8297d5b2 from source pdf-luisa-faq.pdf#page=1 in 465ms.
+[generateEmbedding] SUCCESS for text (first 80 chars): "4. What if I can’t pay the deposit? Some clients have been allowed to pay the fu..."
+[EmbeddingCreator] generateEmbedding SUCCEEDED for d8f0982b48289709948600fbafebc768623da93ac468652ffc1f9d1bac9b7059_embedding. Result vector (first 3 elements): [ -0.007707362063229084, 0.006981813348829746, 0.01854603923857212 ]
+[Embedding] Successfully generated embedding for doc hash d8f0982b48289709948600fbafebc768623da93ac468652ffc1f9d1bac9b7059 from source pdf-luisa-faq.pdf#page=1 in 490ms.
+[generateEmbedding] SUCCESS for text (first 80 chars): "2. Does Luisa accept walk-ins or same-day bookings? Luisa may accept same-day bo..."
+[EmbeddingCreator] generateEmbedding SUCCEEDED for a7d3815be28272b80a3180b3c68ea2b53d9e817ab0a97f6fdb2d58884a62d3c5_embedding. Result vector (first 3 elements): [ -0.05520404502749443, -0.02170209027826786, 0.0344795286655426 ]
+[Embedding] Successfully generated embedding for doc hash a7d3815be28272b80a3180b3c68ea2b53d9e817ab0a97f6fdb2d58884a62d3c5 from source pdf-luisa-faq.pdf#page=1 in 494ms.
+[ProcessContent] Step 2 completed. Embeddings generated (or attempted) for all documents. Stats: 4 attempts, 0 failures.
+[ProcessContentPerPage] Saving JSON artifacts for 4 documents from page: pdf-luisa-faq.pdf#page=1
+[ProcessContentPerPage] Finished saving JSON artifacts for page: pdf-luisa-faq.pdf#page=1
+[ProcessContentPerPage] Finished processing and embedding for page: pdf-luisa-faq.pdf#page=1. Current total docs in state: 4
+[PDF Crawler] Submitted 4 chunks from pdf-luisa-faq.pdf#page=1 for embedding and DB processing (DB SID: 0e6e6bca-50fa-4174-85d6-3a9e8c63a0dd).
+[PDF Crawler] Generating LLM chunks for page: pdf-luisa-faq.pdf#page=2 (LLM Chunk Gen SID: eb227709-481d-4e90-9c39-42829a16ff28)
+[PageContentProcessor-PDFSingle] Starting LLM chunk generation for page: pdf-luisa-faq.pdf#page=2 (SID: eb227709-481d-4e90-9c39-42829a16ff28, Domain: luisa-faq.pdf)
+[PageContentProcessor-PDFSingle] Pre-splitting content for: pdf-luisa-faq.pdf#page=2 (Original length: 2443 chars)
+[PageContentProcessor-PDFSingle] URL pdf-luisa-faq.pdf#page=2 was pre-split into 1 chunk(s) for LLM processing.
+[PageContentProcessor-PDFSingle] Processing 1 pre-chunks with concurrency 1 for: pdf-luisa-faq.pdf#page=2
+[PageContentProcessor-PDFSingle] Segmenting and categorizing pre-chunk 1/1 for: pdf-luisa-faq.pdf#page=2 (Length: 2443 chars)
+[LLMSegmenterCategorizer] Calling actualCategorizeWebsiteContent from content-analysis.ts for URL: pdf-luisa-faq.pdf#page=2
+[Categorizer] Starting categorizeWebsiteContent for businessId=5652c914-dc3c-4dc8-a906-6c14c0ec58b8, url=pdf-luisa-faq.pdf#page=2
+[Categorizer] Raw response for businessId=5652c914-dc3c-4dc8-a906-6c14c0ec58b8, url=pdf-luisa-faq.pdf#page=2: ```json
+[
+  {
+    "category": 5,
+    "content": "5. Is payment in cash required? Yes, Luisa generally prefers or requires payment in cash unless otherwise agreed. She reminds customers of this frequently before appointments.",
+    "confidence": 0.9,
+    "confidenceReason": "The content addresses a common question about payment methods, fitting the FAQ category."
+  },
+  {
+    "category": 5,
+    "content": "6. What happens if Luisa is running late? Luisa occasionally runs late and notifies the cli...
+[Categorizer] Raw response length: 2586 characters
+[JSON Parser] Attempting to parse (first 500 chars): ```json
+[
+  {
+    "category": 5,
+    "content": "5. Is payment in cash required? Yes, Luisa generally prefers or requires payment in cash unless otherwise agreed. She reminds customers of this frequently before appointments.",
+    "confidence": 0.9,
+    "confidenceReason": "The content addresses a common question about payment methods, fitting the FAQ category."
+  },
+  {
+    "category": 5,
+    "content": "6. What happens if Luisa is running late? Luisa occasionally runs late and notifies the cli...
+[JSON Parser] Initial parse failed, attempting to extract JSON array
+[JSON Parser] Extracted JSON (first 500 chars): [
+  {
+    "category": 5,
+    "content": "5. Is payment in cash required? Yes, Luisa generally prefers or requires payment in cash unless otherwise agreed. She reminds customers of this frequently before appointments.",
+    "confidence": 0.9,
+    "confidenceReason": "The content addresses a common question about payment methods, fitting the FAQ category."
+  },
+  {
+    "category": 5,
+    "content": "6. What happens if Luisa is running late? Luisa occasionally runs late and notifies the client. Cli...
+[Categorizer] Parsed 7 items from LLM response
+[PageContentProcessor-PDFSingle] Pre-chunk 1/1 for URL pdf-luisa-faq.pdf#page=2 yielded 7 LLM-defined sub-chunks.
+[PageContentProcessor-PDFSingle] Finished LLM chunk generation for page: pdf-luisa-faq.pdf#page=2. Generated 7 chunks.
+[PDF Crawler] Generated 7 LLM chunks for pdf-luisa-faq.pdf#page=2.
+[ProcessContentPerPage] Processing 7 chunks for page: pdf-luisa-faq.pdf#page=2
+[ProcessContent] Step 1: Preparing initial DocumentData objects from LLM chunks...
+[ProcessContent] Step 1 completed. 11 documents created and ready for embedding. 0 duplicates skipped.
+[ProcessContent] Step 2: Generating embeddings for 11 documents...
+[ProcessContent] Filtering out document d8e1daeb9afffaf7e0e01f451b093fe2e9cd720a10b60ee6af3c860e8297d5b2 - already has embedding
+[ProcessContent] Filtering out document a7d3815be28272b80a3180b3c68ea2b53d9e817ab0a97f6fdb2d58884a62d3c5 - already has embedding
+[ProcessContent] Filtering out document e374652180692cd0eee78fa83381a6081242eee40b14b407e0c75fa91c04440a - already has embedding
+[ProcessContent] Filtering out document d8f0982b48289709948600fbafebc768623da93ac468652ffc1f9d1bac9b7059 - already has embedding
+[ProcessContent] After filtering: 7 documents need embeddings (filtered out 4)
+[ProcessContent] Processing 7 embedding tasks with concurrency 7
+[EmbeddingCreator] Calling generateEmbedding for: pdf-luisa-faq.pdf#page=2, interactionId: 6ec6b5023b0873a459db642bf4cd7657424c581c2f2509041ec71e99553cd6d0_embedding, text (first 80 chars): "5. Is payment in cash required? Yes, Luisa generally prefers or requires payment..."
+[generateEmbedding] Attempting for text (first 80 chars): "5. Is payment in cash required? Yes, Luisa generally prefers or requires payment..."
+[EmbeddingCreator] Calling generateEmbedding for: pdf-luisa-faq.pdf#page=2, interactionId: 8eb2079f83e9225892fd87de7ecb696018ef676174196762d19e42df78487271_embedding, text (first 80 chars): "6. What happens if Luisa is running late? Luisa occasionally runs late and notif..."
+[generateEmbedding] Attempting for text (first 80 chars): "6. What happens if Luisa is running late? Luisa occasionally runs late and notif..."
+[EmbeddingCreator] Calling generateEmbedding for: pdf-luisa-faq.pdf#page=2, interactionId: 67f47f33269e7c6bbb0e35d41cde59fe6989a23192f70faeec5c7f247ce6dc91_embedding, text (first 80 chars): "7. Can I cancel or reschedule my appointment? Yes, you can cancel or reschedule,..."
+[generateEmbedding] Attempting for text (first 80 chars): "7. Can I cancel or reschedule my appointment? Yes, you can cancel or reschedule,..."
+[EmbeddingCreator] Calling generateEmbedding for: pdf-luisa-faq.pdf#page=2, interactionId: f015b774c44b7bad22453851e0e904def5ae0f78b18c9ada68094961db5a5eb2_embedding, text (first 80 chars): "8. Can someone else come to the appointment or wait? Luisa has not objected to c..."
+[generateEmbedding] Attempting for text (first 80 chars): "8. Can someone else come to the appointment or wait? Luisa has not objected to c..."
+[EmbeddingCreator] Calling generateEmbedding for: pdf-luisa-faq.pdf#page=2, interactionId: 268b2b0725a42d7cf9d7cc225da3d25ae644cd1e22226bbb620ae456efd89e28_embedding, text (first 80 chars): "9. How long do services take? ● Braiding: Approx. 1 hour ● Shellac Manicure: Not..."
+[generateEmbedding] Attempting for text (first 80 chars): "9. How long do services take? ● Braiding: Approx. 1 hour ● Shellac Manicure: Not..."
+[generateEmbedding] SUCCESS for text (first 80 chars): "7. Can I cancel or reschedule my appointment? Yes, you can cancel or reschedule,..."
+[EmbeddingCreator] generateEmbedding SUCCEEDED for 67f47f33269e7c6bbb0e35d41cde59fe6989a23192f70faeec5c7f247ce6dc91_embedding. Result vector (first 3 elements): [ -0.03216256573796272, 0.058110591024160385, 0.0316060408949852 ]
+[Embedding] Successfully generated embedding for doc hash 67f47f33269e7c6bbb0e35d41cde59fe6989a23192f70faeec5c7f247ce6dc91 from source pdf-luisa-faq.pdf#page=2 in 404ms.
+[EmbeddingCreator] Calling generateEmbedding for: pdf-luisa-faq.pdf#page=2, interactionId: db5ee02668dac94a058008c21a63a285fc160d2d3b38d6b52bf6ab298fc6a26d_embedding, text (first 80 chars): "10. Can Luisa accommodate last-minute changes or delays? Yes, she tries to be fl..."
+[generateEmbedding] Attempting for text (first 80 chars): "10. Can Luisa accommodate last-minute changes or delays? Yes, she tries to be fl..."
+[generateEmbedding] SUCCESS for text (first 80 chars): "6. What happens if Luisa is running late? Luisa occasionally runs late and notif..."
+[EmbeddingCreator] generateEmbedding SUCCEEDED for 8eb2079f83e9225892fd87de7ecb696018ef676174196762d19e42df78487271_embedding. Result vector (first 3 elements): [ -0.022666484117507935, 0.00834975577890873, 0.032971858978271484 ]
+[Embedding] Successfully generated embedding for doc hash 8eb2079f83e9225892fd87de7ecb696018ef676174196762d19e42df78487271 from source pdf-luisa-faq.pdf#page=2 in 472ms.
+[EmbeddingCreator] Calling generateEmbedding for: pdf-luisa-faq.pdf#page=2, interactionId: 62f609db570b6342be46d4a1f82723ac13a2785e4373ec5cdb315423f0cc2310_embedding, text (first 80 chars): "11. Does Luisa provide mobile services?..."
+[generateEmbedding] Attempting for text (first 80 chars): "11. Does Luisa provide mobile services?..."
+[generateEmbedding] SUCCESS for text (first 80 chars): "5. Is payment in cash required? Yes, Luisa generally prefers or requires payment..."
+[EmbeddingCreator] generateEmbedding SUCCEEDED for 6ec6b5023b0873a459db642bf4cd7657424c581c2f2509041ec71e99553cd6d0_embedding. Result vector (first 3 elements): [ -0.021836215630173683, -0.0003163654182571918, 0.017626497894525528 ]
+[Embedding] Successfully generated embedding for doc hash 6ec6b5023b0873a459db642bf4cd7657424c581c2f2509041ec71e99553cd6d0 from source pdf-luisa-faq.pdf#page=2 in 710ms.
+[generateEmbedding] SUCCESS for text (first 80 chars): "8. Can someone else come to the appointment or wait? Luisa has not objected to c..."
+[EmbeddingCreator] generateEmbedding SUCCEEDED for f015b774c44b7bad22453851e0e904def5ae0f78b18c9ada68094961db5a5eb2_embedding. Result vector (first 3 elements): [ -0.01895017735660076, 0.007885674946010113, 0.03438045084476471 ]
+[Embedding] Successfully generated embedding for doc hash f015b774c44b7bad22453851e0e904def5ae0f78b18c9ada68094961db5a5eb2 from source pdf-luisa-faq.pdf#page=2 in 735ms.
+[generateEmbedding] SUCCESS for text (first 80 chars): "11. Does Luisa provide mobile services?..."
+[EmbeddingCreator] generateEmbedding SUCCEEDED for 62f609db570b6342be46d4a1f82723ac13a2785e4373ec5cdb315423f0cc2310_embedding. Result vector (first 3 elements): [ -0.02984096296131611, -0.030331579968333244, 0.028022799640893936 ]
+[Embedding] Successfully generated embedding for doc hash 62f609db570b6342be46d4a1f82723ac13a2785e4373ec5cdb315423f0cc2310 from source pdf-luisa-faq.pdf#page=2 in 811ms.
+[generateEmbedding] SUCCESS for text (first 80 chars): "10. Can Luisa accommodate last-minute changes or delays? Yes, she tries to be fl..."
+[EmbeddingCreator] generateEmbedding SUCCEEDED for db5ee02668dac94a058008c21a63a285fc160d2d3b38d6b52bf6ab298fc6a26d_embedding. Result vector (first 3 elements): [ -0.022480318322777748, 0.0016339985886588693, 0.04803164675831795 ]
+[Embedding] Successfully generated embedding for doc hash db5ee02668dac94a058008c21a63a285fc160d2d3b38d6b52bf6ab298fc6a26d from source pdf-luisa-faq.pdf#page=2 in 859ms.
+[generateEmbedding] SUCCESS for text (first 80 chars): "9. How long do services take? ● Braiding: Approx. 1 hour ● Shellac Manicure: Not..."
+[EmbeddingCreator] generateEmbedding SUCCEEDED for 268b2b0725a42d7cf9d7cc225da3d25ae644cd1e22226bbb620ae456efd89e28_embedding. Result vector (first 3 elements): [ -0.033706001937389374, 0.049797751009464264, 0.061181433498859406 ]
+[Embedding] Successfully generated embedding for doc hash 268b2b0725a42d7cf9d7cc225da3d25ae644cd1e22226bbb620ae456efd89e28 from source pdf-luisa-faq.pdf#page=2 in 865ms.
+[ProcessContent] Step 2 completed. Embeddings generated (or attempted) for all documents. Stats: 11 attempts, 0 failures.
+[ProcessContentPerPage] Saving JSON artifacts for 7 documents from page: pdf-luisa-faq.pdf#page=2
+[ProcessContentPerPage] Finished saving JSON artifacts for page: pdf-luisa-faq.pdf#page=2
+[ProcessContentPerPage] Finished processing and embedding for page: pdf-luisa-faq.pdf#page=2. Current total docs in state: 11
+[PDF Crawler] Submitted 7 chunks from pdf-luisa-faq.pdf#page=2 for embedding and DB processing (DB SID: 0e6e6bca-50fa-4174-85d6-3a9e8c63a0dd).
+[PDF Crawler] Generating LLM chunks for page: pdf-luisa-faq.pdf#page=3 (LLM Chunk Gen SID: eb227709-481d-4e90-9c39-42829a16ff28)
+[PageContentProcessor-PDFSingle] Starting LLM chunk generation for page: pdf-luisa-faq.pdf#page=3 (SID: eb227709-481d-4e90-9c39-42829a16ff28, Domain: luisa-faq.pdf)
+[PageContentProcessor-PDFSingle] Pre-splitting content for: pdf-luisa-faq.pdf#page=3 (Original length: 683 chars)
+[PageContentProcessor-PDFSingle] URL pdf-luisa-faq.pdf#page=3 was pre-split into 1 chunk(s) for LLM processing.
+[PageContentProcessor-PDFSingle] Processing 1 pre-chunks with concurrency 1 for: pdf-luisa-faq.pdf#page=3
+[PageContentProcessor-PDFSingle] Segmenting and categorizing pre-chunk 1/1 for: pdf-luisa-faq.pdf#page=3 (Length: 683 chars)
+[LLMSegmenterCategorizer] Calling actualCategorizeWebsiteContent from content-analysis.ts for URL: pdf-luisa-faq.pdf#page=3
+[Categorizer] Starting categorizeWebsiteContent for businessId=5652c914-dc3c-4dc8-a906-6c14c0ec58b8, url=pdf-luisa-faq.pdf#page=3
+[Categorizer] Raw response for businessId=5652c914-dc3c-4dc8-a906-6c14c0ec58b8, url=pdf-luisa-faq.pdf#page=3: ```json
+[
+  {
+    "category": 5,
+    "content": "No. When asked, she confirmed she only attends in North Melbourne. 12. What if I can’t reach Luisa? Clients sometimes call or message repeatedly when arriving. If there's a delay, it’s best to: ● Message again via WhatsApp ● Wait in the lobby or outside Apt 111 ● Be patient, as she may be attending another client or caring for her child",
+    "confidence": 0.9,
+    "confidenceReason": "The content addresses common questions and provides guidance o...
+[Categorizer] Raw response length: 591 characters
+[JSON Parser] Attempting to parse (first 500 chars): ```json
+[
+  {
+    "category": 5,
+    "content": "No. When asked, she confirmed she only attends in North Melbourne. 12. What if I can’t reach Luisa? Clients sometimes call or message repeatedly when arriving. If there's a delay, it’s best to: ● Message again via WhatsApp ● Wait in the lobby or outside Apt 111 ● Be patient, as she may be attending another client or caring for her child",
+    "confidence": 0.9,
+    "confidenceReason": "The content addresses common questions and provides guidance o...
+[JSON Parser] Initial parse failed, attempting to extract JSON array
+[JSON Parser] Extracted JSON (first 500 chars): [
+  {
+    "category": 5,
+    "content": "No. When asked, she confirmed she only attends in North Melbourne. 12. What if I can’t reach Luisa? Clients sometimes call or message repeatedly when arriving. If there's a delay, it’s best to: ● Message again via WhatsApp ● Wait in the lobby or outside Apt 111 ● Be patient, as she may be attending another client or caring for her child",
+    "confidence": 0.9,
+    "confidenceReason": "The content addresses common questions and provides guidance on what t...
+[Categorizer] Parsed 1 items from LLM response
+[PageContentProcessor-PDFSingle] Pre-chunk 1/1 for URL pdf-luisa-faq.pdf#page=3 yielded 1 LLM-defined sub-chunks.
+[PageContentProcessor-PDFSingle] Finished LLM chunk generation for page: pdf-luisa-faq.pdf#page=3. Generated 1 chunks.
+[PDF Crawler] Generated 1 LLM chunks for pdf-luisa-faq.pdf#page=3.
+[ProcessContentPerPage] Processing 1 chunks for page: pdf-luisa-faq.pdf#page=3
+[ProcessContent] Step 1: Preparing initial DocumentData objects from LLM chunks...
+[ProcessContent] Step 1 completed. 12 documents created and ready for embedding. 0 duplicates skipped.
+[ProcessContent] Step 2: Generating embeddings for 12 documents...
+[ProcessContent] Filtering out document d8e1daeb9afffaf7e0e01f451b093fe2e9cd720a10b60ee6af3c860e8297d5b2 - already has embedding
+[ProcessContent] Filtering out document a7d3815be28272b80a3180b3c68ea2b53d9e817ab0a97f6fdb2d58884a62d3c5 - already has embedding
+[ProcessContent] Filtering out document e374652180692cd0eee78fa83381a6081242eee40b14b407e0c75fa91c04440a - already has embedding
+[ProcessContent] Filtering out document d8f0982b48289709948600fbafebc768623da93ac468652ffc1f9d1bac9b7059 - already has embedding
+[ProcessContent] Filtering out document 6ec6b5023b0873a459db642bf4cd7657424c581c2f2509041ec71e99553cd6d0 - already has embedding
+[ProcessContent] Filtering out document 8eb2079f83e9225892fd87de7ecb696018ef676174196762d19e42df78487271 - already has embedding
+[ProcessContent] Filtering out document 67f47f33269e7c6bbb0e35d41cde59fe6989a23192f70faeec5c7f247ce6dc91 - already has embedding
+[ProcessContent] Filtering out document f015b774c44b7bad22453851e0e904def5ae0f78b18c9ada68094961db5a5eb2 - already has embedding
+[ProcessContent] Filtering out document 268b2b0725a42d7cf9d7cc225da3d25ae644cd1e22226bbb620ae456efd89e28 - already has embedding
+[ProcessContent] Filtering out document db5ee02668dac94a058008c21a63a285fc160d2d3b38d6b52bf6ab298fc6a26d - already has embedding
+[ProcessContent] Filtering out document 62f609db570b6342be46d4a1f82723ac13a2785e4373ec5cdb315423f0cc2310 - already has embedding
+[ProcessContent] After filtering: 1 documents need embeddings (filtered out 11)
+[ProcessContent] Processing 1 embedding tasks with concurrency 1
+[EmbeddingCreator] Calling generateEmbedding for: pdf-luisa-faq.pdf#page=3, interactionId: 4cca31342739067c15b469e87a0e12c929d90c8f1516b2d8aed3fad3ad5f0137_embedding, text (first 80 chars): "No. When asked, she confirmed she only attends in North Melbourne. 12. What if I..."
+[generateEmbedding] Attempting for text (first 80 chars): "No. When asked, she confirmed she only attends in North Melbourne. 12. What if I..."
+[generateEmbedding] SUCCESS for text (first 80 chars): "No. When asked, she confirmed she only attends in North Melbourne. 12. What if I..."
+[EmbeddingCreator] generateEmbedding SUCCEEDED for 4cca31342739067c15b469e87a0e12c929d90c8f1516b2d8aed3fad3ad5f0137_embedding. Result vector (first 3 elements): [ -0.05200827121734619, 0.002890700241550803, 0.040160395205020905 ]
+[Embedding] Successfully generated embedding for doc hash 4cca31342739067c15b469e87a0e12c929d90c8f1516b2d8aed3fad3ad5f0137 from source pdf-luisa-faq.pdf#page=3 in 358ms.
+[ProcessContent] Step 2 completed. Embeddings generated (or attempted) for all documents. Stats: 12 attempts, 0 failures.
+[ProcessContentPerPage] Saving JSON artifacts for 1 documents from page: pdf-luisa-faq.pdf#page=3
+[ProcessContentPerPage] Finished saving JSON artifacts for page: pdf-luisa-faq.pdf#page=3
+[ProcessContentPerPage] Finished processing and embedding for page: pdf-luisa-faq.pdf#page=3. Current total docs in state: 12
+[PDF Crawler] Submitted 1 chunks from pdf-luisa-faq.pdf#page=3 for embedding and DB processing (DB SID: 0e6e6bca-50fa-4174-85d6-3a9e8c63a0dd).
+[ProcessContentFinalize] Finalizing content processing...
+[ProcessContent] Collecting documents with their embeddings for final save...
+[ProcessContent] Collected 12 documents (with embeddeddings) for saving.
+[ProcessContent] Successful pages (with at least one saved chunk): 3
+[ProcessContent] Step 3: Logging primary summary artifacts (manifests)...
+[ProcessContent] Step 3 completed. Primary summary artifacts (manifests) logged.
+[ProcessContentFinalize] Attempting to save session 0e6e6bca-50fa-4174-85d6-3a9e8c63a0dd with 12 documents (embeddings included) to database...
+[Environment] Using development environment for service-role client
+[CrawlSession.addSessionWithDocumentsAndEmbeddings] Using production service role client (PDF crawler production mode)
+[ProcessContentFinalize] Successfully saved session 0e6e6bca-50fa-4174-85d6-3a9e8c63a0dd with 12 documents.
+[ProcessContent] Step 3: Logging primary summary artifacts (manifests)...
+[ProcessContent] Step 3 completed. Primary summary artifacts (manifests) logged.
+[ProcessContentFinalize] Re-saved manifests with updated document DB IDs.
+[ProcessContentFinalize] Content processing for session 0e6e6bca-50fa-4174-85d6-3a9e8c63a0dd finalized successfully.
+[PDF Crawler] Content processing finalized. Final status/session ID: 0e6e6bca-50fa-4174-85d6-3a9e8c63a0dd
+[LOGGER] Could not parse URL pdf-luisa-faq.pdf#page=1 to extract domain.
+[LOGGER] Could not parse URL pdf-luisa-faq.pdf#page=2 to extract domain.
+[LOGGER] Could not parse URL pdf-luisa-faq.pdf#page=3 to extract domain.
+[LOGGER] Summary saved to /Users/juanbernal/code/mesieou/2025/simple_booking/crawl-output/summary.json
+ POST /api/content-crawler/pdf 200 in 27979ms
+[SEED] PDF content crawler API response: {
+  message: 'PDF processed successfully',
+  result: {
+    mergedText: '1. Where does Luisa work from? Luisa does not operate from a public salon or studio. She provides services from her apartment located at: Apt 11/9 Dryburgh St, Apt 111, West Melbourne VIC 3003\n' +
+      '\n' +
+      "2. Does Luisa accept walk-ins or same-day bookings? Luisa may accept same-day bookings if she has availability, but it's always best to confirm through WhatsApp. She frequently shares availability for same-day or next-day appointments when asked.\n" +
+      '\n' +
+      '3. What is Luisa’s deposit policy? ● A 50% deposit is required to secure an appointment. Deposit can be paid via bank transfer to: makefile CopyEdit Name: Lisa Bernal Number: +61 451 375 263 ● ● The deposit is refundable only if: ○ The cancellation is made at least 24 hours in advance, or ○ The appointment is rescheduled more than 24 hours ahead.\n' +
+      '\n' +
+      '4. What if I can’t pay the deposit? Some clients have been allowed to pay the full amount in cash on the day of the appointment if they don’t have a local bank account (e.g., only Bancolombia available). Luisa seems flexible on this on a case-by-case basis.\n' +
+      '\n' +
+      '5. Is payment in cash required? Yes, Luisa generally prefers or requires payment in cash unless otherwise agreed. She reminds customers of this frequently before appointments.\n' +
+      '\n' +
+      '6. What happens if Luisa is running late? Luisa occasionally runs late and notifies the client. Clients are usually asked to wait in the apartment lobby. She is apologetic and communicative about delays.\n' +
+      '\n' +
+      '7. Can I cancel or reschedule my appointment? Yes, you can cancel or reschedule, but it must be at least 24 hours in advance to retain your deposit. Last-minute cancellations or no-shows may forfeit the deposit.\n' +
+      '\n' +
+      '8. Can someone else come to the appointment or wait? Luisa has not objected to clients bringing someone or waiting nearby, but this should be confirmed in advance as her studio is in her private residence.\n' +
+      '\n' +
+      '9. How long do services take? ● Braiding: Approx. 1 hour ● Shellac Manicure: Not explicitly stated, but appointments are often scheduled in 1 – 1.5 hour windows\n' +
+      '\n' +
+      '10. Can Luisa accommodate last-minute changes or delays? Yes, she tries to be flexible. Clients running late or changing plans often communicate with her and she adjusts where possible, depending on her schedule.\n' +
+      '\n' +
+      '11. Does Luisa provide mobile services?\n' +
+      '\n' +
+      "No. When asked, she confirmed she only attends in North Melbourne. 12. What if I can’t reach Luisa? Clients sometimes call or message repeatedly when arriving. If there's a delay, it’s best to: ● Message again via WhatsApp ● Wait in the lobby or outside Apt 111 ● Be patient, as she may be attending another client or caring for her child",
+    pageCount: 3,
+    uniqueParagraphs: 12,
+    businessId: '5652c914-dc3c-4dc8-a906-6c14c0ec58b8',
+    source: 'luisa-faq.pdf',
+    embeddingsStatus: 'Processed with DB Session ID: 0e6e6bca-50fa-4174-85d6-3a9e8c63a0dd'
+  },
+  pdfName: 'luisa-faq.pdf'
+}
+[SEED] PDF content crawler completed: PDF processed successfully
+[SEED] ❌ PDF content crawler failed - this is CRITICAL for business functionality
+[SEED] Error details: Failed to query embeddings: column embeddings.businessId does not exist
+[SEED] Error during business creation, cleaning up partial data...
+[SEED] Error details: Luisa business seed failed: PDF crawler error - Failed to query embeddings: column embeddings.businessId does not exist
+[SEED] Cleaning up partially created business with ID: 5652c914-dc3c-4dc8-a906-6c14c0ec58b8
+[SEED] Starting cleanup for business ID: 5652c914-dc3c-4dc8-a906-6c14c0ec58b8...
+[SEED] Note: Error deleting availability slots for business 5652c914-dc3c-4dc8-a906-6c14c0ec58b8: column availabilitySlots.providerId does not exist
+[SEED] Successfully cleaned up business 5652c914-dc3c-4dc8-a906-6c14c0ec58b8 and all related data.
+[SEED] Cleanup completed successfully.
+❌ Luisa seed failed: Error: Luisa business seed failed: PDF crawler error - Failed to query embeddings: column embeddings.businessId does not exist
+    at createLuisaTestBusiness (lib/database/seed/create-luisa-test-business.ts:369:10)
+    at async POST (app/api/seed/luisa/route.ts:62:19)
+  367 |     console.error('[SEED] ❌ PDF content crawler failed - this is CRITICAL for business functionality');
+  368 |     console.error('[SEED] Error details:', error instanceof Error ? error.message : String(error));
+> 369 |     throw new Error(`Luisa business seed failed: PDF crawler error - ${error instanceof Error ? error.message : String(error)}`);
+      |          ^
+  370 |   }
+  371 |   
+  372 |     return {
+ POST /api/seed/luisa 500 in 33530ms
+ ✓ Compiled in 157ms (54 modules)
+ ⨯ ./lib/database/seed/create-luisa-test-business.ts
+Module parse failed: Identifier 'documentIds' has already been declared (304:14)
+|         // --- TRIGGER PDF CONTENT CRAWLER FOR EMBEDDINGS ---
+|         console.log('[SEED] Triggering PDF content crawler for document embeddings...');
+>         const documentIds = [];
+|         try {
+|             const crawlerResult = await triggerPdfContentCrawler(createdBusiness.id);
+
+Import trace for requested module:
+./lib/database/seed/create-luisa-test-business.ts
+./app/api/seed/luisa/route.ts
+ ○ Compiling /_not-found ...
+ ⨯ ./lib/database/seed/create-luisa-test-business.ts
+Module parse failed: Identifier 'documentIds' has already been declared (304:14)
+|         // --- TRIGGER PDF CONTENT CRAWLER FOR EMBEDDINGS ---
+|         console.log('[SEED] Triggering PDF content crawler for document embeddings...');
+>         const documentIds = [];
+|         try {
+|             const crawlerResult = await triggerPdfContentCrawler(createdBusiness.id);
+
+Import trace for requested module:
+./lib/database/seed/create-luisa-test-business.ts
+./app/api/seed/luisa/route.ts
+ ⨯ ./lib/database/seed/create-luisa-test-business.ts
+Module parse failed: Identifier 'documentIds' has already been declared (304:14)
+|         // --- TRIGGER PDF CONTENT CRAWLER FOR EMBEDDINGS ---
+|         console.log('[SEED] Triggering PDF content crawler for document embeddings...');
+>         const documentIds = [];
+|         try {
+|             const crawlerResult = await triggerPdfContentCrawler(createdBusiness.id);
+
+Import trace for requested module:
+./lib/database/seed/create-luisa-test-business.ts
+./app/api/seed/luisa/route.ts
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/juanbernal/code/mesieou/2025/simple_booking/.next/fallback-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/juanbernal/code/mesieou/2025/simple_booking/.next/fallback-build-manifest.json'
+}
+[Error: ENOENT: no such file or directory, open '/Users/juanbernal/code/mesieou/2025/simple_booking/.next/fallback-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/juanbernal/code/mesieou/2025/simple_booking/.next/fallback-build-manifest.json'
+}
+[Error: ENOENT: no such file or directory, open '/Users/juanbernal/code/mesieou/2025/simple_booking/.next/fallback-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/juanbernal/code/mesieou/2025/simple_booking/.next/fallback-build-manifest.json'
+}
+ ⨯ ./lib/database/seed/create-luisa-test-business.ts
+Module parse failed: Identifier 'documentIds' has already been declared (304:14)
+|         // --- TRIGGER PDF CONTENT CRAWLER FOR EMBEDDINGS ---
+|         console.log('[SEED] Triggering PDF content crawler for document embeddings...');
+>         const documentIds = [];
+|         try {
+|             const crawlerResult = await triggerPdfContentCrawler(createdBusiness.id);
+
+Import trace for requested module:
+./lib/database/seed/create-luisa-test-business.ts
+./app/api/seed/luisa/route.ts
+ ⨯ [Error: ENOENT: no such file or directory, open '/Users/juanbernal/code/mesieou/2025/simple_booking/.next/fallback-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/juanbernal/code/mesieou/2025/simple_booking/.next/fallback-build-manifest.json'
+}
+[Error: ENOENT: no such file or directory, open '/Users/juanbernal/code/mesieou/2025/simple_booking/.next/fallback-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/juanbernal/code/mesieou/2025/simple_booking/.next/fallback-build-manifest.json'
+}
+[Error: ENOENT: no such file or directory, open '/Users/juanbernal/code/mesieou/2025/simple_booking/.next/fallback-build-manifest.json'] {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/Users/juanbernal/code/mesieou/2025/simple_booking/.next/fallback-build-manifest.json'
+}
+ ✓ Compiled /api/seed/removalist in 392ms (1233 modules)
+ ✓ Compiled in 130ms (1233 modules)
+ ✓ Compiled in 94ms (54 modules)
+ ✓ Compiled /api/seed/luisa in 337ms (397 modules)
+💄 Starting Luisa business seed for DEVELOPMENT...
+🧹 Cleaning up old Luisa business data in DEV environment...
+[CLEANUP] Starting cleanup of Luisa's test business data...
+[CLEANUP] Searching for existing Luisa business data...
+[CLEANUP] ✅ No Luisa business data found to clean up.
+✅ Old business data cleaned up successfully
+📱 Using phone: +61452490450
+📱 Using WhatsApp: +15551890570
+📞 Using Phone Number ID: 684078768113901
+[SEED] Starting database seeding for Luisa's Business (Beauty Asiul)...
+[SEED] Environment: {
+  supabaseUrl: 'Using provided client',
+  hasServiceRoleKey: true,
+  usingProvidedClient: true,
+  productionUrl: 'https://itjtaeggupasvrepfkcw.supabase.co',
+  hasProductionServiceRoleKey: true,
+  hasCustomConfig: true
+}
+[SEED] Using business configuration: {
+  name: 'Beauty Asiul (DEV)',
+  email: 'luisa.dev@beautyasiul.com',
+  phone: '+61452490450',
+  whatsappNumber: '+15551890570',
+  whatsappPhoneNumberId: '684078768113901'
+}
+[SEED] Checking for existing Luisa business data to clean up...
+[SEED] No existing Luisa business data found to clean up.
+[SEED] Creating new business...
+[SEED] Business 'Beauty Asiul (DEV)' created with ID: 5b26e950-2bd4-42dc-9a50-19e90ad5528d
+[SEED] Creating owner provider...
+[SEED] About to create user with data: {
+  email: 'luisa.dev@beautyasiul.com',
+  whatsappNumber: '+15551890570',
+  businessId: '5b26e950-2bd4-42dc-9a50-19e90ad5528d'
+}
+[User.add] No existing auth user found. Creating new one.
+[User.add] About to upsert user profile: {
+  id: 'e85c0a88-2afd-4d29-8dff-d9361a881585',
+  firstName: 'Luisa',
+  lastName: 'Bernal',
+  role: 'admin/provider',
+  businessId: '5b26e950-2bd4-42dc-9a50-19e90ad5528d',
+  email: 'luisa.dev@beautyasiul.com',
+  phoneNormalized: '61452490450',
+  whatsAppNumberNormalized: '15551890570'
+}
+[User.add] Using adminSupa client (bypasses RLS for user creation)
+[SEED] User 'Luisa Bernal' created with ID: e85c0a88-2afd-4d29-8dff-d9361a881585
+[SEED] Creating services...
+[SEED] Service 'Basic Manicure' created with ID: b2beb983-7206-49ef-a905-14e89038a81b
+[SEED] Service 'Express Manicure' created with ID: ed2dfe55-9389-4833-a023-bd41805e49a5
+[SEED] Service 'Gel Manicure' created with ID: 9b21749f-8044-4f1f-bda8-db1a9a618aa6
+[SEED] Service 'Press on Manicure' created with ID: 5580212a-fc05-4f2b-81ac-d3a410d5be59
+[SEED] Service 'Nail Art' created with ID: c1beff17-6c5c-4820-a442-aaaab24f7547
+[SEED] Service 'Basic Pedicure' created with ID: 35880de3-bfb9-4bfd-a0c9-90f0c50305c6
+[SEED] Service 'Gel Pedicure' created with ID: 9baaf08b-456a-4b27-97e4-c462e9b83274
+[SEED] Service 'Ladies Haircut' created with ID: 35a7cb3a-527f-4074-964d-7f5e443057aa
+[SEED] Service 'Hair Styling' created with ID: 732e033e-18de-4bf1-9737-6bb2ecb9b767
+[SEED] Service 'Braids' created with ID: dfd614e6-ad84-4da8-b011-dd5824a15ff0
+[SEED] Service 'Blow Dry' created with ID: e3ac8610-314d-4c05-907b-d8b3282dfc17
+[SEED] Service 'Waves' created with ID: 885e2f27-b3a9-43a1-b630-4cbeb3008b5f
+[SEED] Service 'Treatments' created with ID: 55b262e0-58c4-4a30-ba50-3dc0a6d6e4b3
+[SEED] Creating calendar settings...
+[SEED] Calendar settings created with ID: 10920eca-baad-4b9a-8078-3134fb1977ae
+[SEED] Skipping manual document creation - will use PDF processing
+[SEED] Creating initial availability slots...
+[SEED] Creating initial availability using rollAggregatedAvailability...
+[rollAggregatedAvailability] Rolling availability for business 5b26e950-2bd4-42dc-9a50-19e90ad5528d
+[rollAggregatedAvailability] Business timezone: Australia/Sydney, today: 2025-07-23
+[Environment] Using development environment for server client
+[rollAggregatedAvailability] Added availability for 2025-07-23
+[rollAggregatedAvailability] Added availability for 2025-07-24
+[rollAggregatedAvailability] Added availability for 2025-07-25
+[rollAggregatedAvailability] Added availability for 2025-07-26
+[rollAggregatedAvailability] No providers work on 2025-07-27
+[rollAggregatedAvailability] Added availability for 2025-07-28
+[rollAggregatedAvailability] Added availability for 2025-07-29
+[rollAggregatedAvailability] Added availability for 2025-07-30
+[rollAggregatedAvailability] Added availability for 2025-07-31
+[rollAggregatedAvailability] Added availability for 2025-08-01
+[rollAggregatedAvailability] Added availability for 2025-08-02
+[rollAggregatedAvailability] No providers work on 2025-08-03
+[rollAggregatedAvailability] Added availability for 2025-08-04
+[rollAggregatedAvailability] Added availability for 2025-08-05
+[rollAggregatedAvailability] Added availability for 2025-08-06
+[rollAggregatedAvailability] Added availability for 2025-08-07
+[rollAggregatedAvailability] Added availability for 2025-08-08
+[rollAggregatedAvailability] Added availability for 2025-08-09
+[rollAggregatedAvailability] No providers work on 2025-08-10
+[rollAggregatedAvailability] Added availability for 2025-08-11
+[rollAggregatedAvailability] Added availability for 2025-08-12
+[rollAggregatedAvailability] Added availability for 2025-08-13
+[rollAggregatedAvailability] Added availability for 2025-08-14
+[rollAggregatedAvailability] Added availability for 2025-08-15
+[rollAggregatedAvailability] Added availability for 2025-08-16
+[rollAggregatedAvailability] No providers work on 2025-08-17
+[rollAggregatedAvailability] Added availability for 2025-08-18
+[rollAggregatedAvailability] Added availability for 2025-08-19
+[rollAggregatedAvailability] Added availability for 2025-08-20
+[rollAggregatedAvailability] Added availability for 2025-08-21
+[rollAggregatedAvailability] Added availability for 2025-08-22
+[rollAggregatedAvailability] Completed for business 5b26e950-2bd4-42dc-9a50-19e90ad5528d
+[SEED] ✅ Created initial availability using aggregated rollover system
+[SEED] Database seeding completed successfully!
+[SEED] Triggering PDF content crawler for document embeddings...
+[SEED] Loading luisa-faq.pdf for processing...
+[SEED] Loaded PDF file: 78733 bytes
+[SEED] Calling PDF content crawler API: http://localhost:3000/api/content-crawler/pdf
+ ✓ Compiled /api/content-crawler/pdf in 232ms (556 modules)
+[Crawl Setup] Deleting existing output directory: /Users/juanbernal/code/mesieou/2025/simple_booking/crawl-output
+[Crawl Setup] Successfully deleted /Users/juanbernal/code/mesieou/2025/simple_booking/crawl-output
+[LOGGER] Initialized. Output path: /Users/juanbernal/code/mesieou/2025/simple_booking/crawl-output
+[Crawl Setup] Logger initialized. Output path: /Users/juanbernal/code/mesieou/2025/simple_booking/crawl-output
+Warning: Setting up fake worker.
+[LOGGER] URL processed: pdf-luisa-faq.pdf
+[ProcessContent] Global embedding state cleared
+[ProcessContent] In-memory Session initialized: b2986d06-0659-4538-9ef7-54b2833f06af, Business ID: 5b26e950-2bd4-42dc-9a50-19e90ad5528d
+[ProcessContent] Content processing initialized. Session ID: b2986d06-0659-4538-9ef7-54b2833f06af
+[PDF Crawler] DB Session initialized: b2986d06-0659-4538-9ef7-54b2833f06af. ProcessingState created.
+[PDF Crawler] Generating LLM chunks for page: pdf-luisa-faq.pdf#page=1 (LLM Chunk Gen SID: c0d316b7-18b2-4efc-945d-58b3c533398e)
+[PageContentProcessor-PDFSingle] Starting LLM chunk generation for page: pdf-luisa-faq.pdf#page=1 (SID: c0d316b7-18b2-4efc-945d-58b3c533398e, Domain: luisa-faq.pdf)
+[PageContentProcessor-PDFSingle] Pre-splitting content for: pdf-luisa-faq.pdf#page=1 (Original length: 2121 chars)
+[PageContentProcessor-PDFSingle] URL pdf-luisa-faq.pdf#page=1 was pre-split into 1 chunk(s) for LLM processing.
+[PageContentProcessor-PDFSingle] Processing 1 pre-chunks with concurrency 1 for: pdf-luisa-faq.pdf#page=1
+[PageContentProcessor-PDFSingle] Segmenting and categorizing pre-chunk 1/1 for: pdf-luisa-faq.pdf#page=1 (Length: 2121 chars)
+[LLMSegmenterCategorizer] Calling actualCategorizeWebsiteContent from content-analysis.ts for URL: pdf-luisa-faq.pdf#page=1
+[Categorizer] Starting categorizeWebsiteContent for businessId=5b26e950-2bd4-42dc-9a50-19e90ad5528d, url=pdf-luisa-faq.pdf#page=1
+[Categorizer] Raw response for businessId=5b26e950-2bd4-42dc-9a50-19e90ad5528d, url=pdf-luisa-faq.pdf#page=1: ```json
+[
+  {
+    "category": 5,
+    "content": "1. Where does Luisa work from? Luisa does not operate from a public salon or studio. She provides services from her apartment located at: Apt 11/9 Dryburgh St, Apt 111, West Melbourne VIC 3003",
+    "confidence": 0.9,
+    "confidenceReason": "Content answers a common question about the location of services, fitting the FAQ category."
+  },
+  {
+    "category": 3,
+    "content": "2. Does Luisa accept walk-ins or same-day bookings? Luisa may accept sa...
+[Categorizer] Raw response length: 1821 characters
+[JSON Parser] Attempting to parse (first 500 chars): ```json
+[
+  {
+    "category": 5,
+    "content": "1. Where does Luisa work from? Luisa does not operate from a public salon or studio. She provides services from her apartment located at: Apt 11/9 Dryburgh St, Apt 111, West Melbourne VIC 3003",
+    "confidence": 0.9,
+    "confidenceReason": "Content answers a common question about the location of services, fitting the FAQ category."
+  },
+  {
+    "category": 3,
+    "content": "2. Does Luisa accept walk-ins or same-day bookings? Luisa may accept sa...
+[JSON Parser] Initial parse failed, attempting to extract JSON array
+[JSON Parser] Extracted JSON (first 500 chars): [
+  {
+    "category": 5,
+    "content": "1. Where does Luisa work from? Luisa does not operate from a public salon or studio. She provides services from her apartment located at: Apt 11/9 Dryburgh St, Apt 111, West Melbourne VIC 3003",
+    "confidence": 0.9,
+    "confidenceReason": "Content answers a common question about the location of services, fitting the FAQ category."
+  },
+  {
+    "category": 3,
+    "content": "2. Does Luisa accept walk-ins or same-day bookings? Luisa may accept same-day b...
+[Categorizer] Parsed 4 items from LLM response
+[PageContentProcessor-PDFSingle] Pre-chunk 1/1 for URL pdf-luisa-faq.pdf#page=1 yielded 4 LLM-defined sub-chunks.
+[PageContentProcessor-PDFSingle] Finished LLM chunk generation for page: pdf-luisa-faq.pdf#page=1. Generated 4 chunks.
+[PDF Crawler] Generated 4 LLM chunks for pdf-luisa-faq.pdf#page=1.
+[ProcessContentPerPage] Processing 4 chunks for page: pdf-luisa-faq.pdf#page=1
+[ProcessContent] Step 1: Preparing initial DocumentData objects from LLM chunks...
+[ProcessContent] Step 1 completed. 4 documents created and ready for embedding. 0 duplicates skipped.
+[ProcessContent] Step 2: Generating embeddings for 4 documents...
+[ProcessContent] After filtering: 4 documents need embeddings (filtered out 0)
+[ProcessContent] Processing 4 embedding tasks with concurrency 4
+[EmbeddingCreator] Calling generateEmbedding for: pdf-luisa-faq.pdf#page=1, interactionId: d8e1daeb9afffaf7e0e01f451b093fe2e9cd720a10b60ee6af3c860e8297d5b2_embedding, text (first 80 chars): "1. Where does Luisa work from? Luisa does not operate from a public salon or stu..."
+[generateEmbedding] Attempting for text (first 80 chars): "1. Where does Luisa work from? Luisa does not operate from a public salon or stu..."
+[EmbeddingCreator] Calling generateEmbedding for: pdf-luisa-faq.pdf#page=1, interactionId: a7d3815be28272b80a3180b3c68ea2b53d9e817ab0a97f6fdb2d58884a62d3c5_embedding, text (first 80 chars): "2. Does Luisa accept walk-ins or same-day bookings? Luisa may accept same-day bo..."
+[generateEmbedding] Attempting for text (first 80 chars): "2. Does Luisa accept walk-ins or same-day bookings? Luisa may accept same-day bo..."
+[EmbeddingCreator] Calling generateEmbedding for: pdf-luisa-faq.pdf#page=1, interactionId: e374652180692cd0eee78fa83381a6081242eee40b14b407e0c75fa91c04440a_embedding, text (first 80 chars): "3. What is Luisa’s deposit policy? ● A 50% deposit is required to secure an appo..."
+[generateEmbedding] Attempting for text (first 80 chars): "3. What is Luisa’s deposit policy? ● A 50% deposit is required to secure an appo..."
+[EmbeddingCreator] Calling generateEmbedding for: pdf-luisa-faq.pdf#page=1, interactionId: d8f0982b48289709948600fbafebc768623da93ac468652ffc1f9d1bac9b7059_embedding, text (first 80 chars): "4. What if I can’t pay the deposit? Some clients have been allowed to pay the fu..."
+[generateEmbedding] Attempting for text (first 80 chars): "4. What if I can’t pay the deposit? Some clients have been allowed to pay the fu..."
+[generateEmbedding] SUCCESS for text (first 80 chars): "2. Does Luisa accept walk-ins or same-day bookings? Luisa may accept same-day bo..."
+[EmbeddingCreator] generateEmbedding SUCCEEDED for a7d3815be28272b80a3180b3c68ea2b53d9e817ab0a97f6fdb2d58884a62d3c5_embedding. Result vector (first 3 elements): [ -0.05520404502749443, -0.02170209027826786, 0.0344795286655426 ]
+[Embedding] Successfully generated embedding for doc hash a7d3815be28272b80a3180b3c68ea2b53d9e817ab0a97f6fdb2d58884a62d3c5 from source pdf-luisa-faq.pdf#page=1 in 421ms.
+[generateEmbedding] SUCCESS for text (first 80 chars): "4. What if I can’t pay the deposit? Some clients have been allowed to pay the fu..."
+[EmbeddingCreator] generateEmbedding SUCCEEDED for d8f0982b48289709948600fbafebc768623da93ac468652ffc1f9d1bac9b7059_embedding. Result vector (first 3 elements): [ -0.007677428424358368, 0.006958067417144775, 0.018576066941022873 ]
+[Embedding] Successfully generated embedding for doc hash d8f0982b48289709948600fbafebc768623da93ac468652ffc1f9d1bac9b7059 from source pdf-luisa-faq.pdf#page=1 in 833ms.
+[generateEmbedding] SUCCESS for text (first 80 chars): "3. What is Luisa’s deposit policy? ● A 50% deposit is required to secure an appo..."
+[EmbeddingCreator] generateEmbedding SUCCEEDED for e374652180692cd0eee78fa83381a6081242eee40b14b407e0c75fa91c04440a_embedding. Result vector (first 3 elements): [ -0.04230146110057831, -0.008434225805103779, -0.000589589006267488 ]
+[Embedding] Successfully generated embedding for doc hash e374652180692cd0eee78fa83381a6081242eee40b14b407e0c75fa91c04440a from source pdf-luisa-faq.pdf#page=1 in 1057ms.
+[generateEmbedding] SUCCESS for text (first 80 chars): "1. Where does Luisa work from? Luisa does not operate from a public salon or stu..."
+[EmbeddingCreator] generateEmbedding SUCCEEDED for d8e1daeb9afffaf7e0e01f451b093fe2e9cd720a10b60ee6af3c860e8297d5b2_embedding. Result vector (first 3 elements): [ -0.0806378647685051, -0.03004949353635311, 0.0668778270483017 ]
+[Embedding] Successfully generated embedding for doc hash d8e1daeb9afffaf7e0e01f451b093fe2e9cd720a10b60ee6af3c860e8297d5b2 from source pdf-luisa-faq.pdf#page=1 in 1404ms.
+[ProcessContent] Step 2 completed. Embeddings generated (or attempted) for all documents. Stats: 4 attempts, 0 failures.
+[ProcessContentPerPage] Saving JSON artifacts for 4 documents from page: pdf-luisa-faq.pdf#page=1
+[ProcessContentPerPage] Finished saving JSON artifacts for page: pdf-luisa-faq.pdf#page=1
+[ProcessContentPerPage] Finished processing and embedding for page: pdf-luisa-faq.pdf#page=1. Current total docs in state: 4
+[PDF Crawler] Submitted 4 chunks from pdf-luisa-faq.pdf#page=1 for embedding and DB processing (DB SID: b2986d06-0659-4538-9ef7-54b2833f06af).
+[PDF Crawler] Generating LLM chunks for page: pdf-luisa-faq.pdf#page=2 (LLM Chunk Gen SID: c0d316b7-18b2-4efc-945d-58b3c533398e)
+[PageContentProcessor-PDFSingle] Starting LLM chunk generation for page: pdf-luisa-faq.pdf#page=2 (SID: c0d316b7-18b2-4efc-945d-58b3c533398e, Domain: luisa-faq.pdf)
+[PageContentProcessor-PDFSingle] Pre-splitting content for: pdf-luisa-faq.pdf#page=2 (Original length: 2443 chars)
+[PageContentProcessor-PDFSingle] URL pdf-luisa-faq.pdf#page=2 was pre-split into 1 chunk(s) for LLM processing.
+[PageContentProcessor-PDFSingle] Processing 1 pre-chunks with concurrency 1 for: pdf-luisa-faq.pdf#page=2
+[PageContentProcessor-PDFSingle] Segmenting and categorizing pre-chunk 1/1 for: pdf-luisa-faq.pdf#page=2 (Length: 2443 chars)
+[LLMSegmenterCategorizer] Calling actualCategorizeWebsiteContent from content-analysis.ts for URL: pdf-luisa-faq.pdf#page=2
+[Categorizer] Starting categorizeWebsiteContent for businessId=5b26e950-2bd4-42dc-9a50-19e90ad5528d, url=pdf-luisa-faq.pdf#page=2
+[Categorizer] Raw response for businessId=5b26e950-2bd4-42dc-9a50-19e90ad5528d, url=pdf-luisa-faq.pdf#page=2: ```json
+[
+  {
+    "category": 5,
+    "content": "5. Is payment in cash required? Yes, Luisa generally prefers or requires payment in cash unless otherwise agreed. She reminds customers of this frequently before appointments.",
+    "confidence": 0.9,
+    "confidenceReason": "The content addresses a common question about payment methods, fitting well into the FAQ category."
+  },
+  {
+    "category": 5,
+    "content": "6. What happens if Luisa is running late? Luisa occasionally runs late and notifi...
+[Categorizer] Raw response length: 2652 characters
+[JSON Parser] Attempting to parse (first 500 chars): ```json
+[
+  {
+    "category": 5,
+    "content": "5. Is payment in cash required? Yes, Luisa generally prefers or requires payment in cash unless otherwise agreed. She reminds customers of this frequently before appointments.",
+    "confidence": 0.9,
+    "confidenceReason": "The content addresses a common question about payment methods, fitting well into the FAQ category."
+  },
+  {
+    "category": 5,
+    "content": "6. What happens if Luisa is running late? Luisa occasionally runs late and notifi...
+[JSON Parser] Initial parse failed, attempting to extract JSON array
+[JSON Parser] Extracted JSON (first 500 chars): [
+  {
+    "category": 5,
+    "content": "5. Is payment in cash required? Yes, Luisa generally prefers or requires payment in cash unless otherwise agreed. She reminds customers of this frequently before appointments.",
+    "confidence": 0.9,
+    "confidenceReason": "The content addresses a common question about payment methods, fitting well into the FAQ category."
+  },
+  {
+    "category": 5,
+    "content": "6. What happens if Luisa is running late? Luisa occasionally runs late and notifies the c...
+[Categorizer] Parsed 7 items from LLM response
+[PageContentProcessor-PDFSingle] Pre-chunk 1/1 for URL pdf-luisa-faq.pdf#page=2 yielded 7 LLM-defined sub-chunks.
+[PageContentProcessor-PDFSingle] Finished LLM chunk generation for page: pdf-luisa-faq.pdf#page=2. Generated 7 chunks.
+[PDF Crawler] Generated 7 LLM chunks for pdf-luisa-faq.pdf#page=2.
+[ProcessContentPerPage] Processing 7 chunks for page: pdf-luisa-faq.pdf#page=2
+[ProcessContent] Step 1: Preparing initial DocumentData objects from LLM chunks...
+[ProcessContent] Step 1 completed. 11 documents created and ready for embedding. 0 duplicates skipped.
+[ProcessContent] Step 2: Generating embeddings for 11 documents...
+[ProcessContent] Filtering out document d8e1daeb9afffaf7e0e01f451b093fe2e9cd720a10b60ee6af3c860e8297d5b2 - already has embedding
+[ProcessContent] Filtering out document a7d3815be28272b80a3180b3c68ea2b53d9e817ab0a97f6fdb2d58884a62d3c5 - already has embedding
+[ProcessContent] Filtering out document e374652180692cd0eee78fa83381a6081242eee40b14b407e0c75fa91c04440a - already has embedding
+[ProcessContent] Filtering out document d8f0982b48289709948600fbafebc768623da93ac468652ffc1f9d1bac9b7059 - already has embedding
+[ProcessContent] After filtering: 7 documents need embeddings (filtered out 4)
+[ProcessContent] Processing 7 embedding tasks with concurrency 7
+[EmbeddingCreator] Calling generateEmbedding for: pdf-luisa-faq.pdf#page=2, interactionId: 6ec6b5023b0873a459db642bf4cd7657424c581c2f2509041ec71e99553cd6d0_embedding, text (first 80 chars): "5. Is payment in cash required? Yes, Luisa generally prefers or requires payment..."
+[generateEmbedding] Attempting for text (first 80 chars): "5. Is payment in cash required? Yes, Luisa generally prefers or requires payment..."
+[EmbeddingCreator] Calling generateEmbedding for: pdf-luisa-faq.pdf#page=2, interactionId: 8eb2079f83e9225892fd87de7ecb696018ef676174196762d19e42df78487271_embedding, text (first 80 chars): "6. What happens if Luisa is running late? Luisa occasionally runs late and notif..."
+[generateEmbedding] Attempting for text (first 80 chars): "6. What happens if Luisa is running late? Luisa occasionally runs late and notif..."
+[EmbeddingCreator] Calling generateEmbedding for: pdf-luisa-faq.pdf#page=2, interactionId: 67f47f33269e7c6bbb0e35d41cde59fe6989a23192f70faeec5c7f247ce6dc91_embedding, text (first 80 chars): "7. Can I cancel or reschedule my appointment? Yes, you can cancel or reschedule,..."
+[generateEmbedding] Attempting for text (first 80 chars): "7. Can I cancel or reschedule my appointment? Yes, you can cancel or reschedule,..."
+[EmbeddingCreator] Calling generateEmbedding for: pdf-luisa-faq.pdf#page=2, interactionId: f015b774c44b7bad22453851e0e904def5ae0f78b18c9ada68094961db5a5eb2_embedding, text (first 80 chars): "8. Can someone else come to the appointment or wait? Luisa has not objected to c..."
+[generateEmbedding] Attempting for text (first 80 chars): "8. Can someone else come to the appointment or wait? Luisa has not objected to c..."
+[EmbeddingCreator] Calling generateEmbedding for: pdf-luisa-faq.pdf#page=2, interactionId: 268b2b0725a42d7cf9d7cc225da3d25ae644cd1e22226bbb620ae456efd89e28_embedding, text (first 80 chars): "9. How long do services take? ● Braiding: Approx. 1 hour ● Shellac Manicure: Not..."
+[generateEmbedding] Attempting for text (first 80 chars): "9. How long do services take? ● Braiding: Approx. 1 hour ● Shellac Manicure: Not..."
+[generateEmbedding] SUCCESS for text (first 80 chars): "6. What happens if Luisa is running late? Luisa occasionally runs late and notif..."
+[EmbeddingCreator] generateEmbedding SUCCEEDED for 8eb2079f83e9225892fd87de7ecb696018ef676174196762d19e42df78487271_embedding. Result vector (first 3 elements): [ -0.022666484117507935, 0.00834975577890873, 0.032971858978271484 ]
+[Embedding] Successfully generated embedding for doc hash 8eb2079f83e9225892fd87de7ecb696018ef676174196762d19e42df78487271 from source pdf-luisa-faq.pdf#page=2 in 389ms.
+[EmbeddingCreator] Calling generateEmbedding for: pdf-luisa-faq.pdf#page=2, interactionId: db5ee02668dac94a058008c21a63a285fc160d2d3b38d6b52bf6ab298fc6a26d_embedding, text (first 80 chars): "10. Can Luisa accommodate last-minute changes or delays? Yes, she tries to be fl..."
+[generateEmbedding] Attempting for text (first 80 chars): "10. Can Luisa accommodate last-minute changes or delays? Yes, she tries to be fl..."
+[generateEmbedding] SUCCESS for text (first 80 chars): "9. How long do services take? ● Braiding: Approx. 1 hour ● Shellac Manicure: Not..."
+[EmbeddingCreator] generateEmbedding SUCCEEDED for 268b2b0725a42d7cf9d7cc225da3d25ae644cd1e22226bbb620ae456efd89e28_embedding. Result vector (first 3 elements): [ -0.033706001937389374, 0.049797751009464264, 0.061181433498859406 ]
+[Embedding] Successfully generated embedding for doc hash 268b2b0725a42d7cf9d7cc225da3d25ae644cd1e22226bbb620ae456efd89e28 from source pdf-luisa-faq.pdf#page=2 in 397ms.
+[EmbeddingCreator] Calling generateEmbedding for: pdf-luisa-faq.pdf#page=2, interactionId: 62f609db570b6342be46d4a1f82723ac13a2785e4373ec5cdb315423f0cc2310_embedding, text (first 80 chars): "11. Does Luisa provide mobile services?..."
+[generateEmbedding] Attempting for text (first 80 chars): "11. Does Luisa provide mobile services?..."
+[generateEmbedding] SUCCESS for text (first 80 chars): "7. Can I cancel or reschedule my appointment? Yes, you can cancel or reschedule,..."
+[EmbeddingCreator] generateEmbedding SUCCEEDED for 67f47f33269e7c6bbb0e35d41cde59fe6989a23192f70faeec5c7f247ce6dc91_embedding. Result vector (first 3 elements): [ -0.03216256573796272, 0.058110591024160385, 0.0316060408949852 ]
+[Embedding] Successfully generated embedding for doc hash 67f47f33269e7c6bbb0e35d41cde59fe6989a23192f70faeec5c7f247ce6dc91 from source pdf-luisa-faq.pdf#page=2 in 415ms.
+[generateEmbedding] SUCCESS for text (first 80 chars): "8. Can someone else come to the appointment or wait? Luisa has not objected to c..."
+[EmbeddingCreator] generateEmbedding SUCCEEDED for f015b774c44b7bad22453851e0e904def5ae0f78b18c9ada68094961db5a5eb2_embedding. Result vector (first 3 elements): [ -0.018985392525792122, 0.007876483723521233, 0.034424666315317154 ]
+[Embedding] Successfully generated embedding for doc hash f015b774c44b7bad22453851e0e904def5ae0f78b18c9ada68094961db5a5eb2 from source pdf-luisa-faq.pdf#page=2 in 420ms.
+[generateEmbedding] SUCCESS for text (first 80 chars): "10. Can Luisa accommodate last-minute changes or delays? Yes, she tries to be fl..."
+[EmbeddingCreator] generateEmbedding SUCCEEDED for db5ee02668dac94a058008c21a63a285fc160d2d3b38d6b52bf6ab298fc6a26d_embedding. Result vector (first 3 elements): [ -0.022475993260741234, 0.0016144514083862305, 0.048024244606494904 ]
+[Embedding] Successfully generated embedding for doc hash db5ee02668dac94a058008c21a63a285fc160d2d3b38d6b52bf6ab298fc6a26d from source pdf-luisa-faq.pdf#page=2 in 763ms.
+[generateEmbedding] SUCCESS for text (first 80 chars): "11. Does Luisa provide mobile services?..."
+[EmbeddingCreator] generateEmbedding SUCCEEDED for 62f609db570b6342be46d4a1f82723ac13a2785e4373ec5cdb315423f0cc2310_embedding. Result vector (first 3 elements): [ -0.02984096296131611, -0.030331579968333244, 0.028022799640893936 ]
+[Embedding] Successfully generated embedding for doc hash 62f609db570b6342be46d4a1f82723ac13a2785e4373ec5cdb315423f0cc2310 from source pdf-luisa-faq.pdf#page=2 in 832ms.
+[generateEmbedding] SUCCESS for text (first 80 chars): "5. Is payment in cash required? Yes, Luisa generally prefers or requires payment..."
+[EmbeddingCreator] generateEmbedding SUCCEEDED for 6ec6b5023b0873a459db642bf4cd7657424c581c2f2509041ec71e99553cd6d0_embedding. Result vector (first 3 elements): [ -0.022018413990736008, -0.0001454006414860487, 0.019809838384389877 ]
+[Embedding] Successfully generated embedding for doc hash 6ec6b5023b0873a459db642bf4cd7657424c581c2f2509041ec71e99553cd6d0 from source pdf-luisa-faq.pdf#page=2 in 1415ms.
+[ProcessContent] Step 2 completed. Embeddings generated (or attempted) for all documents. Stats: 11 attempts, 0 failures.
+[ProcessContentPerPage] Saving JSON artifacts for 7 documents from page: pdf-luisa-faq.pdf#page=2
+[ProcessContentPerPage] Finished saving JSON artifacts for page: pdf-luisa-faq.pdf#page=2
+[ProcessContentPerPage] Finished processing and embedding for page: pdf-luisa-faq.pdf#page=2. Current total docs in state: 11
+[PDF Crawler] Submitted 7 chunks from pdf-luisa-faq.pdf#page=2 for embedding and DB processing (DB SID: b2986d06-0659-4538-9ef7-54b2833f06af).
+[PDF Crawler] Generating LLM chunks for page: pdf-luisa-faq.pdf#page=3 (LLM Chunk Gen SID: c0d316b7-18b2-4efc-945d-58b3c533398e)
+[PageContentProcessor-PDFSingle] Starting LLM chunk generation for page: pdf-luisa-faq.pdf#page=3 (SID: c0d316b7-18b2-4efc-945d-58b3c533398e, Domain: luisa-faq.pdf)
+[PageContentProcessor-PDFSingle] Pre-splitting content for: pdf-luisa-faq.pdf#page=3 (Original length: 683 chars)
+[PageContentProcessor-PDFSingle] URL pdf-luisa-faq.pdf#page=3 was pre-split into 1 chunk(s) for LLM processing.
+[PageContentProcessor-PDFSingle] Processing 1 pre-chunks with concurrency 1 for: pdf-luisa-faq.pdf#page=3
+[PageContentProcessor-PDFSingle] Segmenting and categorizing pre-chunk 1/1 for: pdf-luisa-faq.pdf#page=3 (Length: 683 chars)
+[LLMSegmenterCategorizer] Calling actualCategorizeWebsiteContent from content-analysis.ts for URL: pdf-luisa-faq.pdf#page=3
+[Categorizer] Starting categorizeWebsiteContent for businessId=5b26e950-2bd4-42dc-9a50-19e90ad5528d, url=pdf-luisa-faq.pdf#page=3
+[Categorizer] Raw response for businessId=5b26e950-2bd4-42dc-9a50-19e90ad5528d, url=pdf-luisa-faq.pdf#page=3: ```json
+[
+  {
+    "category": 5,
+    "content": "No. When asked, she confirmed she only attends in North Melbourne. 12. What if I can’t reach Luisa? Clients sometimes call or message repeatedly when arriving. If there's a delay, it’s best to: ● Message again via WhatsApp ● Wait in the lobby or outside Apt 111 ● Be patient, as she may be attending another client or caring for her child",
+    "confidence": 0.9,
+    "confidenceReason": "The content addresses common questions and concerns clients mi...
+[Categorizer] Raw response length: 546 characters
+[JSON Parser] Attempting to parse (first 500 chars): ```json
+[
+  {
+    "category": 5,
+    "content": "No. When asked, she confirmed she only attends in North Melbourne. 12. What if I can’t reach Luisa? Clients sometimes call or message repeatedly when arriving. If there's a delay, it’s best to: ● Message again via WhatsApp ● Wait in the lobby or outside Apt 111 ● Be patient, as she may be attending another client or caring for her child",
+    "confidence": 0.9,
+    "confidenceReason": "The content addresses common questions and concerns clients mi...
+[JSON Parser] Initial parse failed, attempting to extract JSON array
+[JSON Parser] Extracted JSON (first 500 chars): [
+  {
+    "category": 5,
+    "content": "No. When asked, she confirmed she only attends in North Melbourne. 12. What if I can’t reach Luisa? Clients sometimes call or message repeatedly when arriving. If there's a delay, it’s best to: ● Message again via WhatsApp ● Wait in the lobby or outside Apt 111 ● Be patient, as she may be attending another client or caring for her child",
+    "confidence": 0.9,
+    "confidenceReason": "The content addresses common questions and concerns clients might have...
+[Categorizer] Parsed 1 items from LLM response
+[PageContentProcessor-PDFSingle] Pre-chunk 1/1 for URL pdf-luisa-faq.pdf#page=3 yielded 1 LLM-defined sub-chunks.
+[PageContentProcessor-PDFSingle] Finished LLM chunk generation for page: pdf-luisa-faq.pdf#page=3. Generated 1 chunks.
+[PDF Crawler] Generated 1 LLM chunks for pdf-luisa-faq.pdf#page=3.
+[ProcessContentPerPage] Processing 1 chunks for page: pdf-luisa-faq.pdf#page=3
+[ProcessContent] Step 1: Preparing initial DocumentData objects from LLM chunks...
+[ProcessContent] Step 1 completed. 12 documents created and ready for embedding. 0 duplicates skipped.
+[ProcessContent] Step 2: Generating embeddings for 12 documents...
+[ProcessContent] Filtering out document d8e1daeb9afffaf7e0e01f451b093fe2e9cd720a10b60ee6af3c860e8297d5b2 - already has embedding
+[ProcessContent] Filtering out document a7d3815be28272b80a3180b3c68ea2b53d9e817ab0a97f6fdb2d58884a62d3c5 - already has embedding
+[ProcessContent] Filtering out document e374652180692cd0eee78fa83381a6081242eee40b14b407e0c75fa91c04440a - already has embedding
+[ProcessContent] Filtering out document d8f0982b48289709948600fbafebc768623da93ac468652ffc1f9d1bac9b7059 - already has embedding
+[ProcessContent] Filtering out document 6ec6b5023b0873a459db642bf4cd7657424c581c2f2509041ec71e99553cd6d0 - already has embedding
+[ProcessContent] Filtering out document 8eb2079f83e9225892fd87de7ecb696018ef676174196762d19e42df78487271 - already has embedding
+[ProcessContent] Filtering out document 67f47f33269e7c6bbb0e35d41cde59fe6989a23192f70faeec5c7f247ce6dc91 - already has embedding
+[ProcessContent] Filtering out document f015b774c44b7bad22453851e0e904def5ae0f78b18c9ada68094961db5a5eb2 - already has embedding
+[ProcessContent] Filtering out document 268b2b0725a42d7cf9d7cc225da3d25ae644cd1e22226bbb620ae456efd89e28 - already has embedding
+[ProcessContent] Filtering out document db5ee02668dac94a058008c21a63a285fc160d2d3b38d6b52bf6ab298fc6a26d - already has embedding
+[ProcessContent] Filtering out document 62f609db570b6342be46d4a1f82723ac13a2785e4373ec5cdb315423f0cc2310 - already has embedding
+[ProcessContent] After filtering: 1 documents need embeddings (filtered out 11)
+[ProcessContent] Processing 1 embedding tasks with concurrency 1
+[EmbeddingCreator] Calling generateEmbedding for: pdf-luisa-faq.pdf#page=3, interactionId: 4cca31342739067c15b469e87a0e12c929d90c8f1516b2d8aed3fad3ad5f0137_embedding, text (first 80 chars): "No. When asked, she confirmed she only attends in North Melbourne. 12. What if I..."
+[generateEmbedding] Attempting for text (first 80 chars): "No. When asked, she confirmed she only attends in North Melbourne. 12. What if I..."
+[generateEmbedding] SUCCESS for text (first 80 chars): "No. When asked, she confirmed she only attends in North Melbourne. 12. What if I..."
+[EmbeddingCreator] generateEmbedding SUCCEEDED for 4cca31342739067c15b469e87a0e12c929d90c8f1516b2d8aed3fad3ad5f0137_embedding. Result vector (first 3 elements): [ -0.05200827121734619, 0.002890700241550803, 0.040160395205020905 ]
+[Embedding] Successfully generated embedding for doc hash 4cca31342739067c15b469e87a0e12c929d90c8f1516b2d8aed3fad3ad5f0137 from source pdf-luisa-faq.pdf#page=3 in 2921ms.
+[ProcessContent] Step 2 completed. Embeddings generated (or attempted) for all documents. Stats: 12 attempts, 0 failures.
+[ProcessContentPerPage] Saving JSON artifacts for 1 documents from page: pdf-luisa-faq.pdf#page=3
+[ProcessContentPerPage] Finished saving JSON artifacts for page: pdf-luisa-faq.pdf#page=3
+[ProcessContentPerPage] Finished processing and embedding for page: pdf-luisa-faq.pdf#page=3. Current total docs in state: 12
+[PDF Crawler] Submitted 1 chunks from pdf-luisa-faq.pdf#page=3 for embedding and DB processing (DB SID: b2986d06-0659-4538-9ef7-54b2833f06af).
+[ProcessContentFinalize] Finalizing content processing...
+[ProcessContent] Collecting documents with their embeddings for final save...
+[ProcessContent] Collected 12 documents (with embeddeddings) for saving.
+[ProcessContent] Successful pages (with at least one saved chunk): 3
+[ProcessContent] Step 3: Logging primary summary artifacts (manifests)...
+[ProcessContent] Step 3 completed. Primary summary artifacts (manifests) logged.
+[ProcessContentFinalize] Attempting to save session b2986d06-0659-4538-9ef7-54b2833f06af with 12 documents (embeddings included) to database...
+[Environment] Using development environment for service-role client
+[CrawlSession.addSessionWithDocumentsAndEmbeddings] Using production service role client (PDF crawler production mode)
+[ProcessContentFinalize] Successfully saved session b2986d06-0659-4538-9ef7-54b2833f06af with 12 documents.
+[ProcessContent] Step 3: Logging primary summary artifacts (manifests)...
+[ProcessContent] Step 3 completed. Primary summary artifacts (manifests) logged.
+[ProcessContentFinalize] Re-saved manifests with updated document DB IDs.
+[ProcessContentFinalize] Content processing for session b2986d06-0659-4538-9ef7-54b2833f06af finalized successfully.
+[PDF Crawler] Content processing finalized. Final status/session ID: b2986d06-0659-4538-9ef7-54b2833f06af
+[LOGGER] Could not parse URL pdf-luisa-faq.pdf#page=1 to extract domain.
+[LOGGER] Could not parse URL pdf-luisa-faq.pdf#page=2 to extract domain.
+[LOGGER] Could not parse URL pdf-luisa-faq.pdf#page=3 to extract domain.
+[LOGGER] Summary saved to /Users/juanbernal/code/mesieou/2025/simple_booking/crawl-output/summary.json
+ POST /api/content-crawler/pdf 200 in 32410ms
+[SEED] PDF content crawler API response: {
+  message: 'PDF processed successfully',
+  result: {
+    mergedText: '1. Where does Luisa work from? Luisa does not operate from a public salon or studio. She provides services from her apartment located at: Apt 11/9 Dryburgh St, Apt 111, West Melbourne VIC 3003\n' +
+      '\n' +
+      "2. Does Luisa accept walk-ins or same-day bookings? Luisa may accept same-day bookings if she has availability, but it's always best to confirm through WhatsApp. She frequently shares availability for same-day or next-day appointments when asked.\n" +
+      '\n' +
+      '3. What is Luisa’s deposit policy? ● A 50% deposit is required to secure an appointment. Deposit can be paid via bank transfer to: makefile CopyEdit Name: Lisa Bernal Number: +61 451 375 263 ● ● The deposit is refundable only if: ○ The cancellation is made at least 24 hours in advance, or ○ The appointment is rescheduled more than 24 hours ahead.\n' +
+      '\n' +
+      '4. What if I can’t pay the deposit? Some clients have been allowed to pay the full amount in cash on the day of the appointment if they don’t have a local bank account (e.g., only Bancolombia available). Luisa seems flexible on this on a case-by-case basis.\n' +
+      '\n' +
+      '5. Is payment in cash required? Yes, Luisa generally prefers or requires payment in cash unless otherwise agreed. She reminds customers of this frequently before appointments.\n' +
+      '\n' +
+      '6. What happens if Luisa is running late? Luisa occasionally runs late and notifies the client. Clients are usually asked to wait in the apartment lobby. She is apologetic and communicative about delays.\n' +
+      '\n' +
+      '7. Can I cancel or reschedule my appointment? Yes, you can cancel or reschedule, but it must be at least 24 hours in advance to retain your deposit. Last-minute cancellations or no-shows may forfeit the deposit.\n' +
+      '\n' +
+      '8. Can someone else come to the appointment or wait? Luisa has not objected to clients bringing someone or waiting nearby, but this should be confirmed in advance as her studio is in her private residence.\n' +
+      '\n' +
+      '9. How long do services take? ● Braiding: Approx. 1 hour ● Shellac Manicure: Not explicitly stated, but appointments are often scheduled in 1 – 1.5 hour windows\n' +
+      '\n' +
+      '10. Can Luisa accommodate last-minute changes or delays? Yes, she tries to be flexible. Clients running late or changing plans often communicate with her and she adjusts where possible, depending on her schedule.\n' +
+      '\n' +
+      '11. Does Luisa provide mobile services?\n' +
+      '\n' +
+      "No. When asked, she confirmed she only attends in North Melbourne. 12. What if I can’t reach Luisa? Clients sometimes call or message repeatedly when arriving. If there's a delay, it’s best to: ● Message again via WhatsApp ● Wait in the lobby or outside Apt 111 ● Be patient, as she may be attending another client or caring for her child",
+    pageCount: 3,
+    uniqueParagraphs: 12,
+    businessId: '5b26e950-2bd4-42dc-9a50-19e90ad5528d',
+    source: 'luisa-faq.pdf',
+    embeddingsStatus: 'Processed with DB Session ID: b2986d06-0659-4538-9ef7-54b2833f06af'
+  },
+  pdfName: 'luisa-faq.pdf'
+}
+[SEED] Warning: Could not query embeddings by businessId: column embeddings.businessId does not exist
+[SEED] Warning: Could not verify embeddings creation: undefined
+ POST /api/seed/luisa 200 in 39917ms
+ ✓ Compiled in 316ms (1137 modules)
+ ✓ Compiled /api/seed/luisa in 210ms (397 modules)
+💄 Starting Luisa business seed for DEVELOPMENT...
+🧹 Cleaning up old Luisa business data in DEV environment...
+[CLEANUP] Starting cleanup of Luisa's test business data...
+[CLEANUP] Searching for existing Luisa business data...
+[CLEANUP] ✅ No Luisa business data found to clean up.
+✅ Old business data cleaned up successfully
+📱 Using phone: +61452490450
+📱 Using WhatsApp: +15551890570
+📞 Using Phone Number ID: 684078768113901
+[SEED] Starting database seeding for Luisa's Business (Beauty Asiul)...
+[SEED] Environment: {
+  supabaseUrl: 'Using provided client',
+  hasServiceRoleKey: true,
+  usingProvidedClient: true,
+  productionUrl: 'https://itjtaeggupasvrepfkcw.supabase.co',
+  hasProductionServiceRoleKey: true,
+  hasCustomConfig: true
+}
+[SEED] Using business configuration: {
+  name: 'Beauty Asiul (DEV)',
+  email: 'luisa.dev@beautyasiul.com',
+  phone: '+61452490450',
+  whatsappNumber: '+15551890570',
+  whatsappPhoneNumberId: '684078768113901'
+}
+[SEED] Checking for existing Luisa business data to clean up...
+[SEED] No existing Luisa business data found to clean up.
+[SEED] Creating new business...
+[SEED] Business 'Beauty Asiul (DEV)' created with ID: 2f905c2c-0167-4bcb-b513-f19b8fbe8f9e
+[SEED] Creating owner provider...
+[SEED] About to create user with data: {
+  email: 'luisa.dev@beautyasiul.com',
+  whatsappNumber: '+15551890570',
+  businessId: '2f905c2c-0167-4bcb-b513-f19b8fbe8f9e'
+}
+[User.add] Found existing auth user with email: luisa.dev@beautyasiul.com
+[User.add] About to upsert user profile: {
+  id: 'e85c0a88-2afd-4d29-8dff-d9361a881585',
+  firstName: 'Luisa',
+  lastName: 'Bernal',
+  role: 'admin/provider',
+  businessId: '2f905c2c-0167-4bcb-b513-f19b8fbe8f9e',
+  email: 'luisa.dev@beautyasiul.com',
+  phoneNormalized: '61452490450',
+  whatsAppNumberNormalized: '15551890570'
+}
+[User.add] Using adminSupa client (bypasses RLS for user creation)
+[SEED] User 'Luisa Bernal' created with ID: e85c0a88-2afd-4d29-8dff-d9361a881585
+[SEED] Creating services...
+[SEED] Service 'Basic Manicure' created with ID: c032ff95-03b5-42e2-bf73-8689ddef9721
+[SEED] Service 'Express Manicure' created with ID: 07943e17-883e-4a12-8f3b-38c561179ad0
+[SEED] Service 'Gel Manicure' created with ID: 0be289a5-9aae-48ca-94e2-48dd899a447d
+[SEED] Service 'Press on Manicure' created with ID: c7ac6edb-734d-4629-aa0a-250bb796187a
+[SEED] Service 'Nail Art' created with ID: 863d5780-1468-4594-8f3e-b5d6345a0a1d
+[SEED] Service 'Basic Pedicure' created with ID: 08d37ed8-a712-42ea-b930-f104c6d60994
+[SEED] Service 'Gel Pedicure' created with ID: 54ddbcde-99d8-403b-8e82-78fd0b260fc9
+[SEED] Service 'Ladies Haircut' created with ID: be07c2d6-9dc1-49c7-8873-a0deb5afc3ad
+[SEED] Service 'Hair Styling' created with ID: 4050fa8b-850f-44c9-9319-7d5e966b7290
+[SEED] Service 'Braids' created with ID: 52199d08-90ea-423f-ae80-78c4222d8d1a
+[SEED] Service 'Blow Dry' created with ID: 3592b148-ff47-46b1-94fa-e82a0c97b0de
+[SEED] Service 'Waves' created with ID: 8b4c99df-28ae-4b43-bf95-77ab088d3782
+[SEED] Service 'Treatments' created with ID: 7a2105b6-fc99-4a7d-9fc8-a0aab76c9db9
+[SEED] Creating calendar settings...
+[SEED] Calendar settings created with ID: b8fe0411-eb05-4308-83d6-56f679c1214a
+[SEED] Skipping manual document creation - will use PDF processing
+[SEED] Creating initial availability slots...
+[SEED] Creating initial availability using rollAggregatedAvailability...
+[rollAggregatedAvailability] Rolling availability for business 2f905c2c-0167-4bcb-b513-f19b8fbe8f9e
+[rollAggregatedAvailability] Business timezone: Australia/Sydney, today: 2025-07-23
+[Environment] Using development environment for server client
+[rollAggregatedAvailability] Added availability for 2025-07-23
+[rollAggregatedAvailability] Added availability for 2025-07-24
+[rollAggregatedAvailability] Added availability for 2025-07-25
+[rollAggregatedAvailability] Added availability for 2025-07-26
+[rollAggregatedAvailability] No providers work on 2025-07-27
+[rollAggregatedAvailability] Added availability for 2025-07-28
+[rollAggregatedAvailability] Added availability for 2025-07-29
+[rollAggregatedAvailability] Added availability for 2025-07-30
+[rollAggregatedAvailability] Added availability for 2025-07-31
+[rollAggregatedAvailability] Added availability for 2025-08-01
+[rollAggregatedAvailability] Added availability for 2025-08-02
+[rollAggregatedAvailability] No providers work on 2025-08-03
+[rollAggregatedAvailability] Added availability for 2025-08-04
+[rollAggregatedAvailability] Added availability for 2025-08-05
+[rollAggregatedAvailability] Added availability for 2025-08-06
+[rollAggregatedAvailability] Added availability for 2025-08-07
+[rollAggregatedAvailability] Added availability for 2025-08-08
+[rollAggregatedAvailability] Added availability for 2025-08-09
+[rollAggregatedAvailability] No providers work on 2025-08-10
+[rollAggregatedAvailability] Added availability for 2025-08-11
+[rollAggregatedAvailability] Added availability for 2025-08-12
+[rollAggregatedAvailability] Added availability for 2025-08-13
+[rollAggregatedAvailability] Added availability for 2025-08-14
+[rollAggregatedAvailability] Added availability for 2025-08-15
+[rollAggregatedAvailability] Added availability for 2025-08-16
+[rollAggregatedAvailability] No providers work on 2025-08-17
+[rollAggregatedAvailability] Added availability for 2025-08-18
+[rollAggregatedAvailability] Added availability for 2025-08-19
+[rollAggregatedAvailability] Added availability for 2025-08-20
+[rollAggregatedAvailability] Added availability for 2025-08-21
+[rollAggregatedAvailability] Added availability for 2025-08-22
+[rollAggregatedAvailability] Completed for business 2f905c2c-0167-4bcb-b513-f19b8fbe8f9e
+[SEED] ✅ Created initial availability using aggregated rollover system
+[SEED] Database seeding completed successfully!
+[SEED] Triggering PDF content crawler for document embeddings...
+[SEED] Loading luisa-faq.pdf for processing...
+[SEED] Loaded PDF file: 78733 bytes
+[SEED] Calling PDF content crawler API: http://localhost:3000/api/content-crawler/pdf
+ ✓ Compiled /api/content-crawler/pdf in 47ms (556 modules)
+[Crawl Setup] Deleting existing output directory: /Users/juanbernal/code/mesieou/2025/simple_booking/crawl-output
+[Crawl Setup] Successfully deleted /Users/juanbernal/code/mesieou/2025/simple_booking/crawl-output
+[LOGGER] Initialized. Output path: /Users/juanbernal/code/mesieou/2025/simple_booking/crawl-output
+[Crawl Setup] Logger initialized. Output path: /Users/juanbernal/code/mesieou/2025/simple_booking/crawl-output
+Warning: Setting up fake worker.
+[LOGGER] URL processed: pdf-luisa-faq.pdf
+[ProcessContent] Global embedding state cleared
+[ProcessContent] In-memory Session initialized: bd52cd75-1a4c-4450-b27c-f57acffe4bec, Business ID: 2f905c2c-0167-4bcb-b513-f19b8fbe8f9e
+[ProcessContent] Content processing initialized. Session ID: bd52cd75-1a4c-4450-b27c-f57acffe4bec
+[PDF Crawler] DB Session initialized: bd52cd75-1a4c-4450-b27c-f57acffe4bec. ProcessingState created.
+[PDF Crawler] Generating LLM chunks for page: pdf-luisa-faq.pdf#page=1 (LLM Chunk Gen SID: 2d4fbfa2-e9c4-4ed3-a709-6af962063265)
+[PageContentProcessor-PDFSingle] Starting LLM chunk generation for page: pdf-luisa-faq.pdf#page=1 (SID: 2d4fbfa2-e9c4-4ed3-a709-6af962063265, Domain: luisa-faq.pdf)
+[PageContentProcessor-PDFSingle] Pre-splitting content for: pdf-luisa-faq.pdf#page=1 (Original length: 2121 chars)
+[PageContentProcessor-PDFSingle] URL pdf-luisa-faq.pdf#page=1 was pre-split into 1 chunk(s) for LLM processing.
+[PageContentProcessor-PDFSingle] Processing 1 pre-chunks with concurrency 1 for: pdf-luisa-faq.pdf#page=1
+[PageContentProcessor-PDFSingle] Segmenting and categorizing pre-chunk 1/1 for: pdf-luisa-faq.pdf#page=1 (Length: 2121 chars)
+[LLMSegmenterCategorizer] Calling actualCategorizeWebsiteContent from content-analysis.ts for URL: pdf-luisa-faq.pdf#page=1
+[Categorizer] Starting categorizeWebsiteContent for businessId=2f905c2c-0167-4bcb-b513-f19b8fbe8f9e, url=pdf-luisa-faq.pdf#page=1
+[Categorizer] Raw response for businessId=2f905c2c-0167-4bcb-b513-f19b8fbe8f9e, url=pdf-luisa-faq.pdf#page=1: ```json
+[
+  {
+    "category": 5,
+    "content": "1. Where does Luisa work from? Luisa does not operate from a public salon or studio. She provides services from her apartment located at: Apt 11/9 Dryburgh St, Apt 111, West Melbourne VIC 3003",
+    "confidence": 0.9,
+    "confidenceReason": "The content addresses a common question about the location of Luisa's services, fitting the FAQ category."
+  },
+  {
+    "category": 5,
+    "content": "2. Does Luisa accept walk-ins or same-day bookings? Luisa...
+[Categorizer] Raw response length: 1860 characters
+[JSON Parser] Attempting to parse (first 500 chars): ```json
+[
+  {
+    "category": 5,
+    "content": "1. Where does Luisa work from? Luisa does not operate from a public salon or studio. She provides services from her apartment located at: Apt 11/9 Dryburgh St, Apt 111, West Melbourne VIC 3003",
+    "confidence": 0.9,
+    "confidenceReason": "The content addresses a common question about the location of Luisa's services, fitting the FAQ category."
+  },
+  {
+    "category": 5,
+    "content": "2. Does Luisa accept walk-ins or same-day bookings? Luisa...
+[JSON Parser] Initial parse failed, attempting to extract JSON array
+[JSON Parser] Extracted JSON (first 500 chars): [
+  {
+    "category": 5,
+    "content": "1. Where does Luisa work from? Luisa does not operate from a public salon or studio. She provides services from her apartment located at: Apt 11/9 Dryburgh St, Apt 111, West Melbourne VIC 3003",
+    "confidence": 0.9,
+    "confidenceReason": "The content addresses a common question about the location of Luisa's services, fitting the FAQ category."
+  },
+  {
+    "category": 5,
+    "content": "2. Does Luisa accept walk-ins or same-day bookings? Luisa may acc...
+[Categorizer] Parsed 4 items from LLM response
+[PageContentProcessor-PDFSingle] Pre-chunk 1/1 for URL pdf-luisa-faq.pdf#page=1 yielded 4 LLM-defined sub-chunks.
+[PageContentProcessor-PDFSingle] Finished LLM chunk generation for page: pdf-luisa-faq.pdf#page=1. Generated 4 chunks.
+[PDF Crawler] Generated 4 LLM chunks for pdf-luisa-faq.pdf#page=1.
+[ProcessContentPerPage] Processing 4 chunks for page: pdf-luisa-faq.pdf#page=1
+[ProcessContent] Step 1: Preparing initial DocumentData objects from LLM chunks...
+[ProcessContent] Step 1 completed. 4 documents created and ready for embedding. 0 duplicates skipped.
+[ProcessContent] Step 2: Generating embeddings for 4 documents...
+[ProcessContent] After filtering: 4 documents need embeddings (filtered out 0)
+[ProcessContent] Processing 4 embedding tasks with concurrency 4
+[EmbeddingCreator] Calling generateEmbedding for: pdf-luisa-faq.pdf#page=1, interactionId: d8e1daeb9afffaf7e0e01f451b093fe2e9cd720a10b60ee6af3c860e8297d5b2_embedding, text (first 80 chars): "1. Where does Luisa work from? Luisa does not operate from a public salon or stu..."
+[generateEmbedding] Attempting for text (first 80 chars): "1. Where does Luisa work from? Luisa does not operate from a public salon or stu..."
+[EmbeddingCreator] Calling generateEmbedding for: pdf-luisa-faq.pdf#page=1, interactionId: a7d3815be28272b80a3180b3c68ea2b53d9e817ab0a97f6fdb2d58884a62d3c5_embedding, text (first 80 chars): "2. Does Luisa accept walk-ins or same-day bookings? Luisa may accept same-day bo..."
+[generateEmbedding] Attempting for text (first 80 chars): "2. Does Luisa accept walk-ins or same-day bookings? Luisa may accept same-day bo..."
+[EmbeddingCreator] Calling generateEmbedding for: pdf-luisa-faq.pdf#page=1, interactionId: e374652180692cd0eee78fa83381a6081242eee40b14b407e0c75fa91c04440a_embedding, text (first 80 chars): "3. What is Luisa’s deposit policy? ● A 50% deposit is required to secure an appo..."
+[generateEmbedding] Attempting for text (first 80 chars): "3. What is Luisa’s deposit policy? ● A 50% deposit is required to secure an appo..."
+[EmbeddingCreator] Calling generateEmbedding for: pdf-luisa-faq.pdf#page=1, interactionId: d8f0982b48289709948600fbafebc768623da93ac468652ffc1f9d1bac9b7059_embedding, text (first 80 chars): "4. What if I can’t pay the deposit? Some clients have been allowed to pay the fu..."
+[generateEmbedding] Attempting for text (first 80 chars): "4. What if I can’t pay the deposit? Some clients have been allowed to pay the fu..."
+[generateEmbedding] SUCCESS for text (first 80 chars): "4. What if I can’t pay the deposit? Some clients have been allowed to pay the fu..."
+[EmbeddingCreator] generateEmbedding SUCCEEDED for d8f0982b48289709948600fbafebc768623da93ac468652ffc1f9d1bac9b7059_embedding. Result vector (first 3 elements): [ -0.007677428424358368, 0.006958067417144775, 0.018576066941022873 ]
+[Embedding] Successfully generated embedding for doc hash d8f0982b48289709948600fbafebc768623da93ac468652ffc1f9d1bac9b7059 from source pdf-luisa-faq.pdf#page=1 in 538ms.
+[generateEmbedding] SUCCESS for text (first 80 chars): "3. What is Luisa’s deposit policy? ● A 50% deposit is required to secure an appo..."
+[EmbeddingCreator] generateEmbedding SUCCEEDED for e374652180692cd0eee78fa83381a6081242eee40b14b407e0c75fa91c04440a_embedding. Result vector (first 3 elements): [ -0.04230146110057831, -0.008434225805103779, -0.000589589006267488 ]
+[Embedding] Successfully generated embedding for doc hash e374652180692cd0eee78fa83381a6081242eee40b14b407e0c75fa91c04440a from source pdf-luisa-faq.pdf#page=1 in 538ms.
+[generateEmbedding] SUCCESS for text (first 80 chars): "1. Where does Luisa work from? Luisa does not operate from a public salon or stu..."
+[EmbeddingCreator] generateEmbedding SUCCEEDED for d8e1daeb9afffaf7e0e01f451b093fe2e9cd720a10b60ee6af3c860e8297d5b2_embedding. Result vector (first 3 elements): [ -0.08066321164369583, -0.030090665444731712, 0.06685690581798553 ]
+[Embedding] Successfully generated embedding for doc hash d8e1daeb9afffaf7e0e01f451b093fe2e9cd720a10b60ee6af3c860e8297d5b2 from source pdf-luisa-faq.pdf#page=1 in 724ms.
+[generateEmbedding] SUCCESS for text (first 80 chars): "2. Does Luisa accept walk-ins or same-day bookings? Luisa may accept same-day bo..."
+[EmbeddingCreator] generateEmbedding SUCCEEDED for a7d3815be28272b80a3180b3c68ea2b53d9e817ab0a97f6fdb2d58884a62d3c5_embedding. Result vector (first 3 elements): [ -0.05520404502749443, -0.02170209027826786, 0.0344795286655426 ]
+[Embedding] Successfully generated embedding for doc hash a7d3815be28272b80a3180b3c68ea2b53d9e817ab0a97f6fdb2d58884a62d3c5 from source pdf-luisa-faq.pdf#page=1 in 916ms.
+[ProcessContent] Step 2 completed. Embeddings generated (or attempted) for all documents. Stats: 4 attempts, 0 failures.
+[ProcessContentPerPage] Saving JSON artifacts for 4 documents from page: pdf-luisa-faq.pdf#page=1
+[ProcessContentPerPage] Finished saving JSON artifacts for page: pdf-luisa-faq.pdf#page=1
+[ProcessContentPerPage] Finished processing and embedding for page: pdf-luisa-faq.pdf#page=1. Current total docs in state: 4
+[PDF Crawler] Submitted 4 chunks from pdf-luisa-faq.pdf#page=1 for embedding and DB processing (DB SID: bd52cd75-1a4c-4450-b27c-f57acffe4bec).
+[PDF Crawler] Generating LLM chunks for page: pdf-luisa-faq.pdf#page=2 (LLM Chunk Gen SID: 2d4fbfa2-e9c4-4ed3-a709-6af962063265)
+[PageContentProcessor-PDFSingle] Starting LLM chunk generation for page: pdf-luisa-faq.pdf#page=2 (SID: 2d4fbfa2-e9c4-4ed3-a709-6af962063265, Domain: luisa-faq.pdf)
+[PageContentProcessor-PDFSingle] Pre-splitting content for: pdf-luisa-faq.pdf#page=2 (Original length: 2443 chars)
+[PageContentProcessor-PDFSingle] URL pdf-luisa-faq.pdf#page=2 was pre-split into 1 chunk(s) for LLM processing.
+[PageContentProcessor-PDFSingle] Processing 1 pre-chunks with concurrency 1 for: pdf-luisa-faq.pdf#page=2
+[PageContentProcessor-PDFSingle] Segmenting and categorizing pre-chunk 1/1 for: pdf-luisa-faq.pdf#page=2 (Length: 2443 chars)
+[LLMSegmenterCategorizer] Calling actualCategorizeWebsiteContent from content-analysis.ts for URL: pdf-luisa-faq.pdf#page=2
+[Categorizer] Starting categorizeWebsiteContent for businessId=2f905c2c-0167-4bcb-b513-f19b8fbe8f9e, url=pdf-luisa-faq.pdf#page=2
+[Categorizer] Raw response for businessId=2f905c2c-0167-4bcb-b513-f19b8fbe8f9e, url=pdf-luisa-faq.pdf#page=2: ```json
+[
+  {
+    "category": 5,
+    "content": "5. Is payment in cash required? Yes, Luisa generally prefers or requires payment in cash unless otherwise agreed. She reminds customers of this frequently before appointments.",
+    "confidence": 0.9,
+    "confidenceReason": "The content addresses a common question related to payment methods, fitting the FAQ category."
+  },
+  {
+    "category": 5,
+    "content": "6. What happens if Luisa is running late? Luisa occasionally runs late and notifies th...
+[Categorizer] Raw response length: 2591 characters
+[JSON Parser] Attempting to parse (first 500 chars): ```json
+[
+  {
+    "category": 5,
+    "content": "5. Is payment in cash required? Yes, Luisa generally prefers or requires payment in cash unless otherwise agreed. She reminds customers of this frequently before appointments.",
+    "confidence": 0.9,
+    "confidenceReason": "The content addresses a common question related to payment methods, fitting the FAQ category."
+  },
+  {
+    "category": 5,
+    "content": "6. What happens if Luisa is running late? Luisa occasionally runs late and notifies th...
+[JSON Parser] Initial parse failed, attempting to extract JSON array
+[JSON Parser] Extracted JSON (first 500 chars): [
+  {
+    "category": 5,
+    "content": "5. Is payment in cash required? Yes, Luisa generally prefers or requires payment in cash unless otherwise agreed. She reminds customers of this frequently before appointments.",
+    "confidence": 0.9,
+    "confidenceReason": "The content addresses a common question related to payment methods, fitting the FAQ category."
+  },
+  {
+    "category": 5,
+    "content": "6. What happens if Luisa is running late? Luisa occasionally runs late and notifies the client...
+[Categorizer] Parsed 7 items from LLM response
+[PageContentProcessor-PDFSingle] Pre-chunk 1/1 for URL pdf-luisa-faq.pdf#page=2 yielded 7 LLM-defined sub-chunks.
+[PageContentProcessor-PDFSingle] Finished LLM chunk generation for page: pdf-luisa-faq.pdf#page=2. Generated 7 chunks.
+[PDF Crawler] Generated 7 LLM chunks for pdf-luisa-faq.pdf#page=2.
+[ProcessContentPerPage] Processing 7 chunks for page: pdf-luisa-faq.pdf#page=2
+[ProcessContent] Step 1: Preparing initial DocumentData objects from LLM chunks...
+[ProcessContent] Step 1 completed. 11 documents created and ready for embedding. 0 duplicates skipped.
+[ProcessContent] Step 2: Generating embeddings for 11 documents...
+[ProcessContent] Filtering out document d8e1daeb9afffaf7e0e01f451b093fe2e9cd720a10b60ee6af3c860e8297d5b2 - already has embedding
+[ProcessContent] Filtering out document a7d3815be28272b80a3180b3c68ea2b53d9e817ab0a97f6fdb2d58884a62d3c5 - already has embedding
+[ProcessContent] Filtering out document e374652180692cd0eee78fa83381a6081242eee40b14b407e0c75fa91c04440a - already has embedding
+[ProcessContent] Filtering out document d8f0982b48289709948600fbafebc768623da93ac468652ffc1f9d1bac9b7059 - already has embedding
+[ProcessContent] After filtering: 7 documents need embeddings (filtered out 4)
+[ProcessContent] Processing 7 embedding tasks with concurrency 7
+[EmbeddingCreator] Calling generateEmbedding for: pdf-luisa-faq.pdf#page=2, interactionId: 6ec6b5023b0873a459db642bf4cd7657424c581c2f2509041ec71e99553cd6d0_embedding, text (first 80 chars): "5. Is payment in cash required? Yes, Luisa generally prefers or requires payment..."
+[generateEmbedding] Attempting for text (first 80 chars): "5. Is payment in cash required? Yes, Luisa generally prefers or requires payment..."
+[EmbeddingCreator] Calling generateEmbedding for: pdf-luisa-faq.pdf#page=2, interactionId: 8eb2079f83e9225892fd87de7ecb696018ef676174196762d19e42df78487271_embedding, text (first 80 chars): "6. What happens if Luisa is running late? Luisa occasionally runs late and notif..."
+[generateEmbedding] Attempting for text (first 80 chars): "6. What happens if Luisa is running late? Luisa occasionally runs late and notif..."
+[EmbeddingCreator] Calling generateEmbedding for: pdf-luisa-faq.pdf#page=2, interactionId: 67f47f33269e7c6bbb0e35d41cde59fe6989a23192f70faeec5c7f247ce6dc91_embedding, text (first 80 chars): "7. Can I cancel or reschedule my appointment? Yes, you can cancel or reschedule,..."
+[generateEmbedding] Attempting for text (first 80 chars): "7. Can I cancel or reschedule my appointment? Yes, you can cancel or reschedule,..."
+[EmbeddingCreator] Calling generateEmbedding for: pdf-luisa-faq.pdf#page=2, interactionId: f015b774c44b7bad22453851e0e904def5ae0f78b18c9ada68094961db5a5eb2_embedding, text (first 80 chars): "8. Can someone else come to the appointment or wait? Luisa has not objected to c..."
+[generateEmbedding] Attempting for text (first 80 chars): "8. Can someone else come to the appointment or wait? Luisa has not objected to c..."
+[EmbeddingCreator] Calling generateEmbedding for: pdf-luisa-faq.pdf#page=2, interactionId: 268b2b0725a42d7cf9d7cc225da3d25ae644cd1e22226bbb620ae456efd89e28_embedding, text (first 80 chars): "9. How long do services take? ● Braiding: Approx. 1 hour ● Shellac Manicure: Not..."
+[generateEmbedding] Attempting for text (first 80 chars): "9. How long do services take? ● Braiding: Approx. 1 hour ● Shellac Manicure: Not..."
+[generateEmbedding] SUCCESS for text (first 80 chars): "5. Is payment in cash required? Yes, Luisa generally prefers or requires payment..."
+[EmbeddingCreator] generateEmbedding SUCCEEDED for 6ec6b5023b0873a459db642bf4cd7657424c581c2f2509041ec71e99553cd6d0_embedding. Result vector (first 3 elements): [ -0.022018413990736008, -0.0001454006414860487, 0.019809838384389877 ]
+[Embedding] Successfully generated embedding for doc hash 6ec6b5023b0873a459db642bf4cd7657424c581c2f2509041ec71e99553cd6d0 from source pdf-luisa-faq.pdf#page=2 in 342ms.
+[EmbeddingCreator] Calling generateEmbedding for: pdf-luisa-faq.pdf#page=2, interactionId: db5ee02668dac94a058008c21a63a285fc160d2d3b38d6b52bf6ab298fc6a26d_embedding, text (first 80 chars): "10. Can Luisa accommodate last-minute changes or delays? Yes, she tries to be fl..."
+[generateEmbedding] Attempting for text (first 80 chars): "10. Can Luisa accommodate last-minute changes or delays? Yes, she tries to be fl..."
+[generateEmbedding] SUCCESS for text (first 80 chars): "8. Can someone else come to the appointment or wait? Luisa has not objected to c..."
+[EmbeddingCreator] generateEmbedding SUCCEEDED for f015b774c44b7bad22453851e0e904def5ae0f78b18c9ada68094961db5a5eb2_embedding. Result vector (first 3 elements): [ -0.01895017735660076, 0.007885674946010113, 0.03438045084476471 ]
+[Embedding] Successfully generated embedding for doc hash f015b774c44b7bad22453851e0e904def5ae0f78b18c9ada68094961db5a5eb2 from source pdf-luisa-faq.pdf#page=2 in 402ms.
+[EmbeddingCreator] Calling generateEmbedding for: pdf-luisa-faq.pdf#page=2, interactionId: 62f609db570b6342be46d4a1f82723ac13a2785e4373ec5cdb315423f0cc2310_embedding, text (first 80 chars): "11. Does Luisa provide mobile services?..."
+[generateEmbedding] Attempting for text (first 80 chars): "11. Does Luisa provide mobile services?..."
+[generateEmbedding] SUCCESS for text (first 80 chars): "9. How long do services take? ● Braiding: Approx. 1 hour ● Shellac Manicure: Not..."
+[EmbeddingCreator] generateEmbedding SUCCEEDED for 268b2b0725a42d7cf9d7cc225da3d25ae644cd1e22226bbb620ae456efd89e28_embedding. Result vector (first 3 elements): [ -0.033685170114040375, 0.04984842985868454, 0.06113928556442261 ]
+[Embedding] Successfully generated embedding for doc hash 268b2b0725a42d7cf9d7cc225da3d25ae644cd1e22226bbb620ae456efd89e28 from source pdf-luisa-faq.pdf#page=2 in 440ms.
+[generateEmbedding] SUCCESS for text (first 80 chars): "7. Can I cancel or reschedule my appointment? Yes, you can cancel or reschedule,..."
+[EmbeddingCreator] generateEmbedding SUCCEEDED for 67f47f33269e7c6bbb0e35d41cde59fe6989a23192f70faeec5c7f247ce6dc91_embedding. Result vector (first 3 elements): [ -0.03216256573796272, 0.058110591024160385, 0.0316060408949852 ]
+[Embedding] Successfully generated embedding for doc hash 67f47f33269e7c6bbb0e35d41cde59fe6989a23192f70faeec5c7f247ce6dc91 from source pdf-luisa-faq.pdf#page=2 in 461ms.
+[generateEmbedding] SUCCESS for text (first 80 chars): "10. Can Luisa accommodate last-minute changes or delays? Yes, she tries to be fl..."
+[EmbeddingCreator] generateEmbedding SUCCEEDED for db5ee02668dac94a058008c21a63a285fc160d2d3b38d6b52bf6ab298fc6a26d_embedding. Result vector (first 3 elements): [ -0.022475993260741234, 0.0016144514083862305, 0.048024244606494904 ]
+[Embedding] Successfully generated embedding for doc hash db5ee02668dac94a058008c21a63a285fc160d2d3b38d6b52bf6ab298fc6a26d from source pdf-luisa-faq.pdf#page=2 in 689ms.
+[generateEmbedding] SUCCESS for text (first 80 chars): "11. Does Luisa provide mobile services?..."
+[EmbeddingCreator] generateEmbedding SUCCEEDED for 62f609db570b6342be46d4a1f82723ac13a2785e4373ec5cdb315423f0cc2310_embedding. Result vector (first 3 elements): [ -0.02984096296131611, -0.030331579968333244, 0.028022799640893936 ]
+[Embedding] Successfully generated embedding for doc hash 62f609db570b6342be46d4a1f82723ac13a2785e4373ec5cdb315423f0cc2310 from source pdf-luisa-faq.pdf#page=2 in 694ms.
+[generateEmbedding] SUCCESS for text (first 80 chars): "6. What happens if Luisa is running late? Luisa occasionally runs late and notif..."
+[EmbeddingCreator] generateEmbedding SUCCEEDED for 8eb2079f83e9225892fd87de7ecb696018ef676174196762d19e42df78487271_embedding. Result vector (first 3 elements): [ -0.022666430100798607, 0.008343061432242393, 0.03297178074717522 ]
+[Embedding] Successfully generated embedding for doc hash 8eb2079f83e9225892fd87de7ecb696018ef676174196762d19e42df78487271 from source pdf-luisa-faq.pdf#page=2 in 934ms.
+[ProcessContent] Step 2 completed. Embeddings generated (or attempted) for all documents. Stats: 11 attempts, 0 failures.
+[ProcessContentPerPage] Saving JSON artifacts for 7 documents from page: pdf-luisa-faq.pdf#page=2
+[ProcessContentPerPage] Finished saving JSON artifacts for page: pdf-luisa-faq.pdf#page=2
+[ProcessContentPerPage] Finished processing and embedding for page: pdf-luisa-faq.pdf#page=2. Current total docs in state: 11
+[PDF Crawler] Submitted 7 chunks from pdf-luisa-faq.pdf#page=2 for embedding and DB processing (DB SID: bd52cd75-1a4c-4450-b27c-f57acffe4bec).
+[PDF Crawler] Generating LLM chunks for page: pdf-luisa-faq.pdf#page=3 (LLM Chunk Gen SID: 2d4fbfa2-e9c4-4ed3-a709-6af962063265)
+[PageContentProcessor-PDFSingle] Starting LLM chunk generation for page: pdf-luisa-faq.pdf#page=3 (SID: 2d4fbfa2-e9c4-4ed3-a709-6af962063265, Domain: luisa-faq.pdf)
+[PageContentProcessor-PDFSingle] Pre-splitting content for: pdf-luisa-faq.pdf#page=3 (Original length: 683 chars)
+[PageContentProcessor-PDFSingle] URL pdf-luisa-faq.pdf#page=3 was pre-split into 1 chunk(s) for LLM processing.
+[PageContentProcessor-PDFSingle] Processing 1 pre-chunks with concurrency 1 for: pdf-luisa-faq.pdf#page=3
+[PageContentProcessor-PDFSingle] Segmenting and categorizing pre-chunk 1/1 for: pdf-luisa-faq.pdf#page=3 (Length: 683 chars)
+[LLMSegmenterCategorizer] Calling actualCategorizeWebsiteContent from content-analysis.ts for URL: pdf-luisa-faq.pdf#page=3
+[Categorizer] Starting categorizeWebsiteContent for businessId=2f905c2c-0167-4bcb-b513-f19b8fbe8f9e, url=pdf-luisa-faq.pdf#page=3
+[Categorizer] Raw response for businessId=2f905c2c-0167-4bcb-b513-f19b8fbe8f9e, url=pdf-luisa-faq.pdf#page=3: ```json
+[
+  {
+    "category": 5,
+    "content": "No. When asked, she confirmed she only attends in North Melbourne. 12. What if I can’t reach Luisa? Clients sometimes call or message repeatedly when arriving. If there's a delay, it’s best to: ● Message again via WhatsApp ● Wait in the lobby or outside Apt 111 ● Be patient, as she may be attending another client or caring for her child",
+    "confidence": 0.95,
+    "confidenceReason": "Content addresses common questions and concerns from clients,...
+[Categorizer] Raw response length: 537 characters
+[JSON Parser] Attempting to parse (first 500 chars): ```json
+[
+  {
+    "category": 5,
+    "content": "No. When asked, she confirmed she only attends in North Melbourne. 12. What if I can’t reach Luisa? Clients sometimes call or message repeatedly when arriving. If there's a delay, it’s best to: ● Message again via WhatsApp ● Wait in the lobby or outside Apt 111 ● Be patient, as she may be attending another client or caring for her child",
+    "confidence": 0.95,
+    "confidenceReason": "Content addresses common questions and concerns from clients,...
+[JSON Parser] Initial parse failed, attempting to extract JSON array
+[JSON Parser] Extracted JSON (first 500 chars): [
+  {
+    "category": 5,
+    "content": "No. When asked, she confirmed she only attends in North Melbourne. 12. What if I can’t reach Luisa? Clients sometimes call or message repeatedly when arriving. If there's a delay, it’s best to: ● Message again via WhatsApp ● Wait in the lobby or outside Apt 111 ● Be patient, as she may be attending another client or caring for her child",
+    "confidence": 0.95,
+    "confidenceReason": "Content addresses common questions and concerns from clients, fitting...
+[Categorizer] Parsed 1 items from LLM response
+[PageContentProcessor-PDFSingle] Pre-chunk 1/1 for URL pdf-luisa-faq.pdf#page=3 yielded 1 LLM-defined sub-chunks.
+[PageContentProcessor-PDFSingle] Finished LLM chunk generation for page: pdf-luisa-faq.pdf#page=3. Generated 1 chunks.
+[PDF Crawler] Generated 1 LLM chunks for pdf-luisa-faq.pdf#page=3.
+[ProcessContentPerPage] Processing 1 chunks for page: pdf-luisa-faq.pdf#page=3
+[ProcessContent] Step 1: Preparing initial DocumentData objects from LLM chunks...
+[ProcessContent] Step 1 completed. 12 documents created and ready for embedding. 0 duplicates skipped.
+[ProcessContent] Step 2: Generating embeddings for 12 documents...
+[ProcessContent] Filtering out document d8e1daeb9afffaf7e0e01f451b093fe2e9cd720a10b60ee6af3c860e8297d5b2 - already has embedding
+[ProcessContent] Filtering out document a7d3815be28272b80a3180b3c68ea2b53d9e817ab0a97f6fdb2d58884a62d3c5 - already has embedding
+[ProcessContent] Filtering out document e374652180692cd0eee78fa83381a6081242eee40b14b407e0c75fa91c04440a - already has embedding
+[ProcessContent] Filtering out document d8f0982b48289709948600fbafebc768623da93ac468652ffc1f9d1bac9b7059 - already has embedding
+[ProcessContent] Filtering out document 6ec6b5023b0873a459db642bf4cd7657424c581c2f2509041ec71e99553cd6d0 - already has embedding
+[ProcessContent] Filtering out document 8eb2079f83e9225892fd87de7ecb696018ef676174196762d19e42df78487271 - already has embedding
+[ProcessContent] Filtering out document 67f47f33269e7c6bbb0e35d41cde59fe6989a23192f70faeec5c7f247ce6dc91 - already has embedding
+[ProcessContent] Filtering out document f015b774c44b7bad22453851e0e904def5ae0f78b18c9ada68094961db5a5eb2 - already has embedding
+[ProcessContent] Filtering out document 268b2b0725a42d7cf9d7cc225da3d25ae644cd1e22226bbb620ae456efd89e28 - already has embedding
+[ProcessContent] Filtering out document db5ee02668dac94a058008c21a63a285fc160d2d3b38d6b52bf6ab298fc6a26d - already has embedding
+[ProcessContent] Filtering out document 62f609db570b6342be46d4a1f82723ac13a2785e4373ec5cdb315423f0cc2310 - already has embedding
+[ProcessContent] After filtering: 1 documents need embeddings (filtered out 11)
+[ProcessContent] Processing 1 embedding tasks with concurrency 1
+[EmbeddingCreator] Calling generateEmbedding for: pdf-luisa-faq.pdf#page=3, interactionId: 4cca31342739067c15b469e87a0e12c929d90c8f1516b2d8aed3fad3ad5f0137_embedding, text (first 80 chars): "No. When asked, she confirmed she only attends in North Melbourne. 12. What if I..."
+[generateEmbedding] Attempting for text (first 80 chars): "No. When asked, she confirmed she only attends in North Melbourne. 12. What if I..."
+[generateEmbedding] SUCCESS for text (first 80 chars): "No. When asked, she confirmed she only attends in North Melbourne. 12. What if I..."
+[EmbeddingCreator] generateEmbedding SUCCEEDED for 4cca31342739067c15b469e87a0e12c929d90c8f1516b2d8aed3fad3ad5f0137_embedding. Result vector (first 3 elements): [ -0.05200827121734619, 0.002890700241550803, 0.040160395205020905 ]
+[Embedding] Successfully generated embedding for doc hash 4cca31342739067c15b469e87a0e12c929d90c8f1516b2d8aed3fad3ad5f0137 from source pdf-luisa-faq.pdf#page=3 in 507ms.
+[ProcessContent] Step 2 completed. Embeddings generated (or attempted) for all documents. Stats: 12 attempts, 0 failures.
+[ProcessContentPerPage] Saving JSON artifacts for 1 documents from page: pdf-luisa-faq.pdf#page=3
+[ProcessContentPerPage] Finished saving JSON artifacts for page: pdf-luisa-faq.pdf#page=3
+[ProcessContentPerPage] Finished processing and embedding for page: pdf-luisa-faq.pdf#page=3. Current total docs in state: 12
+[PDF Crawler] Submitted 1 chunks from pdf-luisa-faq.pdf#page=3 for embedding and DB processing (DB SID: bd52cd75-1a4c-4450-b27c-f57acffe4bec).
+[ProcessContentFinalize] Finalizing content processing...
+[ProcessContent] Collecting documents with their embeddings for final save...
+[ProcessContent] Collected 12 documents (with embeddeddings) for saving.
+[ProcessContent] Successful pages (with at least one saved chunk): 3
+[ProcessContent] Step 3: Logging primary summary artifacts (manifests)...
+[ProcessContent] Step 3 completed. Primary summary artifacts (manifests) logged.
+[ProcessContentFinalize] Attempting to save session bd52cd75-1a4c-4450-b27c-f57acffe4bec with 12 documents (embeddings included) to database...
+[Environment] Using development environment for service-role client
+[CrawlSession.addSessionWithDocumentsAndEmbeddings] Using production service role client (PDF crawler production mode)
+[ProcessContentFinalize] Successfully saved session bd52cd75-1a4c-4450-b27c-f57acffe4bec with 12 documents.
+[ProcessContent] Step 3: Logging primary summary artifacts (manifests)...
+[ProcessContent] Step 3 completed. Primary summary artifacts (manifests) logged.
+[ProcessContentFinalize] Re-saved manifests with updated document DB IDs.
+[ProcessContentFinalize] Content processing for session bd52cd75-1a4c-4450-b27c-f57acffe4bec finalized successfully.
+[PDF Crawler] Content processing finalized. Final status/session ID: bd52cd75-1a4c-4450-b27c-f57acffe4bec
+[LOGGER] Could not parse URL pdf-luisa-faq.pdf#page=1 to extract domain.
+[LOGGER] Could not parse URL pdf-luisa-faq.pdf#page=2 to extract domain.
+[LOGGER] Could not parse URL pdf-luisa-faq.pdf#page=3 to extract domain.
+[LOGGER] Summary saved to /Users/juanbernal/code/mesieou/2025/simple_booking/crawl-output/summary.json
+ POST /api/content-crawler/pdf 200 in 25596ms
+[SEED] PDF content crawler API response: {
+  message: 'PDF processed successfully',
+  result: {
+    mergedText: '1. Where does Luisa work from? Luisa does not operate from a public salon or studio. She provides services from her apartment located at: Apt 11/9 Dryburgh St, Apt 111, West Melbourne VIC 3003\n' +
+      '\n' +
+      "2. Does Luisa accept walk-ins or same-day bookings? Luisa may accept same-day bookings if she has availability, but it's always best to confirm through WhatsApp. She frequently shares availability for same-day or next-day appointments when asked.\n" +
+      '\n' +
+      '3. What is Luisa’s deposit policy? ● A 50% deposit is required to secure an appointment. Deposit can be paid via bank transfer to: makefile CopyEdit Name: Lisa Bernal Number: +61 451 375 263 ● ● The deposit is refundable only if: ○ The cancellation is made at least 24 hours in advance, or ○ The appointment is rescheduled more than 24 hours ahead.\n' +
+      '\n' +
+      '4. What if I can’t pay the deposit? Some clients have been allowed to pay the full amount in cash on the day of the appointment if they don’t have a local bank account (e.g., only Bancolombia available). Luisa seems flexible on this on a case-by-case basis.\n' +
+      '\n' +
+      '5. Is payment in cash required? Yes, Luisa generally prefers or requires payment in cash unless otherwise agreed. She reminds customers of this frequently before appointments.\n' +
+      '\n' +
+      '6. What happens if Luisa is running late? Luisa occasionally runs late and notifies the client. Clients are usually asked to wait in the apartment lobby. She is apologetic and communicative about delays.\n' +
+      '\n' +
+      '7. Can I cancel or reschedule my appointment? Yes, you can cancel or reschedule, but it must be at least 24 hours in advance to retain your deposit. Last-minute cancellations or no-shows may forfeit the deposit.\n' +
+      '\n' +
+      '8. Can someone else come to the appointment or wait? Luisa has not objected to clients bringing someone or waiting nearby, but this should be confirmed in advance as her studio is in her private residence.\n' +
+      '\n' +
+      '9. How long do services take? ● Braiding: Approx. 1 hour ● Shellac Manicure: Not explicitly stated, but appointments are often scheduled in 1 – 1.5 hour windows\n' +
+      '\n' +
+      '10. Can Luisa accommodate last-minute changes or delays? Yes, she tries to be flexible. Clients running late or changing plans often communicate with her and she adjusts where possible, depending on her schedule.\n' +
+      '\n' +
+      '11. Does Luisa provide mobile services?\n' +
+      '\n' +
+      "No. When asked, she confirmed she only attends in North Melbourne. 12. What if I can’t reach Luisa? Clients sometimes call or message repeatedly when arriving. If there's a delay, it’s best to: ● Message again via WhatsApp ● Wait in the lobby or outside Apt 111 ● Be patient, as she may be attending another client or caring for her child",
+    pageCount: 3,
+    uniqueParagraphs: 12,
+    businessId: '2f905c2c-0167-4bcb-b513-f19b8fbe8f9e',
+    source: 'luisa-faq.pdf',
+    embeddingsStatus: 'Processed with DB Session ID: bd52cd75-1a4c-4450-b27c-f57acffe4bec'
+  },
+  pdfName: 'luisa-faq.pdf'
+}
+[SEED] Warning: Could not query embeddings by businessId: column embeddings.businessId does not exist
+[SEED] Warning: Could not verify embeddings creation: undefined
+ POST /api/seed/luisa 200 in 31729ms
+ ✓ Compiled /api/seed/removalist in 221ms (395 modules)
+🚚 Starting removalist business seed for DEVELOPMENT...
+[SEED] Starting database seeding for Quick Move Removalists (DEVELOPMENT ONLY)...
+[SEED] Environment: {
+  supabaseUrl: 'https://yxavypxuzpjejkezwzjl.supabase.co',
+  hasServiceRoleKey: true,
+  hasDevCredentials: true,
+  usingProvidedClient: false,
+  isProductionUrl: false,
+  usingDevEnvironment: true
+}
+[SEED] Checking for existing Quick Move Removalists business data to clean up...
+[SEED] No existing Quick Move Removalists business data found to clean up.
+[SEED] Creating new removalist business...
+[SEED] Business 'Timos Removals' created with ID: f3934f33-5eea-40ba-b024-5b06fa330d8d
+[SEED] Creating owner provider...
+[SEED] About to create user with data: {
+  email: 'info@timosremovals.com.au',
+  whatsappNumber: '+61468968600',
+  businessId: 'f3934f33-5eea-40ba-b024-5b06fa330d8d'
+}
+[User.add] No existing auth user found. Creating new one.
+Failed to create auth user {
+  message: 'A user with this email address has already been registered',
+  details: undefined,
+  code: 'email_exists',
+  hint: undefined
+}
+[SEED] Error during business creation, cleaning up partial data...
+[SEED] Error details: Failed to create auth user
+[SEED] Cleaning up partially created business with ID: f3934f33-5eea-40ba-b024-5b06fa330d8d
+[SEED] Starting cleanup for business ID: f3934f33-5eea-40ba-b024-5b06fa330d8d...
+[SEED] Successfully cleaned up business f3934f33-5eea-40ba-b024-5b06fa330d8d and all related data.
+[SEED] Cleanup completed successfully.
+❌ Seed failed: Error [ModelError]: Failed to create auth user
+    at handleModelError (lib/general-helpers/error.ts:16:8)
+    at User.add (lib/database/models/user.ts:167:46)
+    at async createRemovalistTestBusiness (lib/database/seed/create-removalist-test-business.ts:129:52)
+    at async POST (app/api/seed/removalist/route.ts:34:21)
+  14 |   } : {};
+  15 |   console.error(message, errorDetails);
+> 16 |   throw new ModelError(message, error);
+     |        ^
+  17 | }  {
+  originalError: Error [AuthApiError]: A user with this email address has already been registered
+      at async User.add (lib/database/models/user.ts:160:62)
+      at async createRemovalistTestBusiness (lib/database/seed/create-removalist-test-business.ts:129:52)
+      at async POST (app/api/seed/removalist/route.ts:34:21)
+    158 |         } else {
+    159 |             console.log(`[User.add] No existing auth user found. Creating new one.`);
+  > 160 |             const { data: newAuthData, error: createError } = await adminSupa.auth.admin.createUser({
+        |                                                              ^
+    161 |                 email: email,
+    162 |                 password: password,
+    163 |                 email_confirm: true, {
+    __isAuthError: true,
+    status: 422,
+    code: 'email_exists'
+  }
+}
+ POST /api/seed/removalist 500 in 1840ms
+ ✓ Compiled in 187ms (54 modules)

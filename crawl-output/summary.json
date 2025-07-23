@@ -20,12 +20,12 @@
     "totalEmbeddings": 19,
     "processedEmbeddings": 19,
     "failedEmbeddings": 0,
-    "startTime": 1753166347969,
+    "startTime": 1753278538738,
     "baseOutputPath": "/Users/juanbernal/code/mesieou/2025/simple_booking/crawl-output",
     "domainProcessingSummary": {},
-    "endTime": 1753166418073
+    "endTime": 1753278613726
   },
-  "durationSeconds": 70.104,
+  "durationSeconds": 74.988,
   "allFoundUrls": [
     "pdf-Removalist-FAQ-Handbook.pdf#page=1",
     "pdf-Removalist-FAQ-Handbook.pdf#page=2",

@@ -3,7 +3,7 @@ import { User, type UserRole } from '../models/user';
 import { Service, type ServiceData, type PricingType } from '../models/service';
 import { CalendarSettings, type CalendarSettingsData, type ProviderWorkingHours } from '../models/calendar-settings';
 import { Document, type DocumentData } from '../models/documents';
-import { computeAggregatedAvailability } from '../../general-helpers/availability';
+import { rollAggregatedAvailability } from '../../general-helpers/availability';
 import { v4 as uuidv4 } from 'uuid';
 import { getServiceRoleClient, getProdServiceRoleClient } from '../supabase/service-role';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -18,7 +18,7 @@ export interface RemovalistTestBusinessSeedResult {
 }
 
 /**
- * Creates a complete TEST business for Quick Move Removalists with:
+ * Creates a complete TEST business for Timos Removals with:
  * - Business profile with removalist category
  * - 8 removalist services (single item, few items, house moves)
  * - Calendar settings and availability
@@ -41,7 +41,7 @@ export async function createRemovalistTestBusiness(supabase?: SupabaseClient): P
     throw new Error('🚨 BLOCKED: Cannot create test removalist business in PRODUCTION environment! This is a fake business for development only.');
   }
   
-  console.log('[SEED] Starting database seeding for Quick Move Removalists (DEVELOPMENT ONLY)...');
+  console.log('[SEED] Starting database seeding for Timos Removals (DEVELOPMENT ONLY)...');
   console.log('[SEED] Environment:', {
     supabaseUrl: supabase ? 'Using provided client' : (devSupabaseUrl || process.env.NEXT_PUBLIC_SUPABASE_URL),
     hasServiceRoleKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
@@ -54,13 +54,13 @@ export async function createRemovalistTestBusiness(supabase?: SupabaseClient): P
   // Use development Supabase client if available, otherwise fall back to default
   const supa = supabase || getServiceRoleClient();
 
-  // --- TARGETED CLEANUP OF EXISTING REMOVALIST DATA ---
+    // --- TARGETED CLEANUP OF EXISTING REMOVALIST DATA ---
   // Clean up only the specific removalist business by name and email (not phone numbers)
-  console.log('[SEED] Checking for existing Quick Move Removalists business data to clean up...');
+  console.log('[SEED] Checking for existing Timos Removals business data to clean up...');
   const { data: businesses, error: businessError } = await supa
     .from('businesses')
     .select('id, name, email')
-    .or('name.eq.Quick Move Removalists,email.eq.mike.thompson@quickmove.com.au');
+    .or('name.eq.Timos Removals,email.eq.info@timosremovals.com.au');
 
   if (businessError) {
     console.error('[SEED] Error checking for existing business, skipping cleanup:', businessError);
@@ -73,7 +73,26 @@ export async function createRemovalistTestBusiness(supabase?: SupabaseClient): P
       await clearBusinessDataById(supa, business.id);
     }
   } else {
-    console.log('[SEED] No existing Quick Move Removalists business data found to clean up.');
+    console.log('[SEED] No existing Timos Removals business data found to clean up.');
+  }
+
+  // --- CLEANUP ORPHANED AUTH USERS ---
+  // Also check for orphaned auth users with the target email (same approach as clearBusinessDataById)
+  console.log('[SEED] Checking for orphaned auth users with email: info@timosremovals.com.au');
+  const { data: authUsers } = await supa.auth.admin.listUsers();
+  if (authUsers?.users) {
+    const orphanedUser = authUsers.users.find(user => user.email === 'info@timosremovals.com.au');
+    if (orphanedUser) {
+      console.log(`[SEED] Found orphaned auth user with email info@timosremovals.com.au, ID: ${orphanedUser.id}`);
+      const { error: authError } = await supa.auth.admin.deleteUser(orphanedUser.id);
+      if (authError) {
+        console.log(`[SEED] Note: Error deleting orphaned auth user ${orphanedUser.id}:`, authError.message);
+      } else {
+        console.log('[SEED] Successfully deleted orphaned auth user');
+      }
+    } else {
+      console.log('[SEED] No orphaned auth user found with target email');
+    }
   }
 
   let createdBusinessId: string | null = null;
@@ -102,7 +121,7 @@ export async function createRemovalistTestBusiness(supabase?: SupabaseClient): P
     const createdBusiness = await businessInstance.addWithClient(supa);
     
     if (!createdBusiness.id) {
-      throw new Error('[SEED] Failed to create test business for Quick Move Removalists - No ID returned');
+      throw new Error('[SEED] Failed to create test business for Timos Removals - No ID returned');
     }
     
     createdBusinessId = createdBusiness.id; // Track for cleanup on failure
@@ -293,14 +312,13 @@ export async function createRemovalistTestBusiness(supabase?: SupabaseClient): P
     );
     userInstance.id = createdUser.id;
 
-    // Create initial availability for provider (simple pattern)
-    const fromDate = new Date();
-    const initialAvailability = await computeAggregatedAvailability(createdBusiness.id, fromDate, 30, { supabaseClient: supa });
-    await Promise.all(initialAvailability.map(slots => slots.add({ supabaseClient: supa })));
+    // Create initial availability for provider (using new rollAggregatedAvailability)
+    console.log('[SEED] Creating initial availability using rollAggregatedAvailability...');
+    await rollAggregatedAvailability(createdBusiness.id, { supabaseClient: supa });
     
-    console.log(`[SEED] Created initial availability for ${initialAvailability.length} days`);
+    console.log(`[SEED] ✅ Created initial availability using aggregated rollover system`);
 
-    console.log('[SEED] Database seeding completed successfully for Quick Move Removalists!');
+    console.log('[SEED] Database seeding completed successfully for Timos Removals!');
 
     // --- TRIGGER PDF CONTENT CRAWLER FOR EMBEDDINGS (OPTIONAL) ---
     console.log('[SEED] Triggering PDF content crawler for document embeddings...');
@@ -479,6 +497,9 @@ async function createRemovalistBusinessForProd(
     isProductionMode: true
   });
 
+  // Initialize documentIds array for tracking created documents
+  const documentIds: string[] = [];
+
   // --- TARGETED CLEANUP OF EXISTING REMOVALIST DATA ---
   console.log('[SEED] Checking for existing Timos Removals business data to clean up...');
   const { data: businesses, error: businessError } = await supa
@@ -498,6 +519,25 @@ async function createRemovalistBusinessForProd(
     }
   } else {
     console.log('[SEED] No existing Timos Removals business data found to clean up.');
+  }
+
+  // --- CLEANUP ORPHANED AUTH USERS ---
+  // Also check for orphaned auth users with the target email (Production version)
+  console.log('[SEED] Checking for orphaned auth users with email: info@timosremovals.com.au');
+  const { data: authUsers } = await supa.auth.admin.listUsers();
+  if (authUsers?.users) {
+    const orphanedUser = authUsers.users.find(user => user.email === 'info@timosremovals.com.au');
+    if (orphanedUser) {
+      console.log(`[SEED] Found orphaned auth user with email info@timosremovals.com.au, ID: ${orphanedUser.id}`);
+      const { error: authError } = await supa.auth.admin.deleteUser(orphanedUser.id);
+      if (authError) {
+        console.log(`[SEED] Note: Error deleting orphaned auth user ${orphanedUser.id}:`, authError.message);
+      } else {
+        console.log('[SEED] Successfully deleted orphaned auth user');
+      }
+    } else {
+      console.log('[SEED] No orphaned auth user found with target email');
+    }
   }
 
   let createdBusinessId: string | null = null;
@@ -694,15 +734,14 @@ async function createRemovalistBusinessForProd(
     );
     userInstance.id = createdUser.id;
 
-    const fromDate = new Date();
-    const initialAvailability = await computeAggregatedAvailability(createdBusiness.id, fromDate, 30, { supabaseClient: supa });
-    await Promise.all(initialAvailability.map(slots => slots.add({ supabaseClient: supa })));
+    // Create initial availability for provider (using new rollAggregatedAvailability) 
+    console.log('[SEED] Creating initial availability using rollAggregatedAvailability...');
+    await rollAggregatedAvailability(createdBusiness.id, { supabaseClient: supa });
     
-    console.log(`[SEED] Created initial availability for ${initialAvailability.length} days`);
+    console.log(`[SEED] ✅ Created initial availability using aggregated rollover system`);
 
     // --- TRIGGER PDF CONTENT CRAWLER FOR EMBEDDINGS ---
     console.log('[SEED] Triggering PDF content crawler for document embeddings...');
-    const documentIds: string[] = [];
     try {
       const crawlerResult = await triggerPdfContentCrawlerForProd(createdBusiness.id);
       console.log('[SEED] PDF content crawler completed:', crawlerResult.message || 'Success');

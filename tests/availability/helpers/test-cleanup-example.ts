@@ -126,14 +126,21 @@ describe('Example of Problematic Pattern (DO NOT USE)', () => {
 /**
  * Manual cleanup commands you can run:
  * 
- * # Clean up all test data (detailed logging)
+ * # RECOMMENDED: Full cleanup (database + auth users)
+ * npm run cleanup:test-data:full
+ * 
+ * # Clean up ONLY auth users (for the screenshot issue)
+ * npm run cleanup:test-data:auth-only
+ * 
+ * # Clean up all test data (database only, detailed logging)
  * npm run cleanup:test-data
  * 
- * # Quick cleanup (faster, less detailed)
+ * # Quick cleanup (database only, faster, less detailed)
  * npm run cleanup:test-data:quick
  * 
  * # Direct script usage
- * npx tsx scripts/cleanup-test-data.ts
- * npx tsx scripts/cleanup-test-data.ts --quick
- * npx tsx scripts/cleanup-test-data.ts --help
+ * npx tsx scripts/cleanup-test-data.ts --with-auth     # Full cleanup
+ * npx tsx scripts/cleanup-test-data.ts --auth-only     # Auth users only
+ * npx tsx scripts/cleanup-test-data.ts --quick         # Quick database cleanup
+ * npx tsx scripts/cleanup-test-data.ts --help          # Show all options
  */ 
