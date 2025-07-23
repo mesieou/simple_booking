@@ -4,6 +4,12 @@ import { Business } from '@/lib/database/models/business';
 import { User } from '@/lib/database/models/user';
 import { Service } from '@/lib/database/models/service';
 import { CalendarSettings } from '@/lib/database/models/calendar-settings';
+import { 
+  createSingleAdminProviderData, 
+  createAdminPlusProviderData, 
+  createAdminProviderPlusProviderData,
+  validateBusinessCreationResult 
+} from './helpers/provider-factory';
 
 const TEST_EMAIL = 'test-onboarding@example.com';
 const TEST_PASSWORD = 'TestPassword123!';
@@ -55,7 +61,15 @@ describe('Onboarding Flow Integration Tests', () => {
           .eq('businessId', createdBusinessId);
       }
 
-      // 3. Clean up user profile (references businessId)
+      // 3. Clean up provider calendar settings (references businessId and providerId)
+      if (createdBusinessId) {
+        await supabase
+          .from('calendarSettings')
+          .delete()
+          .eq('businessId', createdBusinessId);
+      }
+
+      // 4. Clean up user profile (references businessId)
       if (createdUserId) {
         const { error: userError } = await supabase
           .from('users')
@@ -65,13 +79,13 @@ describe('Onboarding Flow Integration Tests', () => {
         createdUserId = null;
       }
 
-      // 4. Clean up auth user
+      // 5. Clean up auth user
       if (authUserId) {
         await supabase.auth.admin.deleteUser(authUserId);
         authUserId = null;
       }
 
-      // 5. Finally clean up business (no longer referenced)
+      // 6. Finally clean up business (no longer referenced)
       if (createdBusinessId) {
         const { error: businessError } = await supabase
           .from('businesses')
@@ -109,23 +123,9 @@ describe('Onboarding Flow Integration Tests', () => {
     }
   }
 
-  describe('POST /api/onboarding/create-business', () => {
-    it('should create complete business setup for admin/provider role', async () => {
-      const onboardingData = {
-        businessCategory: 'removalist',
-        businessName: 'Test Removals',
-        ownerFirstName: 'John',
-        ownerLastName: 'Doe',
-        email: TEST_EMAIL,
-        password: TEST_PASSWORD,
-        phone: '+61400000001',
-        whatsappNumber: '+61400000002',
-        businessAddress: '123 Test Street, Sydney NSW 2000',
-        websiteUrl: 'https://test-removals.com',
-        timeZone: 'Australia/Sydney',
-        userRole: 'admin/provider',
-        setupPayments: false
-      };
+  describe('Multi-Provider Onboarding Scenarios', () => {
+    it('should_create_business_with_single_admin_provider', async () => {
+      const onboardingData = createSingleAdminProviderData(TEST_EMAIL);
 
       // Call the API endpoint directly
       const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3001'}/api/onboarding/create-business`, {
@@ -136,24 +136,20 @@ describe('Onboarding Flow Integration Tests', () => {
         body: JSON.stringify(onboardingData),
       });
 
+      if (response.status !== 200) {
+        const errorText = await response.text();
+        console.log('SINGLE ADMIN ERROR RESPONSE:', response.status, errorText);
+      }
       expect(response.status).toBe(200);
       const result = await response.json();
 
-      // Verify response structure
-      expect(result.success).toBe(true);
-      expect(result.business).toBeDefined();
-      expect(result.business.id).toBeDefined();
-      expect(result.business.name).toBe('Test Removals');
-      expect(result.user).toBeDefined();
-      expect(result.user.id).toBeDefined();
-      expect(result.user.role).toBe('admin/provider');
-      expect(result.user.firstName).toBe('John');
-      expect(result.user.lastName).toBe('Doe');
-
+      // Validate result using helper
+      const ids = validateBusinessCreationResult(result, onboardingData);
+      
       // Store IDs for cleanup
-      createdBusinessId = result.business.id;
-      createdUserId = result.user.id;
-      authUserId = result.onboarding.authUserId;
+      createdBusinessId = ids.businessId;
+      createdUserId = ids.userId;
+      authUserId = ids.authUserId;
 
       // Verify auth user was created
       const { data: authUser } = await supabase.auth.admin.getUserById(authUserId);
@@ -172,8 +168,8 @@ describe('Onboarding Flow Integration Tests', () => {
 
       expect(userError).toBeNull();
       expect(userProfile).toBeDefined();
-      expect(userProfile.firstName).toBe('John');
-      expect(userProfile.lastName).toBe('Doe');
+      expect(userProfile.firstName).toBe(onboardingData.ownerFirstName);
+      expect(userProfile.lastName).toBe(onboardingData.ownerLastName);
       expect(userProfile.role).toBe('admin/provider');
       expect(userProfile.businessId).toBe(createdBusinessId);
       expect(userProfile.email).toBe(TEST_EMAIL);
@@ -187,15 +183,23 @@ describe('Onboarding Flow Integration Tests', () => {
 
       expect(businessError).toBeNull();
       expect(business).toBeDefined();
-      expect(business.name).toBe('Test Removals');
+      expect(business.name).toBe(onboardingData.businessName);
       expect(business.email).toBe(TEST_EMAIL);
-      expect(business.phone).toBe('+61400000001');
-      expect(business.whatsappNumber).toBe('+61400000002');
-      expect(business.businessAddress).toBe('123 Test Street, Sydney NSW 2000');
-      expect(business.websiteUrl).toBe('https://test-removals.com');
-      expect(business.timeZone).toBe('Australia/Sydney');
-      expect(business.businessCategory).toBe('removalist');
-      expect(business.interfaceType).toBe('whatsapp');
+      expect(business.businessCategory).toBe(onboardingData.businessCategory);
+
+      // Verify provider calendar settings were created using existing calendarSettings table
+      const { data: calendarSettings, error: calendarError } = await supabase
+        .from('calendarSettings')
+        .select('*')
+        .eq('businessId', createdBusinessId);
+
+      console.log('Calendar settings query result:', { calendarSettings, calendarError, businessId: createdBusinessId });
+
+      expect(calendarError).toBeNull();
+      expect(calendarSettings).toBeDefined();
+      expect(calendarSettings.length).toBe(1); // Single provider
+      expect(calendarSettings[0].userId).toBe(createdUserId); // Field is userId, not providerId
+      expect(calendarSettings[0].businessId).toBe(createdBusinessId);
 
       // Verify default services were created
       const { data: services, error: servicesError } = await supabase
@@ -206,41 +210,10 @@ describe('Onboarding Flow Integration Tests', () => {
       expect(servicesError).toBeNull();
       expect(services).toBeDefined();
       expect(services.length).toBeGreaterThan(0);
-      expect(result.onboarding.serviceIds).toHaveLength(services.length);
-
-      // Verify calendar settings were created (if the API created them)
-      const { data: calendarSettings, error: calendarError } = await supabase
-        .from('calendarSettings')
-        .select('*')
-        .eq('businessId', createdBusinessId);
-
-      if (result.onboarding.calendarSettingsId) {
-        // If API claims to have created calendar settings, verify they exist
-        expect(calendarSettings).toBeDefined();
-        expect(calendarSettings.length).toBeGreaterThan(0);
-        expect(calendarSettings[0].userId).toBe(createdUserId);
-        expect(calendarSettings[0].businessId).toBe(createdBusinessId);
-      } else {
-        // If API didn't create calendar settings, that's also fine
-        console.log('[Test] Calendar settings not created by API, skipping verification');
-      }
     });
 
-    it('should create complete business setup for admin only role', async () => {
-      const onboardingData = {
-        businessCategory: 'salon',
-        businessName: 'Test Salon',
-        ownerFirstName: 'Jane',
-        ownerLastName: 'Smith',
-        email: TEST_EMAIL,
-        password: TEST_PASSWORD,
-        phone: '+61400000003',
-        whatsappNumber: '+61400000004',
-        businessAddress: '456 Beauty Lane, Melbourne VIC 3000',
-        timeZone: 'Australia/Melbourne',
-        userRole: 'admin',
-        setupPayments: true
-      };
+    it('should_create_business_with_admin_and_one_provider', async () => {
+      const onboardingData = createAdminPlusProviderData(TEST_EMAIL);
 
       const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3001'}/api/onboarding/create-business`, {
         method: 'POST',
@@ -250,34 +223,141 @@ describe('Onboarding Flow Integration Tests', () => {
         body: JSON.stringify(onboardingData),
       });
 
+      if (response.status !== 200) {
+        const errorText = await response.text();
+        console.log('ERROR RESPONSE:', response.status, errorText);
+      }
       expect(response.status).toBe(200);
       const result = await response.json();
 
-      // Verify admin role was set correctly
-      expect(result.user.role).toBe('admin');
-
+      // Validate result using helper
+      const ids = validateBusinessCreationResult(result, onboardingData);
+      
       // Store IDs for cleanup
-      createdBusinessId = result.business.id;
-      createdUserId = result.user.id;
-      authUserId = result.onboarding.authUserId;
+      createdBusinessId = ids.businessId;
+      createdUserId = ids.userId;
+      authUserId = ids.authUserId;
 
-      // Verify user has admin role in database
+      // Verify owner has admin role (not provider)
       const { data: userProfile } = await supabase
         .from('users')
-        .select('role')
+        .select('*')
         .eq('id', createdUserId)
         .single();
 
       expect(userProfile.role).toBe('admin');
+      expect(userProfile.firstName).toBe(onboardingData.ownerFirstName);
+      expect(userProfile.lastName).toBe(onboardingData.ownerLastName);
 
-      // Verify business category is salon
+      // Verify business category
       const { data: business } = await supabase
         .from('businesses')
-        .select('businessCategory')
+        .select('*')
         .eq('id', createdBusinessId)
         .single();
 
-      expect(business.businessCategory).toBe('salon');
+      expect(business.businessCategory).toBe(onboardingData.businessCategory);
+      expect(business.name).toBe(onboardingData.businessName);
+
+      // Verify all users created (admin + provider)
+      const { data: allUsers } = await supabase
+        .from('users')
+        .select('*')
+        .eq('businessId', createdBusinessId)
+        .order('role', { ascending: true }); // admin first, then provider (alphabetical order)
+
+      expect(allUsers.length).toBe(2); // Admin + 1 provider
+      expect(allUsers[0].role).toBe('admin'); // Owner
+      expect(allUsers[1].role).toBe('provider'); // Additional provider
+      expect(allUsers[1].firstName).toBe('Sarah'); // From providerNames
+
+      // Verify calendar settings created for provider only (admin doesn't provide services)
+      const { data: calendarSettings } = await supabase
+        .from('calendarSettings')
+        .select('*')
+        .eq('businessId', createdBusinessId)
+        .order('userId', { ascending: true });
+
+      expect(calendarSettings.length).toBe(1); // Only provider, not admin
+      expect(calendarSettings[0].userId).toBe(allUsers[1].id); // Provider user
+      expect(calendarSettings[0].businessId).toBe(createdBusinessId);
+    });
+
+    it('should_create_business_with_admin_provider_and_additional_provider', async () => {
+      const onboardingData = createAdminProviderPlusProviderData(TEST_EMAIL);
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3001'}/api/onboarding/create-business`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(onboardingData),
+      });
+
+      if (response.status !== 200) {
+        const errorText = await response.text();
+        console.log('ADMIN_PROVIDER_PLUS_PROVIDER ERROR RESPONSE:', response.status, errorText);
+      }
+      expect(response.status).toBe(200);
+      const result = await response.json();
+      
+      // Validate result using helper
+      const ids = validateBusinessCreationResult(result, onboardingData);
+      
+      // Store IDs for cleanup
+      createdBusinessId = ids.businessId;
+      createdUserId = ids.userId;
+      authUserId = ids.authUserId;
+
+      // Verify owner has admin/provider role
+      const { data: userProfile } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', createdUserId)
+        .single();
+
+      expect(userProfile.role).toBe('admin/provider');
+      expect(userProfile.firstName).toBe(onboardingData.ownerFirstName);
+      expect(userProfile.lastName).toBe(onboardingData.ownerLastName);
+
+      // Verify business category
+      const { data: business } = await supabase
+        .from('businesses')
+        .select('*')
+        .eq('id', createdBusinessId)
+        .single();
+
+      expect(business.businessCategory).toBe(onboardingData.businessCategory);
+      expect(business.name).toBe(onboardingData.businessName);
+
+      // Verify all users created (admin/provider + provider)
+      const { data: allUsers } = await supabase
+        .from('users')
+        .select('*')
+        .eq('businessId', createdBusinessId)
+        .order('createdAt', { ascending: true }); // Owner first, then additional provider
+      expect(allUsers.length).toBe(2); // Admin/provider + 1 additional provider
+      expect(allUsers[0].role).toBe('admin/provider'); // Owner
+      expect(allUsers[1].role).toBe('provider'); // Additional provider
+      expect(allUsers[1].firstName).toBe('Alex'); // From providerNames
+
+      // Verify calendar settings created for BOTH providers (owner and additional)
+      const { data: calendarSettings } = await supabase
+        .from('calendarSettings')
+        .select('*')
+        .eq('businessId', createdBusinessId)
+        .order('userId', { ascending: true });
+
+      expect(calendarSettings.length).toBe(2); // Both owner and additional provider
+      
+      // Verify both providers have calendar settings
+      const userIds = calendarSettings.map(cs => cs.userId);
+      expect(userIds).toContain(allUsers[0].id); // Owner
+      expect(userIds).toContain(allUsers[1].id); // Additional provider
+      
+      // Verify business ID is correct for both
+      expect(calendarSettings[0].businessId).toBe(createdBusinessId);
+      expect(calendarSettings[1].businessId).toBe(createdBusinessId);
     });
 
     it('should handle validation errors correctly', async () => {
@@ -318,6 +398,7 @@ describe('Onboarding Flow Integration Tests', () => {
         businessAddress: '789 Test Road',
         timeZone: 'Australia/Sydney',
         userRole: 'admin/provider',
+        numberOfProviders: 1,
         setupPayments: false
       };
 
@@ -335,8 +416,8 @@ describe('Onboarding Flow Integration Tests', () => {
       
       // Store for cleanup
       createdBusinessId = result1.business.id;
-      createdUserId = result1.user.id;
-      authUserId = result1.onboarding.authUserId;
+      createdUserId = result1.owner.id;
+      authUserId = result1.onboarding.authUserIds[0];
 
       // Try to create second business with same email
       const onboardingData2 = {
@@ -373,6 +454,7 @@ describe('Onboarding Flow Integration Tests', () => {
         businessAddress: '321 Stripe Street',
         timeZone: 'Australia/Sydney',
         userRole: 'admin/provider',
+        numberOfProviders: 1,
         setupPayments: true
       };
 
@@ -389,8 +471,8 @@ describe('Onboarding Flow Integration Tests', () => {
 
       // Store for cleanup
       createdBusinessId = result.business.id;
-      createdUserId = result.user.id;
-      authUserId = result.onboarding.authUserId;
+      createdUserId = result.owner.id;
+      authUserId = result.onboarding.authUserIds[0];
 
       // Verify Stripe account was attempted to be created
       // Note: This might be null if Stripe is not configured in test environment

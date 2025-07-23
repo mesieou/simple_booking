@@ -19,6 +19,7 @@ export interface BusinessData {
     timeZone: string;
     interfaceType: InterfaceType;
     businessCategory?: BusinessCategory;
+    numberOfProviders?: number;
     websiteUrl?: string;
     whatsappNumber?: string; // The actual phone number users dial (e.g., "+1234567890")
     whatsappPhoneNumberId?: string; // WhatsApp Business API Phone Number ID for webhook routing (e.g., "108123456789")

@@ -6,9 +6,13 @@ import { createEventsForUser } from './create-events';
 import { createUser } from './user';
 import { createClient } from '../supabase/server';
 import { User as SupabaseUser } from '../models/user';
-import { computeInitialAvailability } from '@/lib/general-helpers/availability';
+import { computeAggregatedAvailability } from '@/lib/general-helpers/availability';
 
 export async function createAllUsers(business: Business) {
+  if (!business.id) {
+    throw new Error('Business ID is required');
+  }
+
   const providers: User[] = [];
   const calendarIds = new Map<string, string>();
 
@@ -29,7 +33,7 @@ export async function createAllUsers(business: Business) {
     
     // Create initial availability for owner/provider
     const fromDate = new Date();
-    const initialAvailability = await computeInitialAvailability(owner, fromDate, 30, business);
+    const initialAvailability = await computeAggregatedAvailability(business.id, fromDate, 30);
     await Promise.all(initialAvailability.map(slots => slots.add()));
     
     await createEventsForUser(owner.id!);
@@ -45,7 +49,7 @@ export async function createAllUsers(business: Business) {
         
         // Create initial availability for each provider
         const fromDate = new Date();
-        const initialAvailability = await computeInitialAvailability(provider, fromDate, 30, business);
+        const initialAvailability = await computeAggregatedAvailability(business.id, fromDate, 30);
         await Promise.all(initialAvailability.map(slots => slots.add()));
         
         await createEventsForUser(provider.id!);

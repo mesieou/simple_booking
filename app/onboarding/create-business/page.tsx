@@ -28,6 +28,8 @@ interface BusinessFormData {
   websiteUrl?: string;
   timeZone: string;
   userRole: 'admin' | 'admin/provider';
+  numberOfProviders: number;
+  providerNames: string[];
   
   // Auth
   password: string;
@@ -97,6 +99,8 @@ const DEFAULT_FORM_DATA: BusinessFormData = {
   websiteUrl: '',
   timeZone: 'Australia/Sydney',
   userRole: 'admin/provider',
+  numberOfProviders: 1,
+  providerNames: [''],
   password: '',
   services: [],
   workingHours: {
@@ -137,6 +141,18 @@ export default function CreateBusinessPage() {
       }));
     }
   }, [formData.businessCategory]);
+
+  // Update provider names when owner name changes
+  useEffect(() => {
+    if (formData.ownerFirstName || formData.ownerLastName) {
+      const ownerName = `${formData.ownerFirstName} ${formData.ownerLastName}`.trim();
+      setFormData(prev => {
+        const newProviderNames = [...prev.providerNames];
+        newProviderNames[0] = ownerName;
+        return { ...prev, providerNames: newProviderNames };
+      });
+    }
+  }, [formData.ownerFirstName, formData.ownerLastName]);
 
   const handleNext = () => {
     if (currentStep < STEPS.length) {
@@ -185,7 +201,7 @@ export default function CreateBusinessPage() {
       
       toast({
         title: "Business created successfully!",
-        description: `Welcome to Skedy, ${result.user.firstName}!`,
+        description: `Welcome to Skedy, ${result.owner.firstName}!`,
       });
 
       // If Stripe Connect setup is enabled, redirect to it

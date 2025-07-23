@@ -28,6 +28,8 @@
     "test:onboarding:validation": "cd tests/onboarding && npm run test:validation",
     "test:onboarding:integration": "cd tests/onboarding && npm run test:integration",
     "test:newUserFlow": "jest tests/integration/newUserFlow.test.ts",
+    "cleanup:test-data": "dotenv -e .env.local -- npx tsx scripts/cleanup-test-data.ts",
+    "cleanup:test-data:quick": "dotenv -e .env.local -- npx tsx scripts/cleanup-test-data.ts --quick",
     "test:v2": "jest -- lib/conversation-engine/v2/multi-intent-classifier.test.ts",
     "fetch-real-main": "dotenv -e .env.local -- npx ts-node -r tsconfig-paths/register -P tsconfig.scripts.json lib/bot/website-crawler/fetch-real-main.ts",
     "upload-pdf": "npx ts-node -r tsconfig-paths/register -P tsconfig.scripts.json scripts/uploadPdf.ts",

@@ -3,7 +3,7 @@ import { User, type UserRole } from '../models/user';
 import { Service, type ServiceData, type PricingType } from '../models/service';
 import { CalendarSettings, type CalendarSettingsData, type ProviderWorkingHours } from '../models/calendar-settings';
 import { Document, type DocumentData } from '../models/documents';
-import { computeInitialAvailability } from '../../general-helpers/availability';
+import { computeAggregatedAvailability } from '../../general-helpers/availability';
 import { v4 as uuidv4 } from 'uuid';
 import { getServiceRoleClient, getProdServiceRoleClient } from '../supabase/service-role';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -295,7 +295,7 @@ export async function createRemovalistTestBusiness(supabase?: SupabaseClient): P
 
     // Create initial availability for provider (simple pattern)
     const fromDate = new Date();
-    const initialAvailability = await computeInitialAvailability(userInstance, fromDate, 30, businessInstance, { supabaseClient: supa });
+    const initialAvailability = await computeAggregatedAvailability(createdBusiness.id, fromDate, 30, { supabaseClient: supa });
     await Promise.all(initialAvailability.map(slots => slots.add({ supabaseClient: supa })));
     
     console.log(`[SEED] Created initial availability for ${initialAvailability.length} days`);
@@ -695,7 +695,7 @@ async function createRemovalistBusinessForProd(
     userInstance.id = createdUser.id;
 
     const fromDate = new Date();
-    const initialAvailability = await computeInitialAvailability(userInstance, fromDate, 30, businessInstance, { supabaseClient: supa });
+    const initialAvailability = await computeAggregatedAvailability(createdBusiness.id, fromDate, 30, { supabaseClient: supa });
     await Promise.all(initialAvailability.map(slots => slots.add({ supabaseClient: supa })));
     
     console.log(`[SEED] Created initial availability for ${initialAvailability.length} days`);

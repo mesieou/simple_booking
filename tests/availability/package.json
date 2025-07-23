@@ -1,0 +1,31 @@
+{
+  "name": "availability-tests",
+  "version": "1.0.0",
+  "description": "Availability system tests for multi-provider booking",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:rollover": "jest rollover/",
+    "test:booking-impact": "jest booking-impact/",
+    "test:calendar-changes": "jest calendar-changes/",
+    "test:single": "jest rollover/single-provider-rollover.test.ts",
+    "test:multi": "jest rollover/multi-provider-rollover.test.ts",
+    "test:businesses": "jest rollover/multi-business-rollover.test.ts",
+    "test:single-booking": "jest booking-impact/single-provider-booking.test.ts",
+    "test:multi-booking": "jest booking-impact/multi-provider-booking.test.ts",
+    "test:business-booking": "jest booking-impact/multi-business-booking.test.ts",
+    "test:single-calendar": "jest calendar-changes/single-provider-changes.test.ts",
+    "test:multi-calendar": "jest calendar-changes/multi-provider-changes.test.ts",
+    "test:business-calendar": "jest calendar-changes/multi-business-changes.test.ts"
+  },
+  "dependencies": {
+    "@jest/globals": "^29.0.0",
+    "jest": "^29.0.0",
+    "luxon": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.0.0",
+    "@types/luxon": "^3.0.0"
+  }
+} 

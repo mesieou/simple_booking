@@ -6,7 +6,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Truck, Scissors, User, Users } from 'lucide-react';
+import { Truck, Scissors, User, Users, Plus, Minus } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { getAllBusinessCategories, type BusinessCategoryType } from '@/lib/config/business-templates';
 
 interface BusinessInfoStepProps {
@@ -23,6 +24,8 @@ interface BusinessInfoStepProps {
     timeZone: string;
     userRole: 'admin' | 'admin/provider';
     password: string;
+    numberOfProviders: number;
+    providerNames: string[];
   };
   onUpdate: (data: any) => void;
 }
@@ -169,6 +172,96 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
         </div>
       </div>
 
+      {/* Provider Count Section */}
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-800">Team Size</h3>
+          <p className="text-sm text-gray-600 mt-2">
+            How many team members (including yourself) can provide services at the same time? This allows multiple bookings for the same time slot.
+          </p>
+        </div>
+        
+        <div className="space-y-4">
+          <div className="flex items-center space-x-4">
+            <Label htmlFor="numberOfProviders" className="text-sm font-semibold text-gray-800 min-w-fit">
+              Number of Providers:
+            </Label>
+            <div className="flex items-center space-x-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={() => {
+                  const newCount = Math.max(1, data.numberOfProviders - 1);
+                  const newProviderNames = [...data.providerNames];
+                  if (newCount < data.providerNames.length) {
+                    newProviderNames.splice(newCount);
+                  }
+                  onUpdate({ numberOfProviders: newCount, providerNames: newProviderNames });
+                }}
+                disabled={data.numberOfProviders <= 1}
+              >
+                <Minus className="h-4 w-4" />
+              </Button>
+              <span className="text-lg font-semibold min-w-[2rem] text-center">{data.numberOfProviders}</span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={() => {
+                  const newCount = Math.min(10, data.numberOfProviders + 1);
+                  const newProviderNames = [...data.providerNames];
+                  while (newProviderNames.length < newCount) {
+                    newProviderNames.push('');
+                  }
+                  onUpdate({ numberOfProviders: newCount, providerNames: newProviderNames });
+                }}
+                disabled={data.numberOfProviders >= 10}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+          
+          {data.numberOfProviders > 1 && (
+            <div className="space-y-3">
+              <Label className="text-sm font-semibold text-gray-800">
+                Provider Names:
+              </Label>
+              <div className="grid gap-3">
+                {Array.from({ length: data.numberOfProviders }, (_, index) => (
+                  <div key={index} className="flex items-center space-x-3">
+                    <Label className="text-sm text-gray-600 min-w-[80px]">
+                      Provider {index + 1}:
+                    </Label>
+                    {index === 0 ? (
+                      <Input
+                        value={`${data.ownerFirstName} ${data.ownerLastName}`.trim() || 'You'}
+                        disabled
+                        className="bg-gray-50 border-gray-200 text-gray-600"
+                      />
+                    ) : (
+                      <Input
+                        placeholder={`Enter provider ${index + 1} name`}
+                        value={data.providerNames[index] || ''}
+                        onChange={(e) => {
+                          const newProviderNames = [...data.providerNames];
+                          newProviderNames[index] = e.target.value;
+                          onUpdate({ providerNames: newProviderNames });
+                        }}
+                        className="bg-white border-gray-300 text-black placeholder:text-gray-500"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Role Selection */}
       <div className="space-y-6">
         <div>
@@ -207,7 +300,7 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
                           Admin Only
                         </CardTitle>
                         <CardDescription className="text-sm text-gray-700 mt-0.5">
-                          I manage the business but don't provide services myself. I'll hire providers to do the work.
+                          I manage the business but don't provide services myself. I'll hire other providers to do the work.
                         </CardDescription>
                       </div>
                     </div>
@@ -246,7 +339,7 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
                           Admin & Provider
                         </CardTitle>
                         <CardDescription className="text-sm text-gray-700 mt-0.5">
-                          I manage the business AND provide services myself. I can also add other providers later.
+                          I manage the business AND provide services myself alongside other team members.
                         </CardDescription>
                       </div>
                     </div>

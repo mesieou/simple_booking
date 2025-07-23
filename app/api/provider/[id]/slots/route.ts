@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getEnvironmentServerClient } from '@/lib/database/supabase/environment';
+import { AvailabilitySlots } from '@/lib/database/models/availability-slots';
 
 export async function GET(
   req: NextRequest,
@@ -18,19 +19,39 @@ export async function GET(
       return NextResponse.json({ error: 'date is required' }, { status: 400 });
     }
 
+    // Find the business ID for this provider
     const supabase = await getEnvironmentServerClient();
-    const { data, error } = await supabase
-      .from('availabilitySlots')
-      .select('slots')
-      .eq('providerId', providerId)
-      .eq('date', date);
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('businessId')
+      .eq('id', providerId)
+      .single();
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (userError || !userData?.businessId) {
+      console.error(`[API] Could not find business for provider ${providerId}:`, userError);
+      return NextResponse.json({ error: 'Provider not found or not associated with a business' }, { status: 404 });
     }
 
-    return NextResponse.json(data);
+    // Get availability using the new business-based system
+    const availabilityData = await AvailabilitySlots.getByBusinessAndDate(
+      userData.businessId, 
+      date
+    );
+
+    if (!availabilityData) {
+      // Return empty slots structure for consistency with old API
+      return NextResponse.json([]);
+    }
+
+    // Return data in the format expected by existing components
+    return NextResponse.json([{
+      slots: availabilityData.slots,
+      date: availabilityData.date,
+      businessId: availabilityData.businessId
+    }]);
+
   } catch (error) {
+    console.error('[API] Error in provider slots endpoint:', error);
     const errorMessage = error instanceof Error ? error.message : 'Error fetching slots';
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }

@@ -46,7 +46,8 @@ describe('Onboarding Validation Schemas', () => {
       businessAddress: '123 Test Street, Sydney NSW 2000',
       websiteUrl: 'https://test.com',
       timeZone: 'Australia/Sydney',
-      userRole: 'admin/provider' as const
+      userRole: 'admin/provider' as const,
+      numberOfProviders: 1
     };
 
     it('should accept valid business info', () => {
@@ -98,6 +99,64 @@ describe('Onboarding Validation Schemas', () => {
       const tooShort = { ...validBusinessInfo, businessAddress: 'ABC' };
       expect(() => businessInfoSchema.parse(tooShort)).toThrow();
     });
+
+    it('should accept valid single provider setup', () => {
+      const singleProvider = { ...validBusinessInfo, numberOfProviders: 1 };
+      const result = businessInfoSchema.parse(singleProvider);
+      expect(result.numberOfProviders).toBe(1);
+      expect(result.providerNames).toBeUndefined();
+    });
+
+    it('should accept valid multi-provider setup with provider names', () => {
+      const multiProvider = { 
+        ...validBusinessInfo, 
+        numberOfProviders: 3,
+        providerNames: ['Provider Two', 'Provider Three']
+      };
+      const result = businessInfoSchema.parse(multiProvider);
+      expect(result.numberOfProviders).toBe(3);
+      expect(result.providerNames).toHaveLength(2);
+      expect(result.providerNames).toEqual(['Provider Two', 'Provider Three']);
+    });
+
+    it('should reject numberOfProviders outside valid range', () => {
+      const tooFew = { ...validBusinessInfo, numberOfProviders: 0 };
+      expect(() => businessInfoSchema.parse(tooFew)).toThrow();
+      
+      const tooMany = { ...validBusinessInfo, numberOfProviders: 11 };
+      expect(() => businessInfoSchema.parse(tooMany)).toThrow();
+      
+      const notInteger = { ...validBusinessInfo, numberOfProviders: 2.5 };
+      expect(() => businessInfoSchema.parse(notInteger)).toThrow();
+    });
+
+    it('should require provider names when numberOfProviders > 1', () => {
+      const missingNames = { ...validBusinessInfo, numberOfProviders: 2 };
+      expect(() => businessInfoSchema.parse(missingNames)).toThrow();
+      
+      const wrongNameCount = { 
+        ...validBusinessInfo, 
+        numberOfProviders: 3,
+        providerNames: ['Provider Two'] // Should have 2 names for 3 providers
+      };
+      expect(() => businessInfoSchema.parse(wrongNameCount)).toThrow();
+    });
+
+    it('should reject invalid provider names', () => {
+      const shortName = { 
+        ...validBusinessInfo, 
+        numberOfProviders: 2,
+        providerNames: ['A'] // Too short
+      };
+      expect(() => businessInfoSchema.parse(shortName)).toThrow();
+      
+      const longName = { 
+        ...validBusinessInfo, 
+        numberOfProviders: 2,
+        providerNames: ['A'.repeat(51)] // Too long
+      };
+      expect(() => businessInfoSchema.parse(longName)).toThrow();
+    });
   });
 
   describe('completeOnboardingSchema', () => {
@@ -114,6 +173,7 @@ describe('Onboarding Validation Schemas', () => {
       websiteUrl: 'https://test.com',
       timeZone: 'Australia/Sydney',
       userRole: 'admin/provider' as const,
+      numberOfProviders: 1,
       
       // Services
       services: [{
@@ -199,6 +259,26 @@ describe('Onboarding Validation Schemas', () => {
         }
       };
       expect(() => completeOnboardingSchema.parse(invalidHours)).toThrow();
+    });
+
+    it('should accept multi-provider onboarding data', () => {
+      const multiProviderData = {
+        ...validOnboardingData,
+        numberOfProviders: 2,
+        providerNames: ['Provider Two']
+      };
+      const result = completeOnboardingSchema.parse(multiProviderData);
+      expect(result.numberOfProviders).toBe(2);
+      expect(result.providerNames).toEqual(['Provider Two']);
+    });
+
+    it('should validate provider names in complete onboarding', () => {
+      const invalidMultiProvider = {
+        ...validOnboardingData,
+        numberOfProviders: 3,
+        providerNames: ['Provider Two'] // Missing one name
+      };
+      expect(() => completeOnboardingSchema.parse(invalidMultiProvider)).toThrow();
     });
   });
 });

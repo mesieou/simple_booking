@@ -82,14 +82,14 @@ export async function GET(request: Request) {
     // Test 4: Test deleteBefore (the problematic operation)
     console.log('Testing AvailabilitySlots.deleteBefore...');
     results.tests.deleteBefore = await testOperation(async () => {
-      await AvailabilitySlots.deleteBefore(user.id, todayStr, { useServiceRole: true });
+      await AvailabilitySlots.deleteBefore(user.businessId, todayStr, { useServiceRole: true });
       return { success: true, message: 'Delete operation completed' };
     });
 
-    // Test 5: Test getByProviderAndDate
-    console.log('Testing AvailabilitySlots.getByProviderAndDate...');
+    // Test 5: Test getByBusinessAndDate
+    console.log('Testing AvailabilitySlots.getByBusinessAndDate...');
     results.tests.getExistingAvailability = await testOperation(async () => {
-      const existing = await AvailabilitySlots.getByProviderAndDate(user.id, newDayStr);
+      const existing = await AvailabilitySlots.getByBusinessAndDate(user.businessId, newDayStr);
       return { success: true, exists: !!existing };
     });
 
@@ -97,9 +97,9 @@ export async function GET(request: Request) {
     console.log('Testing new AvailabilitySlots creation...');
     results.tests.createNewSlot = await testOperation(async () => {
       const testSlot = new AvailabilitySlots({
-        providerId: user.id,
+        businessId: user.businessId,
         date: newDayStr,
-        slots: { "60": ["09:00", "10:00"] } // Simple test slot
+        slots: { "60": [["09:00", 1], ["10:00", 1]] } // Simple test slot with provider counts
       });
       await testSlot.add({ useServiceRole: true });
       return { success: true, message: 'New slot created successfully' };

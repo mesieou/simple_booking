@@ -17,9 +17,10 @@ export type ProviderWorkingHours = {
 }
 
 export interface CalendarSettingsData {
-  userId: string
+  userId: string // Actual database field name (not providerId)
   businessId: string
   workingHours: ProviderWorkingHours
+  timezone?: string
   manageCalendar?: boolean
   calendarId?: string
   calendarType?: 'google' | 'outlook'
@@ -49,7 +50,12 @@ export class CalendarSettings {
     const supabase = options?.supabaseClient || (options?.useServiceRole ? getEnvironmentServiceRoleClient() : await getEnvironmentServerClient());
     
     const dataToSave = {
-      ...settings,
+      userId: settings.userId, // Database uses userId column
+      businessId: settings.businessId,
+      workingHours: settings.workingHours,
+      calendarId: settings.calendarId,
+      calendarType: settings.calendarType,
+      settings: settings.settings || {}, // Required JSONB field
       updatedAt: new Date().toISOString()
     }
     
@@ -79,18 +85,28 @@ export class CalendarSettings {
       handleModelError("Failed to save calendar settings: No data returned", new Error("No data returned from save"));
     }
 
-    const calendarSettings = new CalendarSettings(data);
+    const calendarSettings = new CalendarSettings({
+      userId: data.userId,
+      businessId: data.businessId,
+      workingHours: data.workingHours,
+      timezone: data.timezone,
+      manageCalendar: data.manageCalendar,
+      calendarId: data.calendarId,
+      calendarType: data.calendarType,
+      settings: data.settings,
+      lastSync: data.lastSync
+    });
     calendarSettings._id = data.id;
     return calendarSettings;
   }
 
   // Get calendar settings for a business
-  static async getByBusiness(businessId: string): Promise<CalendarSettings[]> {
+  static async getByBusiness(businessId: string, options?: { supabaseClient?: any }): Promise<CalendarSettings[]> {
     if (!CalendarSettings.isValidUUID(businessId)) {
       handleModelError("Invalid business ID format", new Error("Invalid UUID format"));
     }
 
-    const supabase = await getEnvironmentServerClient()
+    const supabase = options?.supabaseClient || await getEnvironmentServerClient()
     
     const { data, error } = await supabase
       .from('calendarSettings')
@@ -101,8 +117,18 @@ export class CalendarSettings {
       handleModelError("Failed to fetch calendar settings by business", error);
     }
 
-    return data.map(settings => {
-      const calendarSettings = new CalendarSettings(settings);
+    return data.map((settings: any) => {
+      const calendarSettings = new CalendarSettings({
+        userId: settings.userId,
+        businessId: settings.businessId,
+        workingHours: settings.workingHours,
+        timezone: settings.timezone,
+        manageCalendar: settings.manageCalendar,
+        calendarId: settings.calendarId,
+        calendarType: settings.calendarType,
+        settings: settings.settings,
+        lastSync: settings.lastSync
+      });
       calendarSettings._id = settings.id;
       return calendarSettings;
     });
@@ -122,7 +148,7 @@ export class CalendarSettings {
     const { data, error } = await supabase
       .from('calendarSettings')
       .select('*')
-      .eq('userId', userId)
+      .eq('userId', userId) // Database uses userId field
       .eq('businessId', businessId)
       .single()
 
@@ -137,7 +163,17 @@ export class CalendarSettings {
       return null; // Explicitly return null if no data is found
     }
 
-    const calendarSettings = new CalendarSettings(data);
+    const calendarSettings = new CalendarSettings({
+      userId: data.userId,
+      businessId: data.businessId,
+      workingHours: data.workingHours,
+      timezone: data.timezone,
+      manageCalendar: data.manageCalendar,
+      calendarId: data.calendarId,
+      calendarType: data.calendarType,
+      settings: data.settings,
+      lastSync: data.lastSync
+    });
     calendarSettings._id = data.id;
     return calendarSettings;
   }
@@ -186,8 +222,10 @@ export class CalendarSettings {
   // Getters
   get id(): string | undefined { return this._id; }
   get userId(): string { return this.data.userId; }
+  get providerId(): string { return this.data.userId; } // Alias for backward compatibility
   get businessId(): string { return this.data.businessId; }
   get workingHours(): ProviderWorkingHours { return this.data.workingHours; }
+  get timezone(): string | undefined { return this.data.timezone; }
   get manageCalendar(): boolean | undefined { return this.data.manageCalendar; }
   get calendarId(): string | undefined { return this.data.calendarId; }
   get calendarType(): 'google' | 'outlook' | undefined { return this.data.calendarType; }

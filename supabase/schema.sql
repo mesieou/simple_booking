@@ -33,6 +33,7 @@ CREATE TABLE businesses (
     address TEXT,
     "businessType" TEXT,
     "businessCategory" TEXT,  -- 🆕 NEW FIELD ADDED! For structured business categorization
+    "numberOfProviders" INTEGER DEFAULT 1,  -- 🆕 NEW FIELD ADDED! Track provider count
     "stripeAccountId" TEXT,
     "onboardingCompleted" BOOLEAN DEFAULT false,
     "requiresDeposit" BOOLEAN DEFAULT false,
@@ -85,14 +86,14 @@ CREATE TABLE bookings (
     "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Availability Slots table
+-- Availability Slots table (business-level aggregated availability)
 CREATE TABLE "availabilitySlots" (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    "providerId" UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    "businessId" UUID NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
     date DATE NOT NULL,
     slots JSONB NOT NULL,
     "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE("providerId", date)
+    UNIQUE("businessId", date)
 );
 
 -- Chat Sessions table
@@ -174,6 +175,7 @@ CREATE TABLE "calendarSettings" (
 
 -- Add indexes for performance
 CREATE INDEX IF NOT EXISTS "availabilitySlots_providerId_date_idx" ON "availabilitySlots"("providerId", "date");
+CREATE INDEX IF NOT EXISTS "availabilitySlots_businessId_date_idx" ON "availabilitySlots"("businessId", "date");
 CREATE INDEX IF NOT EXISTS "embeddings_businessId_idx" ON embeddings("businessId");
 CREATE INDEX IF NOT EXISTS "documents_businessId_idx" ON documents("businessId");
 CREATE INDEX IF NOT EXISTS "chatSessions_businessId_idx" ON "chatSessions"("businessId");

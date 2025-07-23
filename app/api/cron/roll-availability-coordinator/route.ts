@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { User } from '@/lib/database/models/user';
 import { Business } from '@/lib/database/models/business';
 import { CalendarSettings } from '@/lib/database/models/calendar-settings';
-import { rollAvailabilityOptimized } from '@/lib/general-helpers/availability';
+import { rollAggregatedAvailability } from '@/lib/general-helpers/availability';
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
@@ -90,8 +90,8 @@ export async function GET(request: Request) {
       const batchPromises = batchProviders.map(async (provider) => {
         try {
           const business = businessMap.get(provider.businessId);
-          if (!business) {
-            console.error(`[CRON-COORDINATOR-${executionId}] Business not found for provider ${provider.id}`);
+          if (!business || !business.id) {
+            console.error(`[CRON-COORDINATOR-${executionId}] Business not found or missing ID for provider ${provider.id}`);
             return { result: 'error' };
           }
 
@@ -101,7 +101,7 @@ export async function GET(request: Request) {
             return { result: 'skipped' };
           }
 
-                     await rollAvailabilityOptimized(provider, business, calendarSettings);
+                     await rollAggregatedAvailability(business.id, { useServiceRole: true });
            console.log(`[CRON-COORDINATOR-${executionId}] ✅ Processed ${provider.firstName} ${provider.lastName} (${provider.id})`);
            return { result: 'processed' };
 
@@ -145,11 +145,41 @@ export async function GET(request: Request) {
       console.log(`[CRON-COORDINATOR-${executionId}] ✅ Batch ${batchNumber} completed - Processed: ${batchResult.processed}, Skipped: ${batchResult.skipped}, Errors: ${batchResult.errors} (${batchElapsed}ms total elapsed)`);
     }
 
+    // 5. Process businesses with aggregated availability (new system)
+    console.log(`[CRON-COORDINATOR-${executionId}] Processing businesses with aggregated availability...`);
+    
+    const allBusinesses = await Business.getAll();
+    let aggregatedBusinessesProcessed = 0;
+    let aggregatedBusinessesErrors = 0;
+    
+    for (const business of allBusinesses) {
+      try {
+        if (!business.id) {
+          console.error(`[CRON-COORDINATOR-${executionId}] Business has no ID, skipping`);
+          continue;
+        }
+        
+        // Check if this business has provider calendar settings (new system)
+        const providerSettings = await CalendarSettings.getByBusiness(business.id);
+        if (providerSettings.length > 0) {
+          console.log(`[CRON-COORDINATOR-${executionId}] Rolling aggregated availability for business ${business.name} (${providerSettings.length} providers)`);
+          await rollAggregatedAvailability(business.id);
+          aggregatedBusinessesProcessed++;
+        }
+      } catch (error) {
+        console.error(`[CRON-COORDINATOR-${executionId}] Failed to roll aggregated availability for business ${business.id}:`, error);
+        aggregatedBusinessesErrors++;
+      }
+    }
+    
+    console.log(`[CRON-COORDINATOR-${executionId}] Aggregated availability: ${aggregatedBusinessesProcessed} processed, ${aggregatedBusinessesErrors} errors`);
+    
     const endTime = new Date();
     const totalDuration = endTime.getTime() - startTime.getTime();
     
     console.log(`[CRON-COORDINATOR-${executionId}] ✅ Processing completed!`);
-    console.log(`[CRON-COORDINATOR-${executionId}] Final results: ${totalProcessed} processed, ${totalSkipped} skipped, ${totalErrors} errors`);
+    console.log(`[CRON-COORDINATOR-${executionId}] Legacy results: ${totalProcessed} processed, ${totalSkipped} skipped, ${totalErrors} errors`);
+    console.log(`[CRON-COORDINATOR-${executionId}] Aggregated results: ${aggregatedBusinessesProcessed} processed, ${aggregatedBusinessesErrors} errors`);
     console.log(`[CRON-COORDINATOR-${executionId}] Total execution time: ${totalDuration}ms`);
     
     const overallSuccess = totalErrors === 0;
@@ -162,12 +192,17 @@ export async function GET(request: Request) {
         : `${totalProcessed} processed, ${totalSkipped} skipped, ${totalErrors} errors`,
       executionId,
       summary: {
-        totalProviders,
-        totalProcessed,
-        totalSkipped,
-        totalErrors,
-        processedCount,
-        overallSuccess
+        legacyProviders: {
+          totalProcessed,
+          totalSkipped,
+          totalErrors
+        },
+        aggregatedBusinesses: {
+          processed: aggregatedBusinessesProcessed,
+          errors: aggregatedBusinessesErrors
+        },
+        processedCount: totalProcessed + totalSkipped + aggregatedBusinessesProcessed,
+        overallSuccess: totalErrors === 0 && aggregatedBusinessesErrors === 0
       },
       executionTime: totalDuration,
       triggerType,

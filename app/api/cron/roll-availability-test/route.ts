@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { User } from '@/lib/database/models/user';
 import { Business } from '@/lib/database/models/business';
 import { CalendarSettings } from '@/lib/database/models/calendar-settings';
-import { rollAvailabilityOptimized } from '@/lib/general-helpers/availability';
+import { rollAggregatedAvailability } from '@/lib/general-helpers/availability';
 
 export async function GET(request: Request) {
   const authHeader = request.headers.get('authorization');
@@ -80,9 +80,10 @@ export async function GET(request: Request) {
           const calendarSettings = calendarMap.get(provider.id);
           
           if (!business) return { result: 'error', reason: 'business_not_found' };
+          if (!business.id) return { result: 'error', reason: 'business_id_missing' };
           if (!calendarSettings) return { result: 'skipped', reason: 'no_calendar_settings' };
 
-          await rollAvailabilityOptimized(provider, business, calendarSettings);
+          await rollAggregatedAvailability(business.id, { useServiceRole: true });
           return { result: 'processed' };
         } catch (error) {
           return { result: 'error', reason: error instanceof Error ? error.message : 'unknown' };

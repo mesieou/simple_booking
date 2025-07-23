@@ -20,8 +20,8 @@ export const userRoleSchema = z.enum(['admin', 'admin/provider'], {
   errorMap: () => ({ message: 'Please select your role' })
 });
 
-// Business Information Step Schema
-export const businessInfoSchema = z.object({
+// Base Business Information Schema (without refine)
+const baseBusinessInfoSchema = z.object({
   // Business Category
   businessCategory: businessCategorySchema,
   
@@ -45,6 +45,18 @@ export const businessInfoSchema = z.object({
   // User Role
   userRole: userRoleSchema,
   
+  // Multi-Provider Setup
+  numberOfProviders: z.number()
+    .min(1, 'Must have at least 1 provider')
+    .max(10, 'Maximum 10 providers allowed')
+    .int('Number of providers must be a whole number')
+    .default(1),
+  
+  providerNames: z.array(z.string()
+    .min(2, 'Provider name must be at least 2 characters')
+    .max(50, 'Provider name must be less than 50 characters'))
+    .optional(),
+  
   // Contact Information
   email: emailSchema,
   
@@ -63,6 +75,21 @@ export const businessInfoSchema = z.object({
     .min(5, 'Please enter a complete business address')
     .max(500, 'Address must be less than 500 characters'),
 });
+
+// Business Information Step Schema (with validation)
+export const businessInfoSchema = baseBusinessInfoSchema.refine(
+  (data) => {
+    // If numberOfProviders > 1, providerNames should be provided and have correct length
+    if (data.numberOfProviders > 1) {
+      return data.providerNames && data.providerNames.length === data.numberOfProviders - 1;
+    }
+    return true;
+  },
+  {
+    message: 'Please provide names for all additional providers',
+    path: ['providerNames'],
+  }
+);
 
 // Services Step Schema
 export const servicesSchema = z.object({
@@ -155,8 +182,20 @@ export const paymentSchema = z.object({
 
 // Complete Onboarding Schema (all steps combined)
 export const completeOnboardingSchema = z.object({
-  // Business Info
-  ...businessInfoSchema.shape,
+  // Business Info (includes numberOfProviders and providerNames)
+  businessCategory: baseBusinessInfoSchema.shape.businessCategory,
+  businessName: baseBusinessInfoSchema.shape.businessName,
+  timeZone: baseBusinessInfoSchema.shape.timeZone,
+  ownerFirstName: baseBusinessInfoSchema.shape.ownerFirstName,
+  ownerLastName: baseBusinessInfoSchema.shape.ownerLastName,
+  userRole: baseBusinessInfoSchema.shape.userRole,
+  numberOfProviders: baseBusinessInfoSchema.shape.numberOfProviders,
+  providerNames: baseBusinessInfoSchema.shape.providerNames,
+  email: baseBusinessInfoSchema.shape.email,
+  phone: baseBusinessInfoSchema.shape.phone,
+  whatsappNumber: baseBusinessInfoSchema.shape.whatsappNumber,
+  websiteUrl: baseBusinessInfoSchema.shape.websiteUrl,
+  businessAddress: baseBusinessInfoSchema.shape.businessAddress,
   
   // Services
   services: servicesSchema.shape.services,
@@ -183,6 +222,18 @@ export const completeOnboardingSchema = z.object({
   {
     message: 'Passwords do not match',
     path: ['confirmPassword'],
+  }
+).refine(
+  (data) => {
+    // If numberOfProviders > 1, providerNames should be provided and have correct length
+    if (data.numberOfProviders > 1) {
+      return data.providerNames && data.providerNames.length === data.numberOfProviders - 1;
+    }
+    return true;
+  },
+  {
+    message: 'Please provide names for all additional providers',
+    path: ['providerNames'],
   }
 );
 

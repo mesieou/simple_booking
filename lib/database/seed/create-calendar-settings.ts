@@ -8,7 +8,7 @@ export async function createCalendarSettings(
 ): Promise<{ settings: CalendarSettings | null, calendarId: string | null }> {
   const useCalendar = faker.datatype.boolean();
   const settingsData = {
-    userId,
+    userId: userId,
     businessId: business.id!,
     workingHours: CalendarSettings.getDefaultWorkingHours(),
     calendarType: useCalendar ? faker.helpers.arrayElement(['google', 'outlook']) : undefined,

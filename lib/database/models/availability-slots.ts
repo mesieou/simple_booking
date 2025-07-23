@@ -1,12 +1,30 @@
 import { getEnvironmentServerClient, getEnvironmentServiceRoleClient } from "../supabase/environment";
 import { handleModelError } from '@/lib/general-helpers/error';
 import { DateTime } from 'luxon';
+import { DURATION_INTERVALS } from '../../general-helpers/availability/helpers';
+
+/**
+ * AvailabilitySlots Model - Business-Aggregated Availability System
+ * 
+ * This model manages aggregated availability for businesses with multiple providers.
+ * Key Architecture:
+ * - Stores availability by businessId (not providerId)  
+ * - Aggregates all providers' schedules into provider counts per time slot
+ * - Uses DURATION_INTERVALS: [60, 90, 120, 150, 180, 240, 300, 360] minutes
+ * - Format: { "60": [["09:00", 2], ["10:00", 1]], "90": [...] }
+ *   where the number represents how many providers are available at that time
+ * 
+ * Usage:
+ * - Use getByBusinessAndDateRange() for date range queries
+ * - Use getByBusinessAndDate() for single day queries
+ * - Calendar changes automatically update via recalculateProviderContribution()
+ */
 
 export interface AvailabilitySlotsData {
-    providerId: string;
+    businessId: string;
     date: string; // YYYY-MM-DD format
     slots: {
-        [key: string]: string[]; // e.g., "1h": ["08:00", "09:00", ...]
+        [key: string]: Array<[string, number]>; // e.g., "60": [["08:00", 2], ["09:00", 1], ...]
     };
     createdAt?: string;
 }
@@ -15,28 +33,67 @@ export class AvailabilitySlots {
     private data: AvailabilitySlotsData;
 
     constructor(data: AvailabilitySlotsData) {
-        if (!data.providerId) handleModelError("Provider ID is required", new Error("Missing providerId"));
+        if (!data.businessId) handleModelError("Business ID is required", new Error("Missing businessId"));
         if (!data.date) handleModelError("Date is required", new Error("Missing date"));
         if (!data.slots) handleModelError("Slots are required", new Error("Missing slots"));
         
         this.data = data;
     }
 
+    // === PRIVATE HELPER METHODS ===
+
+    /**
+     * Find the smallest duration that can accommodate the service duration
+     */
+    private static findSuitableDuration(serviceDuration: number): number | null {
+        return DURATION_INTERVALS.find(duration => duration >= serviceDuration) || null;
+    }
+
+    /**
+     * Filter slots that have available providers (count > 0)
+     */
+    private static filterAvailableSlots(slots: Array<[string, number]>): Array<[string, number]> {
+        return slots.filter(([, count]) => count > 0);
+    }
+
+    /**
+     * Get slots for a specific duration from availability data
+     */
+    private static getSlotsForDuration(
+        availabilityData: AvailabilitySlotsData, 
+        duration: number
+    ): Array<[string, number]> {
+        return availabilityData.slots[duration.toString()] || [];
+    }
+
+    /**
+     * Check if a slot time is in the future relative to current time in timezone
+     */
+    private static isSlotInFuture(
+        date: string, 
+        time: string, 
+        timezone: string
+    ): boolean {
+        const slotDateTime = DateTime.fromISO(`${date}T${time}`, { zone: timezone });
+        const nowInTz = DateTime.now().setZone(timezone);
+        return slotDateTime.isValid && slotDateTime > nowInTz;
+    }
+
+    // === CORE CRUD METHODS ===
+
     // Add new availability slots
     async add(options?: { useServiceRole?: boolean; supabaseClient?: any }): Promise<AvailabilitySlotsData> {
-        // Use provided client, service role client, or regular client
-        // This bypasses RLS for scenarios like seeding where no user auth context exists
         const supa = options?.supabaseClient || (options?.useServiceRole ? getEnvironmentServiceRoleClient() : await getEnvironmentServerClient());
 
         const availabilitySlots = {
-            "providerId": this.data.providerId,
+            "businessId": this.data.businessId,
             "date": this.data.date,
             "slots": this.data.slots,
             "createdAt": new Date().toISOString()
-        }
+        };
         
         if (options?.useServiceRole) {
-            console.log('[AvailabilitySlots.add] Using service role client (bypasses RLS for availability creation)');
+            console.log('[AvailabilitySlots.add] Using service role client (bypasses RLS for business availability creation)');
         }
 
         const { data, error } = await supa
@@ -65,7 +122,7 @@ export class AvailabilitySlots {
         const currentTime = new Date().toISOString();
 
         const availabilitySlotsArray = slots.map(slot => ({
-            providerId: slot.data.providerId,
+            businessId: slot.data.businessId,
             date: slot.data.date,
             slots: slot.data.slots,
             createdAt: currentTime
@@ -87,18 +144,20 @@ export class AvailabilitySlots {
         return data;
     }
 
-    // Get availability slots for a provider and date range
-    static async getByProviderAndDateRange(
-        providerId: string,
+    // Get availability slots for a business and date range
+    static async getByBusinessAndDateRange(
+        businessId: string,
         startDate: string,
-        endDate: string
+        endDate: string,
+        options?: { useServiceRole?: boolean; supabaseClient?: any }
     ): Promise<AvailabilitySlotsData[]> {
-        const supa = await getEnvironmentServerClient();
+        const supa = options?.supabaseClient || 
+            (options?.useServiceRole ? getEnvironmentServiceRoleClient() : await getEnvironmentServerClient());
 
         const { data, error } = await supa
             .from("availabilitySlots")
             .select("*")
-            .eq("providerId", providerId)
+            .eq("businessId", businessId)
             .gte("date", startDate)
             .lte("date", endDate);
 
@@ -109,17 +168,19 @@ export class AvailabilitySlots {
         return data;
     }
 
-    // Get availability slots for a specific provider and date
-    static async getByProviderAndDate(
-        providerId: string,
-        date: string
+    // Get availability slots for a business and specific date
+    static async getByBusinessAndDate(
+        businessId: string,
+        date: string,
+        options?: { useServiceRole?: boolean; supabaseClient?: any }
     ): Promise<AvailabilitySlotsData | null> {
-        const supa = await getEnvironmentServerClient();
+        const supa = options?.supabaseClient || 
+            (options?.useServiceRole ? getEnvironmentServiceRoleClient() : await getEnvironmentServerClient());
 
         const { data, error } = await supa
             .from("availabilitySlots")
             .select("*")
-            .eq("providerId", providerId)
+            .eq("businessId", businessId)
             .eq("date", date)
             .single();
 
@@ -127,29 +188,29 @@ export class AvailabilitySlots {
             if (error.code === 'PGRST116') {
                 return null; // No data found
             }
-            handleModelError("Failed to fetch availability slots", error);
+            handleModelError("Failed to fetch business availability slots", error);
         }
 
         return data;
     }
 
-    // Get next 3 chronologically available time slots for a provider
+    // Get next 3 chronologically available time slots for a business
     static async getNext3AvailableSlots(
-        providerId: string,
+        businessId: string,
         serviceDuration: number,
         daysToLookAhead: number = 14,
-        providerTimezone: string = 'UTC'
+        businessTimezone: string = 'UTC'
     ): Promise<Array<{ date: string; time: string }>> {
         try {
-            console.log(`[AvailabilitySlots] Getting next 3 slots for provider ${providerId}, duration ${serviceDuration}, timezone ${providerTimezone}`);
+            console.log(`[AvailabilitySlots] Getting next 3 slots for business ${businessId}, duration ${serviceDuration}, timezone ${businessTimezone}`);
             
             // Get availability for the specified date range
             const today = new Date();
             const endDate = new Date();
             endDate.setDate(today.getDate() + daysToLookAhead);
             
-            const availabilityData = await this.getByProviderAndDateRange(
-                providerId,
+            const availabilityData = await this.getByBusinessAndDateRange(
+                businessId,
                 today.toISOString().split('T')[0],
                 endDate.toISOString().split('T')[0]
             );
@@ -157,8 +218,7 @@ export class AvailabilitySlots {
             console.log(`[AvailabilitySlots] Found ${availabilityData.length} days of availability data`);
             
             // Find the smallest duration that can accommodate the service
-            const availableDurations = [60, 90, 120, 150, 180, 240, 300, 360]; // Standard intervals
-            const suitableDuration = availableDurations.find(duration => duration >= serviceDuration);
+            const suitableDuration = AvailabilitySlots.findSuitableDuration(serviceDuration);
             
             if (!suitableDuration) {
                 console.log(`[AvailabilitySlots] No suitable duration found for ${serviceDuration} minutes`);
@@ -170,27 +230,31 @@ export class AvailabilitySlots {
             
             // Collect all available slots chronologically, starting from the current time
             const allSlots: Array<{ date: string; time: string }> = [];
-            const nowInProviderTz = DateTime.now().setZone(providerTimezone);
+            const nowInBusinessTz = DateTime.now().setZone(businessTimezone);
             
             // Sort the availability data by date first
             availabilityData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
             for (const dayData of availabilityData) {
-                const slotsForDuration = dayData.slots[durationKey] || [];
+                const slotsForDuration = AvailabilitySlots.getSlotsForDuration(dayData, suitableDuration);
                 
                 // Sort time slots to be sure
                 const sortedTimeSlots = slotsForDuration.sort();
                 
                 for (const timeSlot of sortedTimeSlots) {
-                    const datePart = dayData.date.substring(0, 10); // Extract YYYY-MM-DD
-                    const slotDateTime = DateTime.fromISO(`${datePart}T${timeSlot}`, { zone: providerTimezone });
+                    const [timeString, providerCount] = timeSlot; // Destructure the tuple
                     
-                    // Only consider slots that are in the future
-                    if (slotDateTime.isValid && slotDateTime > nowInProviderTz) {
-                        allSlots.push({
-                            date: dayData.date,
-                            time: timeSlot
-                        });
+                    // Only include slots that have available providers
+                    if (providerCount > 0) {
+                        const datePart = dayData.date.substring(0, 10); // Extract YYYY-MM-DD
+                        
+                        // Only consider slots that are in the future
+                        if (AvailabilitySlots.isSlotInFuture(datePart, timeString, businessTimezone)) {
+                            allSlots.push({
+                                date: dayData.date,
+                                time: timeString
+                            });
+                        }
                     }
                 }
             }
@@ -209,16 +273,17 @@ export class AvailabilitySlots {
         }
     }
 
-    // Get available hours for a specific provider, date and service duration
-    static async getAvailableHoursForDate(
-        providerId: string,
+    // Get available hours for a specific business, date and service duration
+    static async getAvailableHoursForBusinessDate(
+        businessId: string,
         date: string,
-        serviceDuration: number
+        serviceDuration: number,
+        options?: { useServiceRole?: boolean; supabaseClient?: any }
     ): Promise<string[]> {
         try {
-            console.log(`[AvailabilitySlots] Getting hours for provider ${providerId}, date ${date}, duration ${serviceDuration}`);
+            console.log(`[AvailabilitySlots] Getting hours for business ${businessId}, date ${date}, duration ${serviceDuration}`);
             
-            const dayAvailability = await this.getByProviderAndDate(providerId, date);
+            const dayAvailability = await this.getByBusinessAndDate(businessId, date, options);
             
             if (!dayAvailability) {
                 console.log(`[AvailabilitySlots] No availability data found for date ${date}`);
@@ -226,8 +291,7 @@ export class AvailabilitySlots {
             }
             
             // Find the smallest duration that can accommodate the service
-            const availableDurations = [60, 90, 120, 150, 180, 240, 300, 360]; // Standard intervals
-            const suitableDuration = availableDurations.find(duration => duration >= serviceDuration);
+            const suitableDuration = AvailabilitySlots.findSuitableDuration(serviceDuration);
             
             if (!suitableDuration) {
                 console.log(`[AvailabilitySlots] No suitable duration found for ${serviceDuration} minutes`);
@@ -237,31 +301,39 @@ export class AvailabilitySlots {
             const durationKey = suitableDuration.toString();
             console.log(`[AvailabilitySlots] Using duration ${durationKey} for service duration ${serviceDuration}`);
             
-            const slots = dayAvailability.slots[durationKey] || [];
-            console.log(`[AvailabilitySlots] Found ${slots.length} slots for date ${date}`);
+            const slots = AvailabilitySlots.getSlotsForDuration(dayAvailability, suitableDuration);
+            // Filter slots that have at least 1 available provider
+            const availableTimes = AvailabilitySlots.filterAvailableSlots(slots).map(([time]) => time);
+            console.log(`[AvailabilitySlots] Found ${availableTimes.length} available times for date ${date}`);
             
-            return slots;
+            return availableTimes;
             
         } catch (error) {
-            console.error('[AvailabilitySlots] Error getting available hours for date:', error);
+            console.error('[AvailabilitySlots] Error getting available hours for business date:', error);
             return [];
         }
     }
 
     // Update availability slots
-    static async update(providerId: string, date: string, slotsData: AvailabilitySlotsData): Promise<AvailabilitySlots> {
-        const supa = await getEnvironmentServerClient();
+    static async update(
+        businessId: string, 
+        date: string, 
+        slotsData: AvailabilitySlotsData,
+        options?: { useServiceRole?: boolean; supabaseClient?: any }
+    ): Promise<AvailabilitySlots> {
+        const supa = options?.supabaseClient || 
+            (options?.useServiceRole ? getEnvironmentServiceRoleClient() : await getEnvironmentServerClient());
         
         const availabilitySlots = {
-            "providerId": slotsData.providerId,
+            "businessId": slotsData.businessId,
             "date": slotsData.date,
             "slots": slotsData.slots
-        }
+        };
         
         const { data, error } = await supa
             .from("availabilitySlots")
             .update(availabilitySlots)
-            .eq("providerId", providerId)
+            .eq("businessId", businessId)
             .eq("date", date)
             .select()
             .single();
@@ -278,13 +350,13 @@ export class AvailabilitySlots {
     }
 
     // Delete availability slots
-    static async delete(providerId: string, date: string): Promise<void> {
+    static async delete(businessId: string, date: string): Promise<void> {
         const supa = await getEnvironmentServerClient();
         
         const { error } = await supa
             .from("availabilitySlots")
             .delete()
-            .eq("providerId", providerId)
+            .eq("businessId", businessId)
             .eq("date", date);
 
         if (error) {
@@ -293,17 +365,21 @@ export class AvailabilitySlots {
     }
 
     // Delete all availability slots before a specific date
-    static async deleteBefore(providerId: string, beforeDate: string, options?: { useServiceRole?: boolean }): Promise<void> {
+    static async deleteBefore(
+        businessId: string, 
+        beforeDate: string, 
+        options?: { useServiceRole?: boolean }
+    ): Promise<void> {
         const supa = options?.useServiceRole ? getEnvironmentServiceRoleClient() : await getEnvironmentServerClient();
         
         if (options?.useServiceRole) {
-            console.log('[AvailabilitySlots.deleteBefore] Using service role client (bypasses RLS for deletion)');
+            console.log('[AvailabilitySlots.deleteBefore] Using service role client (bypasses RLS for business availability deletion)');
         }
         
         const { error } = await supa
             .from("availabilitySlots")
             .delete()
-            .eq("providerId", providerId)
+            .eq("businessId", businessId)
             .lt("date", beforeDate);
 
         if (error) {
@@ -311,20 +387,51 @@ export class AvailabilitySlots {
         }
     }
 
+    // === INSTANCE HELPER METHODS ===
+
     // Helper method to get slots for a specific duration
-    getSlotsForDuration(duration: string): string[] {
+    getSlotsForDuration(duration: string): Array<[string, number]> {
         return this.data.slots[duration] || [];
     }
 
     // Helper method to check if a specific time slot is available for a duration
     isSlotAvailable(time: string, duration: string): boolean {
         const slots = this.getSlotsForDuration(duration);
-        return slots.includes(time);
+        return slots.some(([slotTime]) => slotTime === time);
+    }
+
+    // Helper method to get available provider count for a specific time and duration
+    getAvailableProviderCount(time: string, duration: string): number {
+        const slots = this.getSlotsForDuration(duration);
+        const timeSlot = slots.find(([slotTime]) => slotTime === time);
+        return timeSlot ? timeSlot[1] : 0;
+    }
+
+    // Helper method to get all available times for a duration (with provider count > 0)
+    getAvailableTimesForDuration(duration: string): string[] {
+        const slots = this.getSlotsForDuration(duration);
+        return AvailabilitySlots.filterAvailableSlots(slots).map(([time]) => time);
+    }
+
+    // Helper method to decrease provider count for a specific time and duration
+    decreaseProviderCount(time: string, duration: string, decreaseBy: number = 1): boolean {
+        const slots = this.data.slots[duration] || [];
+        const slotIndex = slots.findIndex(([slotTime]) => slotTime === time);
+        
+        if (slotIndex !== -1 && slots[slotIndex][1] >= decreaseBy) {
+            slots[slotIndex][1] -= decreaseBy;
+            // Remove the slot if no providers available
+            if (slots[slotIndex][1] <= 0) {
+                slots.splice(slotIndex, 1);
+            }
+            return true;
+        }
+        return false;
     }
 
     // Getters
-    get providerId(): string { return this.data.providerId; }
+    get businessId(): string { return this.data.businessId; }
     get date(): string { return this.data.date; }
-    get slots(): { [key: string]: string[] } { return this.data.slots; }
+    get slots(): { [key: string]: Array<[string, number]> } { return this.data.slots; }
     get createdAt(): string | undefined { return this.data.createdAt; }
 } 

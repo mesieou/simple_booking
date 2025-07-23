@@ -3,6 +3,7 @@ import { Service, type ServiceData } from '@/lib/database/models/service';
 import { AvailabilitySlots } from '@/lib/database/models/availability-slots';
 import { CalendarSettings } from '@/lib/database/models/calendar-settings';
 import { User } from '@/lib/database/models/user';
+import { type ProviderWorkingHours } from '@/lib/database/models/calendar-settings';
 import { BOOKING_TRANSLATIONS } from "@/lib/bot-engine/config/translations";
 import { DateTime } from 'luxon';
 
@@ -115,6 +116,12 @@ export class AddressValidator {
             return {
               isValid: true,
               formattedAddress: result.formatted_address
+            };
+          } else {
+            console.log('[AddressValidator] Google API: OK status but no results');
+            return {
+              isValid: false,
+              errorMessage: getLocalizedTextWithVars(chatContext, 'ERROR_MESSAGES.INVALID_ADDRESS', { name: customerName })
             };
           }
           break;
@@ -582,7 +589,97 @@ export class BookingValidator {
   }
 }
 
+export class BookingImpactService {
+  
+  /**
+   * Decrease availability counts when a booking is made
+   */
+  static async decreaseAvailabilityForBooking(
+    businessId: string,
+    bookingDate: string, // YYYY-MM-DD format
+    bookingTime: string, // HH:mm format
+    serviceDurationMinutes: number,
+    chatContext: ChatContext
+  ): Promise<boolean> {
+    try {
+      console.log(`[BookingImpactService] Decreasing aggregated availability for booking: ${bookingDate} ${bookingTime}, duration: ${serviceDurationMinutes} min`);
+      
+      // Use the new aggregated availability update function
+      const { updateDayAggregatedAvailability } = await import('@/lib/general-helpers/availability');
+      
+      const bookingDateTime = `${bookingDate}T${bookingTime}`;
+      const date = new Date(bookingDate);
+      
+      const result = await updateDayAggregatedAvailability(
+        businessId,
+        date,
+        bookingDateTime,
+        serviceDurationMinutes,
+        { useServiceRole: true }
+      );
+      
+      if (result) {
+        console.log(`[BookingImpactService] Successfully updated aggregated availability for ${bookingDate}`);
+        return true;
+      } else {
+        console.error(`[BookingImpactService] Failed to update aggregated availability for ${bookingDate}`);
+        return false;
+      }
+      
+    } catch (error) {
+      console.error('[BookingImpactService] Error decreasing aggregated availability:', error);
+      return false;
+    }
+  }
+  
+  /**
+   * Calculate which time slots would be affected by a booking (for preview purposes)
+   */
+  static calculateAffectedSlots(
+    bookingTime: string,
+    serviceDurationMinutes: number,
+    date: string
+  ): Array<{ duration: number; affectedTimes: string[] }> {
+    const { DateTime } = require('luxon');
+    const DURATION_INTERVALS = [60, 90, 120, 150, 180, 240, 300, 360];
+    
+    const bookingStart = DateTime.fromISO(`${date}T${bookingTime}`);
+    const bookingEnd = bookingStart.plus({ minutes: serviceDurationMinutes });
+    
+    const affectedSlots: Array<{ duration: number; affectedTimes: string[] }> = [];
+    
+    for (const duration of DURATION_INTERVALS) {
+      const affectedTimes: string[] = [];
+      
+      // Generate all possible time slots for this duration
+      let slotStart = DateTime.fromISO(`${date}T07:00`); // Start from 7 AM
+      const dayEnd = DateTime.fromISO(`${date}T20:00`); // End at 8 PM
+      
+      while (slotStart.plus({ minutes: duration }).toMillis() <= dayEnd.toMillis()) {
+        const slotEnd = slotStart.plus({ minutes: duration });
+        
+        // Check if this slot overlaps with the booking
+        if (slotStart.toMillis() < bookingEnd.toMillis() && slotEnd.toMillis() > bookingStart.toMillis()) {
+          affectedTimes.push(slotStart.toFormat('HH:mm'));
+        }
+        
+        slotStart = slotStart.plus({ minutes: 60 }); // Move to next hour
+      }
+      
+      if (affectedTimes.length > 0) {
+        affectedSlots.push({ duration, affectedTimes });
+      }
+    }
+    
+    return affectedSlots;
+  }
+}
+
 export class AvailabilityService {
+  
+  static async getBusinessIdFromContext(chatContext: ChatContext): Promise<string | null> {
+    return chatContext.currentParticipant.associatedBusinessId || null;
+  }
   
   static async findUserIdByBusinessWhatsappNumber(businessWhatsappNumber: string, chatContext: ChatContext): Promise<string | null> {
     try {
@@ -616,20 +713,22 @@ export class AvailabilityService {
     try {
       console.log(`[AvailabilityService] Getting next 2 whole-hour slots for business with WhatsApp ${businessWhatsappNumber}, service duration ${serviceDuration} minutes`);
       
-      const userOwningThisBusinessId = await this.findUserIdByBusinessWhatsappNumber(businessWhatsappNumber, chatContext);
-      if (!userOwningThisBusinessId) {
-        console.error('[AvailabilityService] No business owner found for this WhatsApp number');
-        return [];
-      }
-      
       const businessId = chatContext.currentParticipant.associatedBusinessId;
       if (!businessId) {
-        console.error('[AvailabilityService] No associated business ID found in context for calendar settings lookup.');
+        console.error('[AvailabilityService] No associated business ID found in context.');
         return [];
       }
       
-      const calendarSettings = await CalendarSettings.getByUserAndBusiness(userOwningThisBusinessId, businessId);
-      const providerTimezone = calendarSettings?.settings?.timezone || 'UTC';
+      // Get provider calendar settings for timezone (use first provider as reference)
+      const { CalendarSettings } = await import('@/lib/database/models/calendar-settings');
+      const providerSettings = await CalendarSettings.getByBusiness(businessId);
+      
+      if (providerSettings.length === 0) {
+        console.error('[AvailabilityService] No provider settings found for business');
+        return [];
+      }
+      
+      const providerTimezone = providerSettings[0].settings?.timezone || 'UTC';
 
       const today = new Date();
       const endDate = new Date();
@@ -637,43 +736,28 @@ export class AvailabilityService {
       
       console.log(`[AvailabilityService] Searching for whole hour slots from ${today.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}`);
       
-      const availabilityData = await AvailabilitySlots.getByProviderAndDateRange(
-        userOwningThisBusinessId,
-        today.toISOString().split('T')[0],
-        endDate.toISOString().split('T')[0]
-      );
+      // Get aggregated business availability instead of provider-specific availability
+      const availabilityData: Array<{ date: string; slots: { [key: string]: Array<[string, number]> } }> = [];
       
-      console.log(`[AvailabilityService] Found ${availabilityData.length} days of availability data`);
+      for (let i = 0; i <= 30; i++) {
+        const checkDate = new Date(today);
+        checkDate.setDate(today.getDate() + i);
+        const dateStr = checkDate.toISOString().split('T')[0];
+        
+        const dayAvailability = await AvailabilitySlots.getByBusinessAndDate(businessId, dateStr);
+        if (dayAvailability) {
+          availabilityData.push({
+            date: dayAvailability.date,
+            slots: dayAvailability.slots
+          });
+        }
+      }
+      
+      console.log(`[AvailabilityService] Found ${availabilityData.length} days of aggregated availability data`);
       
       if (availabilityData.length === 0) {
-        console.log(`[AvailabilityService] No availability data found for provider ${userOwningThisBusinessId}`);
-        console.log(`[AvailabilityService] Checking if provider has calendar settings...`);
-        
-        try {
-          const calendarSettings = await CalendarSettings.getByUserAndBusiness(userOwningThisBusinessId, businessId);
-          if (!calendarSettings) {
-            console.error(`[AvailabilityService] Provider ${userOwningThisBusinessId} has NO calendar settings`);
-          } else {
-            console.log(`[AvailabilityService] Provider has calendar settings, timezone: ${calendarSettings.settings?.timezone}`);
-          }
-        } catch (error) {
-          console.error(`[AvailabilityService] Error checking calendar settings:`, error);
-        }
-        
-        try {
-          const allAvailability = await AvailabilitySlots.getByProviderAndDateRange(
-            userOwningThisBusinessId,
-            '2020-01-01',
-            '2030-12-31'
-          );
-          console.log(`[AvailabilityService] Provider has ${allAvailability.length} total availability records in database`);
-          if (allAvailability.length > 0) {
-            console.log(`[AvailabilityService] Date range of existing availability:`, 
-              allAvailability.map(slot => slot.date).sort());
-          }
-        } catch (error) {
-          console.error(`[AvailabilityService] Error checking all availability:`, error);
-        }
+        console.log(`[AvailabilityService] No aggregated availability data found for business ${businessId}`);
+        return [];
       }
       
       const availableDurations = [60, 90, 120, 150, 180, 240, 300, 360];
@@ -693,40 +777,21 @@ export class AvailabilityService {
       availabilityData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
       
       for (const dayData of availabilityData) {
-        // Check if provider works on this day of the week before processing slots
-        // Extract just the date part (YYYY-MM-DD) from the date string
-        const dateOnly = dayData.date.split('T')[0]; // Get just "2025-06-30" part
-        const targetDate = new Date(dateOnly + 'T00:00:00.000Z');
-        const dayOfWeek = targetDate.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
-        const dayNames = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-        const dayKey = dayNames[dayOfWeek] as keyof CalendarSettings["workingHours"];
-        
-        // Add debugging for the day calculation
-        console.log(`[AvailabilityService] Date: ${dayData.date} -> ${dateOnly}, dayOfWeek: ${dayOfWeek}, dayKey: ${dayKey}`);
-        console.log(`[AvailabilityService] targetDate: ${targetDate.toISOString()}, isValid: ${!isNaN(targetDate.getTime())}`);
-        
-        const workingHours = calendarSettings?.workingHours[dayKey];
-
-        if (!workingHours) {
-          console.log(`[AvailabilityService] Provider doesn't work on ${dayKey} (${dayData.date}), skipping day`);
-          console.log(`[AvailabilityService] Calendar settings:`, calendarSettings?.workingHours);
-          continue;
-        }
-
         const slotsForDuration = dayData.slots[durationKey] || [];
         
         for (const timeSlot of slotsForDuration) {
-          const [hours, minutes] = timeSlot.split(':');
+          const [timeString, providerCount] = timeSlot; // Extract time and count from tuple
+          const [hours, minutes] = timeString.split(':');
           
-          if (minutes === '00') {
-            // Use the same dateOnly extraction for consistency
-            const datePart = dateOnly; // Already extracted above
-            const slotDateTime = DateTime.fromISO(`${datePart}T${timeSlot}`, { zone: providerTimezone });
+          // Only include whole hour slots with available providers
+          if (minutes === '00' && providerCount > 0) {
+            const dateOnly = dayData.date.split('T')[0]; // Get just "2025-06-30" part
+            const slotDateTime = DateTime.fromISO(`${dateOnly}T${timeString}`, { zone: providerTimezone });
             
             if (slotDateTime.isValid && slotDateTime > nowInProviderTz) {
               wholeHourSlots.push({
                 date: dayData.date,
-                time: timeSlot
+                time: timeString
               });
               
               if (wholeHourSlots.length >= 2) {
@@ -820,13 +885,13 @@ export class AvailabilityService {
     chatContext: ChatContext
   ): Promise<string[]> {
     try {
-      const userIdOfBusinessOwner = await this.findUserIdByBusinessWhatsappNumber(businessWhatsappNumber, chatContext);
-      if (!userIdOfBusinessOwner) {
-        console.error('[AvailabilityService] No business owner found for this WhatsApp number');
+      const businessId = await this.getBusinessIdFromContext(chatContext);
+      if (!businessId) {
+        console.error('[AvailabilityService] No business ID found in context');
         return [];
       }
       
-      return await AvailabilitySlots.getAvailableHoursForDate(userIdOfBusinessOwner, date, serviceDuration);
+      return await AvailabilitySlots.getAvailableHoursForBusinessDate(businessId, date, serviceDuration);
     } catch (error) {
       console.error('[AvailabilityService] Error getting available hours for business WhatsApp:', error);
       return [];
@@ -840,49 +905,42 @@ export class AvailabilityService {
     chatContext: ChatContext
   ): Promise<boolean> {
     try {
-      // First, check if the provider works on this day of the week
-      const userIdOfBusinessOwner = await this.findUserIdByBusinessWhatsappNumber(businessWhatsappNumber, chatContext);
-      if (!userIdOfBusinessOwner) {
-        console.error('[ValidateCustomDate] No business owner found for this WhatsApp number');
-        return false;
-      }
-
-      const businessId = chatContext.currentParticipant.associatedBusinessId;
+      const businessId = await this.getBusinessIdFromContext(chatContext);
       if (!businessId) {
-        console.error('[ValidateCustomDate] No associated business ID found in context for calendar settings lookup.');
+        console.error('[ValidateCustomDate] No business ID found in context');
         return false;
       }
 
-      // Get calendar settings to check working hours
-      const calendarSettings = await CalendarSettings.getByUserAndBusiness(userIdOfBusinessOwner, businessId);
-      if (!calendarSettings) {
-        console.error('[ValidateCustomDate] No calendar settings found for provider');
+      // Get provider calendar settings to check if any provider works on this day
+      const { CalendarSettings } = await import('@/lib/database/models/calendar-settings');
+      const providerSettings = await CalendarSettings.getByBusiness(businessId);
+      
+      if (providerSettings.length === 0) {
+        console.error('[ValidateCustomDate] No provider settings found for business');
         return false;
       }
 
-      // Check if provider works on this day of the week
-      // Extract just the date part (YYYY-MM-DD) from the date string
+      // Check if any provider works on this day of the week
       const dateOnly = date.split('T')[0]; // Get just "2025-06-30" part  
       const targetDate = new Date(dateOnly + 'T00:00:00.000Z');
       const dayOfWeek = targetDate.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
       const dayNames = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
-      const dayKey = dayNames[dayOfWeek] as keyof CalendarSettings["workingHours"];
+      const dayKey = dayNames[dayOfWeek] as keyof ProviderWorkingHours;
       
-      // Add debugging for the day calculation
       console.log(`[ValidateCustomDate] Date: ${date} -> ${dateOnly}, dayOfWeek: ${dayOfWeek}, dayKey: ${dayKey}`);
-      console.log(`[ValidateCustomDate] targetDate: ${targetDate.toISOString()}, isValid: ${!isNaN(targetDate.getTime())}`);
       
-      const workingHours = calendarSettings.workingHours[dayKey];
+      // Check if any provider works on this day
+      const anyProviderWorksThisDay = providerSettings.some(provider => {
+        const workingHours = provider.workingHours[dayKey];
+        return workingHours !== null;
+      });
 
-      console.log(`[ValidateCustomDate] Date: ${date}, Day of week: ${dayOfWeek} (${dayKey}), Working hours: ${workingHours ? `${workingHours.start}-${workingHours.end}` : 'NOT WORKING'}`);
-      console.log(`[ValidateCustomDate] Calendar settings:`, calendarSettings.workingHours);
-
-      if (!workingHours) {
-        console.log(`[ValidateCustomDate] Provider doesn't work on ${dayKey}, rejecting date ${date}`);
+      if (!anyProviderWorksThisDay) {
+        console.log(`[ValidateCustomDate] No providers work on ${dayKey}, rejecting date ${date}`);
         return false;
       }
 
-      // If provider works on this day, check if there are available slots
+      // If any provider works on this day, check if there are available slots
       const availableHoursForThisBusinessAndDate = await AvailabilityService.getAvailableHoursForDateByBusinessWhatsapp(businessWhatsappNumber, date, serviceDuration, chatContext);
       console.log(`[ValidateCustomDate] Date: ${date}, Service Duration: ${serviceDuration}, Available Hours: [${availableHoursForThisBusinessAndDate.join(', ')}], Has Availability: ${availableHoursForThisBusinessAndDate.length > 0}`);
       return availableHoursForThisBusinessAndDate.length > 0;

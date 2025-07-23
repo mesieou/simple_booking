@@ -581,8 +581,8 @@ export async function RAGfunction(
             const twoWeeksFromNow = new Date();
             twoWeeksFromNow.setDate(today.getDate() + 14);
             
-            const availabilityData = await AvailabilitySlots.getByProviderAndDateRange(
-              provider.id,
+            const availabilityData = await AvailabilitySlots.getByBusinessAndDateRange(
+              businessId,
               today.toISOString().split('T')[0],
               twoWeeksFromNow.toISOString().split('T')[0]
             );

@@ -6,6 +6,8 @@ import { Service } from '@/lib/database/models/service';
 import { CalendarSettings } from '@/lib/database/models/calendar-settings';
 import { StripePaymentService } from '@/lib/payments/stripe-utils';
 import { getBusinessTemplate } from '@/lib/config/business-templates';
+import { computeAggregatedAvailability } from '@/lib/general-helpers/availability/index';
+import { AvailabilitySlots } from '@/lib/database/models/availability-slots';
 
 export const runtime = 'nodejs';
 
@@ -36,10 +38,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`[Onboarding] Creating business with user role: ${userRole}`);
+    // Validate provider data
+    const numberOfProviders = onboardingData.numberOfProviders || 1;
+    const providerNames = onboardingData.providerNames || [];
+    
+    if (numberOfProviders < 1 || numberOfProviders > 10) {
+      return NextResponse.json(
+        { error: 'Number of providers must be between 1 and 10' },
+        { status: 400 }
+      );
+    }
 
-    // --- Step 1: Create Auth User ---
-    console.log('[Onboarding] Creating auth user...');
+    console.log(`[Onboarding] Creating business with ${numberOfProviders} providers, owner role: ${userRole}`);
+
+    // --- Step 1: Create Auth User for Owner ---
+    console.log('[Onboarding] Creating owner auth user...');
     const { data: authData, error: authError } = await adminSupa.auth.admin.createUser({
       email: onboardingData.email,
       password: onboardingData.password,
@@ -60,7 +73,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`[Onboarding] Auth user created with ID: ${authData.user.id}`);
+    console.log(`[Onboarding] Owner auth user created with ID: ${authData.user.id}`);
 
     // --- Step 2: Create Business ---
     console.log('[Onboarding] Creating business...');
@@ -75,10 +88,11 @@ export async function POST(request: NextRequest) {
       businessAddress: onboardingData.businessAddress || '',
       websiteUrl: onboardingData.websiteUrl || '',
       businessCategory: onboardingData.businessCategory as any,
-      depositPercentage: 25, // Default 25%
+      numberOfProviders: numberOfProviders, // Track the number of providers
+      depositPercentage: onboardingData.depositPercentage || 25,
       stripeConnectAccountId: undefined, // To be created later
       stripeAccountStatus: 'pending' as const,
-      preferredPaymentMethod: 'card'
+      preferredPaymentMethod: onboardingData.preferredPaymentMethod || 'cash'
     };
     
     const business = new Business(businessData);
@@ -96,9 +110,9 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Onboarding] Business created with ID: ${business.id}`);
 
-    // --- Step 3: Create User Profile ---
-    console.log(`[Onboarding] Creating user profile with role: ${userRole}`);
-    const user = new User(
+    // --- Step 3: Create Owner User Profile ---
+    console.log(`[Onboarding] Creating owner user profile with role: ${userRole}`);
+    const ownerUser = new User(
       onboardingData.ownerFirstName,
       onboardingData.ownerLastName,
       userRole,
@@ -108,7 +122,10 @@ export async function POST(request: NextRequest) {
       onboardingData.whatsappNumber ? onboardingData.whatsappNumber.replace(/[^\d]/g, '') : undefined
     );
 
-    const userResult = await user.add({
+    // Set the auth user ID for the owner
+    ownerUser.id = authData.user.id;
+
+    const ownerUserResult = await ownerUser.add({
       email: onboardingData.email,
       password: onboardingData.password,
       whatsappNumber: onboardingData.whatsappNumber,
@@ -116,20 +133,113 @@ export async function POST(request: NextRequest) {
       supabaseClient: adminSupa
     });
 
-    if (!userResult) {
-      console.error('[Onboarding] User profile creation failed');
+    if (!ownerUserResult) {
+      console.error('[Onboarding] Owner user profile creation failed');
       // Clean up auth user and business if user creation fails
       await adminSupa.auth.admin.deleteUser(authData.user.id);
       await Business.delete(business.id);
       return NextResponse.json(
-        { error: 'Failed to create user profile' },
+        { error: 'Failed to create owner user profile' },
         { status: 500 }
       );
     }
 
-    console.log(`[Onboarding] User profile created with ID: ${user.id}`);
+    console.log(`[Onboarding] Owner user profile created with ID: ${ownerUser.id}`);
 
-    // --- Step 4: Create Default Services (based on business template) ---
+    // --- Step 4: Create Additional Provider User Accounts ---
+    const allProviderUsers: User[] = [ownerUser]; // Start with owner
+    const createdAuthUsers: string[] = [authData.user.id]; // Track for cleanup
+
+    try {
+      // Create additional providers (if any)
+      for (let i = 1; i < numberOfProviders; i++) {
+        const providerName = providerNames[i - 1] || `Provider ${i + 1}`;
+        const [firstName, ...lastNameParts] = providerName.trim().split(' ');
+        const lastName = lastNameParts.join(' ') || 'Provider';
+        
+        console.log(`[Onboarding] Creating provider ${i + 1}: ${firstName} ${lastName}`);
+        
+        // Generate a unique email for this provider
+        const timestamp = Date.now();
+        const providerEmail = `provider${i}-${timestamp}@${onboardingData.email.split('@')[1]}`;
+        const tempPassword = Math.random().toString(36).slice(-12) + 'A1!'; // Temporary secure password
+        
+        // Create auth user for this provider
+        const { data: providerAuthData, error: providerAuthError } = await adminSupa.auth.admin.createUser({
+          email: providerEmail,
+          password: tempPassword,
+          email_confirm: true,
+          user_metadata: {
+            firstName,
+            lastName,
+            role: 'provider',
+            isOnboarding: true,
+            isAdditionalProvider: true,
+            parentBusinessId: business.id
+          }
+        });
+
+        if (providerAuthError || !providerAuthData.user) {
+          console.error(`[Onboarding] Failed to create auth user for provider ${i + 1}:`, providerAuthError);
+          throw new Error(`Failed to create provider ${i + 1} auth account`);
+        }
+
+        createdAuthUsers.push(providerAuthData.user.id);
+
+        // Create user profile for this provider
+        const providerUser = new User(
+          firstName,
+          lastName,
+          'provider',
+          business.id,
+          providerEmail
+        );
+
+        providerUser.id = providerAuthData.user.id;
+
+        const providerUserResult = await providerUser.add({
+          email: providerEmail,
+          password: tempPassword,
+          skipProviderValidation: true,
+          supabaseClient: adminSupa
+        });
+
+        if (!providerUserResult) {
+          throw new Error(`Failed to create provider ${i + 1} user profile`);
+        }
+
+        allProviderUsers.push(providerUser);
+        console.log(`[Onboarding] Provider ${i + 1} user profile created with ID: ${providerUser.id}`);
+      }
+
+      console.log(`[Onboarding] Successfully created ${allProviderUsers.length} total providers`);
+
+    } catch (error) {
+      console.error('[Onboarding] Error creating additional providers:', error);
+      
+      // Clean up all created auth users
+      for (const authUserId of createdAuthUsers) {
+        try {
+          await adminSupa.auth.admin.deleteUser(authUserId);
+        } catch (cleanupError) {
+          console.error(`[Onboarding] Failed to cleanup auth user ${authUserId}:`, cleanupError);
+        }
+      }
+      
+      // Clean up business
+      try {
+        await Business.delete(business.id);
+      } catch (cleanupError) {
+        console.error('[Onboarding] Failed to cleanup business:', cleanupError);
+      }
+
+      return NextResponse.json(
+        { error: error instanceof Error ? error.message : 'Failed to create providers' },
+        { status: 500 }
+      );
+    }
+
+    // --- Step 5: Create Default Services (based on business template) ---
     console.log('[Onboarding] Creating default services...');
     const template = getBusinessTemplate(onboardingData.businessCategory);
     const serviceIds: string[] = [];
@@ -137,24 +247,26 @@ export async function POST(request: NextRequest) {
     if (template && template.services) {
       for (const serviceTemplate of template.services) {
         try {
-          const serviceData = {
-            businessId: business.id,
-            name: serviceTemplate.name,
-            description: serviceTemplate.description,
-            fixedPrice: serviceTemplate.fixedPrice,
-            baseCharge: serviceTemplate.baseCharge,
-            ratePerMinute: serviceTemplate.ratePerMinute,
-            durationEstimate: serviceTemplate.durationEstimate || 60,
-            pricingType: serviceTemplate.pricingType || 'fixed',
-            mobile: serviceTemplate.mobile
-          };
+          // Use form data services if provided, otherwise use template
+          const formServices = onboardingData.services || [];
+          const serviceData = formServices.length > 0 ? formServices.find((s: any) => s.name === serviceTemplate.name) || serviceTemplate : serviceTemplate;
           
-          const service = new Service(serviceData);
+          const service = new Service({
+            businessId: business.id,
+            name: serviceData.name,
+            description: serviceData.description,
+            fixedPrice: serviceData.fixedPrice,
+            baseCharge: serviceData.baseCharge,
+            ratePerMinute: serviceData.ratePerMinute,
+            durationEstimate: serviceData.durationEstimate || 60,
+            pricingType: serviceData.pricingType || 'fixed',
+            mobile: serviceData.mobile
+          });
 
           const serviceResult = await service.add({ supabaseClient: adminSupa });
           if (serviceResult && service.id) {
             serviceIds.push(service.id);
-            console.log(`[Onboarding] Created service: ${serviceTemplate.name}`);
+            console.log(`[Onboarding] Created service: ${serviceData.name}`);
           }
         } catch (error) {
           console.error(`[Onboarding] Failed to create service ${serviceTemplate.name}:`, error);
@@ -163,40 +275,115 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // --- Step 5: Create Calendar Settings ---
-    console.log('[Onboarding] Creating calendar settings...');
-    const calendarData = {
-      userId: user.id,
-      businessId: business.id,
-      workingHours: {
-        mon: { start: '09:00', end: '17:00' },
-        tue: { start: '09:00', end: '17:00' },
-        wed: { start: '09:00', end: '17:00' },
-        thu: { start: '09:00', end: '17:00' },
-        fri: { start: '09:00', end: '17:00' },
-        sat: null,
-        sun: null
-      },
-      manageCalendar: false,
-      settings: {
-        bufferTime: 15,
-        timezone: onboardingData.timeZone || 'Australia/Sydney'
-      }
+    // --- Step 6: Create Provider Calendar Settings ---
+    console.log('[Onboarding] Creating provider calendar settings...');
+    const workingHours = onboardingData.workingHours || {
+      mon: { start: '09:00', end: '17:00' },
+      tue: { start: '09:00', end: '17:00' },
+      wed: { start: '09:00', end: '17:00' },
+      thu: { start: '09:00', end: '17:00' },
+      fri: { start: '09:00', end: '17:00' },
+      sat: null,
+      sun: null
     };
-    
-    let calendarSettingsId = null;
+
+    const calendarSettings = {
+      timezone: onboardingData.timeZone || 'Australia/Sydney',
+      bufferTime: onboardingData.bufferTime || 15
+    };
+
+    const createdCalendarSettings: CalendarSettings[] = [];
+
     try {
-      const calendarResult = await CalendarSettings.save(undefined, calendarData, { supabaseClient: adminSupa });
-      if (calendarResult && calendarResult.id) {
-        calendarSettingsId = calendarResult.id;
-        console.log(`[Onboarding] Calendar settings created with ID: ${calendarSettingsId}`);
+      for (let i = 0; i < allProviderUsers.length; i++) {
+        const provider = allProviderUsers[i];
+        const providerName = i === 0 
+          ? `${onboardingData.ownerFirstName} ${onboardingData.ownerLastName}`.trim()
+          : (providerNames[i] || `Provider ${i + 1}`);
+
+        console.log(`[Onboarding] Creating calendar settings for provider ${i}: ${providerName} (${provider.role})`);
+
+        // Only create calendar settings for users who actually provide services
+        if (provider.role === 'admin/provider' || provider.role === 'provider') {
+          console.log(`[Onboarding] Provider ${i} qualifies for calendar settings, proceeding...`);
+          const calendarSettingsData = {
+            userId: provider.id, // Database uses userId field
+            businessId: business.id,
+            workingHours: workingHours,
+            manageCalendar: false,
+            settings: {
+              bufferTime: onboardingData.bufferTime || 15, // Use form value or default to 15 minutes
+              timezone: onboardingData.timeZone || 'Australia/Sydney'
+            }
+          };
+
+          console.log(`[Onboarding] Calling CalendarSettings.save with data:`, calendarSettingsData);
+          
+          const result = await CalendarSettings.save(undefined, calendarSettingsData, { 
+            useServiceRole: true, 
+            supabaseClient: adminSupa 
+          });
+          
+          console.log(`[Onboarding] CalendarSettings.save returned:`, result);
+          
+          if (result) {
+            createdCalendarSettings.push(result);
+            console.log(`[Onboarding] Created calendar settings for ${providerName} (ID: ${result.id})`);
+          } else {
+            console.log(`[Onboarding] No result returned from CalendarSettings.save for ${providerName}`);
+          }
+        } else {
+          console.log(`[Onboarding] Skipping calendar settings for ${providerName} - admin only (no service provision)`);
+        }
       }
+
+      console.log(`[Onboarding] Successfully created ${createdCalendarSettings.length} calendar settings`);
+
     } catch (error) {
-      console.error('[Onboarding] Failed to create calendar settings:', error);
-      // Non-critical, continue without calendar settings
+      console.error('[Onboarding] Error creating calendar settings:', error);
+      console.error('[Onboarding] Calendar settings error details:', {
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : null,
+        providers: allProviderUsers.length,
+        businessId: business.id
+      });
+      // Non-critical, continue without some calendar settings
     }
 
-    // --- Step 6: Create Stripe Connect Account (if payment setup requested) ---
+    // Legacy calendar settings creation removed - using single calendar settings approach now
+
+    // --- Step 8: Generate Initial Aggregated Availability ---
+    console.log('[Onboarding] Generating initial aggregated availability...');
+    let availabilityGenerated = false;
+    try {
+      const today = new Date();
+      const availabilitySlots = await computeAggregatedAvailability(
+        business.id,
+        today,
+        30, // Generate 30 days of availability
+        { supabaseClient: adminSupa }
+      );
+
+      console.log(`[Onboarding] Generated ${availabilitySlots.length} days of aggregated availability`);
+
+      // Save all availability slots
+      for (const slot of availabilitySlots) {
+        try {
+          await slot.add({ useServiceRole: true, supabaseClient: adminSupa });
+        } catch (error) {
+          console.error(`[Onboarding] Failed to save availability for ${slot.date}:`, error);
+        }
+      }
+
+      availabilityGenerated = availabilitySlots.length > 0;
+      console.log(`[Onboarding] Successfully saved ${availabilitySlots.length} availability slot records`);
+
+    } catch (error) {
+      console.error('[Onboarding] Error generating initial availability:', error);
+      // Non-critical, continue without initial availability (can be generated later by cron)
+    }
+
+    // --- Step 9: Create Stripe Connect Account (if payment setup requested) ---
     let stripeAccountId = null;
     if (onboardingData.setupPayments) {
       console.log('[Onboarding] Creating Stripe Connect account...');
@@ -212,7 +399,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log('[Onboarding] Business onboarding completed successfully!');
+    console.log('[Onboarding] Multi-provider business onboarding completed successfully!');
 
     // Return success response
     return NextResponse.json({
@@ -221,17 +408,27 @@ export async function POST(request: NextRequest) {
         id: business.id,
         name: business.name
       },
-      user: {
-        id: user.id,
+      owner: {
+        id: ownerUser.id,
         role: userRole,
-        firstName: user.firstName,
-        lastName: user.lastName
+        firstName: ownerUser.firstName,
+        lastName: ownerUser.lastName
       },
+      providers: allProviderUsers.map((provider, index) => ({
+        id: provider.id,
+        name: index === 0 
+          ? `${onboardingData.ownerFirstName} ${onboardingData.ownerLastName}`.trim()
+          : (providerNames[index] || `Provider ${index + 1}`),
+        role: provider.role,
+        index: index
+      })),
       onboarding: {
-        authUserId: authData.user.id,
+        authUserIds: createdAuthUsers,
         serviceIds,
-        calendarSettingsId,
-        stripeAccountId
+        calendarSettingsIds: createdCalendarSettings.map(cs => cs.id),
+        stripeAccountId,
+        availabilityGenerated,
+        totalProviders: allProviderUsers.length
       }
     });
 
