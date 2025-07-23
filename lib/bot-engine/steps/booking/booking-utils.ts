@@ -50,43 +50,51 @@ export const BOOKING_CONFIG = {
 } as const;
 
 export class AddressValidator {
+  private static readonly MIN_ADDRESS_LENGTH = 5;
+  private static readonly GEOCODING_API_URL = 'https://maps.googleapis.com/maps/api/geocode/json';
   
   static validateAddress(address: string, chatContext: ChatContext): LLMProcessingResult {
-    // Only basic length check - Google API will do the real validation
-    if (!address || address.trim().length < 5) {
+    try {
+      // Only basic length check - Google API will do the real validation
+      if (!address || address.trim().length < this.MIN_ADDRESS_LENGTH) {
+        return {
+          isValidInput: false,
+          validationErrorMessage: getLocalizedText(chatContext, 'ERROR_MESSAGES.INVALID_ADDRESS')
+        };
+      }
+      
+      return { isValidInput: true };
+    } catch (error) {
+      console.error('[AddressValidator] Error in validateAddress:', error);
       return {
         isValidInput: false,
-        validationErrorMessage: getLocalizedText(chatContext, 'ERROR_MESSAGES.INVALID_ADDRESS')
+        validationErrorMessage: getLocalizedText(chatContext, 'ERROR_MESSAGES.SYSTEM_ERROR_ADDRESS_VALIDATION')
       };
     }
-    
-    return { isValidInput: true };
   }
 
   static async validateWithGoogleAPI(address: string, chatContext: ChatContext): Promise<{
     isValid: boolean;
     formattedAddress?: string;
     errorMessage?: string;
+    isSystemError?: boolean;
   }> {
     try {
       const customerName = '{name}'; // Will be replaced by localization
-      console.log('[AddressValidator] API Key status:', {
-        present: !!process.env.GOOGLE_MAPS_API_KEY,
-        length: process.env.GOOGLE_MAPS_API_KEY?.length || 0
-      });
+      console.log('[AddressValidator] Starting Google API validation for address:', address);
 
       if (!process.env.GOOGLE_MAPS_API_KEY) {
-        console.error('[AddressValidator] No Google Maps API key found in environment - REJECTING ALL ADDRESSES');
+        console.error('[AddressValidator] No Google Maps API key found in environment');
         return {
           isValid: false,
-          errorMessage: 'Address validation service unavailable. Please try again later.'
+          errorMessage: getLocalizedTextWithVars(chatContext, 'ERROR_MESSAGES.SYSTEM_ERROR_ADDRESS_VALIDATION', { name: customerName }),
+          isSystemError: true
         };
       }
 
       const apiKey = process.env.GOOGLE_MAPS_API_KEY;
       const encodedAddress = encodeURIComponent(address);
-      // Remove AU restriction to allow international addresses
-      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodedAddress}&key=${apiKey}`;
+      const url = `${this.GEOCODING_API_URL}?address=${encodedAddress}&key=${apiKey}`;
       
       console.log('[AddressValidator] Making request to Google API for address:', address);
       
@@ -99,43 +107,52 @@ export class AddressValidator {
         hasResults: data.results && data.results.length > 0
       });
 
-      if (data.status === 'OK' && data.results && data.results.length > 0) {
-        const result = data.results[0];
-        console.log('[AddressValidator] Google API validation successful - accepting address');
-        
-        return {
-          isValid: true,
-          formattedAddress: result.formatted_address
-        };
-      } else if (data.status === 'ZERO_RESULTS') {
-        // Address not found
-        console.log('[AddressValidator] Google API: Address not found (ZERO_RESULTS)');
-        return {
-          isValid: false,
-          errorMessage: getLocalizedTextWithVars(chatContext, 'ERROR_MESSAGES.INVALID_ADDRESS', { name: customerName })
-        };
-      } else if (data.status === 'INVALID_REQUEST') {
-        // Invalid request format
-        console.log('[AddressValidator] Google API: Invalid request format');
-        return {
-          isValid: false,
-          errorMessage: getLocalizedTextWithVars(chatContext, 'ERROR_MESSAGES.INVALID_ADDRESS', { name: customerName })
-        };
-      } else {
-        // Other API errors (rate limit, etc.)
-        console.log(`[AddressValidator] Google API error: ${data.status} - REJECTING ADDRESS`);
-        return {
-          isValid: false,
-          errorMessage: `Address validation failed: ${data.status}. Please check your address and try again.`
-        };
+      switch (data.status) {
+        case 'OK':
+          if (data.results && data.results.length > 0) {
+            const result = data.results[0];
+            console.log('[AddressValidator] Google API validation successful');
+            return {
+              isValid: true,
+              formattedAddress: result.formatted_address
+            };
+          }
+          break;
+          
+        case 'ZERO_RESULTS':
+        case 'INVALID_REQUEST':
+          console.log(`[AddressValidator] Google API: ${data.status}`);
+          return {
+            isValid: false,
+            errorMessage: getLocalizedTextWithVars(chatContext, 'ERROR_MESSAGES.INVALID_ADDRESS', { name: customerName })
+          };
+          
+        case 'REQUEST_DENIED':
+        case 'OVER_QUERY_LIMIT':
+        case 'REQUEST_ERROR':
+          console.error(`[AddressValidator] Google API system error: ${data.status}`);
+          return {
+            isValid: false,
+            errorMessage: getLocalizedTextWithVars(chatContext, 'ERROR_MESSAGES.SYSTEM_ERROR_ADDRESS_VALIDATION', { name: customerName }),
+            isSystemError: true
+          };
+          
+        default:
+          console.error(`[AddressValidator] Unknown Google API status: ${data.status}`);
+          return {
+            isValid: false,
+            errorMessage: getLocalizedTextWithVars(chatContext, 'ERROR_MESSAGES.SYSTEM_ERROR_ADDRESS_VALIDATION', { name: customerName }),
+            isSystemError: true
+          };
       }
     } catch (error) {
       console.error('[AddressValidator] Error calling Google Maps API:', error);
+      const customerName = '{name}';
       
-      // Reject all addresses if Google API fails
       return {
         isValid: false,
-        errorMessage: 'Address validation service error. Please try again later.'
+        errorMessage: getLocalizedTextWithVars(chatContext, 'ERROR_MESSAGES.SYSTEM_ERROR_ADDRESS_VALIDATION', { name: customerName }),
+        isSystemError: true
       };
     }
   }

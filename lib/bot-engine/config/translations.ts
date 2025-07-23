@@ -8,7 +8,8 @@ export const BOOKING_TRANSLATIONS = {
       SERVICE_SELECTION_ERROR: 'Sorry {name}, I couldn\'t process your service selection',
       INVALID_SERVICE_SELECTION: '{name}, please select a valid service from the options provided or type the name of the service you\'d like',
       NO_SERVICES_TO_CHOOSE: 'Sorry {name}, no services are currently available to choose from',
-      INVALID_ADDRESS: '{name}, please provide a valid address with street, suburb, and postcode'
+      INVALID_ADDRESS: '{name}, please provide a valid address with street, suburb, and postcode',
+      SYSTEM_ERROR_ADDRESS_VALIDATION: 'Sorry {name}, we\'re experiencing technical difficulties with our address validation service. Our developers have been notified and will fix this shortly. Please try again later or contact support.'
     },
     BUTTONS: {
       SYSTEM_ERROR: '❌ System Error',
@@ -182,7 +183,8 @@ export const BOOKING_TRANSLATIONS = {
       SERVICE_SELECTION_ERROR: 'Lo siento {name}, no pude procesar tu selección de servicio',
       INVALID_SERVICE_SELECTION: '{name}, por favor selecciona un servicio válido de las opciones proporcionadas o escribe el nombre del servicio que te gustaría',
       NO_SERVICES_TO_CHOOSE: 'Lo siento {name}, no hay servicios disponibles para elegir en este momento',
-      INVALID_ADDRESS: '{name}, por favor proporciona una dirección válida con calle, barrio y código postal'
+      INVALID_ADDRESS: '{name}, por favor proporciona una dirección válida con calle, barrio y código postal',
+      SYSTEM_ERROR_ADDRESS_VALIDATION: 'Lo siento {name}, estamos experimentando dificultades técnicas con nuestro servicio de validación de direcciones. Nuestros desarrolladores han sido notificados y lo resolverán pronto. Por favor intenta más tarde o contacta a soporte.'
     },
     BUTTONS: {
       SYSTEM_ERROR: '❌ Error Sistema',

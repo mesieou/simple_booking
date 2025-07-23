@@ -146,6 +146,17 @@ export const validateAddressHandler: IndividualStepHandler = {
     console.log('[ValidateAddress] Current customerAddress:', currentGoalData.customerAddress);
     console.log('[ValidateAddress] IsAddressValidated:', currentGoalData.isAddressValidated);
     
+    // IMPORTANT: If there's a lastErrorMessage from validation failure, return it immediately
+    // This prevents the LLM from generating success messages when validation fails
+    if (currentGoalData.lastErrorMessage && currentGoalData.lastErrorMessage.includes('technical difficulties')) {
+      console.log('[ValidateAddress] System error detected - returning error state');
+      return {
+        ...currentGoalData,
+        confirmationMessage: currentGoalData.lastErrorMessage,
+        shouldAutoAdvance: false
+      };
+    }
+    
     // Detect context: determine which address needs validation based on validation flags
     // Priority: check which validation flag is false (indicates unvalidated address)
     const needsPickupValidation = !!currentGoalData.pickupAddress && !currentGoalData.pickupAddressValidated;
