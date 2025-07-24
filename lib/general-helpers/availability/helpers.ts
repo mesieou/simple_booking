@@ -88,6 +88,9 @@ export async function computeAggregatedAvailability(
   for (let i = 0; i < days; i++) {
     const date = new Date(fromDate);
     date.setDate(date.getDate() + i);
+    const dateStr = date.toISOString().split('T')[0];
+    
+    console.log(`[computeAggregatedAvailability] Processing day ${i + 1}/${days}: ${dateStr}`);
     
     const aggregatedAvailability = await computeDayAggregatedAvailability(
       businessId,
@@ -98,7 +101,20 @@ export async function computeAggregatedAvailability(
     );
     
     if (aggregatedAvailability && Object.keys(aggregatedAvailability.slots).length > 0) {
+      const slotCount = Object.keys(aggregatedAvailability.slots).reduce((total, duration) => {
+        return total + aggregatedAvailability.slots[duration].length;
+      }, 0);
+      console.log(`[computeAggregatedAvailability] ✅ Day ${dateStr}: Generated ${slotCount} time slots across ${Object.keys(aggregatedAvailability.slots).length} duration intervals`);
+      
+      // Log detailed slot information
+      for (const [duration, timeSlots] of Object.entries(aggregatedAvailability.slots)) {
+        const slotTimes = timeSlots.map(([time, count]) => `${time}(${count})`).join(', ');
+        console.log(`[computeAggregatedAvailability]   ${duration}min slots: ${slotTimes}`);
+      }
+      
       slots.push(aggregatedAvailability);
+    } else {
+      console.log(`[computeAggregatedAvailability] ❌ Day ${dateStr}: No available slots (no providers working or all booked)`);
     }
   }
 
@@ -157,13 +173,17 @@ export async function computeDayAggregatedAvailability(
   );
 
   const dayKey = dateInTimezone.toFormat("ccc").toLowerCase() as keyof CalendarSettings["workingHours"];
+  console.log(`[computeDayAggregatedAvailability] ${dateInTimezone.toFormat('yyyy-MM-dd (cccc)')}: Checking ${providerSettings.length} providers for availability`);
   
   // Collect working schedules for all providers on this day
   const providerSchedules: Array<{ workStart: DateTime; workEnd: DateTime; providerId: string }> = [];
   
   for (const providerSetting of providerSettings) {
     const workingHours = providerSetting.workingHours[dayKey];
-    if (!workingHours) continue; // Provider doesn't work on this day
+    if (!workingHours) {
+      console.log(`[computeDayAggregatedAvailability]   Provider ${providerSetting.providerId}: Not working on ${dayKey}`);
+      continue; // Provider doesn't work on this day
+    }
 
     const [startHour, startMin] = workingHours.start.split(":").map(Number);
     const [endHour, endMin] = workingHours.end.split(":").map(Number);
@@ -182,19 +202,46 @@ export async function computeDayAggregatedAvailability(
       millisecond: 0
     });
 
+    console.log(`[computeDayAggregatedAvailability]   Provider ${providerSetting.providerId}: Working ${workStart.toFormat('HH:mm')} - ${workEnd.toFormat('HH:mm')}`);
     providerSchedules.push({ workStart, workEnd, providerId: providerSetting.providerId });
   }
 
   if (providerSchedules.length === 0) {
+    console.log(`[computeDayAggregatedAvailability]   No providers working on ${dayKey}, skipping day`);
     return null; // No providers work on this day
   }
 
   // Generate aggregated base availability
+  console.log(`[computeDayAggregatedAvailability]   Generating base slots for ${providerSchedules.length} working providers...`);
   const baseSlots = generateAggregatedDaySlots(
     providerSchedules.map(({ workStart, workEnd }) => ({ workStart, workEnd }))
   );
+  
+  // Log base slot summary
+  const baseSlotsCount = Object.keys(baseSlots).reduce((total, duration) => {
+    return total + baseSlots[duration].length;
+  }, 0);
+  console.log(`[computeDayAggregatedAvailability]   Generated ${baseSlotsCount} base time slots before booking conflicts`);
+  
+  // Log existing bookings for this day
+  const dayBookings = existingBookingQuotes.filter(({ booking }) => {
+    const bookingDate = DateTime.fromISO(booking.dateTime).toFormat('yyyy-MM-dd');
+    return bookingDate === dateInTimezone.toFormat('yyyy-MM-dd');
+  });
+  
+  if (dayBookings.length > 0) {
+    console.log(`[computeDayAggregatedAvailability]   Found ${dayBookings.length} existing bookings for this day:`);
+    dayBookings.forEach(({ booking, quote }) => {
+      const bookingStart = DateTime.fromISO(booking.dateTime);
+      const bookingEnd = bookingStart.plus({ minutes: quote.totalJobDurationEstimation });
+      console.log(`[computeDayAggregatedAvailability]     - Provider ${booking.providerId}: ${bookingStart.toFormat('HH:mm')}-${bookingEnd.toFormat('HH:mm')} (${quote.totalJobDurationEstimation}min)`);
+    });
+  } else {
+    console.log(`[computeDayAggregatedAvailability]   No existing bookings for this day`);
+  }
 
   // Apply booking conflicts - reduce provider counts
+  console.log(`[computeDayAggregatedAvailability]   Adjusting slots for booking conflicts...`);
   const adjustedSlots: { [key: string]: Array<[string, number]> } = {};
   
   for (const duration of DURATION_INTERVALS) {
@@ -247,7 +294,20 @@ export async function computeDayAggregatedAvailability(
   }
 
   if (Object.keys(adjustedSlots).length === 0) {
+    console.log(`[computeDayAggregatedAvailability]   No available slots after applying booking conflicts`);
     return null; // No available slots
+  }
+
+  // Log final results
+  const finalSlotsCount = Object.keys(adjustedSlots).reduce((total, duration) => {
+    return total + adjustedSlots[duration].length;
+  }, 0);
+  console.log(`[computeDayAggregatedAvailability]   Final result: ${finalSlotsCount} available slots after conflicts`);
+  
+  // Log final slot details
+  for (const [duration, timeSlots] of Object.entries(adjustedSlots)) {
+    const slotTimes = timeSlots.map(([time, count]) => `${time}(${count})`).join(', ');
+    console.log(`[computeDayAggregatedAvailability]     ${duration}min: ${slotTimes}`);
   }
 
   return new AvailabilitySlots({

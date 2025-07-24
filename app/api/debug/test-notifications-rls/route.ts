@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServiceRoleClient } from '@/lib/database/supabase/server';
+import { getServiceRoleClient } from '@/lib/database/supabase/service-role';
 import { getEnvironmentServerClient } from '@/lib/database/supabase/environment';
 
 export async function GET(req: NextRequest) {

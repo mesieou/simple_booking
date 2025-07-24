@@ -1,5 +1,5 @@
 import React from 'react';
-import { BotResponseMessage } from '../../../actions';
+import { BotResponseMessage } from '@/types/chat';
 
 interface InteractiveMessageProps {
   content: BotResponseMessage;

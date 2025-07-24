@@ -1,8 +1,8 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
-// Re-export service role client for backward compatibility
-export { getServiceRoleClient } from './service-role'
+// Note: getServiceRoleClient should be imported directly from './service-role' 
+// to avoid pulling in next/headers dependency in client contexts
 
 // Environment-aware client (determines environment and uses appropriate config)
 export const createClient = () => {

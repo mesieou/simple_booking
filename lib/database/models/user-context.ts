@@ -1,4 +1,5 @@
-import { createClient, getServiceRoleClient } from "../supabase/server";
+import { createClient } from "../supabase/server";
+import { getServiceRoleClient } from "../supabase/service-role";
 import { getEnvironmentServiceRoleClient } from "../supabase/environment";
 import { v4 as uuidv4 } from 'uuid';
 import { handleModelError } from '@/lib/general-helpers/error';

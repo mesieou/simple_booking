@@ -1,6 +1,6 @@
 // This will render the left column of the chat page (desktop) or tab content (mobile)
 // It will display the list of active chats with mobile-optimized touch targets
-import { Conversation } from "./chat-interface";
+import { Conversation } from "@/types/chat";
 
 type ChatListProps = {
   conversations: Conversation[];

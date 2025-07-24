@@ -1,7 +1,7 @@
 import { getEnvironmentServerClient } from "../../../lib/database/supabase/environment";
 import { redirect } from "next/navigation";
 import ChatInterface from "./components/chat-interface";
-import { Conversation } from "./components/chat-interface";
+import { Conversation } from "@/types/chat";
 import { ChatSession } from "../../../lib/database/models/chat-session";
 import { User, SUPERADMIN_ROLES } from "../../../lib/database/models/user";
 

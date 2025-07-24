@@ -200,10 +200,17 @@ export default function OnboardingPage() {
     return (
       <div className="flex-1 flex flex-col w-full px-8 sm:max-w-md justify-center gap-6 text-center">
         <div className="text-red-500 text-6xl mb-4">❌</div>
-        <h1 className="text-2xl font-bold text-red-600">Setup Error</h1>
+        <h1 className="text-2xl font-bold text-red-600">Payment Setup Issue</h1>
         <p className="text-muted-foreground">
-          There was an error with your payment setup. Please try again or contact support.
+          Don't worry! Your business has been created successfully. The payment setup encountered an issue, but you can complete it later or continue without it.
         </p>
+        
+        {/* Payment setup is optional info */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p className="text-blue-800 text-sm font-medium">💡 Good to Know</p>
+          <p className="text-blue-700 text-xs">Your business can still operate and take cash payments. Payment processing is optional and can be set up anytime from your dashboard.</p>
+        </div>
+        
         {userRole === 'super_admin' && (
           <div className="bg-purple-600/20 border border-purple-500/30 rounded-lg p-4">
             <p className="text-purple-300 text-sm font-medium">🔑 Super Admin Access</p>
@@ -222,12 +229,15 @@ export default function OnboardingPage() {
                 Redirecting...
               </>
             ) : (
-              'Try Again'
+              'Try Payment Setup Again'
             )}
           </Button>
           <Button variant="outline" asChild>
-            <Link href="/protected">Go to Dashboard</Link>
+            <Link href="/protected">Continue to Dashboard</Link>
           </Button>
+          <p className="text-xs text-muted-foreground">
+            You can set up payments later from your dashboard settings.
+          </p>
         </div>
       </div>
     );

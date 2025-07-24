@@ -6,7 +6,7 @@ import { createClient } from '@/lib/database/supabase/client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { LogOut, User, X, Home, Briefcase, Info, Mail } from 'lucide-react';
+import { LogOut, User, X, Home, Briefcase, Info, Mail, CreditCard } from 'lucide-react';
 
 export type RightMenuPanelProps = {
   onClose: () => void;
@@ -17,36 +17,63 @@ export function RightMenuPanel({ onClose, showCloseButton = true }: RightMenuPan
   const { user } = useAuth();
   const router = useRouter();
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [businessId, setBusinessId] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchUserRole = async () => {
+    const fetchUserData = async () => {
       if (!user) return;
 
       try {
         const supabase = createClient();
         const { data, error } = await supabase
           .from('users')
-          .select('role')
+          .select('role, businessId')
           .eq('id', user.id)
           .single();
 
         if (error) {
-          console.error('Error fetching user role:', error);
+          console.error('Error fetching user data:', error);
         } else {
           setUserRole(data.role);
+          setBusinessId(data.businessId);
         }
       } catch (error) {
-        console.error('Error fetching user role:', error);
+        console.error('Error fetching user data:', error);
       }
     };
 
-    fetchUserRole();
+    fetchUserData();
   }, [user]);
 
   const handleSignOut = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
     router.push('/sign-in');
+  };
+
+  const handlePaymentSetup = async () => {
+    if (!businessId) return;
+
+    try {
+      const response = await fetch('/api/onboarding/stripe-connect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          businessId, 
+          action: 'create_onboarding_link' 
+        }),
+      });
+      
+      const data = await response.json();
+      if (data.success && data.onboardingUrl) {
+        window.location.href = data.onboardingUrl;
+      } else {
+        throw new Error(data.error || 'Failed to create onboarding link');
+      }
+    } catch (error) {
+      console.error('Error setting up payments:', error);
+      alert('Failed to setup payments. Please try again later.');
+    }
   };
 
   const navLinks = [
@@ -80,6 +107,24 @@ export function RightMenuPanel({ onClose, showCloseButton = true }: RightMenuPan
             </Button>
           </Link>
         ))}
+        
+        {/* Business Settings Section */}
+        {businessId && (
+          <>
+            <div className="border-t border-white/10 my-4"></div>
+            <div className="mb-2">
+              <p className="text-xs font-semibold uppercase text-gray-400 tracking-wider px-6">Business Settings</p>
+            </div>
+            <Button
+              variant="ghost"
+              className="w-full justify-start text-lg p-6"
+              onClick={handlePaymentSetup}
+            >
+              <CreditCard className="mr-4 h-5 w-5 text-gray-400" />
+              Payment Setup
+            </Button>
+          </>
+        )}
       </nav>
 
       <div className="mt-auto">

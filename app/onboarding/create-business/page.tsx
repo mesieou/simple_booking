@@ -97,7 +97,7 @@ const STEPS = [
   },
   {
     id: 4,
-    title: 'FAQ Documents',
+    title: 'FAQ Documents (Optional)',
     description: 'Upload your frequently asked questions'
   },
   {
@@ -146,18 +146,86 @@ const DEFAULT_FORM_DATA: BusinessFormData = {
   faqDocumentSize: 0,
   depositPercentage: 25,
   preferredPaymentMethod: 'cash',
-  setupPayments: false
+  setupPayments: true
+};
+
+const STORAGE_KEY = 'onboarding_form_data';
+const STEP_STORAGE_KEY = 'onboarding_current_step';
+
+// Utility functions for localStorage management
+const saveFormToStorage = (data: BusinessFormData, step: number) => {
+  try {
+    // Create a copy without the File object (can't be serialized)
+    const serializableData = { ...data };
+    if (serializableData.faqDocument) {
+      // Store file info but not the actual File object
+      serializableData.faqDocumentName = serializableData.faqDocument.name;
+      serializableData.faqDocumentSize = serializableData.faqDocument.size;
+      delete serializableData.faqDocument;
+    }
+    
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(serializableData));
+    localStorage.setItem(STEP_STORAGE_KEY, step.toString());
+  } catch (error) {
+    console.warn('Failed to save form data to localStorage:', error);
+  }
+};
+
+const loadFormFromStorage = (): { data: BusinessFormData | null; step: number } => {
+  try {
+    const savedData = localStorage.getItem(STORAGE_KEY);
+    const savedStep = localStorage.getItem(STEP_STORAGE_KEY);
+    
+    if (savedData) {
+      return {
+        data: JSON.parse(savedData),
+        step: savedStep ? parseInt(savedStep) : 1
+      };
+    }
+  } catch (error) {
+    console.warn('Failed to load form data from localStorage:', error);
+  }
+  
+  return { data: null, step: 1 };
+};
+
+const clearFormStorage = () => {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(STEP_STORAGE_KEY);
+  } catch (error) {
+    console.warn('Failed to clear form data from localStorage:', error);
+  }
 };
 
 export default function CreateBusinessPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState<BusinessFormData>(DEFAULT_FORM_DATA);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasRestoredData, setHasRestoredData] = useState(false);
+  const [showClearConfirmation, setShowClearConfirmation] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
   const progress = (currentStep / STEPS.length) * 100;
   const isLastStep = currentStep === STEPS.length;
+
+  // Load saved form data on component mount
+  useEffect(() => {
+    const { data: savedData, step: savedStep } = loadFormFromStorage();
+    
+    if (savedData && !hasRestoredData) {
+      setFormData(savedData);
+      setCurrentStep(savedStep);
+      setHasRestoredData(true);
+      
+      toast({
+        title: "✅ Progress Restored",
+        description: `We've restored your progress from step ${savedStep}. Continue where you left off!`,
+        duration: 5000,
+      });
+    }
+  }, [hasRestoredData, toast]);
 
   // Update form data when business category changes
   useEffect(() => {
@@ -173,9 +241,10 @@ export default function CreateBusinessPage() {
       
       setFormData(prev => {
         // Apply template settings to all provider calendar settings
+        // IMPORTANT: Deep clone the working hours to prevent shared references
         const updatedProviderSettings = prev.providerCalendarSettings.map(setting => ({
           ...setting,
-          workingHours: template.defaultWorkingHours,
+          workingHours: JSON.parse(JSON.stringify(template.defaultWorkingHours)), // Deep clone to prevent shared references
           bufferTime: template.bufferTime
         }));
         
@@ -299,7 +368,7 @@ export default function CreateBusinessPage() {
     if (hasChanges) {
       setFormData(prev => ({ ...prev, providerCalendarSettings: updatedSettings }));
     }
-  }, [formData.providerNames, formData.ownerFirstName, formData.ownerLastName, formData.userRole, formData.providerCalendarSettings]);
+  }, [formData.providerNames, formData.ownerFirstName, formData.ownerLastName, formData.userRole]);
 
   // Validation function for Business Information step
   const validateBusinessInfo = () => {
@@ -494,13 +563,19 @@ export default function CreateBusinessPage() {
       }
       // Add validation for other steps here as needed
       
-      setCurrentStep(currentStep + 1);
+      const nextStep = currentStep + 1;
+      setCurrentStep(nextStep);
+      // Auto-save current step to localStorage
+      saveFormToStorage(formData, nextStep);
     }
   };
 
   const handlePrevious = () => {
     if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
+      const prevStep = currentStep - 1;
+      setCurrentStep(prevStep);
+      // Auto-save current step to localStorage
+      saveFormToStorage(formData, prevStep);
     }
   };
 
@@ -570,22 +645,50 @@ export default function CreateBusinessPage() {
         description: `Welcome to Skedy, ${result.owner.firstName}!`,
       });
 
+      // Clear form data from localStorage on successful submission
+      clearFormStorage();
+
       // If Stripe Connect setup is enabled, redirect to it
       if (formData.setupPayments && result.onboarding.stripeAccountId) {
-        const stripeResponse = await fetch('/api/onboarding/stripe-connect', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            businessId: result.business.id,
-            action: 'create_onboarding_link'
-          }),
-        });
-        
-        if (stripeResponse.ok) {
-          const stripeResult = await stripeResponse.json();
-          window.location.href = stripeResult.onboardingUrl;
+        try {
+          const stripeResponse = await fetch('/api/onboarding/stripe-connect', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              businessId: result.business.id,
+              action: 'create_onboarding_link'
+            }),
+          });
+          
+          if (stripeResponse.ok) {
+            const stripeResult = await stripeResponse.json();
+            if (stripeResult.success && stripeResult.onboardingUrl) {
+              // Save business ID to localStorage for potential recovery
+              localStorage.setItem('onboarding_business_id', result.business.id);
+              window.location.href = stripeResult.onboardingUrl;
+              return;
+            } else {
+              throw new Error(stripeResult.error || 'Failed to create Stripe onboarding link');
+            }
+          } else {
+            const errorData = await stripeResponse.json();
+            throw new Error(errorData.error || 'Failed to create Stripe onboarding link');
+          }
+        } catch (stripeError) {
+          console.error('Stripe onboarding setup error:', stripeError);
+          
+          // Show error but don't fail the entire onboarding
+          toast({
+            title: "Payment Setup Issue",
+            description: `Business created successfully, but payment setup failed: ${stripeError instanceof Error ? stripeError.message : 'Unknown error'}. You can complete payment setup later from your dashboard.`,
+            variant: "destructive",
+            duration: 8000,
+          });
+          
+          // Continue to dashboard - business is still functional
+          router.push(`/protected?payment_setup_error=true&businessId=${result.business.id}`);
           return;
         }
       }
@@ -605,8 +708,26 @@ export default function CreateBusinessPage() {
     }
   };
 
+  const handleClearDraft = () => {
+    clearFormStorage();
+    setFormData(DEFAULT_FORM_DATA);
+    setCurrentStep(1);
+    setShowClearConfirmation(false);
+    
+    toast({
+      title: "✅ Draft Cleared",
+      description: "Form has been reset to start fresh.",
+      duration: 3000,
+    });
+  };
+
   const updateFormData = (stepData: Partial<BusinessFormData>) => {
-    setFormData(prev => ({ ...prev, ...stepData }));
+    setFormData(prev => {
+      const newData = { ...prev, ...stepData };
+      // Auto-save to localStorage on every form update
+      saveFormToStorage(newData, currentStep);
+      return newData;
+    });
   };
 
   const renderStep = () => {
@@ -660,112 +781,201 @@ export default function CreateBusinessPage() {
     <div className="min-h-screen p-4">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-3">
-            Launch Your Business in Minutes
+        <div className="text-center mb-6 md:mb-8 relative px-2">
+          <h1 className="text-xl sm:text-2xl md:text-4xl font-bold text-white mb-2 md:mb-3 leading-tight">
+            Go Live in Minutes
           </h1>
-          <p className="text-xl text-white/90">
-            Create your automated booking system and start taking customers instantly
+          <p className="text-sm sm:text-base md:text-xl text-white/90 max-w-2xl mx-auto leading-relaxed">
+            Set up your booking system and start accepting customers
           </p>
+          
+          {/* Start Over Button - positioned better */}
+          {hasRestoredData && (
+            <Button
+              onClick={() => setShowClearConfirmation(true)}
+              variant="outline"
+              className="mt-3 md:mt-4 px-3 py-1.5 text-xs sm:text-sm bg-white/10 border-white/30 text-white hover:bg-white/20 hover:border-white/50 transition-all"
+            >
+              🔄 Start Over
+            </Button>
+          )}
         </div>
 
         {/* Main Form Container */}
-        <div className="bg-white rounded-lg p-8 shadow-lg border">
+        <div className="bg-white rounded-lg p-4 md:p-8 shadow-lg border">
             {/* Progress Steps */}
             <div className="mb-8">
-              <div className="flex items-center justify-between mb-4">
-                {STEPS.map((step, index) => (
-                  <div
-                    key={step.id}
-                    className={`flex items-center ${
-                      index < STEPS.length - 1 ? 'flex-1' : ''
-                    }`}
-                  >
+              {/* Mobile Progress - Simple step counter */}
+              <div className="block md:hidden mb-4">
+                <div className="text-center mb-3">
+                  <span className="text-sm text-gray-600">
+                    Step {currentStep} of {STEPS.length}
+                  </span>
+                </div>
+                <Progress value={progress} className="h-2" />
+              </div>
+
+              {/* Desktop Progress - Full step indicators */}
+              <div className="hidden md:block">
+                <div className="flex items-center justify-between mb-4">
+                  {STEPS.map((step, index) => (
                     <div
-                      className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-colors ${
-                        currentStep >= step.id
-                          ? 'bg-primary border-primary text-white shadow-sm'
-                          : 'border-gray-300 text-gray-400 bg-gray-100'
+                      key={step.id}
+                      className={`flex items-center ${
+                        index < STEPS.length - 1 ? 'flex-1' : ''
                       }`}
                     >
-                      {currentStep > step.id ? (
-                        <CheckCircle className="w-6 h-6" />
-                      ) : (
-                        step.id
-                      )}
-                    </div>
-                    <div className="ml-3 text-sm">
-                      <p
-                        className={`font-semibold ${
-                          currentStep >= step.id ? 'text-gray-800' : 'text-gray-500'
+                      <div
+                        className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-colors ${
+                          currentStep >= step.id
+                            ? 'bg-primary border-primary text-white shadow-sm'
+                            : 'border-gray-300 text-gray-400 bg-gray-100'
                         }`}
                       >
-                        {step.title}
-                      </p>
-                      <p className="text-gray-600 hidden sm:block">
-                        {step.description}
-                      </p>
+                        {currentStep > step.id ? (
+                          <CheckCircle className="w-6 h-6" />
+                        ) : (
+                          step.id
+                        )}
+                      </div>
+                      <div className="ml-3 text-sm">
+                        <p
+                          className={`font-semibold ${
+                            currentStep >= step.id ? 'text-gray-800' : 'text-gray-500'
+                          }`}
+                        >
+                          {step.title}
+                        </p>
+                        <p className="text-gray-600">
+                          {step.description}
+                        </p>
+                      </div>
+                      {index < STEPS.length - 1 && (
+                        <div
+                          className={`flex-1 h-0.5 mx-4 transition-colors ${
+                            currentStep > step.id ? 'bg-primary' : 'bg-gray-300'
+                          }`}
+                        />
+                      )}
                     </div>
-                    {index < STEPS.length - 1 && (
-                      <div
-                        className={`flex-1 h-0.5 mx-4 transition-colors ${
-                          currentStep > step.id ? 'bg-primary' : 'bg-gray-300'
-                        }`}
-                      />
-                    )}
-                  </div>
-                ))}
+                  ))}
+                </div>
+                <Progress value={progress} className="h-2" />
               </div>
-              <Progress value={progress} className="h-2" />
             </div>
 
             {/* Main Form Content */}
             <div className="space-y-8">
               {/* Step Title */}
               <div className="text-center">
-                <h2 className="text-2xl font-bold text-gray-800 mb-2">{STEPS[currentStep - 1].title}</h2>
-                <p className="text-lg text-gray-600">{STEPS[currentStep - 1].description}</p>
+                <h2 className="text-xl md:text-2xl font-bold text-gray-800 mb-2">{STEPS[currentStep - 1].title}</h2>
+                <p className="text-base md:text-lg text-gray-600">{STEPS[currentStep - 1].description}</p>
               </div>
               
               {/* Form Content */}
-              <div className="max-w-4xl mx-auto">
+              <div className="w-full mx-auto">
                 {renderStep()}
               </div>
 
               {/* Navigation */}
-              <div className="flex justify-between items-center max-w-4xl mx-auto pt-6">
-                <Button
-                  onClick={handlePrevious}
-                  disabled={currentStep === 1}
-                  className="flex items-center gap-2 px-6 py-3 bg-gradient-to-l from-secondary to-primary text-white font-semibold shadow-md hover:from-secondary/90 hover:to-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                >
-                  <ChevronLeft className="w-4 h-4 text-white" />
-                  Previous
-                </Button>
+              <div className="max-w-4xl mx-auto pt-6">
+                {/* Mobile Layout - Stacked */}
+                <div className="flex flex-col gap-3 sm:hidden">
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={isLoading}
+                    className="flex items-center justify-center gap-2 w-full py-3 bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-white shadow-lg font-semibold"
+                  >
+                    {isLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                        Creating...
+                      </>
+                    ) : isLastStep ? (
+                      'Create Business'
+                    ) : (
+                      <>
+                        Next
+                        <ChevronRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </Button>
+                  
+                  <Button
+                    onClick={handlePrevious}
+                    disabled={currentStep === 1}
+                    className="flex items-center justify-center gap-2 w-full py-3 bg-gradient-to-r from-secondary to-primary hover:from-secondary/90 hover:to-primary/90 text-white shadow-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    Previous
+                  </Button>
+                </div>
 
-                <Button
-                  onClick={handleSubmit}
-                  disabled={isLoading}
-                  className="flex items-center gap-2 bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-white shadow-lg"
-                >
-                  {isLoading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                      Creating...
-                    </>
-                  ) : isLastStep ? (
-                    'Create Business'
-                  ) : (
-                    <>
-                      Next
-                      <ChevronRight className="w-4 h-4" />
-                    </>
-                  )}
-                </Button>
+                {/* Desktop Layout - Side by side */}
+                <div className="hidden sm:flex justify-between items-center">
+                  <Button
+                    onClick={handlePrevious}
+                    disabled={currentStep === 1}
+                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-secondary to-primary hover:from-secondary/90 hover:to-primary/90 text-white font-semibold shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                  >
+                    <ChevronLeft className="w-4 h-4 text-white" />
+                    Previous
+                  </Button>
+
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={isLoading}
+                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-white shadow-lg font-semibold"
+                  >
+                    {isLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                        Creating...
+                      </>
+                    ) : isLastStep ? (
+                      'Create Business'
+                    ) : (
+                      <>
+                        Next
+                        <ChevronRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
         </div>
+        
+        {/* Start Over Confirmation Dialog */}
+        {showClearConfirmation && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md mx-4 shadow-xl">
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                Start Over From Beginning?
+              </h3>
+              <p className="text-gray-600 mb-6">
+                This will permanently delete all your progress and reset the form to start fresh. This action cannot be undone.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
+                <Button
+                  onClick={() => setShowClearConfirmation(false)}
+                  variant="outline"
+                  className="w-full sm:w-auto px-4 py-2 order-2 sm:order-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleClearDraft}
+                  variant="destructive"
+                  className="w-full sm:w-auto px-4 py-2 order-1 sm:order-2"
+                >
+                  Yes, Start Over
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
   );
 }

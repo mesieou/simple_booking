@@ -1,6 +1,7 @@
 "use server";
 
-import { createClient, getServiceRoleClient } from "@/lib/database/supabase/server";
+import { createClient } from "@/lib/database/supabase/server";
+import { getServiceRoleClient } from "@/lib/database/supabase/service-role";
 import { getEnvironmentServerClient, getEnvironmentServiceRoleClient } from "@/lib/database/supabase/environment";
 import { redirect } from "next/navigation";
 import { type BotResponse } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";

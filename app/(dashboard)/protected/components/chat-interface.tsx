@@ -6,21 +6,14 @@ import { ChatList } from "./chat-list";
 import { ChatWindow } from "./chat-window";
 import { NotificationPanel } from "./notification-panel";
 import { RightMenuPanel } from "./right-menu-panel";
-import { getMessagesForUser, ChatMessage, getUserBusinessId, getBusinessConversations } from "../../../actions";
+import { getMessagesForUser, getUserBusinessId, getBusinessConversations } from "../../../actions";
+import { ChatMessage } from "@/types/chat";
 import { useRealtimeChat } from "../hooks/useRealtimeChat";
 import { Button } from "@/components/ui/button";
 import { Menu } from "lucide-react";
+import { PaymentSetupStatus } from "./payment-setup-status";
 
-// Represents a unique conversation with a user, aggregated from one or more sessions.
-export type Conversation = {
-  channelUserId: string;
-  updatedAt: string;
-  hasEscalation: boolean;
-  escalationStatus: string | null;
-  sessionId: string;
-  businessId?: string; // Optional for superadmin
-  businessName?: string; // Optional for superadmin
-};
+import { Conversation } from "@/types/chat";
 
 type ChatInterfaceProps = {
   initialConversations: Conversation[];
@@ -212,6 +205,11 @@ export default function ChatInterface({
 
   return (
     <div className="h-full flex flex-col max-h-full overflow-hidden">
+      {/* Payment Setup Status Banner */}
+      <div className="flex-shrink-0 p-2">
+        <PaymentSetupStatus businessId={userBusinessId || undefined} />
+      </div>
+      
       {/* Top Bar with Realtime Status and Menu Button - Always Visible */}
       <div className="flex justify-end items-center p-2 gap-4 flex-shrink-0">
         {userBusinessId && (

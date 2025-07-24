@@ -95,7 +95,11 @@ export function CalendarStep({ data, onUpdate }: CalendarStepProps) {
     const dayHours = provider.workingHours[day as keyof typeof provider.workingHours];
     
     if (dayHours) {
-      dayHours[field] = value;
+      // Create a new object instead of mutating the existing one
+      provider.workingHours[day as keyof typeof provider.workingHours] = {
+        ...dayHours,
+        [field]: value
+      };
       onUpdate({ providerCalendarSettings: newSettings });
     }
   };
@@ -112,7 +116,7 @@ export function CalendarStep({ data, onUpdate }: CalendarStepProps) {
       const sourceProvider = newSettings[copyFromProvider];
       const targetProvider = newSettings[targetProviderIndex];
       
-      // Copy working hours and buffer time
+      // Deep clone working hours and buffer time to prevent shared references
       targetProvider.workingHours = JSON.parse(JSON.stringify(sourceProvider.workingHours));
       targetProvider.bufferTime = sourceProvider.bufferTime;
       
@@ -137,9 +141,9 @@ export function CalendarStep({ data, onUpdate }: CalendarStepProps) {
 
       {/* Provider Calendar Settings */}
       {data.providerCalendarSettings.map((provider, providerIndex) => (
-        <Card key={providerIndex} className="border border-primary/20 rounded-xl">
-          <CardHeader>
-            <div className="flex items-center justify-between">
+        <Card key={providerIndex} className="border border-primary/20 rounded-xl overflow-hidden">
+          <CardHeader className="p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-primary/10 rounded-lg">
                   <User className="w-5 h-5 text-primary" />
@@ -154,41 +158,44 @@ export function CalendarStep({ data, onUpdate }: CalendarStepProps) {
                 </div>
               </div>
               {data.providerCalendarSettings.length > 1 && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   {copyFromProvider >= 0 && copyFromProvider !== providerIndex && (
                     <Button
                       onClick={() => handleCopyFromProvider(providerIndex)}
                       size="sm"
-                      className="bg-green-600 hover:bg-green-700 text-white"
+                      className="bg-green-600 hover:bg-green-700 text-white flex-shrink-0"
                     >
-                      <Copy className="w-4 h-4 mr-1" />
-                      Paste Here
+                      <Copy className="w-4 h-4 sm:mr-1" />
+                      <span className="hidden sm:inline">Paste Here</span>
                     </Button>
                   )}
                   <Button
                     onClick={() => setCopyFromProvider(providerIndex)}
                     variant={copyFromProvider === providerIndex ? "default" : "outline"}
                     size="sm"
+                    className="flex-shrink-0"
                   >
-                    <Copy className="w-4 h-4 mr-1" />
-                    {copyFromProvider === providerIndex ? "Selected" : "Copy Settings"}
+                    <Copy className="w-4 h-4 sm:mr-1" />
+                    <span className="hidden sm:inline">
+                      {copyFromProvider === providerIndex ? "Selected" : "Copy Settings"}
+                    </span>
                   </Button>
                 </div>
               )}
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
+          <CardContent className="p-4 sm:p-6">
+            <div className="space-y-4 sm:space-y-6">
               {/* Working Hours */}
               <div>
                 <h4 className="font-medium text-gray-900 mb-3">Working Hours</h4>
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {DAYS.map(({ key, label }) => {
                     const dayHours = provider.workingHours[key];
                     const isEnabled = dayHours !== null;
                     return (
-                      <div key={key} className="flex items-center gap-4">
-                        <div className="flex items-center gap-3 min-w-[140px]">
+                      <div key={key} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 p-2 sm:p-3 bg-gray-50 rounded-lg overflow-hidden">
+                        <div className="flex items-center gap-3 min-w-0 sm:min-w-[140px]">
                           <Switch
                             checked={isEnabled}
                             onCheckedChange={(checked) => handleDayToggle(providerIndex, key, checked)}
@@ -196,24 +203,24 @@ export function CalendarStep({ data, onUpdate }: CalendarStepProps) {
                           <Label className="text-sm font-semibold text-gray-800 cursor-pointer">{label}</Label>
                         </div>
                         {isEnabled && dayHours && (
-                          <div className="flex items-center gap-2 flex-1">
+                          <div className="flex items-center gap-2 w-full sm:flex-1">
                             <Input
                               type="time"
                               value={dayHours.start}
                               onChange={(e) => handleTimeChange(providerIndex, key, 'start', e.target.value)}
-                              className="w-32 bg-gray-50 border border-gray-300 text-gray-900 placeholder:text-gray-400 rounded-lg"
+                              className="w-[95px] sm:w-32 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-400 rounded-lg text-sm"
                             />
-                            <span className="text-gray-500">to</span>
+                            <span className="text-gray-500 text-sm shrink-0">to</span>
                             <Input
                               type="time"
                               value={dayHours.end}
                               onChange={(e) => handleTimeChange(providerIndex, key, 'end', e.target.value)}
-                              className="w-32 bg-gray-50 border border-gray-300 text-gray-900 placeholder:text-gray-400 rounded-lg"
+                              className="w-[95px] sm:w-32 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-400 rounded-lg text-sm"
                             />
                           </div>
                         )}
                         {!isEnabled && (
-                          <div className="flex-1 text-sm text-gray-500">Closed</div>
+                          <div className="flex-1 text-sm text-gray-500 sm:text-left">Closed</div>
                         )}
                       </div>
                     );
@@ -237,7 +244,7 @@ export function CalendarStep({ data, onUpdate }: CalendarStepProps) {
                     max="120"
                     value={provider.bufferTime}
                     onChange={(e) => handleBufferTimeChange(providerIndex, parseInt(e.target.value) || 0)}
-                    className="w-24 bg-gray-50 border border-gray-300 text-gray-900 placeholder:text-gray-400 rounded-lg"
+                    className="w-20 sm:w-24 bg-white border border-gray-300 text-gray-900 placeholder:text-gray-400 rounded-lg"
                   />
                   <span className="text-sm text-gray-600">minutes</span>
                 </div>

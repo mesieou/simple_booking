@@ -45,15 +45,14 @@ const PAYMENT_METHODS = [
 ];
 
 export function PaymentStep({ data, onUpdate }: PaymentStepProps) {
-  // New: paymentType = 'full' | 'deposit'
-  const paymentType = data.depositPercentage === 0 && !data.setupPayments ? 'no_payment' : (data.depositPercentage === 0 ? 'full' : 'deposit');
-  const handlePaymentTypeChange = (type: 'full' | 'deposit' | 'no_payment') => {
-    if (type === 'full') {
-      onUpdate({ depositPercentage: 0, setupPayments: true });
-    } else if (type === 'deposit') {
-      onUpdate({ depositPercentage: 25, setupPayments: true });
+  // Determine payment type based on deposit percentage
+  const paymentType = data.depositPercentage === 0 ? 'no_payment' : 'deposit';
+  
+  const handlePaymentTypeChange = (type: 'deposit' | 'no_payment') => {
+    if (type === 'deposit') {
+      onUpdate({ depositPercentage: 25 }); // Partial deposit required
     } else {
-      onUpdate({ depositPercentage: 0, setupPayments: false });
+      onUpdate({ depositPercentage: 0 }); // No deposit = payment after service
     }
   };
   const handleDepositChange = (value: string) => {
@@ -75,13 +74,9 @@ export function PaymentStep({ data, onUpdate }: PaymentStepProps) {
         <CardContent>
           <RadioGroup
             value={paymentType}
-            onValueChange={val => handlePaymentTypeChange(val as 'full' | 'deposit' | 'no_payment')}
+            onValueChange={val => handlePaymentTypeChange(val as 'deposit' | 'no_payment')}
             className="flex flex-col gap-3"
           >
-            <Label className="flex items-center gap-2 cursor-pointer text-gray-900">
-              <RadioGroupItem value="full" id="full" />
-              <span className="font-medium">Full payment required before service</span>
-            </Label>
             <Label className="flex items-center gap-2 cursor-pointer text-gray-900">
               <RadioGroupItem value="deposit" id="deposit" />
               <span className="font-medium">Deposit required to confirm booking (rest paid later)</span>
@@ -190,12 +185,47 @@ export function PaymentStep({ data, onUpdate }: PaymentStepProps) {
           </CardContent>
         </Card>
       )}
-      {/* Stripe info text for full or deposit */}
-      {(paymentType === 'full' || paymentType === 'deposit') && (
-        <div className="mt-6 text-sm text-gray-700 bg-primary/5 border border-primary/20 rounded-lg p-4">
-          After creating your business, you’ll be redirected to set up Stripe Connect for secure online payment processing.
-        </div>
-      )}
+      {/* Stripe Setup Section */}
+      <Card className="border border-gray-200 rounded-xl bg-white shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-lg font-bold text-gray-900">Online Payment Processing</CardTitle>
+          <CardDescription className="text-gray-700">
+            Set up secure online payment processing with Stripe Connect (recommended for all businesses)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <div className="flex items-center gap-3">
+                <Shield className="w-5 h-5 text-primary" />
+                <div>
+                  <p className="font-medium text-gray-900">Enable Stripe Connect</p>
+                  <p className="text-sm text-gray-600">
+                    Accept credit cards, debit cards, and digital wallets securely
+                  </p>
+                </div>
+              </div>
+            </div>
+            <Switch
+              checked={data.setupPayments}
+              onCheckedChange={(checked) => onUpdate({ setupPayments: checked })}
+              id="setupPayments"
+            />
+          </div>
+          
+          {data.setupPayments && (
+            <div className="mt-4 text-sm text-gray-700 bg-primary/5 border border-primary/20 rounded-lg p-4">
+              <p className="font-medium text-primary mb-2">What happens next:</p>
+              <ul className="space-y-1 text-gray-700">
+                <li>• After creating your business, you'll be redirected to Stripe</li>
+                <li>• Complete a quick verification process (2-3 minutes)</li>
+                <li>• Start accepting online payments immediately</li>
+                <li>• Funds are deposited directly to your bank account</li>
+              </ul>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

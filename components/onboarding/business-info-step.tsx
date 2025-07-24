@@ -73,7 +73,7 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
 
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 md:space-y-8">
       {/* Business Category Selection */}
       <div className="space-y-3">
         <Label className="text-base font-semibold text-gray-800">Business Type</Label>
@@ -81,7 +81,7 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
           value={data.businessCategory}
           onValueChange={(value) => onUpdate({ businessCategory: value as BusinessCategoryType })}
         >
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
             {categories.map((category) => {
               const Icon = CATEGORY_ICONS[category.value];
               const isSelected = data.businessCategory === category.value;
@@ -97,21 +97,21 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
                       ? 'ring-2 ring-primary border-primary bg-white shadow-xl scale-105' 
                       : 'border-gray-200 hover:border-primary/50 hover:shadow-lg bg-white hover:scale-102'
                   }`}>
-                    <CardHeader className="space-y-1 p-4">
+                    <CardHeader className="space-y-1 p-3 sm:p-4">
                       <div className="flex items-start justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div className={`p-2 rounded-lg transition-colors ${
+                        <div className="flex items-center space-x-2 sm:space-x-3 flex-1">
+                          <div className={`p-1.5 sm:p-2 rounded-lg transition-colors ${
                             isSelected ? 'bg-primary/10' : 'bg-gray-100'
                           }`}>
-                            <Icon className={`w-5 h-5 transition-colors ${
+                            <Icon className={`w-4 h-4 sm:w-5 sm:h-5 transition-colors ${
                               isSelected ? 'text-primary' : 'text-gray-600'
                             }`} />
                           </div>
-                          <div>
-                            <CardTitle className="text-base font-semibold text-gray-900">
+                          <div className="flex-1 min-w-0">
+                            <CardTitle className="text-sm sm:text-base font-semibold text-gray-900">
                               {category.label}
                             </CardTitle>
-                            <CardDescription className="text-sm text-gray-700 mt-0.5">
+                            <CardDescription className="text-xs sm:text-sm text-gray-700 mt-0.5">
                               {category.description}
                             </CardDescription>
                           </div>
@@ -119,7 +119,7 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
                         <RadioGroupItem
                           value={category.value}
                           id={category.value}
-                          className="mt-1"
+                          className="mt-1 shrink-0"
                         />
                       </div>
                     </CardHeader>
@@ -132,7 +132,7 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
       </div>
 
       {/* Business Details */}
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="businessName" className="text-sm font-semibold text-gray-800">Business Name</Label>
           <Input
@@ -140,7 +140,7 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
             placeholder="Enter your business name"
             value={data.businessName}
             onChange={(e) => handleInputChange('businessName', e.target.value)}
-            className="bg-white border-gray-300 text-black placeholder:text-gray-500"
+            className="bg-white border-gray-300 text-black placeholder:text-gray-500 text-sm"
           />
         </div>
 
@@ -150,12 +150,12 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
             value={data.timeZone}
             onValueChange={(value) => handleInputChange('timeZone', value)}
           >
-            <SelectTrigger id="timeZone" className="bg-white border-gray-300 text-black">
+            <SelectTrigger id="timeZone" className="bg-white border-gray-300 text-black text-sm">
               <SelectValue placeholder="Select timezone" />
             </SelectTrigger>
             <SelectContent className="bg-white border-gray-300">
               {TIMEZONES.map((tz) => (
-                <SelectItem key={tz.value} value={tz.value} className="text-black hover:bg-gray-100">
+                <SelectItem key={tz.value} value={tz.value} className="text-black hover:bg-gray-100 text-sm">
                   {tz.label}
                 </SelectItem>
               ))}
@@ -167,7 +167,7 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
       {/* Owner Information */}
       <div className="space-y-6">
         <h3 className="text-lg font-semibold text-gray-800">Owner Information</h3>
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="ownerFirstName" className="text-sm font-semibold text-gray-800">First Name</Label>
             <Input
@@ -175,7 +175,7 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
               placeholder="John"
               value={data.ownerFirstName}
               onChange={(e) => handleInputChange('ownerFirstName', e.target.value)}
-              className="bg-white border-gray-300 text-black placeholder:text-gray-500"
+              className="bg-white border-gray-300 text-black placeholder:text-gray-500 text-sm"
             />
           </div>
 
@@ -186,7 +186,7 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
               placeholder="Doe"
               value={data.ownerLastName}
               onChange={(e) => handleInputChange('ownerLastName', e.target.value)}
-              className="bg-white border-gray-300 text-black placeholder:text-gray-500"
+              className="bg-white border-gray-300 text-black placeholder:text-gray-500 text-sm"
             />
           </div>
         </div>
@@ -205,11 +205,11 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
         </div>
         
         <div className="space-y-4">
-          <div className="flex items-center space-x-4">
-            <Label htmlFor="numberOfProviders" className="text-sm font-semibold text-gray-800 min-w-fit">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+            <Label htmlFor="numberOfProviders" className="text-sm font-semibold text-gray-800 shrink-0">
               Number of Providers:
             </Label>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center justify-center sm:justify-start space-x-2">
               <Button
                 type="button"
                 size="sm"
@@ -227,7 +227,7 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
                 <Minus className="h-4 w-4" />
               </Button>
               <div className="bg-white border border-gray-300 rounded-md px-3 py-1.5 min-w-[2.5rem]">
-                <span className="text-base font-semibold text-black text-center block">{data.numberOfProviders}</span>
+                <span className="text-sm sm:text-base font-semibold text-black text-center block">{data.numberOfProviders}</span>
               </div>
               <Button
                 type="button"
@@ -261,15 +261,15 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
                   const providerNamesIndex = data.userRole === 'admin/provider' ? index - 1 : index;
                   
                   return (
-                    <div key={index} className="flex items-center space-x-3">
-                      <Label className="text-sm text-gray-600 min-w-[80px]">
+                    <div key={index} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                      <Label className="text-sm text-gray-600 sm:min-w-[80px] shrink-0">
                         Provider {index + 1}:
                       </Label>
                       {isOwnerSlot ? (
                         <Input
                           value={`${data.ownerFirstName} ${data.ownerLastName}`.trim() || 'You (Owner)'}
                           disabled
-                          className="bg-gray-50 border-gray-200 text-gray-600"
+                          className="bg-gray-50 border-gray-200 text-gray-600 text-sm flex-1"
                         />
                       ) : (
                         <Input
@@ -280,7 +280,7 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
                             newProviderNames[providerNamesIndex] = e.target.value;
                             onUpdate({ providerNames: newProviderNames });
                           }}
-                          className="bg-white border-gray-300 text-black placeholder:text-gray-500"
+                          className="bg-white border-gray-300 text-black placeholder:text-gray-500 text-sm flex-1"
                         />
                       )}
                     </div>
@@ -315,21 +315,21 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
                   ? 'ring-2 ring-primary border-primary bg-white shadow-xl scale-105' 
                   : 'border-gray-200 hover:border-primary/50 hover:shadow-lg bg-white hover:scale-102'
               }`}>
-                <CardHeader className="space-y-1 p-4">
+                <CardHeader className="space-y-1 p-3 sm:p-4">
                   <div className="flex items-start justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className={`p-2 rounded-lg transition-colors ${
+                    <div className="flex items-center space-x-2 sm:space-x-3 flex-1">
+                      <div className={`p-1.5 sm:p-2 rounded-lg transition-colors ${
                         data.userRole === 'admin' ? 'bg-primary/10' : 'bg-gray-100'
                       }`}>
-                        <User className={`w-5 h-5 transition-colors ${
+                        <User className={`w-4 h-4 sm:w-5 sm:h-5 transition-colors ${
                           data.userRole === 'admin' ? 'text-primary' : 'text-gray-600'
                         }`} />
                       </div>
-                      <div>
-                        <CardTitle className="text-base font-semibold text-gray-900">
+                      <div className="flex-1 min-w-0">
+                        <CardTitle className="text-sm sm:text-base font-semibold text-gray-900">
                           Admin Only
                         </CardTitle>
-                        <CardDescription className="text-sm text-gray-700 mt-0.5">
+                        <CardDescription className="text-xs sm:text-sm text-gray-700 mt-0.5">
                           I manage the business but don't provide services myself. I'll hire other providers to do the work.
                         </CardDescription>
                       </div>
@@ -337,7 +337,7 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
                     <RadioGroupItem
                       value="admin"
                       id="admin"
-                      className="mt-1"
+                      className="mt-1 shrink-0"
                     />
                   </div>
                 </CardHeader>
@@ -354,21 +354,21 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
                   ? 'ring-2 ring-primary border-primary bg-white shadow-xl scale-105' 
                   : 'border-gray-200 hover:border-primary/50 hover:shadow-lg bg-white hover:scale-102'
               }`}>
-                <CardHeader className="space-y-1 p-4">
+                <CardHeader className="space-y-1 p-3 sm:p-4">
                   <div className="flex items-start justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className={`p-2 rounded-lg ${
+                    <div className="flex items-center space-x-2 sm:space-x-3 flex-1">
+                      <div className={`p-1.5 sm:p-2 rounded-lg ${
                         data.userRole === 'admin/provider' ? 'bg-primary/10' : 'bg-gray-100'
                       }`}>
-                        <Users className={`w-5 h-5 ${
+                        <Users className={`w-4 h-4 sm:w-5 sm:h-5 ${
                           data.userRole === 'admin/provider' ? 'text-primary' : 'text-gray-600'
                         }`} />
                       </div>
-                      <div>
-                        <CardTitle className="text-base font-semibold text-gray-900">
+                      <div className="flex-1 min-w-0">
+                        <CardTitle className="text-sm sm:text-base font-semibold text-gray-900">
                           Admin & Provider
                         </CardTitle>
-                        <CardDescription className="text-sm text-gray-700 mt-0.5">
+                        <CardDescription className="text-xs sm:text-sm text-gray-700 mt-0.5">
                           I manage the business AND provide services myself alongside other team members.
                         </CardDescription>
                       </div>
@@ -376,7 +376,7 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
                     <RadioGroupItem
                       value="admin/provider"
                       id="admin/provider"
-                      className="mt-1"
+                      className="mt-1 shrink-0"
                     />
                   </div>
                 </CardHeader>
@@ -389,7 +389,7 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
       {/* Contact Information */}
       <div className="space-y-6">
         <h3 className="text-lg font-semibold text-gray-800">Contact Information</h3>
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="email" className="text-sm font-semibold text-gray-800">Email Address</Label>
             <Input
@@ -398,7 +398,7 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
               placeholder="john@example.com"
               value={data.email}
               onChange={(e) => handleInputChange('email', e.target.value)}
-              className="bg-white border-gray-300 text-black placeholder:text-gray-500"
+              className="bg-white border-gray-300 text-black placeholder:text-gray-500 text-sm"
             />
           </div>
 
@@ -409,12 +409,12 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
                 value={data.phoneCountryCode || '+61'}
                 onValueChange={(value) => handleInputChange('phoneCountryCode', value)}
               >
-                <SelectTrigger className="w-32 bg-white border-gray-300 text-black rounded-r-none border-r-0">
+                <SelectTrigger className="w-24 sm:w-32 bg-white border-gray-300 text-black rounded-r-none border-r-0 text-xs sm:text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-white border-gray-300">
                   {COUNTRY_CODES.map((country) => (
-                    <SelectItem key={country.value} value={country.value} className="text-black hover:bg-gray-100">
+                    <SelectItem key={country.value} value={country.value} className="text-black hover:bg-gray-100 text-xs sm:text-sm">
                       {country.label}
                     </SelectItem>
                   ))}
@@ -426,7 +426,7 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
                 placeholder={getPlaceholderForCountryCode(data.phoneCountryCode || '+61')}
                 value={data.phone}
                 onChange={(e) => handleInputChange('phone', e.target.value)}
-                className="bg-white border-gray-300 text-black placeholder:text-gray-500 rounded-l-none flex-1"
+                className="bg-white border-gray-300 text-black placeholder:text-gray-500 rounded-l-none flex-1 text-sm"
               />
             </div>
           </div>
@@ -438,12 +438,12 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
                 value={data.whatsappCountryCode || '+61'}
                 onValueChange={(value) => handleInputChange('whatsappCountryCode', value)}
               >
-                <SelectTrigger className="w-32 bg-white border-gray-300 text-black rounded-r-none border-r-0">
+                <SelectTrigger className="w-24 sm:w-32 bg-white border-gray-300 text-black rounded-r-none border-r-0 text-xs sm:text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-white border-gray-300">
                   {COUNTRY_CODES.map((country) => (
-                    <SelectItem key={country.value} value={country.value} className="text-black hover:bg-gray-100">
+                    <SelectItem key={country.value} value={country.value} className="text-black hover:bg-gray-100 text-xs sm:text-sm">
                       {country.label}
                     </SelectItem>
                   ))}
@@ -455,10 +455,10 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
                 placeholder={getPlaceholderForCountryCode(data.whatsappCountryCode || '+61')}
                 value={data.whatsappNumber}
                 onChange={(e) => handleInputChange('whatsappNumber', e.target.value)}
-                className="bg-white border-gray-300 text-black placeholder:text-gray-500 rounded-l-none flex-1"
+                className="bg-white border-gray-300 text-black placeholder:text-gray-500 rounded-l-none flex-1 text-sm"
               />
             </div>
-            <p className="text-sm text-gray-600">
+            <p className="text-xs sm:text-sm text-gray-600">
               This is the number customers will message
             </p>
           </div>
@@ -471,7 +471,7 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
               placeholder="https://www.example.com"
               value={data.websiteUrl || ''}
               onChange={(e) => handleInputChange('websiteUrl', e.target.value)}
-              className="bg-white border-gray-300 text-black placeholder:text-gray-500"
+              className="bg-white border-gray-300 text-black placeholder:text-gray-500 text-sm"
             />
           </div>
         </div>
@@ -485,9 +485,9 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
             placeholder="Create a secure password"
             value={data.password || ''}
             onChange={(e) => handleInputChange('password', e.target.value)}
-            className="bg-white border-gray-300 text-black placeholder:text-gray-500"
+            className="bg-white border-gray-300 text-black placeholder:text-gray-500 text-sm"
           />
-          <p className="text-sm text-gray-600">
+          <p className="text-xs sm:text-sm text-gray-600">
             This will be your login password for the Skedy dashboard
           </p>
         </div>
@@ -502,13 +502,13 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
           value={data.businessAddress}
           onChange={(e) => handleInputChange('businessAddress', e.target.value)}
           rows={3}
-          className="bg-white border-gray-300 text-black placeholder:text-gray-500"
+          className="bg-white border-gray-300 text-black placeholder:text-gray-500 text-sm resize-y"
         />
       </div>
 
       {data.businessCategory && (
-        <div className="mt-6 p-4 bg-green-50 border-2 border-green-200 rounded-lg shadow-sm">
-          <p className="text-sm text-green-800 font-medium">
+        <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-green-50 border-2 border-green-200 rounded-lg shadow-sm">
+          <p className="text-xs sm:text-sm text-green-800 font-medium">
             <strong className="text-green-900">Great choice!</strong> We'll pre-configure your services and settings based on your {data.businessCategory === 'removalist' ? 'removalist' : 'beauty salon'} business type. You can customize everything in the next steps.
           </p>
         </div>

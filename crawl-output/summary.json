@@ -1,8 +1,8 @@
 {
   "processingStats": {
-    "totalUrls": 3,
+    "totalUrls": 1,
     "processedUrls": [
-      "pdf-luisa-faq.pdf"
+      "pdf-business-knowledge-base.pdf"
     ],
     "filteredUrls": [],
     "skippedUrls": [],
@@ -17,23 +17,21 @@
     "totalDocuments": 0,
     "processedDocuments": 0,
     "failedDocuments": 0,
-    "totalEmbeddings": 12,
-    "processedEmbeddings": 12,
+    "totalEmbeddings": 6,
+    "processedEmbeddings": 6,
     "failedEmbeddings": 0,
-    "startTime": 1753278832782,
+    "startTime": 1753371198612,
     "baseOutputPath": "/Users/juanbernal/code/mesieou/2025/simple_booking/crawl-output",
     "domainProcessingSummary": {},
-    "endTime": 1753278854753
+    "endTime": 1753371219728
   },
-  "durationSeconds": 21.971,
+  "durationSeconds": 21.116,
   "allFoundUrls": [
-    "pdf-luisa-faq.pdf#page=1",
-    "pdf-luisa-faq.pdf#page=2",
-    "pdf-luisa-faq.pdf#page=3"
+    "pdf-business-knowledge-base.pdf#page=1"
   ],
   "urlLogs": [
     {
-      "url": "pdf-luisa-faq.pdf",
+      "url": "pdf-business-knowledge-base.pdf",
       "status": "processed",
       "prompt": "",
       "result": ""

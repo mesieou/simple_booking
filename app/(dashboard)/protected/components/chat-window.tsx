@@ -1,6 +1,6 @@
 // This will render the chat window for the selected chat
-import { Conversation } from "./chat-interface";
-import { ChatMessage } from "../../../actions";
+import { Conversation } from "@/types/chat";
+import { ChatMessage } from "@/types/chat";
 import { useEffect, useRef, useState } from "react";
 import InteractiveMessage from "./InteractiveMessage";
 import CustomAudioPlayer from "./CustomAudioPlayer";

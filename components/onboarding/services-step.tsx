@@ -89,8 +89,8 @@ function ServiceCardForm({
 
   return (
     <Card className="bg-white border border-gray-200 shadow-sm hover:shadow-md transition-all">
-      <CardContent className="pt-6 pb-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <CardContent className="p-4 md:p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
           {/* Left: Service Details */}
           <div className="space-y-4">
             <div>
@@ -100,7 +100,7 @@ function ServiceCardForm({
                 value={service.name}
                 onChange={(e) => onChange({ ...service, name: e.target.value })}
                 placeholder="Enter service name"
-                className="bg-gray-50 border border-gray-300 text-gray-900 placeholder:text-gray-400 w-full"
+                className="bg-gray-50 border border-gray-300 text-gray-900 placeholder:text-gray-400 w-full text-sm"
               />
             </div>
             <div>
@@ -110,8 +110,8 @@ function ServiceCardForm({
                 value={service.description}
                 onChange={(e) => onChange({ ...service, description: e.target.value })}
                 placeholder="Describe the service"
-                rows={2}
-                className="bg-gray-50 border border-gray-300 text-gray-900 placeholder:text-gray-400 w-full"
+                rows={4}
+                className="bg-gray-50 border border-gray-300 text-gray-900 placeholder:text-gray-400 w-full text-sm resize-y min-h-[100px]"
               />
             </div>
             <div>
@@ -120,7 +120,7 @@ function ServiceCardForm({
                 value={service.durationEstimate && [60, 90, 120, 150, 180, 240, 300, 360].includes(service.durationEstimate) ? service.durationEstimate.toString() : '60'}
                 onValueChange={(value) => onChange({ ...service, durationEstimate: parseInt(value) })}
               >
-                <SelectTrigger className="bg-gray-50 border-gray-300 text-gray-900 w-full">
+                <SelectTrigger className="bg-gray-50 border-gray-300 text-gray-900 w-full text-sm">
                   <SelectValue placeholder="Select duration" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border-gray-300">
@@ -165,7 +165,7 @@ function ServiceCardForm({
                       const val = e.target.value.replace(/[^0-9.]/g, '');
                       onChange({ ...service, fixedPrice: val === '' ? undefined : parseFloat(val) });
                     }}
-                    className={`bg-gray-50 border text-gray-900 placeholder:text-gray-400 w-full pl-7 ${
+                    className={`bg-gray-50 border text-gray-900 placeholder:text-gray-400 w-full pl-7 text-sm ${
                       service.pricingType === 'fixed' && (!service.fixedPrice || service.fixedPrice <= 0) 
                         ? 'border-red-300 focus:border-red-500' 
                         : 'border-gray-300'
@@ -193,7 +193,7 @@ function ServiceCardForm({
                         const val = e.target.value.replace(/[^0-9.]/g, '');
                         onChange({ ...service, baseCharge: val === '' ? undefined : parseFloat(val) });
                       }}
-                      className="bg-gray-50 border border-gray-300 text-gray-900 placeholder:text-gray-400 w-full pl-7"
+                      className="bg-gray-50 border border-gray-300 text-gray-900 placeholder:text-gray-400 w-full pl-7 text-sm"
                       placeholder="0.00"
                     />
                   </div>
@@ -209,7 +209,7 @@ function ServiceCardForm({
                       pattern="[0-9]*"
                       value={ratePerHourInput}
                       onChange={(e) => handleRatePerHourChange(e.target.value)}
-                      className={`bg-gray-50 border text-gray-900 placeholder:text-gray-400 w-full pl-7 ${
+                      className={`bg-gray-50 border text-gray-900 placeholder:text-gray-400 w-full pl-7 text-sm ${
                         service.pricingType === 'per_minute' && (!service.ratePerMinute || service.ratePerMinute <= 0) 
                           ? 'border-red-300 focus:border-red-500' 
                           : 'border-gray-300'
@@ -239,21 +239,20 @@ function ServiceCardForm({
         </div>
         <div className="flex gap-2 justify-end mt-6">
           {isNew && onCancel && (
-            <Button variant="outline" size="sm" onClick={onCancel}>
+            <Button variant="outline" onClick={onCancel} className="px-3 py-1.5">
               <X className="w-4 h-4 mr-1" />
               Cancel
             </Button>
           )}
           {isNew && onSave && (
-            <Button size="sm" onClick={onSave} disabled={!isServiceValid()}>
+            <Button onClick={onSave} disabled={!isServiceValid()} className="px-3 py-1.5">
               <Check className="w-4 h-4 mr-1" />
               Save
             </Button>
           )}
           {!isNew && onDelete && (
             <Button
-              className="bg-primary text-white hover:bg-primary/90 border-none"
-              size="sm"
+              className="bg-primary text-white hover:bg-primary/90 border-none px-3 py-1.5"
               onClick={onDelete}
               disabled={disableDelete}
             >
@@ -308,19 +307,21 @@ export function ServicesStep({ data, onUpdate, onEditingChange }: ServicesStepPr
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <p className="text-sm text-gray-600">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <p className="text-sm text-gray-600 text-center md:text-left">
           Review and customize your services. These have been pre-configured based on your business type.
         </p>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleAddNew}
-          disabled={isAddingNew}
-        >
-          <Plus className="w-4 h-4 mr-1" />
-          Add Service
-        </Button>
+        <div className="flex justify-center md:justify-end">
+          <Button
+            variant="outline"
+            onClick={handleAddNew}
+            disabled={isAddingNew}
+            className="px-4 py-2"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Service
+          </Button>
+        </div>
       </div>
 
       {/* Add New Service Form */}

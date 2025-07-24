@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Upload, FileText, X, AlertCircle, CheckCircle, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { downloadFaqTemplate } from '@/lib/faq-template-generator';
+import { downloadCustomerTemplate } from '@/lib/knowledge-base/client';
+import { BusinessCategoryType } from '@/lib/config/business-templates';
 
 interface FaqStepProps {
   data: {
@@ -98,84 +99,53 @@ export function FaqStep({ data, onUpdate }: FaqStepProps) {
   }, [onUpdate]);
 
   const handleDownloadTemplate = useCallback(() => {
-    downloadFaqTemplate({
-      businessName: data.businessName,
-      businessType: data.businessCategory,
-    });
+    // Map business category string to BusinessCategoryType
+    let businessCategory: BusinessCategoryType;
+    if (data.businessCategory === 'removalist' || data.businessCategory === 'removalists') {
+      businessCategory = 'removalist';
+    } else if (data.businessCategory === 'salon' || data.businessCategory === 'hair salon' || data.businessCategory === 'beauty salon') {
+      businessCategory = 'salon';
+    } else {
+      businessCategory = 'removalist'; // Default fallback
+    }
+
+    downloadCustomerTemplate(data.businessName || '[Your Business Name]', businessCategory);
   }, [data.businessName, data.businessCategory]);
 
   return (
     <div className="space-y-6">
-      {/* Introduction */}
-      <div className="space-y-2">
-        <p className="text-sm text-gray-600">
-          Upload your FAQ document to help your customers get instant answers to common questions. 
-          This will be used to power your automated customer support system.
-        </p>
-        <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-          <p className="text-sm font-medium text-blue-800">💡 Pro Tip:</p>
-          <p className="text-sm text-blue-700">
-            Include your most frequently asked questions about pricing, services, booking policies, 
-            and contact information for the best customer experience.
-          </p>
-        </div>
-      </div>
-
-      {/* Download Template Section */}
-      <Card className="border border-primary/20 bg-gradient-to-r from-primary/5 to-secondary/5">
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            <Download className="w-5 h-5 text-primary" />
-            Get Started with Our FAQ Template
+      {/* Optional Upload Area */}
+      <Card className="border border-gray-200">
+        <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="text-base sm:text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <FileText className="w-4 sm:w-5 h-4 sm:h-5 text-blue-600" />
+            Additional Q&A (Optional)
           </CardTitle>
-          <CardDescription className="text-gray-700">
-            Download our comprehensive FAQ template to help you create the perfect customer support document
+          <CardDescription className="text-sm sm:text-base text-gray-700">
+            Upload additional questions and answers unique to your business like cancellation policy, special procedures, etc. (Max size: 10MB)
           </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200">
-            <div className="flex-1">
-                             <p className="text-sm font-medium text-gray-900 mb-1">
-                 📋 Complete FAQ Template (.doc)
-               </p>
-               <p className="text-sm text-gray-600">
-                 Microsoft Word document - opens perfectly in Word, Google Docs, etc.
-               </p>
-            </div>
+          <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <p className="text-sm text-gray-600 flex-1">
+              <strong>Need help getting started?</strong> Download our template with sample questions.
+            </p>
             <Button
               onClick={handleDownloadTemplate}
-              className="bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-white shadow-lg"
+              variant="outline"
+              size="sm"
+              className="shrink-0 w-full sm:w-auto"
             >
               <Download className="w-4 h-4 mr-2" />
               Download Template
             </Button>
           </div>
-                     <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-             <p className="text-sm text-amber-800">
-               📝 <strong>How to use:</strong> Download → Open in Microsoft Word → Fill out answers → Save as PDF → Upload here
-             </p>
-           </div>
-        </CardContent>
-      </Card>
-
-      {/* Upload Area */}
-      <Card className="border border-gray-200">
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            <FileText className="w-5 h-5 text-primary" />
-            FAQ Document Upload
-          </CardTitle>
-          <CardDescription className="text-gray-700">
-            Upload a PDF file containing your frequently asked questions (Max size: 10MB)
-          </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 sm:p-6">
           {!data.faqDocument ? (
             <div className="space-y-4">
               {/* Drop Zone */}
               <div
                 className={cn(
-                  "border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer",
+                  "border-2 border-dashed rounded-lg p-4 sm:p-8 text-center transition-colors cursor-pointer",
                   isDragOver 
                     ? "border-primary bg-primary/5" 
                     : "border-gray-300 hover:border-primary/50 hover:bg-gray-50"
@@ -186,14 +156,14 @@ export function FaqStep({ data, onUpdate }: FaqStepProps) {
                 onClick={() => document.getElementById('faq-file-input')?.click()}
               >
                 <Upload className={cn(
-                  "w-12 h-12 mx-auto mb-4",
+                  "w-8 sm:w-12 h-8 sm:h-12 mx-auto mb-3 sm:mb-4",
                   isDragOver ? "text-primary" : "text-gray-400"
                 )} />
-                <div className="space-y-2">
-                  <p className="text-lg font-medium text-gray-900">
+                <div className="space-y-1 sm:space-y-2">
+                  <p className="text-base sm:text-lg font-medium text-gray-900">
                     Drop your FAQ PDF here, or click to browse
                   </p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-xs sm:text-sm text-gray-500">
                     Supports PDF files up to 10MB
                   </p>
                 </div>
@@ -293,4 +263,4 @@ export function FaqStep({ data, onUpdate }: FaqStepProps) {
       </Card>
     </div>
   );
-} 
+}
