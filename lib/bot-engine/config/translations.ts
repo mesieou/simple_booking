@@ -94,84 +94,127 @@ export const BOOKING_TRANSLATIONS = {
       REQUEST_COMPLETED_FALLBACK: 'Your request has been completed.',
       CONTINUING_BOOKING_FALLBACK: 'Continuing with your booking...'
     },
-    TIME_LABELS: {
-      TODAY: 'Today',
-      TOMORROW: 'Tomorrow',
-      AM: 'am',
-      PM: 'pm'
-    },
-    LIST_SECTIONS: {
-      SERVICES: 'Services', // Short title for WhatsApp list (24 char limit)
-      AVAILABLE_OPTIONS: 'Available Options'
-    },
-    QUOTE_SUMMARY: {
-      TITLE: '📋 *{name}, here\'s your Booking Quote Summary*',
-      SERVICE: '💼 *Service:*',
-      SERVICES: '💼 *Services:*',
-      DATE: '📅 *Date:*',
-      TIME: '⏰ *Time:*',
-      DURATION: '⏱️ *Duration:*',
-      ESTIMATED_COMPLETION: '🏁 *Estimated completion:*',
-      LOCATION: '📍 *Location:*',
-      PRICING: '💰 *Pricing:*',
-      SERVICE_COST: '• Service:',
-      SERVICES_COST: '• Total Services:',
-      TRAVEL_COST: '• Travel:',
-      TOTAL_COST: '• *Total:*',
-      QUOTE_ID: 'Quote ID:',
-      CONFIRM_QUESTION: '{name}, would you like to confirm this quote?',
-      MINUTES: 'minutes'
-    },
-    QUOTE_TEMPLATES: {
-      LABELS: {
-        SERVICE_SINGLE: '💼 Service:',
-        SERVICES_MULTIPLE: '💼 Services:',
-        TRAVEL_SHORT: '🚗 Travel'
+    // Reusable message components for scalable templates
+    MESSAGE_COMPONENTS: {
+      JOB_DETAILS: {
+        REMOVALIST: {
+          SERVICE_SINGLE: '🏠 Service: {serviceName}',
+          SERVICE_MULTIPLE: '🏠 Services:',
+          SERVICE_ITEM: '   {index}. {serviceName}',
+          PICKUP_LOCATION: '📦 Pickup: {address}',
+          DROPOFF_LOCATION: '🏁 Delivery: {address}'
+        },
+        MOBILE: {
+          SERVICE_SINGLE: '✨ Service: {serviceName}',
+          SERVICE_MULTIPLE: '✨ Services:',
+          SERVICE_ITEM: '   {index}. {serviceName}',
+          CUSTOMER_ADDRESS: '📍 Service Location: {address}'
+        },
+        NON_MOBILE: {
+          SERVICE_SINGLE: '✨ Service: {serviceName}',
+          SERVICE_MULTIPLE: '✨ Services:',
+          SERVICE_ITEM: '   {index}. {serviceName}',
+          BUSINESS_ADDRESS: '📍 Location: {address}'
+        }
       },
-      FIXED: {
-        PER_MINUTE_LABEL: 'per minute',
-        COSTS_LABEL: 'Costs:',
-        TRAVEL_COST_LABEL: 'Travel Cost',
-        ESTIMATED_LABOUR_LABEL: 'Estimated Labour cost',
-        TOTAL_ESTIMATED_LABEL: 'Total Estimated cost',
-        TOTAL_COST_LABEL: 'Total Cost'
+      BREAKDOWN_DURATIONS: {
+        TRAVEL_TIME: '🚛 Estimated Travel Time: {time}',
+        LABOUR_TIME: '⚡ Estimated Work Time: {time}',
+        TOTAL_DURATION: '⏱️ Total Estimated Duration: {time}'
       },
-      PER_MINUTE: {
-        PER_MINUTE_LABEL: 'per minute',
-        COSTS_LABEL: 'Costs:',
-        TRAVEL_COST_LABEL: 'Travel Cost',
-        ESTIMATED_LABOUR_LABEL: 'Estimated Labour cost',
-        TOTAL_ESTIMATED_LABEL: 'Total Estimated cost',
-        TOTAL_COST_LABEL: 'Total Cost'
+      BREAKDOWN_COSTS: {
+        PER_MINUTE: {
+          LABOUR_COST: '💪 Estimated Work Cost: ${cost}',
+          TRAVEL_COST: '🚛 Estimated Travel Cost: ${cost}',
+          TOTAL_COST: '💰 Estimated Total Cost: ${cost}'
+        },
+        FIXED_PRICE: {
+          TOTAL_COST: '💰 Total Cost: ${cost}'
+        }
+      },
+      DATE_TIME: {
+        DATE: '📅 Date: {date}',
+        TIME: '⏰ Time: {time}',
+        DURATION: ' ({duration})',
+        ESTIMATED_COMPLETION: '🏁 Estimated completion: {time}'
+      },
+      PAYMENT_BREAKDOWN: {
+        TITLE: '💳 *Payment Breakdown*',
+        TOTAL_COST: '• Total Cost: ${amount}',
+        ESTIMATED_TOTAL_COST: '• Estimated Total Cost: ${amount}',
+        DEPOSIT: '• Deposit ({percentage}%): ${amount}',
+        BOOKING_FEE: '• Booking Fee: ${amount}',
+        REMAINING_BALANCE: '• Remaining Balance: ${amount}',
+        ESTIMATED_REMAINING_BALANCE: '• Estimated Remaining Balance: ${amount}',
+        PAYMENT_METHOD: '• Payment Method: {method}',
+        PAY_NOW: '• *Total to Pay Now: ${amount}*',
+        PAY_AT_SERVICE: '💳 Pay at service ({method})',
+        PAY_AFTER_JOB: '💳 Pay after job completion ({method})'
       }
     },
-    BOOKING_CONFIRMATION: {
-      TITLE: '🎉 {name}, your booking is confirmed!',
-      SERVICE: '💼 Service:',
-      SERVICES: '💼 Services:',
-      DATE: '📅 Date:',
-      TIME: '⏰ Time:',
-      LOCATION: '📍 Location:',
-      PRICING: '💰 *Pricing:*',
-      SERVICE_COST: '• Service:',
-      SERVICES_COST: '• Total Services:',
-      TRAVEL_COST: '• Travel:',
-      TOTAL_COST: '• *Total Cost:*',
-      PAYMENT_DETAILS: '💳 *Payment Summary:*',
-      AMOUNT_PAID: '• Paid:',
-      AMOUNT_OWED: '• Balance Due:',
-      PAYMENT_METHOD: '• Payment Method:',
-      CONTACT_INFO: '📞 *Contact Information:*',
-      ARRIVAL_INSTRUCTIONS: '🗺️ *{name}, how to arrive:*',
-      MOBILE_INSTRUCTIONS: '{name}, we will arrive at your location at the scheduled time. Please ensure someone is available to receive our service.',
-      SALON_INSTRUCTIONS: '{name}, please arrive 5-10 minutes early to find parking and locate our business. Once you arrive, please contact us to let us know you\'re here. If you need directions or have any questions, feel free to reach out!',
-      BOOKING_ID: '📄 Booking ID:',
-      LOOKING_FORWARD: '{name}, we look forward to seeing you! You can ask me anything else if you have more questions.'
+    // Business-specific payment templates
+    PAYMENT_TEMPLATES: {
+      REMOVALIST: {
+        READY_TO_BOOK: '🚛 *Ready to Secure Your Move!*',
+        INTRO: 'To secure your moving appointment, please complete your booking deposit payment:',
+        PAYMENT_LINK_TITLE: '🔗 *Payment Link:*',
+        REDIRECT_INFO: 'After payment, you\'ll be redirected back to WhatsApp and your move will be confirmed automatically!',
+        SECURITY_LINE: '✅ Safe & secure payment powered by Stripe',
+        BUSINESS_LINE: '🔒 Your payment goes directly to {businessName}'
+      },
+      SALON: {
+        READY_TO_BOOK: '💳 *Ready to Book!*',
+        INTRO: 'To secure your appointment, please complete your booking deposit payment:',
+        PAYMENT_LINK_TITLE: '🔗 *Payment Link:*',
+        REDIRECT_INFO: 'After payment, you\'ll be redirected back to WhatsApp and your booking will be confirmed automatically!',
+        SECURITY_LINE: '✅ Safe & secure payment powered by Stripe',
+        BUSINESS_LINE: '🔒 Your payment goes directly to {businessName}'
+      }
+    },
+    // Business-specific confirmation templates  
+    CONFIRMATION_TEMPLATES: {
+      REMOVALIST: {
+        TITLE: '🚛 {name}, your move is confirmed!',
+        PAYMENT_THANKS: '💳 Thank you for your payment!',
+        ARRIVAL_INSTRUCTIONS: '🗺️ *{name}, what to expect:*',
+        MOBILE_INSTRUCTIONS: '{name}, our moving team will arrive at your pickup location at the scheduled time. Please ensure someone is available to provide access and oversee the move.',
+        ESTIMATE_NOTICE: 'Note: Final costs may vary based on actual time and materials used during your move.',
+        LOOKING_FORWARD: '{name}, we look forward to helping you with your move! You can ask me anything else if you have questions.'
+      },
+      SALON: {
+        TITLE: '💄 {name}, your appointment is confirmed!',
+        PAYMENT_THANKS: '💳 Thank you for your payment!',
+        ARRIVAL_INSTRUCTIONS: '🗺️ *{name}, how to arrive:*',
+        MOBILE_INSTRUCTIONS: '{name}, we will arrive at your location at the scheduled time. Please ensure someone is available to receive our service.',
+        SALON_INSTRUCTIONS: '{name}, please arrive 5-10 minutes early to find parking and locate our business. Once you arrive, please contact us to let us know you\'re here. If you need directions or have any questions, feel free to reach out!',
+        ESTIMATE_NOTICE: 'Note: Final costs may vary based on actual services provided during your appointment.',
+        LOOKING_FORWARD: '{name}, we look forward to seeing you! You can ask me anything else if you have more questions.'
+      }
+    },
+    // Composed message templates using components
+    QUOTE_TEMPLATES: {
+      TITLE: '📋 *Quote Summary*',
+      CONFIRM_WITH_DEPOSIT: 'Ready to secure your booking',
+      CONFIRM_NO_DEPOSIT: '✅ Would you like to confirm this quote?',
+      QUOTE_ID: '📄 Quote ID: {id}'
     },
     ESCALATION: {
       USER_RESPONSE: "Your request has been sent to our team. Someone will contact you shortly via WhatsApp.",
       FRUSTRATION_DETECTED: "I apologize for any inconvenience. It seems you're having some difficulty with our automated system. A member of our staff will contact you shortly to assist you personally.",
       MEDIA_REDIRECT_RESPONSE: "I cannot process media files (images, videos, documents, audios) at the moment. I'm connecting you with a staff member who will review your content and assist you shortly. Please wait to be attended."
+    },
+
+    TIME_LABELS: {
+      TODAY: 'Today',
+      TOMORROW: 'Tomorrow',
+      AM: 'AM',
+      PM: 'PM'
+    },
+
+    BOOKING_CONFIRMATION: {
+      CONTACT_INFO: '📞 Contact Information:',
+      BOOKING_ID: '📄 Booking ID:',
+      SALON_INSTRUCTIONS: 'Please arrive 5-10 minutes early to find parking and locate our business. Once you arrive, please contact us to let us know you\'re here. If you need directions or have any questions, feel free to reach out!'
     }
   },
   es: {
@@ -269,84 +312,148 @@ export const BOOKING_TRANSLATIONS = {
       REQUEST_COMPLETED_FALLBACK: 'Tu solicitud ha sido completada.',
       CONTINUING_BOOKING_FALLBACK: 'Continuando con tu reserva...'
     },
-    TIME_LABELS: {
-      TODAY: 'Hoy',
-      TOMORROW: 'Mañana',
-      AM: 'am',
-      PM: 'pm'
-    },
-    LIST_SECTIONS: {
-      SERVICES: 'Servicios',
-      AVAILABLE_OPTIONS: 'Opciones Disponibles'
-    },
-    QUOTE_SUMMARY: {
-      TITLE: '📋 *{name}, aquí está tu Resumen de Cotización de Reserva*',
-      SERVICE: '💼 *Servicio:*',
-      SERVICES: '💼 *Servicios:*',
-      DATE: '📅 *Fecha:*',
-      TIME: '⏰ *Hora:*',
-      DURATION: '⏱️ *Duración:*',
-      ESTIMATED_COMPLETION: '🏁 *Finalización estimada:*',
-      LOCATION: '📍 *Ubicación:*',
-      PRICING: '💰 *Precios:*',
-      SERVICE_COST: '• Servicio:',
-      SERVICES_COST: '• Total Servicios:',
-      TRAVEL_COST: '• Viaje:',
-      TOTAL_COST: '• *Total:*',
-      QUOTE_ID: 'ID de Cotización:',
-      CONFIRM_QUESTION: '{name}, ¿te gustaría confirmar esta cotización?',
-      MINUTES: 'minutos'
-    },
-    QUOTE_TEMPLATES: {
-      LABELS: {
-        SERVICE_SINGLE: '💼 Servicio:',
-        SERVICES_MULTIPLE: '💼 Servicios:',
-        TRAVEL_SHORT: '🚗 Viaje'
+    // Reusable message components for scalable templates
+    MESSAGE_COMPONENTS: {
+      JOB_DETAILS: {
+        REMOVALIST: {
+          SERVICE_SINGLE: '🏠 Servicio: {serviceName}',
+          SERVICE_MULTIPLE: '🏠 Servicios:',
+          SERVICE_ITEM: '   {index}. {serviceName}',
+          PICKUP_LOCATION: '📦 Recogida: {address}',
+          DROPOFF_LOCATION: '🏁 Entrega: {address}'
+        },
+        MOBILE: {
+          SERVICE_SINGLE: '✨ Servicio: {serviceName}',
+          SERVICE_MULTIPLE: '✨ Servicios:',
+          SERVICE_ITEM: '   {index}. {serviceName}',
+          CUSTOMER_ADDRESS: '📍 Ubicación del Servicio: {address}'
+        },
+        NON_MOBILE: {
+          SERVICE_SINGLE: '✨ Servicio: {serviceName}',
+          SERVICE_MULTIPLE: '✨ Servicios:',
+          SERVICE_ITEM: '   {index}. {serviceName}',
+          BUSINESS_ADDRESS: '📍 Ubicación: {address}'
+        }
       },
-      FIXED: {
-        PER_MINUTE_LABEL: 'por minuto',
-        COSTS_LABEL: 'Costos:',
-        TRAVEL_COST_LABEL: 'Costo de Viaje',
-        ESTIMATED_LABOUR_LABEL: 'Costo Estimado de Mano de Obra',
-        TOTAL_ESTIMATED_LABEL: 'Costo Total Estimado',
-        TOTAL_COST_LABEL: 'Costo Total'
+      BREAKDOWN_DURATIONS: {
+        TRAVEL_TIME: '🚛 Tiempo Estimado de Viaje: {time}',
+        LABOUR_TIME: '⚡ Tiempo Estimado de Trabajo: {time}',
+        TOTAL_DURATION: '⏱️ Duración Total Estimada: {time}'
       },
-      PER_MINUTE: {
-        PER_MINUTE_LABEL: 'por minuto',
-        COSTS_LABEL: 'Costos:',
-        TRAVEL_COST_LABEL: 'Costo de Viaje',
-        ESTIMATED_LABOUR_LABEL: 'Costo Estimado de Mano de Obra',
-        TOTAL_ESTIMATED_LABEL: 'Costo Total Estimado',
-        TOTAL_COST_LABEL: 'Costo Total'
+      BREAKDOWN_COSTS: {
+        PER_MINUTE: {
+          LABOUR_COST: '💪 Costo Estimado de Trabajo: ${cost}',
+          TRAVEL_COST: '🚛 Costo Estimado de Viaje: ${cost}',
+          TOTAL_COST: '💰 Costo Total Estimado: ${cost}'
+        },
+        FIXED_PRICE: {
+          TOTAL_COST: '💰 Costo Total: ${cost}'
+        }
+      },
+      DATE_TIME: {
+        DATE: '📅 Fecha: {date}',
+        TIME: '⏰ Hora: {time}',
+        DURATION: '({duration})',
+        ESTIMATED_COMPLETION: '🏁 Finalización estimada: {time}'
+      },
+      PAYMENT_BREAKDOWN: {
+        TITLE: '💳 *Desglose de Pago*',
+        TOTAL_COST: '• Costo Total: ${amount}',
+        ESTIMATED_TOTAL_COST: '• Costo Total Estimado: ${amount}',
+        DEPOSIT: '• Depósito ({percentage}%): ${amount}',
+        BOOKING_FEE: '• Tarifa de Reserva: ${amount}',
+        REMAINING_BALANCE: '• Saldo Restante: ${amount}',
+        ESTIMATED_REMAINING_BALANCE: '• Saldo Restante Estimado: ${amount}',
+        PAYMENT_METHOD: '• Método de Pago: {method}',
+        PAY_NOW: '• *Total a Pagar Ahora: ${amount}*',
+        PAY_AT_SERVICE: '💳 Pagar en el servicio ({method})',
+        PAY_AFTER_JOB: '💳 Pagar después de completar el trabajo ({method})'
       }
     },
-    BOOKING_CONFIRMATION: {
-      TITLE: '🎉 ¡{name}, tu reserva está confirmada!',
-      SERVICE: '💼 Servicio:',
-      SERVICES: '💼 Servicios:',
-      DATE: '📅 Fecha:',
-      TIME: '⏰ Hora:',
-      LOCATION: '📍 Ubicación:',
-      PRICING: '💰 *Precios:*',
-      SERVICE_COST: '• Servicio:',
-      SERVICES_COST: '• Total Servicios:',
-      TRAVEL_COST: '• Viaje:',
-      TOTAL_COST: '• *Costo Total:*',
-      PAYMENT_DETAILS: '💳 *Resumen de Pago:*',
-      AMOUNT_PAID: '• Pagado:',
-      AMOUNT_OWED: '• Saldo Pendiente:',
-      PAYMENT_METHOD: '• Método de Pago:',
-      CONTACT_INFO: '📞 *Información de Contacto:*',
-      ARRIVAL_INSTRUCTIONS: '🗺️ *{name}, cómo llegar:*',
-      MOBILE_INSTRUCTIONS: '{name}, llegaremos a tu ubicación a la hora programada. Por favor asegúrate de que alguien esté disponible para recibir nuestro servicio.',
-      SALON_INSTRUCTIONS: '{name}, por favor llega 5-10 minutos antes para encontrar estacionamiento y ubicar nuestro negocio. Una vez que llegues, contáctanos para que sepamos que estás aquí. Si necesitas indicaciones o tienes preguntas, ¡no dudes en comunicarte!',
-      BOOKING_ID: '📄 ID de Reserva:',
-      LOOKING_FORWARD: '¡{name}, esperamos verte! Puedes preguntarme cualquier otra cosa si tienes más preguntas.'
+    // Business-specific payment templates
+    PAYMENT_TEMPLATES: {
+      REMOVALIST: {
+        READY_TO_BOOK: '🚛 *¡Listo para Asegurar tu Mudanza!*',
+        INTRO: 'Para asegurar tu cita de mudanza, por favor completa el pago del depósito de reserva:',
+        PAYMENT_BREAKDOWN_TITLE: '💰 *Desglose del Pago:*',
+        SERVICE_TOTAL: '• Total del servicio de mudanza: ${serviceTotal}',
+        DEPOSIT_NOW: '• Depósito (ahora): ${depositAmount}',
+        BOOKING_FEE: '• Tarifa de reserva: ${amount}',
+        TOTAL_PAY_NOW: '• *Total a pagar ahora: ${totalAmount}*',
+        REMAINING_BALANCE: '📍 *Balance Restante Estimado: ${remainingBalance}*',
+        PAY_AT_JOB: '💳 Pagar después de completar el trabajo ({paymentMethod})',
+        PAYMENT_LINK_TITLE: '🔗 *Enlace de Pago:*',
+        REDIRECT_INFO: '¡Después del pago, serás redirigido de vuelta a WhatsApp y tu mudanza será confirmada automáticamente!',
+        SECURITY_LINE: '✅ Pago seguro y protegido por Stripe',
+        BUSINESS_LINE: '🔒 Tu pago va directamente a {businessName}'
+      },
+      SALON: {
+        READY_TO_BOOK: '💳 *¡Listo para Reservar!*',
+        INTRO: 'Para asegurar tu cita, por favor completa el pago del depósito de reserva:',
+        PAYMENT_BREAKDOWN_TITLE: '💰 *Desglose del Pago:*',
+        SERVICE_TOTAL: '• Servicio total: ${serviceTotal}',
+        DEPOSIT_NOW: '• Depósito (ahora): ${depositAmount}',
+        BOOKING_FEE: '• Tarifa de reserva: ${amount}',
+        TOTAL_PAY_NOW: '• *Total a pagar ahora: ${totalAmount}*',
+        REMAINING_BALANCE: '📍 *Saldo restante: ${remainingBalance}*',
+        PAY_AT_APPOINTMENT: '💳 A pagar en la cita ({paymentMethod})',
+        PAYMENT_LINK_TITLE: '🔗 *Enlace de Pago:*',
+        REDIRECT_INFO: '¡Después del pago, serás redirigido de vuelta a WhatsApp y tu reserva será confirmada automáticamente!',
+        SECURITY_LINE: '✅ Pago seguro y protegido por Stripe',
+        BUSINESS_LINE: '🔒 Tu pago va directamente a {businessName}'
+      }
+    },
+    // Business-specific confirmation templates  
+    CONFIRMATION_TEMPLATES: {
+      REMOVALIST: {
+        TITLE: '🚛 ¡{name}, tu mudanza está confirmada!',
+        PAYMENT_THANKS: '💳 ¡Gracias por tu pago!',
+        SERVICE_LABEL: '📦 Servicio de Mudanza:',
+        SERVICES_LABEL: '📦 Servicios de Mudanza:',
+        PICKUP_LABEL: '📦 Lugar de Recogida:',
+        DROPOFF_LABEL: '🏁 Lugar de Entrega:',
+        ARRIVAL_INSTRUCTIONS: '🗺️ *{name}, qué esperar:*',
+        MOBILE_INSTRUCTIONS: '{name}, nuestro equipo de mudanza llegará a tu lugar de recogida a la hora programada. Por favor asegúrate de que alguien esté disponible para proporcionar acceso y supervisar la mudanza.',
+        ESTIMATE_NOTICE: 'Nota: Los costos finales pueden variar según el tiempo real y los materiales utilizados durante tu mudanza.',
+        LOOKING_FORWARD: '¡{name}, esperamos ayudarte con tu mudanza! Puedes preguntarme cualquier otra cosa si tienes preguntas.'
+      },
+      SALON: {
+        TITLE: '💄 ¡{name}, tu cita está confirmada!',
+        PAYMENT_THANKS: '💳 ¡Gracias por tu pago!',
+        SERVICE_LABEL: '✨ Servicio:',
+        SERVICES_LABEL: '✨ Servicios:',
+        LOCATION_LABEL: '📍 Ubicación:',
+        ARRIVAL_INSTRUCTIONS: '🗺️ *{name}, cómo llegar:*',
+        MOBILE_INSTRUCTIONS: '{name}, llegaremos a tu ubicación a la hora programada. Por favor asegúrate de que alguien esté disponible para recibir nuestro servicio.',
+        SALON_INSTRUCTIONS: '{name}, por favor llega 5-10 minutos antes para encontrar estacionamiento y ubicar nuestro negocio. Una vez que llegues, contáctanos para que sepamos que estás aquí. Si necesitas indicaciones o tienes preguntas, ¡no dudes en comunicarte!',
+        ESTIMATE_NOTICE: 'Nota: Los costos finales pueden variar según los servicios reales proporcionados durante tu cita.',
+        LOOKING_FORWARD: '¡{name}, esperamos verte! Puedes preguntarme cualquier otra cosa si tienes más preguntas.'
+      }
+    },
+    // Composed message templates using components
+    QUOTE_TEMPLATES: {
+      TITLE: '📋 *Resumen de Cotización*',
+      CONFIRM_WITH_DEPOSIT: 'Listo para asegurar tu mudanza',
+      CONFIRM_NO_DEPOSIT: '✅ ¿Te gustaría confirmar esta cotización?',
+      QUOTE_ID: '📄 ID de Cotización: {id}'
     },
     ESCALATION: {
       USER_RESPONSE: "Tu solicitud ha sido enviada a nuestro equipo. Alguien se pondrá en contacto contigo en breve a través de WhatsApp.",
       FRUSTRATION_DETECTED: "Disculpe las molestias. Parece que está teniendo algunas complicaciones con nuestro sistema automatizado. Pronto un miembro de nuestro personal se comunicará con usted para asistirle personalmente.",
       MEDIA_REDIRECT_RESPONSE: "No puedo procesar archivos multimedia (imágenes, videos, documentos, audios) en este momento. Te estoy conectando con un miembro del personal que revisará tu contenido y te asistirá en breve. Por favor espera a ser atendido."
+    },
+
+    TIME_LABELS: {
+      TODAY: 'Hoy',
+      TOMORROW: 'Mañana',
+      AM: 'AM',
+      PM: 'PM'
+    },
+
+    BOOKING_CONFIRMATION: {
+      CONTACT_INFO: '📞 Información de Contacto:',
+      BOOKING_ID: '📄 ID de Reserva:',
+      SALON_INSTRUCTIONS: 'Por favor llega 5-10 minutos antes para encontrar estacionamiento y ubicar nuestro negocio. Una vez que llegues, contáctanos para que sepamos que estás aquí. Si necesitas indicaciones o tienes preguntas, ¡no dudes en comunicarte!'
     }
   }
 } as const; 

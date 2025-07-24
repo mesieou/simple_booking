@@ -15,14 +15,17 @@ export async function updateDayAggregatedAvailability(
 ): Promise<AvailabilitySlots | null> {
   try {
     // Get existing availability for this business and date
+    const dateStr = date.toISOString().split('T')[0];
+    console.log(`[updateDayAggregatedAvailability] Looking for availability on date: ${dateStr} for business: ${businessId}`);
+    
     const existingAvailability = await AvailabilitySlots.getByBusinessAndDate(
       businessId, 
-      date.toISOString().split('T')[0],
+      dateStr,
       options
     );
     
     if (!existingAvailability) {
-      console.log(`[updateDayAggregatedAvailability] No existing availability found for ${date.toISOString().split('T')[0]}`);
+      console.error(`[updateDayAggregatedAvailability] CRITICAL: No existing availability found for ${dateStr} - availability cannot be updated!`);
       return null;
     }
 
@@ -63,6 +66,10 @@ export async function updateDayAggregatedAvailability(
     
     console.log(`[updateDayAggregatedAvailability] Updated ${slotsAffected} slot intervals`);
     
+    if (slotsAffected === 0) {
+      console.warn(`[updateDayAggregatedAvailability] WARNING: No slots were affected by booking ${bookingStart.toFormat('yyyy-MM-dd HH:mm')} - check if booking time overlaps with available slots`);
+    }
+    
     // Update the database with the new availability
     const updateData = {
       businessId: updatedAvailability.businessId,
@@ -70,12 +77,15 @@ export async function updateDayAggregatedAvailability(
       slots: updatedAvailability.slots
     };
     
-    return await AvailabilitySlots.update(
+    const updatedSlot = await AvailabilitySlots.update(
       businessId,
-      date.toISOString().split('T')[0],
+      dateStr,
       updateData,
       options
     );
+    
+    console.log(`[updateDayAggregatedAvailability] Successfully updated availability slot for ${dateStr}`);
+    return updatedSlot;
     
   } catch (error) {
     console.error('[updateDayAggregatedAvailability] Error updating availability:', error);

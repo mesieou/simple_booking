@@ -73,7 +73,8 @@ export class StripePaymentService {
       }
 
       const depositAmountCents = Math.round(data.depositAmount * 100);
-      const totalAmountCents = depositAmountCents + this.SKEDY_BOOKING_FEE;
+      const businessBookingFeeCents = Math.round((business.bookingFee || 0) * 100);
+      const totalAmountCents = depositAmountCents + businessBookingFeeCents + this.SKEDY_BOOKING_FEE;
 
       // Create a price first, then use it in the payment link
       const price = await getStripe().prices.create({
@@ -164,7 +165,8 @@ export class StripePaymentService {
         };
       }
       
-      const totalAmount = depositAmount + 4; // Add 4 AUD Skedy fee
+      const businessBookingFee = business.bookingFee || 0;
+      const totalAmount = depositAmount + businessBookingFee + 4; // Add business booking fee + 4 AUD Skedy fee
 
       // Create service description for payment
       const serviceDescription = quote.isMultiService() 

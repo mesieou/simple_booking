@@ -27,6 +27,7 @@ export interface BusinessData {
     createdAt?: string;
     updatedAt?: string;
     depositPercentage?: number;
+    bookingFee?: number; // Booking fee in dollars (e.g., 4.00)
     stripeConnectAccountId?: string;
     stripeAccountStatus?: 'pending' | 'active' | 'disabled';
     preferredPaymentMethod?: string;
@@ -43,6 +44,7 @@ export class Business {
         if (!['whatsapp', 'website'].includes(data.interfaceType)) handleModelError("Interface type must be 'whatsapp' or 'website'", new Error("Invalid interfaceType"));
         if (data.interfaceType === 'whatsapp' && !data.whatsappNumber) handleModelError("Whatsapp number is required if interface type is 'whatsapp'", new Error("Missing whatsappNumber"));
         if (data.depositPercentage !== undefined && (data.depositPercentage < 0 || data.depositPercentage > 100)) handleModelError("Deposit percentage must be between 0 and 100", new Error("Invalid depositPercentage"));
+        if (data.bookingFee !== undefined && (data.bookingFee < 0)) handleModelError("Booking fee must be non-negative", new Error("Invalid bookingFee"));
         if (data.businessCategory && !VALID_BUSINESS_CATEGORIES.includes(data.businessCategory)) {
             handleModelError(`businessCategory must be one of: ${VALID_BUSINESS_CATEGORIES.join(', ')}`, new Error("Invalid businessCategory"));
         }
@@ -75,6 +77,7 @@ export class Business {
             "whatsappPhoneNumberId": this.data.whatsappPhoneNumberId,
             "businessAddress": this.data.businessAddress,
             "depositPercentage": this.data.depositPercentage,
+            "bookingFee": this.data.bookingFee,
             "stripeConnectAccountId": this.data.stripeConnectAccountId,
             "stripeAccountStatus": this.data.stripeAccountStatus,
             "preferredPaymentMethod": this.data.preferredPaymentMethod,
@@ -196,6 +199,7 @@ export class Business {
             "whatsappPhoneNumberId": businessData.whatsappPhoneNumberId,
             "businessAddress": businessData.businessAddress,
             "depositPercentage": businessData.depositPercentage,
+            "bookingFee": businessData.bookingFee,
             "stripeConnectAccountId": businessData.stripeConnectAccountId,
             "stripeAccountStatus": businessData.stripeAccountStatus,
             "preferredPaymentMethod": businessData.preferredPaymentMethod,
@@ -252,6 +256,7 @@ export class Business {
     get whatsappPhoneNumberId(): string | undefined { return this.data.whatsappPhoneNumberId; }
     get businessAddress(): string | undefined { return this.data.businessAddress; }
     get depositPercentage(): number | undefined { return this.data.depositPercentage; }
+    get bookingFee(): number | undefined { return this.data.bookingFee; }
     get stripeConnectAccountId(): string | undefined { return this.data.stripeConnectAccountId; }
     get stripeAccountStatus(): 'pending' | 'active' | 'disabled' | undefined { return this.data.stripeAccountStatus; }
         get preferredPaymentMethod(): string | undefined { return this.data.preferredPaymentMethod; }

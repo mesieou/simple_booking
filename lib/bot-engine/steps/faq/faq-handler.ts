@@ -526,18 +526,6 @@ async function generateContextAwareFAQResponse(
         servicesText = singleService.name || singleService;
       }
       
-      // Create booking context message
-      let bookingContextMessage = '';
-      if (servicesText) {
-        bookingContextMessage = userLanguage === 'es' 
-          ? `\n\n📋 Estás reservando *${servicesText}* y actualmente estás ${currentStepDisplay}. Para continuar, selecciona una de las opciones a continuación:`
-          : `\n\n📋 You are booking *${servicesText}* and currently ${currentStepDisplay}. To continue, select from the options below:`;
-      } else {
-        bookingContextMessage = userLanguage === 'es' 
-          ? `\n\n📋 Actualmente estás ${currentStepDisplay}. Para continuar, selecciona una de las opciones a continuación:`
-          : `\n\n📋 You are currently ${currentStepDisplay}. To continue, select from the options below:`;
-      }
-      
       // Get current step buttons
       let stepButtons: any[] = [];
       if (currentStepHandler.fixedUiButtons) {
@@ -555,7 +543,31 @@ async function generateContextAwareFAQResponse(
         buttonType: "postback" as const,
         buttonDescription: button.description || button.buttonDescription || button.desc || '',
       }));
-      
+
+      // Create booking context message, but only include 'To continue, select from the options below:' if there are buttons
+      let bookingContextMessage = '';
+      if (servicesText) {
+        if (formattedButtons.length > 0) {
+          bookingContextMessage = userLanguage === 'es'
+            ? `\n\n📋 Estás reservando *${servicesText}* y actualmente estás ${currentStepDisplay}. Para continuar, selecciona una de las opciones a continuación:`
+            : `\n\n📋 You are booking *${servicesText}* and currently ${currentStepDisplay}. To continue, select from the options below:`;
+        } else {
+          bookingContextMessage = userLanguage === 'es'
+            ? `\n\n📋 Estás reservando *${servicesText}* y actualmente estás ${currentStepDisplay}. Por favor responde con la información solicitada para continuar.`
+            : `\n\n📋 You are booking *${servicesText}* and currently ${currentStepDisplay}. Please reply with the requested information to continue.`;
+        }
+      } else {
+        if (formattedButtons.length > 0) {
+          bookingContextMessage = userLanguage === 'es'
+            ? `\n\n📋 Actualmente estás ${currentStepDisplay}. Para continuar, selecciona una de las opciones a continuación:`
+            : `\n\n📋 You are currently ${currentStepDisplay}. To continue, select from the options below:`;
+        } else {
+          bookingContextMessage = userLanguage === 'es'
+            ? `\n\n📋 Actualmente estás ${currentStepDisplay}. Por favor responde con la información solicitada para continuar.`
+            : `\n\n📋 You are currently ${currentStepDisplay}. Please reply with the requested information to continue.`;
+        }
+      }
+
       return {
         text: faqAnswerText + bookingContextMessage,
         buttons: formattedButtons.length > 0 ? formattedButtons : undefined

@@ -11,7 +11,6 @@ import {
   TestBusiness,
   expectAvailabilitySlots
 } from '../helpers/availability-test-factory';
-import { DateTime } from 'luxon';
 
 describe('Multi Business Booking Impact', () => {
   let businessA: TestBusiness;
@@ -47,16 +46,29 @@ describe('Multi Business Booking Impact', () => {
 
   it('should_only_affect_target_business_when_booking_created', async () => {
     const today = new Date();
-    const testDate = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+    let testDate = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+    while (testDate.getDay() === 0 || testDate.getDay() === 6) { // Skip weekends
+      testDate = new Date(testDate.getTime() + 24 * 60 * 60 * 1000);
+    }
     
     // Generate initial availability for all businesses
     const initialResults = await Promise.all([
-      computeAggregatedAvailability(businessA.business.id, testDate, 1),
-      computeAggregatedAvailability(businessB.business.id, testDate, 1),
-      computeAggregatedAvailability(businessC.business.id, testDate, 1)
+      computeAggregatedAvailability(businessA.business.id!, testDate, 1),
+      computeAggregatedAvailability(businessB.business.id!, testDate, 1),
+      computeAggregatedAvailability(businessC.business.id!, testDate, 1)
     ]);
 
     const [businessA_initial, businessB_initial, businessC_initial] = initialResults;
+    
+    // Save availability to database so booking updates can find it
+    await Promise.all([
+      ...businessA_initial.map(slot => slot.add()),
+      ...businessB_initial.map(slot => slot.add()),
+      ...businessC_initial.map(slot => slot.add())
+    ]);
+    
+    // Wait for database commit to avoid race condition
+    await new Promise(resolve => setTimeout(resolve, 100));
     
     expect(businessA_initial.length).toBeGreaterThan(0);
     expect(businessB_initial.length).toBeGreaterThan(0);
@@ -79,10 +91,11 @@ describe('Multi Business Booking Impact', () => {
 
     // Create booking only for Business A
     // Create booking in Sydney timezone (matching the business timezone)
-    const bookingDateTime = DateTime.fromISO(`${businessA_initial[0].date}T10:00:00`, { zone: 'Australia/Sydney' }).toJSDate();
+    const dateOnly = businessA_initial[0].date.split('T')[0]; // Extract date part
+    const bookingDateTime = DateTime.fromISO(`${dateOnly}T10:00:00`, { zone: 'Australia/Sydney' }).toJSDate();
     const { booking, quote } = await createTestBooking(
-      businessA.providers[0].id,
-      businessA.business.id,
+      businessA.providers[0].id!,
+      businessA.business.id!,
       businessA.services[0].id,
       bookingDateTime,
       120 // 2 hours
@@ -92,9 +105,9 @@ describe('Multi Business Booking Impact', () => {
 
     // Recalculate availability for all businesses
     const afterResults = await Promise.all([
-      computeAggregatedAvailability(businessA.business.id, testDate, 1),
-      computeAggregatedAvailability(businessB.business.id, testDate, 1),
-      computeAggregatedAvailability(businessC.business.id, testDate, 1)
+      computeAggregatedAvailability(businessA.business.id!, testDate, 1),
+      computeAggregatedAvailability(businessB.business.id!, testDate, 1),
+      computeAggregatedAvailability(businessC.business.id!, testDate, 1)
     ]);
 
     const [businessA_after, businessB_after, businessC_after] = afterResults;
@@ -113,14 +126,17 @@ describe('Multi Business Booking Impact', () => {
     expect(businessC_afterCount).toBe(businessC_initialCount);
 
     // Verify business IDs remain isolated
-    businessA_after.forEach(slot => expect(slot.businessId).toBe(businessA.business.id));
-    businessB_after.forEach(slot => expect(slot.businessId).toBe(businessB.business.id));
-    businessC_after.forEach(slot => expect(slot.businessId).toBe(businessC.business.id));
+    businessA_after.forEach(slot => expect(slot.businessId).toBe(businessA.business.id!));
+    businessB_after.forEach(slot => expect(slot.businessId).toBe(businessB.business.id!));
+    businessC_after.forEach(slot => expect(slot.businessId).toBe(businessC.business.id!));
   });
 
   it('should_handle_simultaneous_bookings_across_businesses', async () => {
     const today = new Date();
-    const testDate = new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000);
+    let testDate = new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000);
+    while (testDate.getDay() === 0 || testDate.getDay() === 6) { // Skip weekends
+      testDate = new Date(testDate.getTime() + 24 * 60 * 60 * 1000);
+    }
     
     // Generate initial availability for all businesses
     const initialResults = await Promise.all([
@@ -130,9 +146,25 @@ describe('Multi Business Booking Impact', () => {
     ]);
 
     const [businessA_initial, businessB_initial, businessC_initial] = initialResults;
+    
+    // Save availability to database so booking updates can find it
+    await Promise.all([
+      ...businessA_initial.map(slot => slot.add()),
+      ...businessB_initial.map(slot => slot.add()),
+      ...businessC_initial.map(slot => slot.add())
+    ]);
+    
+    // Wait for database commit to avoid race condition
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Ensure we have availability before proceeding
+    expect(businessA_initial.length).toBeGreaterThan(0);
+    expect(businessB_initial.length).toBeGreaterThan(0);
+    expect(businessC_initial.length).toBeGreaterThan(0);
 
     // Create simultaneous bookings for all businesses at the same time
-    const bookingDateTime = DateTime.fromISO(`${businessA_initial[0].date}T14:00:00`, { zone: 'Australia/Sydney' }).toJSDate();
+    const dateOnly = businessA_initial[0].date.split('T')[0]; // Extract date part
+    const bookingDateTime = DateTime.fromISO(`${dateOnly}T14:00:00`, { zone: 'Australia/Sydney' }).toJSDate();
     
     const simultaneousBookings = await Promise.all([
       createTestBooking(
@@ -225,6 +257,16 @@ describe('Multi Business Booking Impact', () => {
     const businessB_slots = await computeAggregatedAvailability(businessB.business.id, testDate, 1);
     const businessC_slots = await computeAggregatedAvailability(businessC.business.id, testDate, 1);
     
+    // Save availability to database so booking updates can find it
+    await Promise.all([
+      ...businessA_slots.map(slot => slot.add()),
+      ...businessB_slots.map(slot => slot.add()),
+      ...businessC_slots.map(slot => slot.add())
+    ]);
+    
+    // Wait for database commit to avoid race condition
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     console.log(`[Test] Availability results: A=${businessA_slots?.length || 'undefined'}, B=${businessB_slots?.length || 'undefined'}, C=${businessC_slots?.length || 'undefined'}`);
 
     // Verify initial provider counts are correct for each business
@@ -253,7 +295,8 @@ describe('Multi Business Booking Impact', () => {
     }
 
     // Book one provider from Business C (which has 3 providers)
-    const bookingDateTime = DateTime.fromISO(`${businessC_slots[0].date}T11:00:00`, { zone: 'Australia/Sydney' }).toJSDate();
+    const dateOnly = businessC_slots[0].date.split('T')[0]; // Extract date part
+    const bookingDateTime = DateTime.fromISO(`${dateOnly}T11:00:00`, { zone: 'Australia/Sydney' }).toJSDate();
     await createTestBooking(
       businessC.providers[1].id, // Second provider
       businessC.business.id,
@@ -311,6 +354,15 @@ describe('Multi Business Booking Impact', () => {
     const businessA_slots = await computeAggregatedAvailability(businessA.business.id, testDate, 1);
     const businessB_slots = await computeAggregatedAvailability(businessB.business.id, testDate, 1);
     
+    // Save availability to database so booking updates can find it
+    await Promise.all([
+      ...businessA_slots.map(slot => slot.add()),
+      ...businessB_slots.map(slot => slot.add())
+    ]);
+    
+    // Wait for database commit to avoid race condition
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     // Ensure businesses have availability before proceeding
     if (!businessA_slots || businessA_slots.length === 0) {
       throw new Error(`Business A has no availability slots. Length: ${businessA_slots?.length || 'undefined'}`);
@@ -320,7 +372,8 @@ describe('Multi Business Booking Impact', () => {
     }
     
     // Book all providers in Business A (only 1 provider)
-    const bookingA_DateTime = DateTime.fromISO(`${businessA_slots[0].date}T09:00:00`, { zone: 'Australia/Sydney' }).toJSDate();
+    const dateOnlyA = businessA_slots[0].date.split('T')[0]; // Extract date part
+    const bookingA_DateTime = DateTime.fromISO(`${dateOnlyA}T09:00:00`, { zone: 'Australia/Sydney' }).toJSDate();
     await createTestBooking(
       businessA.providers[0].id,
       businessA.business.id,
@@ -330,7 +383,8 @@ describe('Multi Business Booking Impact', () => {
     );
 
     // Book one provider in Business B (has 2 providers)
-    const bookingB_DateTime = DateTime.fromISO(`${businessB_slots[0].date}T09:00:00`, { zone: 'Australia/Sydney' }).toJSDate();
+    const dateOnlyB = businessB_slots[0].date.split('T')[0]; // Extract date part
+    const bookingB_DateTime = DateTime.fromISO(`${dateOnlyB}T09:00:00`, { zone: 'Australia/Sydney' }).toJSDate();
     await createTestBooking(
       businessB.providers[0].id,
       businessB.business.id,

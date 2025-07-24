@@ -951,6 +951,282 @@ export class AvailabilityService {
   }
 }
 
+/**
+ * Utility functions for building reusable message components
+ */
+export class MessageComponentBuilder {
+  
+  static buildJobDetails(
+    businessType: 'removalist' | 'mobile' | 'non_mobile',
+    services: any[],
+    addresses: { pickup?: string; dropoff?: string; customer?: string; business?: string },
+    language: string
+  ): string {
+    const { BOOKING_TRANSLATIONS } = require('./booking-utils');
+    const t = BOOKING_TRANSLATIONS[language];
+    const template = t.MESSAGE_COMPONENTS.JOB_DETAILS[businessType.toUpperCase()];
+    
+    let section = '';
+    
+    // Services section
+    if (services.length === 1) {
+      section += `${template.SERVICE_SINGLE.replace('{serviceName}', services[0].name)}\n\n`;
+    } else {
+      section += `${template.SERVICES_MULTIPLE}\n`;
+      services.forEach((service, index) => {
+        section += `${template.SERVICE_ITEM
+          .replace('{index}', (index + 1).toString())
+          .replace('{serviceName}', service.name)}\n`;
+      });
+      section += '\n';
+    }
+    
+    // Location section based on business type
+    if (businessType === 'removalist') {
+      if (addresses.pickup) {
+        section += `${template.PICKUP_LOCATION.replace('{address}', addresses.pickup)}\n`;
+      }
+      if (addresses.dropoff && addresses.dropoff !== addresses.pickup) {
+        section += `${template.DROPOFF_LOCATION.replace('{address}', addresses.dropoff)}\n`;
+      }
+    } else if (businessType === 'mobile') {
+      if (addresses.customer) {
+        section += `${template.CUSTOMER_ADDRESS.replace('{address}', addresses.customer)}\n`;
+      }
+    } else if (businessType === 'non_mobile') {
+      if (addresses.business) {
+        section += `${template.BUSINESS_ADDRESS.replace('{address}', addresses.business)}\n`;
+      }
+    }
+    
+    return section;
+  }
+  
+  static buildBreakdownDurations(
+    travelTime: number,
+    labourTime: number,
+    totalDuration: number,
+    language: string
+  ): string {
+    const { BOOKING_TRANSLATIONS } = require('./booking-utils');
+    const t = BOOKING_TRANSLATIONS[language];
+    const template = t.MESSAGE_COMPONENTS.BREAKDOWN_DURATIONS;
+    
+    let section = '';
+    
+    if (travelTime > 0) {
+      const travelTimeFormatted = this.formatMinutesToHoursAndMinutes(travelTime, language);
+      section += `${template.TRAVEL_TIME.replace('{time}', travelTimeFormatted)}\n`;
+    }
+    const labourTimeFormatted = this.formatMinutesToHoursAndMinutes(labourTime, language);
+    section += `${template.LABOUR_TIME.replace('{time}', labourTimeFormatted)}\n`;
+    
+    const totalDurationFormatted = this.formatMinutesToHoursAndMinutes(totalDuration, language);
+    section += `${template.TOTAL_DURATION.replace('{time}', totalDurationFormatted)}\n\n`;
+    
+    return section;
+  }
+  
+  private static formatMinutesToHoursAndMinutes(minutes: number, language: string): string {
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    
+    const isSpanish = language === 'es';
+    
+    if (hours === 0) {
+      return isSpanish ? `${remainingMinutes} minutos` : `${remainingMinutes} minutes`;
+    } else if (remainingMinutes === 0) {
+      const hourLabel = hours === 1 
+        ? (isSpanish ? 'hora' : 'hour')
+        : (isSpanish ? 'horas' : 'hours');
+      return `${hours} ${hourLabel}`;
+    } else {
+      const hourLabel = hours === 1 
+        ? (isSpanish ? 'hora' : 'hour')
+        : (isSpanish ? 'horas' : 'hours');
+      const minuteLabel = isSpanish ? 'minutos' : 'minutes';
+      return `${hours} ${hourLabel} ${remainingMinutes} ${minuteLabel}`;
+    }
+  }
+  
+  static buildBreakdownCosts(
+    pricingType: 'per_minute' | 'fixed_price',
+    costs: { labour?: number; travel?: number; total: number },
+    language: string
+  ): string {
+    const { BOOKING_TRANSLATIONS } = require('./booking-utils');
+    const t = BOOKING_TRANSLATIONS[language];
+    const template = t.MESSAGE_COMPONENTS.BREAKDOWN_COSTS[pricingType.toUpperCase()];
+    
+    let section = '';
+    
+    if (pricingType === 'per_minute') {
+      if (costs.travel && costs.travel > 0) {
+        section += `${template.LABOUR_COST.replace('{cost}', costs.labour?.toFixed(2) || '0.00')}\n`;
+        section += `${template.TRAVEL_COST.replace('{cost}', costs.travel.toFixed(2))}\n`;
+      } else {
+        section += `${template.LABOUR_COST.replace('{cost}', costs.labour?.toFixed(2) || '0.00')}\n`;
+      }
+    }
+    section += `${template.TOTAL_COST.replace('{cost}', costs.total.toFixed(2))}\n\n`;
+    
+    return section;
+  }
+  
+  static buildDateTime(
+    date: string,
+    time: string,
+    duration: number,
+    showCompletion: boolean = false,
+    language: string
+  ): string {
+    const { BOOKING_TRANSLATIONS } = require('./booking-utils');
+    const t = BOOKING_TRANSLATIONS[language];
+    const template = t.MESSAGE_COMPONENTS.DATE_TIME;
+    
+    let section = '';
+    
+    section += `${template.DATE.replace('{date}', date)}\n`;
+    const durationFormatted = this.formatMinutesToHoursAndMinutes(duration, language);
+    // Add space between time and duration for better formatting
+    section += `${template.TIME.replace('{time}', time)} ${template.DURATION.replace('{duration}', durationFormatted)}\n`;
+    
+    if (showCompletion) {
+      const endTime = this.calculateEndTime(time, duration);
+      section += `${template.ESTIMATED_COMPLETION.replace('{time}', endTime)}\n`;
+    }
+    
+    return section;
+  }
+  
+  static buildPaymentBreakdown(
+    totalCost: number,
+    deposit: { percentage: number; amount: number } | null,
+    bookingFee: number,
+    paymentMethod: string,
+    businessType: 'removalist' | 'salon',
+    language: string,
+    isPerMinuteService: boolean = false,
+    isConfirmation: boolean = false
+  ): string {
+    const { BOOKING_TRANSLATIONS } = require('./booking-utils');
+    const t = BOOKING_TRANSLATIONS[language];
+    const template = t.MESSAGE_COMPONENTS.PAYMENT_BREAKDOWN;
+    
+    let section = `${template.TITLE}\n`;
+    
+    // Total cost (estimated for per-minute services)
+    const totalCostTemplate = isPerMinuteService ? template.ESTIMATED_TOTAL_COST : template.TOTAL_COST;
+    section += `${totalCostTemplate.replace('{amount}', totalCost.toFixed(2))}\n`;
+    
+    // Deposit (only if > 0)
+    if (deposit && deposit.amount > 0) {
+      section += `${template.DEPOSIT
+        .replace('{percentage}', deposit.percentage.toString())
+        .replace('{amount}', deposit.amount.toFixed(2))}\n`;
+    }
+    
+    // Booking fee (only if > 0)
+    if (bookingFee > 0) {
+      section += `${template.BOOKING_FEE.replace('{amount}', bookingFee.toFixed(2))}\n`;
+    }
+    
+    // Calculate totals
+    const totalToPay = (deposit?.amount || 0) + bookingFee;
+    const remainingBalance = totalCost - (deposit?.amount || 0);
+    
+    // Handle confirmation vs quote display differently
+    if (isConfirmation) {
+      // For confirmations, show amount paid instead of "to pay now"
+      if (totalToPay > 0) {
+        section += `• Total Paid: $${totalToPay.toFixed(2)}\n`;
+      }
+      
+      // Combine remaining balance with payment method on one line
+      if (remainingBalance > 0) {
+        const balanceLabel = isPerMinuteService ? 'Estimated Remaining Balance' : 'Remaining Balance';
+        const paymentLine = businessType === 'removalist' ? 'cash after job completion' : `${paymentMethod} at service`;
+        section += `• ${balanceLabel}: $${remainingBalance.toFixed(2)} (${paymentLine})\n`;
+      }
+    } else {
+      // Original quote display
+      // Total to pay now (only if there's a deposit or booking fee)
+      if (totalToPay > 0) {
+        section += `${template.PAY_NOW.replace('{amount}', totalToPay.toFixed(2))}\n`;
+      }
+      
+      // Remaining balance (only if > 0)
+      if (remainingBalance > 0) {
+        const remainingBalanceTemplate = isPerMinuteService ? template.ESTIMATED_REMAINING_BALANCE : template.REMAINING_BALANCE;
+        section += `${remainingBalanceTemplate.replace('{amount}', remainingBalance.toFixed(2))}\n`;
+        
+        // Payment method line
+        const paymentLine = businessType === 'removalist' 
+          ? template.PAY_AFTER_JOB 
+          : template.PAY_AT_SERVICE;
+        section += `${paymentLine.replace('{method}', paymentMethod)}\n`;
+      }
+    }
+    
+    return section;
+  }
+  
+  private static calculateEndTime(startTime: string, durationMinutes: number): string {
+    // Validate inputs to prevent NaN:NaN
+    if (!startTime || typeof startTime !== 'string') {
+      console.warn('[MessageComponentBuilder] Invalid startTime for calculateEndTime:', startTime);
+      return 'Invalid time';
+    }
+    
+    if (!durationMinutes || isNaN(durationMinutes) || durationMinutes <= 0) {
+      console.warn('[MessageComponentBuilder] Invalid durationMinutes for calculateEndTime:', durationMinutes);
+      return 'Invalid duration';
+    }
+    
+    // Convert AM/PM format to 24-hour format if needed
+    let timeString = startTime.trim();
+    let hours: number, minutes: number;
+    
+    if (timeString.includes('AM') || timeString.includes('PM')) {
+      // Handle AM/PM format like "6:00 AM"
+      const isAM = timeString.includes('AM');
+      const timePart = timeString.replace(/\s*(AM|PM)/, '');
+      const [hourStr, minuteStr] = timePart.split(':');
+      
+      hours = parseInt(hourStr);
+      minutes = parseInt(minuteStr || '0');
+      
+      // Convert to 24-hour format
+      if (!isAM && hours !== 12) {
+        hours += 12;
+      } else if (isAM && hours === 12) {
+        hours = 0;
+      }
+    } else {
+      // Handle 24-hour format like "14:30"
+      if (!timeString.includes(':')) {
+        console.warn('[MessageComponentBuilder] Time format must include colon:', timeString);
+        return 'Invalid time format';
+      }
+      
+      const [hourStr, minuteStr] = timeString.split(':');
+      hours = parseInt(hourStr);
+      minutes = parseInt(minuteStr || '0');
+    }
+    
+    // Validate parsed hours and minutes
+    if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+      console.warn('[MessageComponentBuilder] Invalid parsed time values:', { hours, minutes, originalTime: startTime });
+      return 'Invalid time';
+    }
+    
+    const startDate = new Date();
+    startDate.setHours(hours, minutes, 0, 0);
+    const endDate = new Date(startDate.getTime() + durationMinutes * 60000);
+    return `${endDate.getHours().toString().padStart(2, '0')}:${endDate.getMinutes().toString().padStart(2, '0')}`;
+  }
+}
+
 // =====================================
 // UTILITIES FROM booking-utilities.ts
 // =====================================

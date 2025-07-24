@@ -1,15 +1,12 @@
 import { IndividualStepHandler } from '@/lib/bot-engine/types';
 import { Booking, type BookingData, BookingStatus } from '@/lib/database/models/booking';
-import { getLocalizedText, getLocalizedTextWithVars } from './booking-utils';
+import { getLocalizedText, getLocalizedTextWithVars, MessageComponentBuilder } from './booking-utils';
 import { Quote } from '@/lib/database/models/quote';
 import { Service } from '@/lib/database/models/service';
 import { Business } from '@/lib/database/models/business';
 import { CalendarSettings } from '@/lib/database/models/calendar-settings';
 import { DateTime } from 'luxon';
 import { ScalableNotificationService } from '@/lib/bot-engine/services/scalable-notification-service';
-
-// Constants
-const BOOKING_FEE = 4.00;
 
 // Formats normalized phone number for user-friendly display
 const formatPhoneForDisplay = (normalizedPhone: string): string => {
@@ -149,7 +146,7 @@ const updateQuoteStatus = async (quoteId: string, quote: any): Promise<void> => 
 };
 
 // Calculates comprehensive payment details including fees
-const calculatePaymentDetails = async (quote: any, isPaymentCompletion: boolean, totalJobCostEstimation: number) => {
+const calculatePaymentDetails = async (quote: any, isPaymentCompletion: boolean, totalJobCostEstimation: number, businessBookingFee: number = 0) => {
   let amountPaid = 0;
   let amountOwed = totalJobCostEstimation;
   let showPaymentDetails = false;
@@ -159,9 +156,9 @@ const calculatePaymentDetails = async (quote: any, isPaymentCompletion: boolean,
     const paymentDetails = await quote.calculatePaymentDetails();
     if (paymentDetails.depositAmount && paymentDetails.depositAmount > 0) {
       showPaymentDetails = true;
-      amountPaid = paymentDetails.depositAmount + BOOKING_FEE;
+      amountPaid = paymentDetails.depositAmount + businessBookingFee;
       amountOwed = paymentDetails.remainingBalance || 0;
-      totalCostIncludingFees = totalJobCostEstimation + BOOKING_FEE;
+      totalCostIncludingFees = totalJobCostEstimation + businessBookingFee;
     } else if (isPaymentCompletion) {
       showPaymentDetails = true;
       amountPaid = totalJobCostEstimation;
@@ -191,28 +188,24 @@ const formatServicesDisplay = (services: any[], serviceDetails: any[], fallbackS
   ).join('\n   ');
 };
 
-// Generates cost breakdown section for confirmation message
+// Generates cost breakdown section for confirmation message using new component system
 const generateCostBreakdown = (
-  showPaymentDetails: boolean,
-  totalCostIncludingFees: number,
+  services: any[],
   totalJobCostEstimation: number,
   travelCostEstimate: number,
-  isMultiService: boolean,
-  t: any
+  language: string
 ): string => {
-  if (showPaymentDetails && totalCostIncludingFees > totalJobCostEstimation) {
-    const serviceCostLabel = isMultiService ? t.BOOKING_CONFIRMATION.SERVICES_COST : t.BOOKING_CONFIRMATION.SERVICE_COST;
-    const bookingFeeLabel = t.BOOKING_CONFIRMATION.BOOKING_FEE || (t.language === 'es' ? '• Tarifa de Reserva:' : '• Booking Fee:');
-    
-    return `💰 ${t.BOOKING_CONFIRMATION.PRICING}\n` +
-      `   ${serviceCostLabel} $${totalJobCostEstimation.toFixed(2)}\n` +
-      `${travelCostEstimate > 0 ? `   🚗 ${t.BOOKING_CONFIRMATION.TRAVEL_COST} $${travelCostEstimate.toFixed(2)}\n` : ''}` +
-      `   ${bookingFeeLabel} $${BOOKING_FEE.toFixed(2)}\n` +
-      `   ${t.BOOKING_CONFIRMATION.TOTAL_COST} $${totalCostIncludingFees.toFixed(2)}\n\n`;
-  }
+  // Determine if any service uses per-minute pricing
+  const hasPerMinuteService = services.some(s => s.pricingType === 'per_minute');
+  const pricingType = hasPerMinuteService ? 'per_minute' : 'fixed_price';
   
-  return `${travelCostEstimate > 0 ? `🚗 ${t.BOOKING_CONFIRMATION.TRAVEL_COST} $${travelCostEstimate.toFixed(2)}\n` : ''}` +
-    `💰 ${t.BOOKING_CONFIRMATION.TOTAL_COST} $${totalCostIncludingFees.toFixed(2)}\n\n`;
+  const costs = {
+    labour: totalJobCostEstimation - (travelCostEstimate || 0),
+    travel: travelCostEstimate || 0,
+    total: totalJobCostEstimation
+  };
+  
+  return MessageComponentBuilder.buildBreakdownCosts(pricingType, costs, language);
 };
 
 // Retrieves provider contact information and business preferences
@@ -244,7 +237,7 @@ const getProviderAndBusinessInfo = async (businessId: string) => {
   return { providerContactInfo, preferredPaymentMethod, businessType };
 };
 
-// Builds complete booking confirmation message
+// Builds complete booking confirmation message using new component system
 const buildConfirmationMessage = async (
   savedBooking: BookingData & { id: string },
   quote: any,
@@ -253,61 +246,101 @@ const buildConfirmationMessage = async (
   chatContext: any,
   bookingDateTime: DateTime,
   isPaymentCompletion: boolean,
-  paymentDetails: any
+  paymentDetails: any,
+  business: any
 ): Promise<string> => {
   const { getUserLanguage, BOOKING_TRANSLATIONS } = await import('./booking-utils');
-  const t = BOOKING_TRANSLATIONS[getUserLanguage(chatContext)];
+  const language = getUserLanguage(chatContext);
+  const t = BOOKING_TRANSLATIONS[language];
   
   // Get customer and service information
   const customerName = currentGoalData.customerName || 'Customer';
   const selectedServices = currentGoalData.selectedServices || [currentGoalData.selectedService].filter(Boolean);
-  const serviceDetails = currentGoalData.serviceDetails || [];
-  
-  // Format services display
-  const servicesDisplay = formatServicesDisplay(selectedServices, serviceDetails, service);
-  const isMultiService = selectedServices.length > 1;
-  const servicesDisplayFormatted = isMultiService 
-    ? `${t.BOOKING_CONFIRMATION.SERVICES}\n   ${servicesDisplay}`
-    : `${t.BOOKING_CONFIRMATION.SERVICE}\n   ${servicesDisplay}`;
-  
-  // Generate cost breakdown
-  const costBreakdown = generateCostBreakdown(
-    paymentDetails.showPaymentDetails,
-    paymentDetails.totalCostIncludingFees,
-    quote.totalJobCostEstimation,
-    quote.travelCostEstimate || 0,
-    isMultiService,
-    t
-  );
   
   // Get provider and business information
   const { providerContactInfo, preferredPaymentMethod, businessType } = await getProviderAndBusinessInfo(quote.businessId);
   
-  // Build payment message
-  const paymentMessage = isPaymentCompletion 
-    ? (getUserLanguage(chatContext) === 'es' ? '💳 ¡Gracias por tu pago!\n\n' : '💳 Thank you for your payment!\n\n')
-    : '';
-  
-  // Build main confirmation content
-  let confirmationMessage = `${paymentMessage}${t.BOOKING_CONFIRMATION.TITLE.replace('{name}', customerName)}\n\n` +
-    `${servicesDisplayFormatted}\n` +
-    `${costBreakdown}` +
-    `${t.BOOKING_CONFIRMATION.DATE} ${bookingDateTime.toLocaleString(DateTime.DATE_FULL)}\n` +
-    `${t.BOOKING_CONFIRMATION.TIME} ${bookingDateTime.toLocaleString(DateTime.TIME_SIMPLE)}\n` +
-    `${t.BOOKING_CONFIRMATION.LOCATION} ${service.mobile ? quote.dropOff : quote.pickUp}\n\n`;
+  // Determine business type for component building
+  const isRemovalist = businessType?.toLowerCase() === 'removalist';
+  const businessTypeForComponents: 'removalist' | 'mobile' | 'non_mobile' = isRemovalist ? 'removalist' 
+    : selectedServices.some((s: Service | { mobile?: boolean }) => s.mobile) ? 'mobile' : 'non_mobile';
 
-  // Add payment details section
+  // Determine business template for confirmation messages  
+  const businessTemplate: 'REMOVALIST' | 'SALON' = isRemovalist ? 'REMOVALIST' : 'SALON';
+  const confirmationTemplate = t.CONFIRMATION_TEMPLATES[businessTemplate];
+
+  // Build payment message using business-specific template
+  const paymentMessage = isPaymentCompletion 
+    ? `${confirmationTemplate.PAYMENT_THANKS}\n\n`
+    : '';
+
+  // Build main confirmation content using business-specific template
+  let confirmationMessage = `${paymentMessage}${confirmationTemplate.TITLE.replace('{name}', customerName)}\n\n`;
+
+  // Build job details section using new component system
+  const addresses = {
+    pickup: quote.pickUp || currentGoalData.finalServiceAddress || currentGoalData.pickupAddress,
+    dropoff: quote.dropOff || currentGoalData.finalDropoffAddress || currentGoalData.dropoffAddress,
+    customer: quote.dropOff || currentGoalData.finalServiceAddress,
+    business: business?.businessAddress
+  };
+
+  // Use businessTypeForComponents for buildJobDetails (expects 'removalist' | 'mobile' | 'non_mobile')
+  confirmationMessage += MessageComponentBuilder.buildJobDetails(
+    businessTypeForComponents,
+    selectedServices,
+    addresses,
+    language
+  );
+  
+  // Add cost breakdown using new component system
+  confirmationMessage += generateCostBreakdown(
+    selectedServices,
+    quote.totalJobCostEstimation,
+    quote.travelCostEstimate || 0,
+    language
+  );
+  
+  // Add date and time using new component system
+  const formattedDate = bookingDateTime.toLocaleString(DateTime.DATE_FULL);
+  const formattedTime = bookingDateTime.toLocaleString(DateTime.TIME_SIMPLE);
+  const totalDuration = quote.totalJobDurationEstimation || 0;
+  
+  confirmationMessage += MessageComponentBuilder.buildDateTime(
+    formattedDate,
+    formattedTime,
+    totalDuration,
+    true, // Show completion time
+    language
+  );
+  
+  confirmationMessage += '\n';
+
+  // Add payment details section using new component system
   if (paymentDetails.showPaymentDetails) {
-    const isRemovalist = businessType?.toLowerCase() === 'removalist';
-    const amountOwedLabel = isRemovalist 
-      ? (getUserLanguage(chatContext) === 'es' ? 'Balance Restante Estimado:' : 'Estimate Remaining Balance:')
-      : t.BOOKING_CONFIRMATION.AMOUNT_OWED;
+    const deposit = paymentDetails.amountPaid > quote.totalJobCostEstimation ? {
+      percentage: business?.depositPercentage || 0,
+      amount: paymentDetails.amountPaid - (business?.bookingFee || 0)
+    } : null;
     
-    confirmationMessage += `${t.BOOKING_CONFIRMATION.PAYMENT_DETAILS}\n` +
-      `   ${t.BOOKING_CONFIRMATION.AMOUNT_PAID} $${paymentDetails.amountPaid.toFixed(2)}\n` +
-      (paymentDetails.amountOwed > 0 ? `   ${amountOwedLabel} $${paymentDetails.amountOwed.toFixed(2)}\n` : '') +
-      (paymentDetails.amountOwed > 0 ? `   ${t.BOOKING_CONFIRMATION.PAYMENT_METHOD} ${preferredPaymentMethod}\n` : '') +
-      `\n`;
+    // Check if any service uses per-minute pricing
+    const hasPerMinuteService = selectedServices.some((s: Service) => s.pricingType === 'per_minute');
+    
+    // For buildPaymentBreakdown (expects 'removalist' | 'salon')
+    const businessTypeForPayment: 'removalist' | 'salon' = isRemovalist ? 'removalist' : 'salon';
+
+    confirmationMessage += MessageComponentBuilder.buildPaymentBreakdown(
+      quote.totalJobCostEstimation,
+      deposit,
+      business?.bookingFee || 0,
+      preferredPaymentMethod,
+      businessTypeForPayment,
+      language,
+      hasPerMinuteService,
+      true // isConfirmation = true for booking confirmations
+    );
+    
+    confirmationMessage += '\n';
   }
 
   // Add provider contact information
@@ -315,17 +348,23 @@ const buildConfirmationMessage = async (
     confirmationMessage += `${t.BOOKING_CONFIRMATION.CONTACT_INFO}\n   ${providerContactInfo}\n\n`;
   }
 
-  // Add arrival instructions
+  // Add arrival instructions using business-specific template
   const hasMobileService = selectedServices.some((s: any) => s.mobile) || service.mobile;
-  const arrivalInstructions = hasMobileService 
-    ? t.BOOKING_CONFIRMATION.MOBILE_INSTRUCTIONS
-    : t.BOOKING_CONFIRMATION.SALON_INSTRUCTIONS;
+  const arrivalInstructions = (hasMobileService || isRemovalist)
+    ? confirmationTemplate.MOBILE_INSTRUCTIONS.replace('{name}', customerName)
+    : (confirmationTemplate as any).SALON_INSTRUCTIONS?.replace('{name}', customerName) 
+      || t.BOOKING_CONFIRMATION.SALON_INSTRUCTIONS.replace('{name}', customerName);
   
-  confirmationMessage += `${t.BOOKING_CONFIRMATION.ARRIVAL_INSTRUCTIONS}\n   ${arrivalInstructions}\n\n`;
+  confirmationMessage += `${confirmationTemplate.ARRIVAL_INSTRUCTIONS.replace('{name}', customerName)}\n   ${arrivalInstructions}\n\n`;
+
+  // Add estimate notice for removalists
+  if (isRemovalist && confirmationTemplate.ESTIMATE_NOTICE) {
+    confirmationMessage += `${confirmationTemplate.ESTIMATE_NOTICE}\n\n`;
+  }
 
   // Add booking ID and closing
   confirmationMessage += `${t.BOOKING_CONFIRMATION.BOOKING_ID} ${savedBooking.id}\n\n` +
-    `${t.BOOKING_CONFIRMATION.LOOKING_FORWARD}`;
+    `${confirmationTemplate.LOOKING_FORWARD.replace('{name}', customerName)}`;
   
   // Replace any remaining placeholders
   return confirmationMessage.replace(/{name}/g, customerName);
@@ -347,8 +386,12 @@ const sendBookingNotifications = async (
     const selectedServices = currentGoalData.selectedServices || [currentGoalData.selectedService].filter(Boolean);
     const serviceDetails = currentGoalData.serviceDetails || [];
     
+    // Get business info for payment calculations
+    const business = await Business.getById(savedBooking.businessId);
+    const businessBookingFee = business?.bookingFee || 0;
+    
     // Calculate payment details for notification
-    const paymentDetails = await calculatePaymentDetails(quote, false, quote.totalJobCostEstimation);
+    const paymentDetails = await calculatePaymentDetails(quote, false, quote.totalJobCostEstimation, businessBookingFee);
     
     const bookingDateTime = DateTime.fromISO(savedBooking.dateTime);
     
@@ -363,9 +406,9 @@ const sendBookingNotifications = async (
       formattedDate: bookingDateTime.toLocaleString(DateTime.DATE_FULL),
       formattedTime: bookingDateTime.toLocaleString(DateTime.TIME_SIMPLE),
       location: service.mobile ? quote.dropOff : quote.pickUp,
-      totalCost: quote.totalJobCostEstimation + BOOKING_FEE,
+      totalCost: quote.totalJobCostEstimation + businessBookingFee,
       serviceCost: quote.totalJobCostEstimation,
-      bookingFee: BOOKING_FEE,
+      bookingFee: businessBookingFee,
       amountPaid: paymentDetails.amountPaid,
       amountOwed: paymentDetails.amountOwed,
       balanceDue: paymentDetails.amountOwed,
@@ -482,8 +525,12 @@ export const createBookingHandler: IndividualStepHandler = {
       // Update quote status to accepted
       await updateQuoteStatus(quoteId, quote);
 
+      // Get business info for payment calculations and confirmation
+      const business = await Business.getById(quote.businessId);
+      const businessBookingFee = business?.bookingFee || 0;
+
       // Calculate payment details for confirmation
-      const paymentDetails = await calculatePaymentDetails(quote, isPaymentCompletion, quote.totalJobCostEstimation);
+      const paymentDetails = await calculatePaymentDetails(quote, isPaymentCompletion, quote.totalJobCostEstimation, businessBookingFee);
       
       // Generate confirmation message
       const confirmationMessage = await buildConfirmationMessage(
@@ -494,7 +541,8 @@ export const createBookingHandler: IndividualStepHandler = {
         chatContext,
         bookingDateTime,
         isPaymentCompletion,
-        paymentDetails
+        paymentDetails,
+        business
       );
       
       console.log(`[CreateBooking] Generated confirmation for booking ${savedBooking.id}. Goal completed.`);

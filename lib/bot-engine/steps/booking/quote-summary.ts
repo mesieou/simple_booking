@@ -1,13 +1,27 @@
 import type { IndividualStepHandler } from '@/lib/bot-engine/types';
-import { getLocalizedText, getLocalizedTextWithVars } from './booking-utils';
+import { getLocalizedText, getLocalizedTextWithVars, MessageComponentBuilder } from './booking-utils';
 import { Service } from '@/lib/database/models/service';
 import { Business } from '@/lib/database/models/business';
 import { Quote, type QuoteData } from '@/lib/database/models/quote';
 import { computeQuoteEstimation, type QuoteEstimation } from '@/lib/general-helpers/quote-cost-calculator';
 import { createLogger } from '@/lib/bot-engine/utils/logger';
-import { QuoteTemplateRenderer, type QuoteTemplateData } from './quote-templates';
 
 const QuoteSummaryLogger = createLogger('QuoteSummary');
+
+// =============================================================================
+// TYPES & INTERFACES
+// =============================================================================
+
+export interface QuoteTemplateData {
+  customerName: string;
+  services: any[];
+  quoteEstimation: any;
+  currentGoalData: any;
+  paymentDetails: any;
+  businessInfo: any;
+  language: string;
+  quoteId: string;
+}
 
 // =============================================================================
 // CONSTANTS
@@ -239,25 +253,177 @@ class QuoteDataBuilder {
 }
 
 class BusinessHelper {
-  static async getInfo(businessId: string): Promise<{ type: string; paymentMethod?: string; address: string }> {
+  static async getInfo(businessId: string): Promise<{ type: string; businessCategory: string; paymentMethod?: string; address: string; depositPercentage?: number; bookingFee?: number; businessAddress?: string; preferredPaymentMethod?: string }> {
     try {
       const business = await Business.getById(businessId);
       return {
         type: business.businessCategory || 'unknown',
+        businessCategory: business.businessCategory || 'unknown',
         paymentMethod: business.preferredPaymentMethod,
-        address: business.businessAddress || business.name || 'Business Location'
+        address: business.businessAddress || business.name || 'Business Location',
+        depositPercentage: business.depositPercentage,
+        bookingFee: business.bookingFee,
+        businessAddress: business.businessAddress,
+        preferredPaymentMethod: business.preferredPaymentMethod
       };
     } catch (error) {
       QuoteSummaryLogger.warn('Could not fetch business info', {}, { 
         error: error instanceof Error ? error.message : String(error) 
       });
-      return { type: 'unknown', address: 'Business Location' };
+      return { type: 'unknown', businessCategory: 'unknown', address: 'Business Location' };
     }
   }
 
   static async getAddress(businessId: string): Promise<string> {
     const info = await this.getInfo(businessId);
     return info.address;
+  }
+}
+
+class QuoteTemplateRenderer {
+  static generateQuoteMessage(data: QuoteTemplateData): string {
+    const { businessInfo, language } = data;
+    const { BOOKING_TRANSLATIONS } = require('./booking-utils');
+    const t = BOOKING_TRANSLATIONS[language];
+    
+    // Determine business type and service configuration
+    const businessType = this.getBusinessType(businessInfo, data.services);
+    const hasMobileService = data.services.some(s => s.mobile);
+    const hasPerMinuteService = data.services.some(s => s.pricingType === 'per_minute');
+    
+    let message = `${t.QUOTE_TEMPLATES.TITLE}\n\n`;
+    
+    // Build job details section
+    message += this.buildJobDetailsSection(businessType, data, language);
+    message += '\n';
+    
+    // Build breakdown durations (only for per-minute services)
+    if (hasPerMinuteService) {
+      message += this.buildBreakdownDurationsSection(data, language);
+      message += '\n';
+    }
+    
+    // Build breakdown costs
+    message += this.buildBreakdownCostsSection(data, language);
+    // Note: buildBreakdownCosts already ends with \n\n, no need to add more
+    
+    // Build date/time section
+    message += this.buildDateTimeSection(data, language);
+    message += '\n';
+    
+    // Build payment breakdown (if deposit required)
+    if (data.paymentDetails.requiresDeposit && data.paymentDetails.depositAmount) {
+      message += this.buildPaymentBreakdownSection(data, businessType, language);
+      message += '\n';
+    }
+    
+    // Add quote ID and confirmation prompt
+    message += `${t.QUOTE_TEMPLATES.QUOTE_ID.replace('{id}', data.quoteId)}\n\n`;
+    message += data.paymentDetails.requiresDeposit && data.paymentDetails.depositAmount
+      ? t.QUOTE_TEMPLATES.CONFIRM_WITH_DEPOSIT
+      : t.QUOTE_TEMPLATES.CONFIRM_NO_DEPOSIT;
+    
+    return message;
+  }
+  
+  private static getBusinessType(businessInfo: any, services: any[]): 'removalist' | 'mobile' | 'non_mobile' {
+    if (businessInfo.type === 'removalist' || businessInfo.businessCategory === 'removalist') {
+      return 'removalist';
+    }
+    
+    const hasMobileService = services.some(s => s.mobile);
+    return hasMobileService ? 'mobile' : 'non_mobile';
+  }
+  
+  private static buildJobDetailsSection(businessType: 'removalist' | 'mobile' | 'non_mobile', data: QuoteTemplateData, language: string): string {
+    const addresses = {
+      pickup: data.currentGoalData.pickupAddress || data.currentGoalData.finalServiceAddress,
+      dropoff: data.currentGoalData.dropoffAddress || data.currentGoalData.finalDropoffAddress,
+      customer: data.currentGoalData.finalServiceAddress || data.currentGoalData.customerAddress,
+      business: data.businessInfo.businessAddress
+    };
+    
+    return MessageComponentBuilder.buildJobDetails(businessType, data.services, addresses, language);
+  }
+  
+  private static buildBreakdownDurationsSection(data: QuoteTemplateData, language: string): string {
+    const { quoteEstimation } = data;
+    const labourTime = quoteEstimation.totalJobDuration - (quoteEstimation.travelTime || 0);
+    
+    return MessageComponentBuilder.buildBreakdownDurations(
+      quoteEstimation.travelTime || 0,
+      labourTime,
+      quoteEstimation.totalJobDuration,
+      language
+    );
+  }
+  
+  private static buildBreakdownCostsSection(data: QuoteTemplateData, language: string): string {
+    const { services, quoteEstimation } = data;
+    
+    // Determine if any service uses per-minute pricing
+    const hasPerMinuteService = services.some(s => s.pricingType === 'per_minute');
+    const pricingType = hasPerMinuteService ? 'per_minute' : 'fixed_price';
+    
+    const costs = {
+      labour: quoteEstimation.serviceCost,
+      travel: quoteEstimation.travelCost || 0,
+      total: quoteEstimation.totalJobCost
+    };
+    
+    return MessageComponentBuilder.buildBreakdownCosts(pricingType, costs, language);
+  }
+  
+  private static buildDateTimeSection(data: QuoteTemplateData, language: string): string {
+    const { currentGoalData, quoteEstimation } = data;
+    
+    if (!currentGoalData.selectedDate || !currentGoalData.selectedTime) {
+      return ''; // Skip if date/time not set yet
+    }
+    
+    // Format the date properly
+    const selectedDate = new Date(currentGoalData.selectedDate);
+    const formattedDate = selectedDate.toLocaleDateString('en-US', { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+    
+    return MessageComponentBuilder.buildDateTime(
+      formattedDate,
+      currentGoalData.selectedTime,
+      quoteEstimation.totalJobDuration,
+      true, // Show completion time
+      language
+    );
+  }
+  
+  private static buildPaymentBreakdownSection(data: QuoteTemplateData, businessType: string, language: string): string {
+    const { paymentDetails, quoteEstimation, businessInfo, services } = data;
+    
+    // Get the correct deposit percentage from business info
+    const depositPercentage = businessInfo.depositPercentage || 0;
+    
+    const deposit = paymentDetails.depositAmount > 0 ? {
+      percentage: depositPercentage,
+      amount: paymentDetails.depositAmount
+    } : null;
+    
+    const businessTypeForPayment = businessType === 'removalist' ? 'removalist' : 'salon';
+    
+    // Check if any service uses per-minute pricing
+    const hasPerMinuteService = services.some(s => s.pricingType === 'per_minute');
+    
+    return MessageComponentBuilder.buildPaymentBreakdown(
+      quoteEstimation.totalJobCost,
+      deposit,
+      businessInfo.bookingFee || 0,
+      businessInfo.preferredPaymentMethod || 'cash',
+      businessTypeForPayment,
+      language,
+      hasPerMinuteService
+    );
   }
 }
 
@@ -306,9 +472,7 @@ class MessageGenerator {
 }
 
 class BookingSummaryBuilder {
-  static build(services: any[], quoteEstimation: QuoteEstimation, paymentDetails: any): any {
-    const BOOKING_FEE = 4; // Define locally since it's specific to this calculation
-    
+  static build(services: any[], quoteEstimation: QuoteEstimation, paymentDetails: any, businessBookingFee: number = 0): any {
     return {
       serviceCost: quoteEstimation.serviceCost,
       travelCost: quoteEstimation.travelCost,
@@ -317,7 +481,7 @@ class BookingSummaryBuilder {
       travelTime: quoteEstimation.travelTime,
       ...paymentDetails,
       totalPaymentAmount: paymentDetails.requiresDeposit && paymentDetails.depositAmount 
-        ? paymentDetails.depositAmount + BOOKING_FEE 
+        ? paymentDetails.depositAmount + businessBookingFee 
         : undefined,
       serviceCount: services.length,
       services: services.map((s: any) => ({
@@ -406,6 +570,10 @@ export const quoteSummaryHandler: IndividualStepHandler = {
       // Process the quote (create, update, or reuse)
       const { quote, quoteEstimation, services } = await QuoteProcessor.processQuote(currentGoalData, businessId, chatContext);
 
+      // Get business info for booking fee
+      const business = await Business.getById(businessId);
+      const businessBookingFee = business?.bookingFee || 0;
+
       // Get payment details
       const paymentDetails = await PaymentCalculator.getDetails(quote.id);
 
@@ -413,7 +581,7 @@ export const quoteSummaryHandler: IndividualStepHandler = {
       const confirmationMessage = await MessageGenerator.generate(services, quoteEstimation, quote, currentGoalData, chatContext);
 
       // Build booking summary
-      const bookingSummary = BookingSummaryBuilder.build(services, quoteEstimation, paymentDetails);
+      const bookingSummary = BookingSummaryBuilder.build(services, quoteEstimation, paymentDetails, businessBookingFee);
 
       QuoteSummaryLogger.info('Quote summary completed successfully', {}, { 
         quoteId: quote.id,

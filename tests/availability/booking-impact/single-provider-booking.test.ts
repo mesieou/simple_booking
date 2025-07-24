@@ -54,6 +54,12 @@ describe('Single Provider Booking Impact', () => {
 
     expect(initialSlots.length).toBeGreaterThan(0);
     
+    // Save availability to database so booking updates can find it
+    await Promise.all(initialSlots.map(slot => slot.add()));
+    
+    // Wait for database commit to avoid race condition
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     // Find a slot with availability
     const availableSlot = initialSlots.find(slot => Object.keys(slot.slots).length > 0);
     expect(availableSlot).toBeDefined();

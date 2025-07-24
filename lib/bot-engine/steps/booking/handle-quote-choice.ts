@@ -1,5 +1,5 @@
 import type { IndividualStepHandler } from '@/lib/bot-engine/types';
-import { getLocalizedText, getLocalizedTextWithVars } from './booking-utils';
+import { getLocalizedText, getLocalizedTextWithVars, MessageComponentBuilder } from './booking-utils';
 import { StripePaymentService } from '@/lib/payments/stripe-utils';
 import { Business } from '@/lib/database/models/business';
 
@@ -107,16 +107,26 @@ export const handleQuoteChoiceHandler: IndividualStepHandler = {
             }
           }
 
-          const { getUserLanguage } = await import('./booking-utils');
+          const { getUserLanguage, BOOKING_TRANSLATIONS } = await import('./booking-utils');
           const language = getUserLanguage(chatContext);
+          const t = BOOKING_TRANSLATIONS[language];
           
           // Get balance breakdown from Quote model or goal data
-          const serviceTotal = currentGoalData.selectedService?.fixedPrice || 0;
+          let serviceTotal = currentGoalData.quoteEstimation?.totalJobCost || 
+                            currentGoalData.persistedQuote?.totalJobCostEstimation || 
+                            currentGoalData.selectedService?.fixedPrice || 0;
+          
+          // Handle case where totalCost might be a formatted string
+          if (currentGoalData.bookingSummary?.totalCost) {
+            const totalCostStr = currentGoalData.bookingSummary.totalCost.toString();
+            serviceTotal = parseFloat(totalCostStr.replace(/[$,]/g, '')) || serviceTotal;
+          }
           const remainingBalance = currentGoalData.remainingBalance || currentGoalData.bookingSummary?.remainingBalance || (serviceTotal - depositAmount);
           
-          // Get business info for payment method and type
+          // Get business info for payment method, type, and booking fee
           let preferredPaymentMethod = language === 'es' ? 'efectivo o tarjeta' : 'cash or card';
           let businessType = 'unknown';
+          let bookingFee = 0;
           
           if (businessId) {
             try {
@@ -125,6 +135,7 @@ export const handleQuoteChoiceHandler: IndividualStepHandler = {
                 preferredPaymentMethod = business.preferredPaymentMethod;
               }
               businessType = business.businessCategory || 'unknown';
+              bookingFee = business.bookingFee || 0;
             } catch (error) {
               console.warn('[HandleQuoteChoice] Could not fetch business payment method');
             }
@@ -132,39 +143,42 @@ export const handleQuoteChoiceHandler: IndividualStepHandler = {
           
           const customerName = currentGoalData.customerName || '{name}';
           
-          // Use "Estimate Remaining Balance" for removalists
+          // Determine business type for template selection
           const isRemovalist = businessType?.toLowerCase() === 'removalist';
-          const remainingBalanceLabel = language === 'es' 
-            ? (isRemovalist ? 'Balance restante estimado' : 'Balance restante')
-            : (isRemovalist ? 'Estimate Remaining Balance' : 'Remaining balance');
+          const businessTemplate = isRemovalist ? 'REMOVALIST' : 'SALON';
+          const paymentTemplate = t.PAYMENT_TEMPLATES[businessTemplate];
           
-          const paymentMessage = language === 'es' 
-            ? `💳 *¡Listo para Reservar!*\n\n` +
-              `Para asegurar tu cita, por favor completa el pago del depósito de reserva:\n\n` +
-              `💰 *Desglose del Pago:*\n` +
-              `   • Servicio total: $${serviceTotal.toFixed(2)}\n` +
-              `   • Depósito (ahora): $${depositAmount.toFixed(2)}\n` +
-              `   • Tarifa de reserva: $4.00\n` +
-              `   • *Total a pagar ahora: $${totalChargeAmount.toFixed(2)}*\n\n` +
-              `📍 *${remainingBalanceLabel}: $${remainingBalance.toFixed(2)}*\n` +
-              `   💳 A pagar en la cita (${preferredPaymentMethod})\n\n` +
-              `🔗 *Enlace de Pago:*\n${paymentResult.paymentLink}\n\n` +
-              `¡Después del pago, serás redirigido de vuelta a WhatsApp y tu reserva será confirmada automáticamente!\n\n` +
-              `✅ Pago seguro y protegido por Stripe\n` +
-              `🔒 Tu pago va directamente a ${businessName}`
-            : `💳 *Ready to Book!*\n\n` +
-              `To secure your appointment, please complete your booking deposit payment:\n\n` +
-              `💰 *Payment Breakdown:*\n` +
-              `   • Service total: $${serviceTotal.toFixed(2)}\n` +
-              `   • Deposit (now): $${depositAmount.toFixed(2)}\n` +
-              `   • Booking fee: $4.00\n` +
-              `   • *Total to pay now: $${totalChargeAmount.toFixed(2)}*\n\n` +
-              `📍 *${remainingBalanceLabel}: $${remainingBalance.toFixed(2)}*\n` +
-              `   💳 Pay at appointment (${preferredPaymentMethod})\n\n` +
-              `🔗 *Payment Link:*\n${paymentResult.paymentLink}\n\n` +
-              `After payment, you'll be redirected back to WhatsApp and your booking will be confirmed automatically!\n\n` +
-              `✅ Safe & secure payment powered by Stripe\n` +
-              `🔒 Your payment goes directly to ${businessName}`;
+          // Calculate deposit details for payment breakdown
+          const depositPercentage = currentGoalData.depositPercentage || 25; // fallback
+          const deposit = depositAmount > 0 ? {
+            percentage: depositPercentage,
+            amount: depositAmount
+          } : null;
+          
+          // Build payment message using business-specific template and new component system
+          let paymentMessage = `${paymentTemplate.READY_TO_BOOK}\n\n` +
+            `${paymentTemplate.INTRO}\n\n`;
+          
+          // Check if any service uses per-minute pricing
+          const selectedServices = currentGoalData.selectedServices || [currentGoalData.selectedService].filter(Boolean);
+          const hasPerMinuteService = selectedServices.some((s: any) => s?.pricingType === 'per_minute');
+          
+          // Add payment breakdown using new component system
+          paymentMessage += MessageComponentBuilder.buildPaymentBreakdown(
+            serviceTotal,
+            deposit,
+            bookingFee,
+            preferredPaymentMethod,
+            businessTemplate.toLowerCase() as 'removalist' | 'salon',
+            language,
+            hasPerMinuteService,
+            false // isConfirmation = false for payment quotes
+          );
+          
+          paymentMessage += `\n${paymentTemplate.PAYMENT_LINK_TITLE}\n${paymentResult.paymentLink}\n\n` +
+            `${paymentTemplate.REDIRECT_INFO}\n\n` +
+            `${paymentTemplate.SECURITY_LINE}\n` +
+            `${paymentTemplate.BUSINESS_LINE.replace('{businessName}', businessName)}`;
 
           return {
             ...currentGoalData,

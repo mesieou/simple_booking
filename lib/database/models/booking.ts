@@ -94,7 +94,13 @@ export class Booking {
 
         // Non-blocking call to update business availability
         this.updateBusinessAvailability(data).catch(error => {
-            console.error(`[Booking.add] Availability update failed for booking ${data.id}:`, error);
+            console.error(`[Booking.add] CRITICAL: Availability update failed for booking ${data.id}:`, error);
+            console.error(`[Booking.add] Booking details:`, {
+                id: data.id,
+                businessId: data.businessId,
+                dateTime: data.dateTime,
+                providerId: data.providerId
+            });
         });
 
         return data;
@@ -114,10 +120,14 @@ export class Booking {
 
             console.log(`[Booking.updateBusinessAvailability] Updating availability for booking on ${bookingDate.toISODate()}`);
 
+            // Create a Date object from the business timezone date string to avoid UTC conversion
+            const businessTimezoneDateStr = bookingDate.toISODate(); // e.g., "2025-07-25"
+            const businessTimezoneDate = new Date(`${businessTimezoneDateStr}T00:00:00.000Z`);
+            
             await updateDayAggregatedAvailability(
                 bookingData.businessId,
-                bookingDate.toJSDate(),
-                bookingData.dateTime,
+                businessTimezoneDate,
+                bookingDate.toISO() || bookingDate.toISODate() || bookingDate.toString(), // Use timezone-adjusted datetime instead of UTC
                 quote.totalJobDurationEstimation,
                 { useServiceRole: true }
             );
