@@ -169,9 +169,15 @@ export class AvailabilitySlots {
     // Get availability slots for a business and specific date
     static async getByBusinessAndDate(
         businessId: string,
-        date: string
+        date: string,
+        options?: { useServiceRole?: boolean; supabaseClient?: any }
     ): Promise<AvailabilitySlotsData | null> {
-        const supa = await getEnvironmentServerClient();
+        const supa = options?.supabaseClient || 
+            (options?.useServiceRole ? getEnvironmentServiceRoleClient() : await getEnvironmentServerClient());
+        
+        if (options?.useServiceRole) {
+            console.log('[AvailabilitySlots.getByBusinessAndDate] Using service role client (bypasses RLS for business availability retrieval)');
+        }
 
         const { data, error } = await supa
             .from("availabilitySlots")
@@ -313,9 +319,15 @@ export class AvailabilitySlots {
     static async update(
         businessId: string, 
         date: string, 
-        slotsData: AvailabilitySlotsData
+        slotsData: AvailabilitySlotsData,
+        options?: { useServiceRole?: boolean; supabaseClient?: any }
     ): Promise<AvailabilitySlots> {
-        const supa = await getEnvironmentServerClient();
+        const supa = options?.supabaseClient || 
+            (options?.useServiceRole ? getEnvironmentServiceRoleClient() : await getEnvironmentServerClient());
+        
+        if (options?.useServiceRole) {
+            console.log('[AvailabilitySlots.update] Using service role client (bypasses RLS for business availability update)');
+        }
         
         const availabilitySlots = {
             "businessId": slotsData.businessId,

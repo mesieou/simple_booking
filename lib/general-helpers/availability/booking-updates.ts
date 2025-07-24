@@ -17,7 +17,7 @@ export async function updateDayAggregatedAvailability(
     // Get existing availability for this business and date
     const existingAvailability = await AvailabilitySlots.getByBusinessAndDate(
       businessId, 
-      date.toISOString().split('T')[0], 
+      date.toISOString().split('T')[0],
       options
     );
     

@@ -224,7 +224,7 @@ export class Booking {
             handleModelError(errorMessage, error);
         }
         
-        return data.map(bookingData => new Booking(bookingData));
+        return (data as BookingDataWithId[]).map((bookingData: BookingDataWithId) => new Booking(bookingData));
     }
 
     /**
@@ -262,17 +262,24 @@ export class Booking {
     static async getByProviderAndDateRange(
         providerId: string,
         startDate: Date,
-        endDate: Date
+        endDate: Date,
+        options?: { useServiceRole?: boolean; supabaseClient?: any }
     ): Promise<Booking[]> {
         Booking.validateUUID(providerId, 'provider ID');
 
-        const supa = await getEnvironmentServerClient();
+        const supa = options?.supabaseClient ||
+            (options?.useServiceRole ? getEnvironmentServiceRoleClient() : await getEnvironmentServerClient());
+
+        if (options?.useServiceRole) {
+            console.log('[Booking.getByProviderAndDateRange] Using service role client (bypasses RLS for bookings retrieval)');
+        }
+
         const { data, error } = await supa
             .from("bookings")
             .select("*")
             .eq("providerId", providerId)
             .gte("dateTime", startDate.toISOString())
-            .lte("dateTime", endDate.toISOString());
+            .lte("dateTime", endDate.toISOString()) as { data: BookingDataWithId[]; error: any };
         
         if (error) {
             handleModelError("Failed to fetch bookings by provider and date range", error);

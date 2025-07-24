@@ -219,12 +219,18 @@ export class User {
     }
 
     // Get user by ID
-    static async getById(id: string): Promise<User> {
+    static async getById(id: string, options?: { useServiceRole?: boolean; supabaseClient?: any }): Promise<User> {
         if (!User.isValidUUID(id)) {
             handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
-        const supa = await getEnvironmentServerClient();
+        const supa = options?.supabaseClient ||
+            (options?.useServiceRole ? getEnvironmentServiceRoleClient() : await getEnvironmentServerClient());
+
+        if (options?.useServiceRole) {
+            console.log('[User.getById] Using service role client (bypasses RLS for user retrieval)');
+        }
+
         const { data, error } = await supa.from("users").select("*").eq("id", id).single();
         
         if (error) {
@@ -604,12 +610,18 @@ export class User {
     }
 
     // Delete user
-    static async delete(id: string): Promise<void> {
+    static async delete(id: string, options?: { useServiceRole?: boolean; supabaseClient?: any }): Promise<void> {
         if (!User.isValidUUID(id)) {
             handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
-        const supa = await getEnvironmentServerClient();
+        const supa = options?.supabaseClient ||
+            (options?.useServiceRole ? getEnvironmentServiceRoleClient() : await getEnvironmentServerClient());
+
+        if (options?.useServiceRole) {
+            console.log('[User.delete] Using service role client (bypasses RLS for user deletion)');
+        }
+
         const { error } = await supa.from("users").delete().eq("id", id);
 
         if (error) {
