@@ -177,7 +177,10 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
         <div>
           <h3 className="text-lg font-semibold text-gray-800">Team Size</h3>
           <p className="text-sm text-gray-600 mt-2">
-            How many team members (including yourself) can provide services at the same time? This allows multiple bookings for the same time slot.
+            {data.userRole === 'admin' 
+              ? 'How many team members can provide services at the same time? This allows multiple bookings for the same time slot.'
+              : 'How many team members (including yourself) can provide services at the same time? This allows multiple bookings for the same time slot.'
+            }
           </p>
         </div>
         
@@ -189,9 +192,8 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
             <div className="flex items-center space-x-2">
               <Button
                 type="button"
-                variant="outline"
                 size="sm"
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 p-0 bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-white shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 onClick={() => {
                   const newCount = Math.max(1, data.numberOfProviders - 1);
                   const newProviderNames = [...data.providerNames];
@@ -204,12 +206,13 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
               >
                 <Minus className="h-4 w-4" />
               </Button>
-              <span className="text-lg font-semibold min-w-[2rem] text-center">{data.numberOfProviders}</span>
+              <div className="bg-white border border-gray-300 rounded-md px-3 py-1.5 min-w-[2.5rem]">
+                <span className="text-base font-semibold text-black text-center block">{data.numberOfProviders}</span>
+              </div>
               <Button
                 type="button"
-                variant="outline"
                 size="sm"
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 p-0 bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 text-white shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 onClick={() => {
                   const newCount = Math.min(10, data.numberOfProviders + 1);
                   const newProviderNames = [...data.providerNames];
@@ -225,7 +228,7 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
             </div>
           </div>
           
-          {data.numberOfProviders > 1 && (
+          {(data.numberOfProviders > 1 || data.userRole === 'admin') && (
             <div className="space-y-3">
               <Label className="text-sm font-semibold text-gray-800">
                 Provider Names:
@@ -236,7 +239,7 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
                     <Label className="text-sm text-gray-600 min-w-[80px]">
                       Provider {index + 1}:
                     </Label>
-                    {index === 0 ? (
+                    {index === 0 && data.userRole === 'admin/provider' ? (
                       <Input
                         value={`${data.ownerFirstName} ${data.ownerLastName}`.trim() || 'You'}
                         disabled
