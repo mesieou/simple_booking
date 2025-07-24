@@ -1,0 +1,39 @@
+{
+  "modelUsed": "gpt-4o",
+  "originalContentCharacterLength": 2121,
+  "llmSegmentedChunks": [
+    {
+      "chunkOrder": 1,
+      "chunkText": "1. Where does Luisa work from? Luisa does not operate from a public salon or studio. She provides services from her apartment located at: Apt 11/9 Dryburgh St, Apt 111, West Melbourne VIC 3003",
+      "category": 5,
+      "categoryName": "faq",
+      "confidence": 0.9,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 2,
+      "chunkText": "2. Does Luisa accept walk-ins or same-day bookings? Luisa may accept same-day bookings if she has availability, but it's always best to confirm through WhatsApp. She frequently shares availability for same-day or next-day appointments when asked.",
+      "category": 3,
+      "categoryName": "booking or scheduling",
+      "confidence": 0.85,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 3,
+      "chunkText": "3. What is Luisa’s deposit policy? ● A 50% deposit is required to secure an appointment. Deposit can be paid via bank transfer to: makefile CopyEdit Name: Lisa Bernal Number: +61 451 375 263 ● ● The deposit is refundable only if: ○ The cancellation is made at least 24 hours in advance, or ○ The appointment is rescheduled more than 24 hours ahead.",
+      "category": 6,
+      "categoryName": "terms & conditions / legal policies",
+      "confidence": 0.9,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 4,
+      "chunkText": "4. What if I can’t pay the deposit? Some clients have been allowed to pay the full amount in cash on the day of the appointment if they don’t have a local bank account (e.g., only Bancolombia available). Luisa seems flexible on this on a case-by-case basis.",
+      "category": 5,
+      "categoryName": "faq",
+      "confidence": 0.85,
+      "preChunkSourceIndex": 0
+    }
+  ],
+  "promptUsedLength": 4940
+}
