@@ -44,7 +44,7 @@ export async function computeAggregatedAvailability(
   businessId: string,
   fromDate: Date,
   days: number,
-  options?: { supabaseClient?: any }
+  options?: { useServiceRole?: boolean; supabaseClient?: any }
 ): Promise<AvailabilitySlots[]> {
   const slots: AvailabilitySlots[] = [];
 
@@ -71,7 +71,8 @@ export async function computeAggregatedAvailability(
     const providerBookings = await Booking.getByProviderAndDateRange(
       providerSetting.providerId,
       startOfPeriod,
-      endOfPeriod
+      endOfPeriod,
+      options
     );
     allBookings.push(...providerBookings);
   }

@@ -190,10 +190,12 @@ export const validateAddressHandler: IndividualStepHandler = {
     // Handle user clicking "edit address" - clear validation and go back to ask for address
     if (validatedInput === 'address_edit') {
       console.log('[ValidateAddress] User wants to edit address - clearing validation state');
+      const { BookingDataManager } = await import('./booking-utils');
+      const clearedTimeData = BookingDataManager.clearTimeData(currentGoalData);
       
       if (isValidatingDropoff) {
         return {
-          ...currentGoalData,
+          ...clearedTimeData,
           customerAddress: undefined,
           customerDropoffAddress: undefined,
           dropoffAddress: undefined,
@@ -204,7 +206,7 @@ export const validateAddressHandler: IndividualStepHandler = {
         };
       } else {
         return {
-          ...currentGoalData,
+          ...clearedTimeData,
           customerAddress: undefined,
           pickupAddress: undefined,
           isAddressValidated: false,

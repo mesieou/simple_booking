@@ -9,6 +9,7 @@
     "test:rollover": "jest rollover/",
     "test:booking-impact": "jest booking-impact/",
     "test:calendar-changes": "jest calendar-changes/",
+    "test:business-provider-changes": "jest business-provider-changes/",
     "test:single": "jest rollover/single-provider-rollover.test.ts",
     "test:multi": "jest rollover/multi-provider-rollover.test.ts",
     "test:businesses": "jest rollover/multi-business-rollover.test.ts",
@@ -17,7 +18,9 @@
     "test:business-booking": "jest booking-impact/multi-business-booking.test.ts",
     "test:single-calendar": "jest calendar-changes/single-provider-changes.test.ts",
     "test:multi-calendar": "jest calendar-changes/multi-provider-changes.test.ts",
-    "test:business-calendar": "jest calendar-changes/multi-business-changes.test.ts"
+    "test:business-calendar": "jest calendar-changes/multi-business-changes.test.ts",
+    "test:provider-add-remove": "jest business-provider-changes/add-remove-providers.test.ts",
+    "test:provider-performance": "jest business-provider-changes/performance-stress.test.ts"
   },
   "dependencies": {
     "@jest/globals": "^29.0.0",

@@ -228,8 +228,11 @@ export const handleQuoteChoiceHandler: IndividualStepHandler = {
     
     if (validatedInput === 'edit_pickup_address') {
       console.log('[HandleQuoteChoice] Pickup address edit requested - navigating back to askPickupAddress');
+      const { BookingDataManager } = await import('./booking-utils');
+      const clearedTimeData = BookingDataManager.clearTimeData(currentGoalData);
+      
       return {
-        ...currentGoalData,
+        ...clearedTimeData,
         navigateBackTo: 'askPickupAddress',
         shouldAutoAdvance: true, // Auto-advance to navigate back
         confirmationMessage: 'Let\'s update your pickup address...'
@@ -238,8 +241,11 @@ export const handleQuoteChoiceHandler: IndividualStepHandler = {
 
     if (validatedInput === 'edit_dropoff_address') {
       console.log('[HandleQuoteChoice] Dropoff address edit requested - navigating back to askDropoffAddress');
+      const { BookingDataManager } = await import('./booking-utils');
+      const clearedTimeData = BookingDataManager.clearTimeData(currentGoalData);
+      
       return {
-        ...currentGoalData,
+        ...clearedTimeData,
         navigateBackTo: 'askDropoffAddress',
         shouldAutoAdvance: true, // Auto-advance to navigate back
         confirmationMessage: 'Let\'s update your dropoff address...'

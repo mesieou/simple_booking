@@ -101,12 +101,13 @@ export class CalendarSettings {
   }
 
   // Get calendar settings for a business
-  static async getByBusiness(businessId: string, options?: { supabaseClient?: any }): Promise<CalendarSettings[]> {
+  static async getByBusiness(businessId: string, options?: { useServiceRole?: boolean; supabaseClient?: any }): Promise<CalendarSettings[]> {
     if (!CalendarSettings.isValidUUID(businessId)) {
       handleModelError("Invalid business ID format", new Error("Invalid UUID format"));
     }
 
-    const supabase = options?.supabaseClient || await getEnvironmentServerClient()
+    const supabase = options?.supabaseClient || 
+        (options?.useServiceRole ? getEnvironmentServiceRoleClient() : await getEnvironmentServerClient())
     
     const { data, error } = await supabase
       .from('calendarSettings')
@@ -193,6 +194,21 @@ export class CalendarSettings {
 
     if (error) {
       handleModelError("Failed to delete calendar settings", error);
+    }
+  }
+
+  /**
+   * Delete calendar settings by user ID
+   */
+  static async deleteByUser(userId: string, options?: { supabaseClient?: any }): Promise<void> {
+    const supa = options?.supabaseClient || getEnvironmentServiceRoleClient();
+    const { error } = await supa
+      .from('calendarSettings')
+      .delete()
+      .eq('userId', userId);
+
+    if (error) {
+      handleModelError(`Failed to delete calendar settings for user ${userId}`, error);
     }
   }
 

@@ -148,11 +148,9 @@ export class AvailabilitySlots {
     static async getByBusinessAndDateRange(
         businessId: string,
         startDate: string,
-        endDate: string,
-        options?: { useServiceRole?: boolean; supabaseClient?: any }
+        endDate: string
     ): Promise<AvailabilitySlotsData[]> {
-        const supa = options?.supabaseClient || 
-            (options?.useServiceRole ? getEnvironmentServiceRoleClient() : await getEnvironmentServerClient());
+        const supa = await getEnvironmentServerClient();
 
         const { data, error } = await supa
             .from("availabilitySlots")
@@ -171,11 +169,9 @@ export class AvailabilitySlots {
     // Get availability slots for a business and specific date
     static async getByBusinessAndDate(
         businessId: string,
-        date: string,
-        options?: { useServiceRole?: boolean; supabaseClient?: any }
+        date: string
     ): Promise<AvailabilitySlotsData | null> {
-        const supa = options?.supabaseClient || 
-            (options?.useServiceRole ? getEnvironmentServiceRoleClient() : await getEnvironmentServerClient());
+        const supa = await getEnvironmentServerClient();
 
         const { data, error } = await supa
             .from("availabilitySlots")
@@ -277,13 +273,12 @@ export class AvailabilitySlots {
     static async getAvailableHoursForBusinessDate(
         businessId: string,
         date: string,
-        serviceDuration: number,
-        options?: { useServiceRole?: boolean; supabaseClient?: any }
+        serviceDuration: number
     ): Promise<string[]> {
         try {
             console.log(`[AvailabilitySlots] Getting hours for business ${businessId}, date ${date}, duration ${serviceDuration}`);
             
-            const dayAvailability = await this.getByBusinessAndDate(businessId, date, options);
+            const dayAvailability = await this.getByBusinessAndDate(businessId, date);
             
             if (!dayAvailability) {
                 console.log(`[AvailabilitySlots] No availability data found for date ${date}`);
@@ -318,11 +313,9 @@ export class AvailabilitySlots {
     static async update(
         businessId: string, 
         date: string, 
-        slotsData: AvailabilitySlotsData,
-        options?: { useServiceRole?: boolean; supabaseClient?: any }
+        slotsData: AvailabilitySlotsData
     ): Promise<AvailabilitySlots> {
-        const supa = options?.supabaseClient || 
-            (options?.useServiceRole ? getEnvironmentServiceRoleClient() : await getEnvironmentServerClient());
+        const supa = await getEnvironmentServerClient();
         
         const availabilitySlots = {
             "businessId": slotsData.businessId,
@@ -350,8 +343,17 @@ export class AvailabilitySlots {
     }
 
     // Delete availability slots
-    static async delete(businessId: string, date: string): Promise<void> {
-        const supa = await getEnvironmentServerClient();
+    static async delete(
+        businessId: string, 
+        date: string, 
+        options?: { useServiceRole?: boolean; supabaseClient?: any }
+    ): Promise<void> {
+        const supa = options?.supabaseClient || 
+            (options?.useServiceRole ? getEnvironmentServiceRoleClient() : await getEnvironmentServerClient());
+        
+        if (options?.useServiceRole) {
+            console.log('[AvailabilitySlots.delete] Using service role client (bypasses RLS for business availability deletion)');
+        }
         
         const { error } = await supa
             .from("availabilitySlots")

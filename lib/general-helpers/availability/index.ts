@@ -21,4 +21,10 @@ export {
 // Export calendar change functions
 export {
   recalculateProviderContribution
-} from './calendar-changes'; 
+} from './calendar-changes';
+
+// Export business provider change functions
+export {
+  updateBusinessProviderCount,
+  regenerateAllBusinessAvailability
+} from './business-provider-changes'; 

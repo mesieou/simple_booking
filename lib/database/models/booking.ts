@@ -1,4 +1,4 @@
-import { getEnvironmentServerClient } from "../supabase/environment";
+import { getEnvironmentServerClient, getEnvironmentServiceRoleClient } from "../supabase/environment";
 import { handleModelError } from '@/lib/general-helpers/error';
 import { updateDayAggregatedAvailability } from "@/lib/general-helpers/availability";
 import { User } from "./user";

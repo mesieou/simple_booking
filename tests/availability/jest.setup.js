@@ -1,5 +1,9 @@
 // Setup file for availability tests
 import { jest } from '@jest/globals';
+import dotenv from 'dotenv';
+
+// Load environment variables from .env file
+dotenv.config();
 
 // Suppress console output during tests unless there's an error
 const originalLog = console.log;

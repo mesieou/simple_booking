@@ -224,7 +224,7 @@ export class User {
             handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
-        const supa = await getEnvironmentServerClient()
+        const supa = await getEnvironmentServerClient();
         const { data, error } = await supa.from("users").select("*").eq("id", id).single();
         
         if (error) {
@@ -302,27 +302,47 @@ export class User {
 
     // Get all providers (including admin/providers)
     static async getAllProviders(): Promise<User[]> {
-        const supa = await getEnvironmentServerClient()
+        const supa = getEnvironmentServiceRoleClient();
         const { data, error } = await supa
-            .from("users")
-            .select("*")
-            .in("role", PROVIDER_ROLES);
-        
+            .from('users')
+            .select('*')
+            .in('role', PROVIDER_ROLES);
+
         if (error) {
-            handleModelError("Failed to fetch providers", error);
+            handleModelError("Failed to get all providers", error);
         }
-        
-        return data.map(userData => {
-            const user = new User(
-                userData.firstName, 
-                userData.lastName, 
-                userData.role, 
-                userData.businessId,
-                userData.email,
-                userData.phoneNormalized,
-                userData.whatsAppNumberNormalized
-            );
-            user.id = userData.id; // Set the actual database ID
+
+        return (data || []).map(userData => {
+            const user = new User(userData.firstName, userData.lastName, userData.role, userData.businessId);
+            user.id = userData.id;
+            user.email = userData.email;
+            user.phoneNormalized = userData.phoneNormalized;
+            user.whatsAppNumberNormalized = userData.whatsAppNumberNormalized;
+            return user;
+        });
+    }
+
+    /**
+     * Get users by business and role
+     */
+    static async getByBusinessAndRole(businessId: string, role: UserRole): Promise<User[]> {
+        const supa = getEnvironmentServiceRoleClient();
+        const { data, error } = await supa
+            .from('users')
+            .select('*')
+            .eq('businessId', businessId)
+            .eq('role', role);
+
+        if (error) {
+            handleModelError(`Failed to get users by business ${businessId} and role ${role}`, error);
+        }
+
+        return (data || []).map(userData => {
+            const user = new User(userData.firstName, userData.lastName, userData.role, userData.businessId);
+            user.id = userData.id;
+            user.email = userData.email;
+            user.phoneNormalized = userData.phoneNormalized;
+            user.whatsAppNumberNormalized = userData.whatsAppNumberNormalized;
             return user;
         });
     }
@@ -589,7 +609,7 @@ export class User {
             handleModelError("Invalid UUID format", new Error("Invalid UUID"));
         }
 
-        const supa = await getEnvironmentServerClient()
+        const supa = await getEnvironmentServerClient();
         const { error } = await supa.from("users").delete().eq("id", id);
 
         if (error) {
