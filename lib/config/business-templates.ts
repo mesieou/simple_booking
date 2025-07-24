@@ -49,7 +49,7 @@ export const BUSINESS_TEMPLATES: Record<BusinessCategoryType, BusinessTemplate> 
         ratePerMinute: 1.50,
         baseCharge: 135.00,
         description: 'One removalist and a truck. Assistance is required',
-        durationEstimate: 40,
+        durationEstimate: 60,
         mobile: true
       },
       {
@@ -58,7 +58,7 @@ export const BUSINESS_TEMPLATES: Record<BusinessCategoryType, BusinessTemplate> 
         ratePerMinute: 2.42,
         baseCharge: 217.00,
         description: 'Two removalists and a truck.',
-        durationEstimate: 40,
+        durationEstimate: 60,
         mobile: true
       },
       {
@@ -140,7 +140,7 @@ export const BUSINESS_TEMPLATES: Record<BusinessCategoryType, BusinessTemplate> 
         pricingType: 'fixed' as PricingType,
         fixedPrice: 30.00,
         description: 'Cleaning, exfoliation, and moisturizing.',
-        durationEstimate: 35,
+        durationEstimate: 60,
         mobile: false
       },
       {
@@ -148,7 +148,7 @@ export const BUSINESS_TEMPLATES: Record<BusinessCategoryType, BusinessTemplate> 
         pricingType: 'fixed' as PricingType,
         fixedPrice: 35.00,
         description: 'Cleaning, exfoliation, moisturizing, nail polish.',
-        durationEstimate: 40,
+        durationEstimate: 60,
         mobile: false
       },
       {
@@ -172,7 +172,7 @@ export const BUSINESS_TEMPLATES: Record<BusinessCategoryType, BusinessTemplate> 
         pricingType: 'fixed' as PricingType,
         fixedPrice: 5.00,
         description: 'Nail art design (2 nails $5 / 5-10 nails $10).',
-        durationEstimate: 20,
+        durationEstimate: 60,
         mobile: false
       },
       // Pedicures
@@ -181,7 +181,7 @@ export const BUSINESS_TEMPLATES: Record<BusinessCategoryType, BusinessTemplate> 
         pricingType: 'fixed' as PricingType,
         fixedPrice: 45.00,
         description: 'Cleaning, exfoliation, moisturizing, nail polish.',
-        durationEstimate: 45,
+        durationEstimate: 60,
         mobile: false
       },
       {
@@ -198,7 +198,7 @@ export const BUSINESS_TEMPLATES: Record<BusinessCategoryType, BusinessTemplate> 
         pricingType: 'fixed' as PricingType,
         fixedPrice: 50.00,
         description: 'Professional ladies haircut.',
-        durationEstimate: 30,
+        durationEstimate: 60,
         mobile: false
       },
       {
@@ -213,8 +213,8 @@ export const BUSINESS_TEMPLATES: Record<BusinessCategoryType, BusinessTemplate> 
         name: 'Braids',
         pricingType: 'fixed' as PricingType,
         fixedPrice: 30.00,
-        description: '1-3 braids (30 min).',
-        durationEstimate: 30,
+        description: '1-3 braids (1 hour).',
+        durationEstimate: 60,
         mobile: false
       },
       {
@@ -222,7 +222,7 @@ export const BUSINESS_TEMPLATES: Record<BusinessCategoryType, BusinessTemplate> 
         pricingType: 'fixed' as PricingType,
         fixedPrice: 35.00,
         description: 'Professional blow dry service.',
-        durationEstimate: 30,
+        durationEstimate: 60,
         mobile: false
       },
       {
@@ -230,7 +230,7 @@ export const BUSINESS_TEMPLATES: Record<BusinessCategoryType, BusinessTemplate> 
         pricingType: 'fixed' as PricingType,
         fixedPrice: 30.00,
         description: 'Professional wave styling.',
-        durationEstimate: 45,
+        durationEstimate: 60,
         mobile: false
       },
       {

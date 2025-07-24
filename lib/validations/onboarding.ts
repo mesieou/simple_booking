@@ -81,7 +81,17 @@ export const businessInfoSchema = baseBusinessInfoSchema.refine(
   (data) => {
     // If numberOfProviders > 1, providerNames should be provided and have correct length
     if (data.numberOfProviders > 1) {
-      return data.providerNames && data.providerNames.length === data.numberOfProviders - 1;
+      if (!data.providerNames) return false;
+      
+      // For admin/provider role: providerNames contains only additional providers (numberOfProviders - 1)
+      // For admin role: providerNames contains all providers (numberOfProviders)
+      const expectedLength = data.userRole === 'admin/provider' 
+        ? data.numberOfProviders - 1 
+        : data.numberOfProviders;
+      
+      // Check length and ensure all names are non-empty
+      return data.providerNames.length === expectedLength && 
+             data.providerNames.every(name => name && name.trim().length >= 2);
     }
     return true;
   },
@@ -102,20 +112,19 @@ export const servicesSchema = z.object({
       .min(10, 'Description must be at least 10 characters')
       .max(500, 'Description must be less than 500 characters'),
     
-    basePrice: z.number()
-      .min(0, 'Price must be 0 or greater')
-      .max(99999, 'Price must be less than $99,999'),
+    durationEstimate: z.number()
+      .refine((val) => [60, 90, 120, 150, 180, 240, 300, 360].includes(val), {
+        message: 'Please select a valid duration from the available options'
+      }),
     
-    durationMinutes: z.number()
-      .min(15, 'Duration must be at least 15 minutes')
-      .max(1440, 'Duration must be less than 24 hours'),
-    
-    category: z.string()
-      .min(1, 'Please select a service category'),
-    
-    pricingType: z.enum(['fixed', 'hourly', 'quote'], {
+    pricingType: z.enum(['fixed', 'per_minute'], {
       errorMap: () => ({ message: 'Please select a pricing type' })
-    }).default('fixed'),
+    }),
+    
+    fixedPrice: z.number().optional(),
+    baseCharge: z.number().optional(),
+    ratePerMinute: z.number().optional(),
+    mobile: z.boolean(),
   }))
   .min(1, 'Please add at least one service')
   .max(20, 'Maximum 20 services allowed'),
@@ -227,7 +236,17 @@ export const completeOnboardingSchema = z.object({
   (data) => {
     // If numberOfProviders > 1, providerNames should be provided and have correct length
     if (data.numberOfProviders > 1) {
-      return data.providerNames && data.providerNames.length === data.numberOfProviders - 1;
+      if (!data.providerNames) return false;
+      
+      // For admin/provider role: providerNames contains only additional providers (numberOfProviders - 1)
+      // For admin role: providerNames contains all providers (numberOfProviders)
+      const expectedLength = data.userRole === 'admin/provider' 
+        ? data.numberOfProviders - 1 
+        : data.numberOfProviders;
+      
+      // Check length and ensure all names are non-empty
+      return data.providerNames.length === expectedLength && 
+             data.providerNames.every(name => name && name.trim().length >= 2);
     }
     return true;
   },

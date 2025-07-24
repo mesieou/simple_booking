@@ -12,6 +12,8 @@ import { CalendarStep } from '@/components/onboarding/calendar-step';
 import { PaymentStep } from '@/components/onboarding/payment-step';
 import { useToast } from '@/lib/rename-categorise-better/utils/use-toast';
 import { type BusinessCategoryType, getBusinessTemplate } from '@/lib/config/business-templates';
+import { businessInfoSchema, servicesSchema } from '@/lib/validations/onboarding';
+import { ZodError } from 'zod';
 
 interface BusinessFormData {
   // Business Category
@@ -23,7 +25,9 @@ interface BusinessFormData {
   ownerLastName: string;
   email: string;
   phone: string;
+  phoneCountryCode?: string;
   whatsappNumber: string;
+  whatsappCountryCode?: string;
   businessAddress: string;
   websiteUrl?: string;
   timeZone: string;
@@ -46,17 +50,21 @@ interface BusinessFormData {
     mobile: boolean;
   }>;
   
-  // Calendar
-  workingHours: {
-    mon: { start: string; end: string } | null;
-    tue: { start: string; end: string } | null;
-    wed: { start: string; end: string } | null;
-    thu: { start: string; end: string } | null;
-    fri: { start: string; end: string } | null;
-    sat: { start: string; end: string } | null;
-    sun: { start: string; end: string } | null;
-  };
-  bufferTime: number;
+  // Calendar - per provider settings
+  providerCalendarSettings: Array<{
+    providerIndex: number;
+    providerName: string;
+    workingHours: {
+      mon: { start: string; end: string } | null;
+      tue: { start: string; end: string } | null;
+      wed: { start: string; end: string } | null;
+      thu: { start: string; end: string } | null;
+      fri: { start: string; end: string } | null;
+      sat: { start: string; end: string } | null;
+      sun: { start: string; end: string } | null;
+    };
+    bufferTime: number;
+  }>;
   
   // Payment
   depositPercentage: number;
@@ -94,25 +102,33 @@ const DEFAULT_FORM_DATA: BusinessFormData = {
   ownerLastName: '',
   email: '',
   phone: '',
+  phoneCountryCode: '+61',
   whatsappNumber: '',
+  whatsappCountryCode: '+61',
   businessAddress: '',
   websiteUrl: '',
   timeZone: 'Australia/Sydney',
-  userRole: 'admin/provider',
+  userRole: 'admin',
   numberOfProviders: 1,
   providerNames: [''],
   password: '',
   services: [],
-  workingHours: {
-    mon: { start: '09:00', end: '17:00' },
-    tue: { start: '09:00', end: '17:00' },
-    wed: { start: '09:00', end: '17:00' },
-    thu: { start: '09:00', end: '17:00' },
-    fri: { start: '09:00', end: '17:00' },
-    sat: null,
-    sun: null
-  },
-  bufferTime: 15,
+  providerCalendarSettings: [
+    {
+      providerIndex: 0,
+      providerName: 'Provider 1',
+      workingHours: {
+        mon: { start: '09:00', end: '17:00' },
+        tue: { start: '09:00', end: '17:00' },
+        wed: { start: '09:00', end: '17:00' },
+        thu: { start: '09:00', end: '17:00' },
+        fri: { start: '09:00', end: '17:00' },
+        sat: null,
+        sun: null
+      },
+      bufferTime: 15
+    }
+  ],
   depositPercentage: 25,
   preferredPaymentMethod: 'cash',
   setupPayments: false
@@ -132,30 +148,337 @@ export default function CreateBusinessPage() {
   useEffect(() => {
     if (formData.businessCategory) {
       const template = getBusinessTemplate(formData.businessCategory);
-      setFormData(prev => ({
-        ...prev,
-        services: template.services,
-        workingHours: template.defaultWorkingHours,
-        bufferTime: template.bufferTime,
-        depositPercentage: template.depositPercentage
+      
+      // Ensure all services have valid duration estimates (supported availability intervals)
+      const validDurations = [60, 90, 120, 150, 180, 240, 300, 360];
+      const correctedServices = template.services.map(service => ({
+        ...service,
+        durationEstimate: validDurations.includes(service.durationEstimate) ? service.durationEstimate : 60
       }));
+      
+      setFormData(prev => {
+        // Apply template settings to all provider calendar settings
+        const updatedProviderSettings = prev.providerCalendarSettings.map(setting => ({
+          ...setting,
+          workingHours: template.defaultWorkingHours,
+          bufferTime: template.bufferTime
+        }));
+        
+        return {
+          ...prev,
+          services: correctedServices,
+          providerCalendarSettings: updatedProviderSettings,
+          depositPercentage: template.depositPercentage
+        };
+      });
     }
   }, [formData.businessCategory]);
 
-  // Update provider names when owner name changes
+  // Handle provider names based on user role changes
   useEffect(() => {
-    if (formData.ownerFirstName || formData.ownerLastName) {
-      const ownerName = `${formData.ownerFirstName} ${formData.ownerLastName}`.trim();
-      setFormData(prev => {
-        const newProviderNames = [...prev.providerNames];
-        newProviderNames[0] = ownerName;
-        return { ...prev, providerNames: newProviderNames };
-      });
+    if (formData.userRole === 'admin/provider') {
+      // For admin/provider, we don't need to store owner name in providerNames array
+      // The owner name is handled separately in calendar settings
+      // Ensure providerNames has correct length for additional providers only
+      const additionalProvidersCount = Math.max(0, formData.numberOfProviders - 1);
+      if (formData.providerNames.length !== additionalProvidersCount) {
+        const newProviderNames = [...formData.providerNames];
+        while (newProviderNames.length < additionalProvidersCount) {
+          newProviderNames.push('');
+        }
+        if (newProviderNames.length > additionalProvidersCount) {
+          newProviderNames.splice(additionalProvidersCount);
+        }
+        setFormData(prev => ({ ...prev, providerNames: newProviderNames }));
+      }
+    } else if (formData.userRole === 'admin') {
+      // For admin role, providerNames should match numberOfProviders
+      if (formData.providerNames.length !== formData.numberOfProviders) {
+        const newProviderNames = [...formData.providerNames];
+        while (newProviderNames.length < formData.numberOfProviders) {
+          newProviderNames.push('');
+        }
+        if (newProviderNames.length > formData.numberOfProviders) {
+          newProviderNames.splice(formData.numberOfProviders);
+        }
+        setFormData(prev => ({ ...prev, providerNames: newProviderNames }));
+      }
     }
-  }, [formData.ownerFirstName, formData.ownerLastName]);
+  }, [formData.userRole, formData.numberOfProviders]);
+
+  // Update provider calendar settings when number of providers changes
+  useEffect(() => {
+    const currentSettings = formData.providerCalendarSettings;
+    const targetCount = formData.numberOfProviders;
+    
+    if (currentSettings.length !== targetCount) {
+      const newSettings = [...currentSettings];
+      
+      // Add new provider settings if needed
+      while (newSettings.length < targetCount) {
+        const index = newSettings.length;
+        
+        // Generate provider name based on role and index
+        const generateProviderName = (providerIndex: number) => {
+          if (providerIndex === 0 && formData.userRole === 'admin/provider') {
+            return `${formData.ownerFirstName} ${formData.ownerLastName}`.trim() || `Provider ${providerIndex + 1}`;
+          } else {
+            const providerNameIndex = formData.userRole === 'admin/provider' ? providerIndex - 1 : providerIndex;
+            return formData.providerNames[providerNameIndex] || `Provider ${providerIndex + 1}`;
+          }
+        };
+        
+        newSettings.push({
+          providerIndex: index,
+          providerName: generateProviderName(index),
+          workingHours: {
+            mon: { start: '09:00', end: '17:00' },
+            tue: { start: '09:00', end: '17:00' },
+            wed: { start: '09:00', end: '17:00' },
+            thu: { start: '09:00', end: '17:00' },
+            fri: { start: '09:00', end: '17:00' },
+            sat: null,
+            sun: null
+          },
+          bufferTime: 15
+        });
+      }
+      
+      // Remove excess provider settings
+      if (newSettings.length > targetCount) {
+        newSettings.splice(targetCount);
+      }
+      
+      setFormData(prev => ({ ...prev, providerCalendarSettings: newSettings }));
+    }
+  }, [formData.numberOfProviders]);
+
+  // Update provider names in calendar settings when provider names change
+  useEffect(() => {
+    const updatedSettings = formData.providerCalendarSettings.map((setting, index) => {
+      let providerName = '';
+      
+      if (index === 0 && formData.userRole === 'admin/provider') {
+        // First provider is the owner when role is admin/provider
+        providerName = `${formData.ownerFirstName} ${formData.ownerLastName}`.trim() || `Provider ${index + 1}`;
+      } else {
+        // For additional providers, get the name from providerNames array
+        // When userRole is 'admin/provider', providerNames[0] is for the second provider (index 1)
+        // When userRole is 'admin', providerNames[0] is for the first provider (index 0)
+        const providerNameIndex = formData.userRole === 'admin/provider' ? index - 1 : index;
+        providerName = formData.providerNames[providerNameIndex] || `Provider ${index + 1}`;
+      }
+      
+      // Only update if the name has actually changed to avoid unnecessary re-renders
+      if (setting.providerName !== providerName) {
+        return { ...setting, providerName };
+      }
+      return setting;
+    });
+    
+    // Only update state if there are actual changes
+    const hasChanges = updatedSettings.some((setting, index) => 
+      setting.providerName !== formData.providerCalendarSettings[index]?.providerName
+    );
+    
+    if (hasChanges) {
+      setFormData(prev => ({ ...prev, providerCalendarSettings: updatedSettings }));
+    }
+  }, [formData.providerNames, formData.ownerFirstName, formData.ownerLastName, formData.userRole, formData.providerCalendarSettings]);
+
+  // Validation function for Business Information step
+  const validateBusinessInfo = () => {
+    try {
+      // Prepare data for validation
+      const phoneCountryCode = formData.phoneCountryCode || '+61';
+      const whatsappCountryCode = formData.whatsappCountryCode || '+61';
+      
+      // Only combine country code with phone number if the local number is provided
+      const fullPhone = formData.phone ? `${phoneCountryCode}${formData.phone}` : '';
+      const fullWhatsappNumber = formData.whatsappNumber ? `${whatsappCountryCode}${formData.whatsappNumber}` : '';
+      
+      // Provider names are already structured correctly for validation
+      // admin/provider role: providerNames contains only additional providers
+      // admin role: providerNames contains all providers
+      const validationProviderNames = formData.providerNames;
+      
+      const validationData = {
+        businessCategory: formData.businessCategory,
+        businessName: formData.businessName,
+        ownerFirstName: formData.ownerFirstName,
+        ownerLastName: formData.ownerLastName,
+        email: formData.email,
+        phone: fullPhone,
+        whatsappNumber: fullWhatsappNumber,
+        businessAddress: formData.businessAddress,
+        websiteUrl: formData.websiteUrl || '',
+        timeZone: formData.timeZone,
+        userRole: formData.userRole,
+        numberOfProviders: formData.numberOfProviders,
+        providerNames: validationProviderNames,
+      };
+
+      // Simple phone number validation
+      if (!formData.phone || formData.phone.trim().length < 7) {
+        throw new Error('Please enter a valid phone number (minimum 7 digits)');
+      }
+      
+      if (!formData.whatsappNumber || formData.whatsappNumber.trim().length < 7) {
+        throw new Error('Please enter a valid WhatsApp number (minimum 7 digits)');
+      }
+      
+      // Count only digits for length validation
+      const phoneDigits = formData.phone.replace(/[^\d]/g, '');
+      const whatsappDigits = formData.whatsappNumber.replace(/[^\d]/g, '');
+      
+      if (phoneDigits.length > 10) {
+        throw new Error('Phone number should not be more than 10 digits');
+      }
+      
+      if (whatsappDigits.length > 10) {
+        throw new Error('WhatsApp number should not be more than 10 digits');
+      }
+
+      // Business address validation
+      if (!formData.businessAddress || formData.businessAddress.trim().length < 5) {
+        throw new Error('Please enter a complete business address (minimum 5 characters)');
+      }
+      
+      if (formData.businessAddress.trim().length > 500) {
+        throw new Error('Business address must be less than 500 characters');
+      }
+      
+      // Check if address contains some basic components (not just whitespace or single words)
+      const addressParts = formData.businessAddress.trim().split(/\s+/);
+      if (addressParts.length < 2) {
+        throw new Error('Please enter a complete address with street and suburb/city');
+      }
+
+      // Validate using zod schema (with full international numbers)
+      businessInfoSchema.parse(validationData);
+
+      // Additional password validation for business info step
+      if (!formData.password || formData.password.length < 8) {
+        throw new Error('Password is required and must be at least 8 characters');
+      }
+
+      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/;
+      if (!passwordRegex.test(formData.password)) {
+        throw new Error('Password must contain at least one uppercase letter, one lowercase letter, and one number');
+      }
+
+      return true;
+    } catch (error) {
+      if (error instanceof ZodError) {
+        // Get the first validation error message
+        const firstError = error.errors[0];
+        toast({
+          title: "Validation Error",
+          description: firstError.message,
+          variant: "destructive",
+        });
+      } else if (error instanceof Error) {
+        toast({
+          title: "Validation Error", 
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Validation Error",
+          description: "Please check all required fields",
+          variant: "destructive",
+        });
+      }
+      return false;
+    }
+  };
+
+  // State to track if there's an unsaved service being edited
+  const [hasUnsavedService, setHasUnsavedService] = useState(false);
+
+  // Validation function for Services & Pricing step
+  const validateServices = () => {
+    try {
+      // Check if there's a service currently being edited that hasn't been saved
+      if (hasUnsavedService) {
+        throw new Error('Please save or cancel the service you are currently editing before proceeding');
+      }
+
+      if (!formData.services || formData.services.length === 0) {
+        throw new Error('Please add at least one service');
+      }
+
+      // Check each service for required fields
+      for (let i = 0; i < formData.services.length; i++) {
+        const service = formData.services[i];
+        
+        if (!service.name || service.name.trim().length < 2) {
+          throw new Error(`Service ${i + 1}: Service name is required and must be at least 2 characters`);
+        }
+        
+        if (!service.description || service.description.trim().length < 10) {
+          throw new Error(`Service ${i + 1}: Description is required and must be at least 10 characters`);
+        }
+        
+        if (!service.durationEstimate || ![60, 90, 120, 150, 180, 240, 300, 360].includes(service.durationEstimate)) {
+          throw new Error(`Service ${i + 1}: Please select a valid duration from the available options`);
+        }
+        
+        if (service.pricingType === 'fixed') {
+          if (!service.fixedPrice || service.fixedPrice <= 0) {
+            throw new Error(`Service ${i + 1}: Fixed price is required and must be greater than 0`);
+          }
+        } else if (service.pricingType === 'per_minute') {
+          if (!service.ratePerMinute || service.ratePerMinute <= 0) {
+            throw new Error(`Service ${i + 1}: Rate per hour is required and must be greater than 0`);
+          }
+        }
+      }
+
+      return true;
+    } catch (error) {
+      if (error instanceof ZodError) {
+        // Get the first validation error message
+        const firstError = error.errors[0];
+        toast({
+          title: "Services Validation Error",
+          description: firstError.message,
+          variant: "destructive",
+        });
+      } else if (error instanceof Error) {
+        toast({
+          title: "Services Validation Error", 
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Services Validation Error",
+          description: "Please check all service information",
+          variant: "destructive",
+        });
+      }
+      return false;
+    }
+  };
 
   const handleNext = () => {
     if (currentStep < STEPS.length) {
+      // Validate current step before proceeding
+      if (currentStep === 1) {
+        // Business Information step validation
+        if (!validateBusinessInfo()) {
+          return; // Don't proceed if validation fails
+        }
+      } else if (currentStep === 2) {
+        // Services & Pricing step validation
+        if (!validateServices()) {
+          return; // Don't proceed if validation fails
+        }
+      }
+      // Add validation for other steps here as needed
+      
       setCurrentStep(currentStep + 1);
     }
   };
@@ -257,6 +580,7 @@ export default function CreateBusinessPage() {
           <ServicesStep
             data={formData}
             onUpdate={updateFormData}
+            onEditingChange={setHasUnsavedService}
           />
         );
       case 3:

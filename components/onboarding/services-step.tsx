@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2, X, Check } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 
@@ -25,6 +26,7 @@ interface ServicesStepProps {
     services: ServiceData[];
   };
   onUpdate: (data: { services: ServiceData[] }) => void;
+  onEditingChange?: (isEditing: boolean) => void;
 }
 
 function ServiceCardForm({
@@ -44,29 +46,44 @@ function ServiceCardForm({
   isNew?: boolean;
   disableDelete?: boolean;
 }) {
-  // Local state for ratePerMinute string
-  const [ratePerMinuteInput, setRatePerMinuteInput] = useState(
-    service.ratePerMinute !== undefined && service.ratePerMinute !== null ? String(service.ratePerMinute) : ''
+  // Local state for rate per hour (displayed to user) 
+  const [ratePerHourInput, setRatePerHourInput] = useState(
+    service.ratePerMinute !== undefined && service.ratePerMinute !== null ? String(Math.round(service.ratePerMinute * 60)) : ''
   );
 
   useEffect(() => {
-    setRatePerMinuteInput(
-      service.ratePerMinute !== undefined && service.ratePerMinute !== null ? String(service.ratePerMinute) : ''
-    );
+    // Convert rate per minute to rate per hour for display
+    const hourlyRate = service.ratePerMinute !== undefined && service.ratePerMinute !== null ? (service.ratePerMinute * 60) : 0;
+    setRatePerHourInput(hourlyRate > 0 ? String(Math.round(hourlyRate)) : '');
   }, [service.ratePerMinute]);
 
-  const handleRatePerMinuteChange = (val: string) => {
-    // Allow: '', '1', '1.', '1.5', '1.50', '.5'
-    if (/^\d*\.?\d{0,2}$/.test(val)) {
-      setRatePerMinuteInput(val);
-      if (val === '' || val === '.') {
+  const handleRatePerHourChange = (val: string) => {
+    // Allow only integers: '', '1', '25', '150'
+    if (/^\d*$/.test(val)) {
+      setRatePerHourInput(val);
+      if (val === '') {
         onChange({ ...service, ratePerMinute: undefined });
       } else {
-        const floatVal = parseFloat(val);
-        if (!isNaN(floatVal)) {
-          onChange({ ...service, ratePerMinute: floatVal });
+        const hourlyRate = parseInt(val);
+        if (!isNaN(hourlyRate)) {
+          // Convert hourly rate to per minute rate for backend storage
+          const minuteRate = hourlyRate / 60;
+          onChange({ ...service, ratePerMinute: minuteRate });
         }
       }
+    }
+  };
+
+  // Validation function to check if service is complete
+  const isServiceValid = () => {
+    if (!service.name || service.name.trim().length < 2) return false;
+    if (!service.description || service.description.trim().length < 10) return false;
+    if (!service.durationEstimate || ![60, 90, 120, 150, 180, 240, 300, 360].includes(service.durationEstimate)) return false;
+    
+    if (service.pricingType === 'fixed') {
+      return service.fixedPrice !== undefined && service.fixedPrice > 0;
+    } else {
+      return service.ratePerMinute !== undefined && service.ratePerMinute > 0;
     }
   };
 
@@ -98,14 +115,25 @@ function ServiceCardForm({
               />
             </div>
             <div>
-              <Label htmlFor="duration" className="block text-sm font-medium text-gray-700 mb-1">Duration (minutes)</Label>
-              <Input
-                id="duration"
-                type="number"
-                value={service.durationEstimate}
-                onChange={(e) => onChange({ ...service, durationEstimate: parseInt(e.target.value) || 0 })}
-                className="bg-gray-50 border border-gray-300 text-gray-900 placeholder:text-gray-400 w-full"
-              />
+              <Label htmlFor="duration" className="block text-sm font-medium text-gray-700 mb-1">Duration Estimation</Label>
+              <Select
+                value={service.durationEstimate && [60, 90, 120, 150, 180, 240, 300, 360].includes(service.durationEstimate) ? service.durationEstimate.toString() : '60'}
+                onValueChange={(value) => onChange({ ...service, durationEstimate: parseInt(value) })}
+              >
+                <SelectTrigger className="bg-gray-50 border-gray-300 text-gray-900 w-full">
+                  <SelectValue placeholder="Select duration" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-gray-300">
+                  <SelectItem value="60" className="text-gray-900 hover:bg-gray-100">1 hour (60 minutes)</SelectItem>
+                  <SelectItem value="90" className="text-gray-900 hover:bg-gray-100">1.5 hours (90 minutes)</SelectItem>
+                  <SelectItem value="120" className="text-gray-900 hover:bg-gray-100">2 hours (120 minutes)</SelectItem>
+                  <SelectItem value="150" className="text-gray-900 hover:bg-gray-100">2.5 hours (150 minutes)</SelectItem>
+                  <SelectItem value="180" className="text-gray-900 hover:bg-gray-100">3 hours (180 minutes)</SelectItem>
+                  <SelectItem value="240" className="text-gray-900 hover:bg-gray-100">4 hours (240 minutes)</SelectItem>
+                  <SelectItem value="300" className="text-gray-900 hover:bg-gray-100">5 hours (300 minutes)</SelectItem>
+                  <SelectItem value="360" className="text-gray-900 hover:bg-gray-100">6 hours (360 minutes)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -124,7 +152,7 @@ function ServiceCardForm({
             </div>
             {service.pricingType === 'fixed' ? (
               <div className="space-y-2">
-                <Label htmlFor="fixedPrice" className="block text-sm font-medium text-gray-700 mb-1">Fixed Price</Label>
+                <Label htmlFor="fixedPrice" className="block text-sm font-medium text-gray-700 mb-1">Fixed Price *</Label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
                   <Input
@@ -137,15 +165,22 @@ function ServiceCardForm({
                       const val = e.target.value.replace(/[^0-9.]/g, '');
                       onChange({ ...service, fixedPrice: val === '' ? undefined : parseFloat(val) });
                     }}
-                    className="bg-gray-50 border border-gray-300 text-gray-900 placeholder:text-gray-400 w-full pl-7"
+                    className={`bg-gray-50 border text-gray-900 placeholder:text-gray-400 w-full pl-7 ${
+                      service.pricingType === 'fixed' && (!service.fixedPrice || service.fixedPrice <= 0) 
+                        ? 'border-red-300 focus:border-red-500' 
+                        : 'border-gray-300'
+                    }`}
                     placeholder="0.00"
                   />
                 </div>
+                {service.pricingType === 'fixed' && (!service.fixedPrice || service.fixedPrice <= 0) && (
+                  <p className="text-xs text-red-600">Fixed price is required</p>
+                )}
               </div>
             ) : (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="baseCharge" className="block text-sm font-medium text-gray-700 mb-1">Base Charge</Label>
+                  <Label htmlFor="baseCharge" className="block text-sm font-medium text-gray-700 mb-1">Base Charge (Optional)</Label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
                     <Input
@@ -164,19 +199,28 @@ function ServiceCardForm({
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="ratePerMinute" className="block text-sm font-medium text-gray-700 mb-1">Rate per Minute</Label>
+                  <Label htmlFor="ratePerHour" className="block text-sm font-medium text-gray-700 mb-1">Rate per Hour *</Label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
                     <Input
-                      id="ratePerMinute"
+                      id="ratePerHour"
                       type="text"
-                      inputMode="decimal"
-                      value={ratePerMinuteInput}
-                      onChange={(e) => handleRatePerMinuteChange(e.target.value)}
-                      className="bg-gray-50 border border-gray-300 text-gray-900 placeholder:text-gray-400 w-full pl-7"
-                      placeholder="0.00"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={ratePerHourInput}
+                      onChange={(e) => handleRatePerHourChange(e.target.value)}
+                      className={`bg-gray-50 border text-gray-900 placeholder:text-gray-400 w-full pl-7 ${
+                        service.pricingType === 'per_minute' && (!service.ratePerMinute || service.ratePerMinute <= 0) 
+                          ? 'border-red-300 focus:border-red-500' 
+                          : 'border-gray-300'
+                      }`}
+                      placeholder="150"
                     />
                   </div>
+                  {service.pricingType === 'per_minute' && (!service.ratePerMinute || service.ratePerMinute <= 0) && (
+                    <p className="text-xs text-red-600">Rate per hour is required</p>
+                  )}
+                  <p className="text-xs text-gray-500">Rate per minute: ${service.ratePerMinute ? service.ratePerMinute.toFixed(2) : '0.00'}</p>
                 </div>
               </>
             )}
@@ -201,7 +245,7 @@ function ServiceCardForm({
             </Button>
           )}
           {isNew && onSave && (
-            <Button size="sm" onClick={onSave} disabled={!service.name}>
+            <Button size="sm" onClick={onSave} disabled={!isServiceValid()}>
               <Check className="w-4 h-4 mr-1" />
               Save
             </Button>
@@ -223,7 +267,7 @@ function ServiceCardForm({
   );
 }
 
-export function ServicesStep({ data, onUpdate }: ServicesStepProps) {
+export function ServicesStep({ data, onUpdate, onEditingChange }: ServicesStepProps) {
   const [editingService, setEditingService] = useState<ServiceData | null>(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
 
@@ -243,20 +287,23 @@ export function ServicesStep({ data, onUpdate }: ServicesStepProps) {
     };
     setEditingService(newService);
     setIsAddingNew(true);
+    onEditingChange?.(true);
   };
 
   const handleSaveNew = () => {
-    if (editingService && editingService.name) {
+    if (editingService && editingService.name && editingService.description) {
       const updatedServices = [...data.services, editingService];
       onUpdate({ services: updatedServices });
       setIsAddingNew(false);
       setEditingService(null);
+      onEditingChange?.(false);
     }
   };
 
   const handleCancelNew = () => {
     setIsAddingNew(false);
     setEditingService(null);
+    onEditingChange?.(false);
   };
 
   return (

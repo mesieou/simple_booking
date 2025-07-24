@@ -77,13 +77,20 @@ export async function POST(request: NextRequest) {
 
     // --- Step 2: Create Business ---
     console.log('[Onboarding] Creating business...');
+    
+    // Combine country codes with phone numbers
+    const phoneCountryCode = onboardingData.phoneCountryCode || '+61';
+    const whatsappCountryCode = onboardingData.whatsappCountryCode || '+61';
+    const fullPhone = onboardingData.phone ? `${phoneCountryCode}${onboardingData.phone}` : '';
+    const fullWhatsappNumber = onboardingData.whatsappNumber ? `${whatsappCountryCode}${onboardingData.whatsappNumber}` : '';
+    
     const businessData = {
       name: onboardingData.businessName,
       email: onboardingData.email,
-      phone: onboardingData.phone || '',
+      phone: fullPhone,
       timeZone: onboardingData.timeZone || 'Australia/Sydney',
       interfaceType: 'whatsapp' as const,
-      whatsappNumber: onboardingData.whatsappNumber || '',
+      whatsappNumber: fullWhatsappNumber,
       whatsappPhoneNumberId: '', // To be configured later
       businessAddress: onboardingData.businessAddress || '',
       websiteUrl: onboardingData.websiteUrl || '',
@@ -118,8 +125,8 @@ export async function POST(request: NextRequest) {
       userRole,
       business.id,
       onboardingData.email,
-      onboardingData.phone ? onboardingData.phone.replace(/[^\d]/g, '') : undefined,
-      onboardingData.whatsappNumber ? onboardingData.whatsappNumber.replace(/[^\d]/g, '') : undefined
+      fullPhone ? fullPhone.replace(/[^\d]/g, '') : undefined,
+      fullWhatsappNumber ? fullWhatsappNumber.replace(/[^\d]/g, '') : undefined
     );
 
     // Set the auth user ID for the owner
@@ -128,7 +135,7 @@ export async function POST(request: NextRequest) {
     const ownerUserResult = await ownerUser.add({
       email: onboardingData.email,
       password: onboardingData.password,
-      whatsappNumber: onboardingData.whatsappNumber,
+      whatsappNumber: fullWhatsappNumber,
       skipProviderValidation: true,
       supabaseClient: adminSupa
     });
@@ -151,9 +158,16 @@ export async function POST(request: NextRequest) {
     const createdAuthUsers: string[] = [authData.user.id]; // Track for cleanup
 
     try {
-      // Create additional providers (if any)
-      for (let i = 1; i < numberOfProviders; i++) {
-        const providerName = providerNames[i - 1] || `Provider ${i + 1}`;
+      // Create additional providers based on user role
+      // For admin/provider: create providers starting from index 1 (owner is index 0)
+      // For admin: create all providers starting from index 0 (no owner provider)
+      const startIndex = userRole === 'admin/provider' ? 1 : 0;
+      
+      for (let i = startIndex; i < numberOfProviders; i++) {
+        // For admin/provider: providerNames[i-1] (skip owner at index 0)
+        // For admin: providerNames[i] (all providers)
+        const providerNameIndex = userRole === 'admin/provider' ? i - 1 : i;
+        const providerName = providerNames[providerNameIndex] || `Provider ${i + 1}`;
         const [firstName, ...lastNameParts] = providerName.trim().split(' ');
         const lastName = lastNameParts.join(' ') || 'Provider';
         
@@ -277,7 +291,12 @@ export async function POST(request: NextRequest) {
 
     // --- Step 6: Create Provider Calendar Settings ---
     console.log('[Onboarding] Creating provider calendar settings...');
-    const workingHours = onboardingData.workingHours || {
+    
+    // Use individual provider calendar settings or fallback to defaults
+    const providerCalendarSettings = onboardingData.providerCalendarSettings || [];
+    
+    // Fallback default working hours and buffer time if no provider settings provided
+    const defaultWorkingHours = {
       mon: { start: '09:00', end: '17:00' },
       tue: { start: '09:00', end: '17:00' },
       wed: { start: '09:00', end: '17:00' },
@@ -286,38 +305,54 @@ export async function POST(request: NextRequest) {
       sat: null,
       sun: null
     };
-
-    const calendarSettings = {
-      timezone: onboardingData.timeZone || 'Australia/Sydney',
-      bufferTime: onboardingData.bufferTime || 15
-    };
+    const defaultBufferTime = 15;
 
     const createdCalendarSettings: CalendarSettings[] = [];
 
     try {
       for (let i = 0; i < allProviderUsers.length; i++) {
         const provider = allProviderUsers[i];
-        const providerName = i === 0 
-          ? `${onboardingData.ownerFirstName} ${onboardingData.ownerLastName}`.trim()
-          : (providerNames[i] || `Provider ${i + 1}`);
+        
+        // Generate provider name based on role and index
+        let providerName;
+        if (i === 0 && userRole === 'admin/provider') {
+          // First provider is the owner for admin/provider role
+          providerName = `${onboardingData.ownerFirstName} ${onboardingData.ownerLastName}`.trim();
+        } else {
+          // For admin role: use providerNames[i]
+          // For admin/provider role: use providerNames[i-1] for additional providers
+          const providerNameIndex = userRole === 'admin/provider' ? i - 1 : i;
+          providerName = providerNames[providerNameIndex] || `Provider ${i + 1}`;
+        }
 
         console.log(`[Onboarding] Creating calendar settings for provider ${i}: ${providerName} (${provider.role})`);
 
         // Only create calendar settings for users who actually provide services
         if (provider.role === 'admin/provider' || provider.role === 'provider') {
           console.log(`[Onboarding] Provider ${i} qualifies for calendar settings, proceeding...`);
+          
+          // Get individual provider calendar settings or use defaults
+          const providerCalendarData = providerCalendarSettings[i] || {
+            workingHours: defaultWorkingHours,
+            bufferTime: defaultBufferTime
+          };
+          
           const calendarSettingsData = {
             userId: provider.id, // Database uses userId field
             businessId: business.id,
-            workingHours: workingHours,
+            workingHours: providerCalendarData.workingHours,
             manageCalendar: false,
             settings: {
-              bufferTime: onboardingData.bufferTime || 15, // Use form value or default to 15 minutes
+              bufferTime: providerCalendarData.bufferTime,
               timezone: onboardingData.timeZone || 'Australia/Sydney'
             }
           };
 
-          console.log(`[Onboarding] Calling CalendarSettings.save with data:`, calendarSettingsData);
+          console.log(`[Onboarding] Calling CalendarSettings.save with data for ${providerName}:`, {
+            providerId: provider.id,
+            bufferTime: providerCalendarData.bufferTime,
+            workingHours: Object.keys(providerCalendarData.workingHours).filter(day => providerCalendarData.workingHours[day]).length + ' active days'
+          });
           
           const result = await CalendarSettings.save(undefined, calendarSettingsData, { 
             useServiceRole: true, 
@@ -414,14 +449,26 @@ export async function POST(request: NextRequest) {
         firstName: ownerUser.firstName,
         lastName: ownerUser.lastName
       },
-      providers: allProviderUsers.map((provider, index) => ({
-        id: provider.id,
-        name: index === 0 
-          ? `${onboardingData.ownerFirstName} ${onboardingData.ownerLastName}`.trim()
-          : (providerNames[index] || `Provider ${index + 1}`),
-        role: provider.role,
-        index: index
-      })),
+      providers: allProviderUsers.map((provider, index) => {
+        // Generate provider name based on role and index
+        let providerName;
+        if (index === 0 && userRole === 'admin/provider') {
+          // First provider is the owner for admin/provider role
+          providerName = `${onboardingData.ownerFirstName} ${onboardingData.ownerLastName}`.trim();
+        } else {
+          // For admin role: use providerNames[index]
+          // For admin/provider role: use providerNames[index-1] for additional providers
+          const providerNameIndex = userRole === 'admin/provider' ? index - 1 : index;
+          providerName = providerNames[providerNameIndex] || `Provider ${index + 1}`;
+        }
+        
+        return {
+          id: provider.id,
+          name: providerName,
+          role: provider.role,
+          index: index
+        };
+      }),
       onboarding: {
         authUserIds: createdAuthUsers,
         serviceIds,

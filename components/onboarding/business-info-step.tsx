@@ -18,7 +18,9 @@ interface BusinessInfoStepProps {
     ownerLastName: string;
     email: string;
     phone: string;
+    phoneCountryCode?: string;
     whatsappNumber: string;
+    whatsappCountryCode?: string;
     businessAddress: string;
     websiteUrl?: string;
     timeZone: string;
@@ -45,12 +47,30 @@ const TIMEZONES = [
   { value: 'Australia/Hobart', label: 'Hobart (AEDT)' },
 ];
 
+const COUNTRY_CODES = [
+  { value: '+61', label: '🇦🇺 +61', country: 'Australia', placeholder: '4XX XXX XXX' },
+  { value: '+1', label: '🇺🇸 +1', country: 'United States', placeholder: '(555) 123-4567' },
+  { value: '+44', label: '🇬🇧 +44', country: 'United Kingdom', placeholder: '7XXX XXXXXX' },
+  { value: '+33', label: '🇫🇷 +33', country: 'France', placeholder: '6 XX XX XX XX' },
+  { value: '+49', label: '🇩🇪 +49', country: 'Germany', placeholder: '1XX XXXXXXX' },
+  { value: '+81', label: '🇯🇵 +81', country: 'Japan', placeholder: '90-XXXX-XXXX' },
+  { value: '+86', label: '🇨🇳 +86', country: 'China', placeholder: '138 XXXX XXXX' },
+  { value: '+91', label: '🇮🇳 +91', country: 'India', placeholder: '98XXX XXXXX' },
+];
+
 export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
   const categories = getAllBusinessCategories();
 
   const handleInputChange = (field: string, value: string) => {
     onUpdate({ [field]: value });
   };
+
+  const getPlaceholderForCountryCode = (countryCode: string) => {
+    const country = COUNTRY_CODES.find(c => c.value === countryCode);
+    return country ? country.placeholder : '4XX XXX XXX';
+  };
+
+
 
   return (
     <div className="space-y-8">
@@ -234,31 +254,38 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
                 Provider Names:
               </Label>
               <div className="grid gap-3">
-                {Array.from({ length: data.numberOfProviders }, (_, index) => (
-                  <div key={index} className="flex items-center space-x-3">
-                    <Label className="text-sm text-gray-600 min-w-[80px]">
-                      Provider {index + 1}:
-                    </Label>
-                    {index === 0 && data.userRole === 'admin/provider' ? (
-                      <Input
-                        value={`${data.ownerFirstName} ${data.ownerLastName}`.trim() || 'You'}
-                        disabled
-                        className="bg-gray-50 border-gray-200 text-gray-600"
-                      />
-                    ) : (
-                      <Input
-                        placeholder={`Enter provider ${index + 1} name`}
-                        value={data.providerNames[index] || ''}
-                        onChange={(e) => {
-                          const newProviderNames = [...data.providerNames];
-                          newProviderNames[index] = e.target.value;
-                          onUpdate({ providerNames: newProviderNames });
-                        }}
-                        className="bg-white border-gray-300 text-black placeholder:text-gray-500"
-                      />
-                    )}
-                  </div>
-                ))}
+                {Array.from({ length: data.numberOfProviders }, (_, index) => {
+                  // For admin/provider role: first provider is owner (disabled), additional providers use providerNames array
+                  // For admin role: all providers use providerNames array
+                  const isOwnerSlot = index === 0 && data.userRole === 'admin/provider';
+                  const providerNamesIndex = data.userRole === 'admin/provider' ? index - 1 : index;
+                  
+                  return (
+                    <div key={index} className="flex items-center space-x-3">
+                      <Label className="text-sm text-gray-600 min-w-[80px]">
+                        Provider {index + 1}:
+                      </Label>
+                      {isOwnerSlot ? (
+                        <Input
+                          value={`${data.ownerFirstName} ${data.ownerLastName}`.trim() || 'You (Owner)'}
+                          disabled
+                          className="bg-gray-50 border-gray-200 text-gray-600"
+                        />
+                      ) : (
+                        <Input
+                          placeholder={`Enter provider ${index + 1} name`}
+                          value={data.providerNames[providerNamesIndex] || ''}
+                          onChange={(e) => {
+                            const newProviderNames = [...data.providerNames];
+                            newProviderNames[providerNamesIndex] = e.target.value;
+                            onUpdate({ providerNames: newProviderNames });
+                          }}
+                          className="bg-white border-gray-300 text-black placeholder:text-gray-500"
+                        />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -377,26 +404,60 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
 
           <div className="space-y-2">
             <Label htmlFor="phone" className="text-sm font-semibold text-gray-800">Business Phone</Label>
-            <Input
-              id="phone"
-              type="tel"
-              placeholder="+61 4XX XXX XXX"
-              value={data.phone}
-              onChange={(e) => handleInputChange('phone', e.target.value)}
-              className="bg-white border-gray-300 text-black placeholder:text-gray-500"
-            />
+            <div className="flex">
+              <Select
+                value={data.phoneCountryCode || '+61'}
+                onValueChange={(value) => handleInputChange('phoneCountryCode', value)}
+              >
+                <SelectTrigger className="w-32 bg-white border-gray-300 text-black rounded-r-none border-r-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-gray-300">
+                  {COUNTRY_CODES.map((country) => (
+                    <SelectItem key={country.value} value={country.value} className="text-black hover:bg-gray-100">
+                      {country.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                id="phone"
+                type="tel"
+                placeholder={getPlaceholderForCountryCode(data.phoneCountryCode || '+61')}
+                value={data.phone}
+                onChange={(e) => handleInputChange('phone', e.target.value)}
+                className="bg-white border-gray-300 text-black placeholder:text-gray-500 rounded-l-none flex-1"
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="whatsappNumber" className="text-sm font-semibold text-gray-800">WhatsApp Number</Label>
-            <Input
-              id="whatsappNumber"
-              type="tel"
-              placeholder="+61 4XX XXX XXX"
-              value={data.whatsappNumber}
-              onChange={(e) => handleInputChange('whatsappNumber', e.target.value)}
-              className="bg-white border-gray-300 text-black placeholder:text-gray-500"
-            />
+            <div className="flex">
+              <Select
+                value={data.whatsappCountryCode || '+61'}
+                onValueChange={(value) => handleInputChange('whatsappCountryCode', value)}
+              >
+                <SelectTrigger className="w-32 bg-white border-gray-300 text-black rounded-r-none border-r-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-gray-300">
+                  {COUNTRY_CODES.map((country) => (
+                    <SelectItem key={country.value} value={country.value} className="text-black hover:bg-gray-100">
+                      {country.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                id="whatsappNumber"
+                type="tel"
+                placeholder={getPlaceholderForCountryCode(data.whatsappCountryCode || '+61')}
+                value={data.whatsappNumber}
+                onChange={(e) => handleInputChange('whatsappNumber', e.target.value)}
+                className="bg-white border-gray-300 text-black placeholder:text-gray-500 rounded-l-none flex-1"
+              />
+            </div>
             <p className="text-sm text-gray-600">
               This is the number customers will message
             </p>
