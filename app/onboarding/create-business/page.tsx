@@ -9,6 +9,7 @@ import { ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
 import { BusinessInfoStep } from '@/components/onboarding/business-info-step';
 import { ServicesStep } from '@/components/onboarding/services-step';
 import { CalendarStep } from '@/components/onboarding/calendar-step';
+import { FaqStep } from '@/components/onboarding/faq-step';
 import { PaymentStep } from '@/components/onboarding/payment-step';
 import { useToast } from '@/lib/rename-categorise-better/utils/use-toast';
 import { type BusinessCategoryType, getBusinessTemplate } from '@/lib/config/business-templates';
@@ -66,6 +67,12 @@ interface BusinessFormData {
     bufferTime: number;
   }>;
   
+  // FAQ Documents
+  faqDocument?: File | null;
+  faqDocumentName?: string;
+  faqDocumentSize?: number;
+  faqDocumentBase64?: string;
+  
   // Payment
   depositPercentage: number;
   preferredPaymentMethod: string;
@@ -90,6 +97,11 @@ const STEPS = [
   },
   {
     id: 4,
+    title: 'FAQ Documents',
+    description: 'Upload your frequently asked questions'
+  },
+  {
+    id: 5,
     title: 'Payment Setup',
     description: 'Configure payment processing'
   }
@@ -129,6 +141,9 @@ const DEFAULT_FORM_DATA: BusinessFormData = {
       bufferTime: 15
     }
   ],
+  faqDocument: null,
+  faqDocumentName: '',
+  faqDocumentSize: 0,
   depositPercentage: 25,
   preferredPaymentMethod: 'cash',
   setupPayments: false
@@ -507,12 +522,40 @@ export default function CreateBusinessPage() {
     setIsLoading(true);
 
     try {
+      // Prepare form data for submission
+      const submissionData = { ...formData };
+      
+      // Convert FAQ document to base64 if present
+      if (formData.faqDocument) {
+        try {
+          const base64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(formData.faqDocument!);
+          });
+          
+          submissionData.faqDocumentBase64 = base64;
+          // Remove the File object as it can't be serialized
+          delete submissionData.faqDocument;
+        } catch (error) {
+          console.error('Error converting FAQ document to base64:', error);
+          toast({
+            title: "Error",
+            description: "Failed to process FAQ document. Please try again.",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+      }
+
       const response = await fetch('/api/onboarding/create-business', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(submissionData),
       });
 
       if (!response.ok) {
@@ -591,6 +634,17 @@ export default function CreateBusinessPage() {
           />
         );
       case 4:
+        return (
+          <FaqStep
+            data={{
+              ...formData,
+              businessName: formData.businessName,
+              businessCategory: formData.businessCategory
+            }}
+            onUpdate={updateFormData}
+          />
+        );
+      case 5:
         return (
           <PaymentStep
             data={formData}

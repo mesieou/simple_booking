@@ -188,12 +188,12 @@ export function CalendarStep({ data, onUpdate }: CalendarStepProps) {
                     const isEnabled = dayHours !== null;
                     return (
                       <div key={key} className="flex items-center gap-4">
-                        <div className="flex items-center gap-3 w-32">
+                        <div className="flex items-center gap-3 min-w-[140px]">
                           <Switch
                             checked={isEnabled}
                             onCheckedChange={(checked) => handleDayToggle(providerIndex, key, checked)}
                           />
-                          <Label className="text-sm font-medium">{label}</Label>
+                          <Label className="text-sm font-semibold text-gray-800 cursor-pointer">{label}</Label>
                         </div>
                         {isEnabled && dayHours && (
                           <div className="flex items-center gap-2 flex-1">

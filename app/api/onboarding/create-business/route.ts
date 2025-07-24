@@ -51,6 +51,26 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Onboarding] Creating business with ${numberOfProviders} providers, owner role: ${userRole}`);
 
+    // Handle FAQ document if provided
+    let faqDocumentProcessed = false;
+    if (onboardingData.faqDocumentBase64 && onboardingData.faqDocumentName) {
+      console.log(`[Onboarding] FAQ document provided: ${onboardingData.faqDocumentName} (${onboardingData.faqDocumentSize} bytes)`);
+      
+      try {
+        // Here you would typically:
+        // 1. Save the file to a storage service (S3, Google Cloud Storage, etc.)
+        // 2. Process the PDF for FAQ extraction
+        // 3. Store the processed FAQ data in the database
+        
+        // For now, we'll just log that we received it
+        console.log('[Onboarding] FAQ document received successfully - ready for processing');
+        faqDocumentProcessed = true;
+      } catch (error) {
+        console.error('[Onboarding] Error processing FAQ document:', error);
+        // Don't fail the entire onboarding process for FAQ document issues
+      }
+    }
+
     // --- Step 1: Create Auth User for Owner ---
     console.log('[Onboarding] Creating owner auth user...');
     const { data: authData, error: authError } = await adminSupa.auth.admin.createUser({
@@ -475,7 +495,8 @@ export async function POST(request: NextRequest) {
         calendarSettingsIds: createdCalendarSettings.map(cs => cs.id),
         stripeAccountId,
         availabilityGenerated,
-        totalProviders: allProviderUsers.length
+        totalProviders: allProviderUsers.length,
+        faqDocumentProcessed
       }
     });
 

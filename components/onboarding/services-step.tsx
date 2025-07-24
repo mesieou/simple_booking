@@ -147,7 +147,7 @@ function ServiceCardForm({
                   onCheckedChange={(checked) => onChange({ ...service, pricingType: checked ? 'per_minute' : 'fixed' })}
                   id="pricingType"
                 />
-                <span className="text-sm text-gray-700">{service.pricingType === 'per_minute' ? 'Per Minute' : 'Fixed'}</span>
+                <span className="text-sm text-gray-700">{service.pricingType === 'per_minute' ? 'Per Hour' : 'Fixed'}</span>
               </div>
             </div>
             {service.pricingType === 'fixed' ? (
