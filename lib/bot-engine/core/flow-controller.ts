@@ -431,10 +431,20 @@ export class FlowController {
       collectedData.finalServiceAddress = undefined;
       collectedData.serviceLocation = undefined;
       collectedData.customerAddress = undefined;
+      // CRITICAL: Clear timing data when address changes since travel time affects availability
+      collectedData.selectedDate = undefined;
+      collectedData.selectedTime = undefined;
+      collectedData.availableSlots = undefined;
+      collectedData.quickBookingSelected = undefined;
+      collectedData.browseModeSelected = undefined;
+      collectedData.next3AvailableSlots = undefined;
+      collectedData.availableHours = undefined;
+      collectedData.formattedAvailableHours = undefined;
+      // Clear quote data since cost calculations change with new address
       collectedData.persistedQuote = undefined;
       collectedData.quoteId = undefined;
       collectedData.bookingSummary = undefined;
-      clearedDataTypes.push('address', 'location', 'quote');
+      clearedDataTypes.push('address', 'location', 'quote', 'timing');
     }
     
     if (stepLower.includes('user') || stepLower.includes('name')) {

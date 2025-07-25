@@ -986,7 +986,8 @@ export class MessageComponentBuilder {
       if (addresses.pickup) {
         section += `${template.PICKUP_LOCATION.replace('{address}', addresses.pickup)}\n`;
       }
-      if (addresses.dropoff && addresses.dropoff !== addresses.pickup) {
+      // Always show dropoff for removalist services, even if same as pickup
+      if (addresses.dropoff) {
         section += `${template.DROPOFF_LOCATION.replace('{address}', addresses.dropoff)}\n`;
       }
     } else if (businessType === 'mobile') {

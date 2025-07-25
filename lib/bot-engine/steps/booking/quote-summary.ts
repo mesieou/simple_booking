@@ -205,7 +205,22 @@ class QuoteCalculator {
     const pickUp = currentGoalData.finalServiceAddress || currentGoalData.pickupAddress;
     const dropOff = currentGoalData.finalDropoffAddress || currentGoalData.dropoffAddress;
     
-    if (!pickUp || !dropOff || pickUp === dropOff) {
+    // Also check raw input addresses before Google formatting
+    const rawPickup = currentGoalData.pickupAddress;
+    const rawDropoff = currentGoalData.dropoffAddress;
+    
+    console.log('[QuoteCalculator] Travel cost calculation:', {
+      pickUp,
+      dropOff,
+      rawPickup,
+      rawDropoff,
+      sameFormatted: pickUp === dropOff,
+      sameRawInput: rawPickup === rawDropoff
+    });
+    
+    // Check if addresses are missing or the same (either formatted or raw input)
+    if (!pickUp || !dropOff || pickUp === dropOff || rawPickup === rawDropoff) {
+      console.log('[QuoteCalculator] Same address detected - no travel cost');
       return { travelCost: 0, travelTime: MINIMAL_TRAVEL_TIME };
     }
 
@@ -220,6 +235,11 @@ class QuoteCalculator {
       const travelTime = Math.ceil(mapsData.rows[0].elements[0].duration.value / 60);
       const tempService = this.createServiceInstance(firstMobileService, businessId);
       const travelQuote = computeQuoteEstimation(tempService, travelTime);
+      
+      console.log('[QuoteCalculator] Travel cost calculated:', {
+        travelTime,
+        travelCost: travelQuote.travelCost
+      });
       
       return { travelCost: travelQuote.travelCost, travelTime };
       
@@ -337,8 +357,8 @@ class QuoteTemplateRenderer {
   
   private static buildJobDetailsSection(businessType: 'removalist' | 'mobile' | 'non_mobile', data: QuoteTemplateData, language: string): string {
     const addresses = {
-      pickup: data.currentGoalData.pickupAddress || data.currentGoalData.finalServiceAddress,
-      dropoff: data.currentGoalData.dropoffAddress || data.currentGoalData.finalDropoffAddress,
+      pickup: data.currentGoalData.finalServiceAddress || data.currentGoalData.pickupAddress,
+      dropoff: data.currentGoalData.finalDropoffAddress || data.currentGoalData.dropoffAddress,
       customer: data.currentGoalData.finalServiceAddress || data.currentGoalData.customerAddress,
       business: data.businessInfo.businessAddress
     };
@@ -506,8 +526,18 @@ export const quoteSummaryHandler: IndividualStepHandler = {
       return { isValidInput: true };
     }
     
-    // Reject button clicks to pass to next step
-    if (userInput === 'confirm_quote' || userInput === 'edit_quote') {
+    // Accept edit_quote button clicks to handle internally
+    if (userInput === 'edit_quote') {
+      return { isValidInput: true };
+    }
+    
+    // Accept edit option selections
+    if (userInput === 'edit_service' || userInput === 'edit_time' || userInput === 'edit_pickup_address' || userInput === 'edit_dropoff_address') {
+      return { isValidInput: true };
+    }
+    
+    // Reject confirm_quote button clicks to pass to next step
+    if (userInput === 'confirm_quote') {
       return { isValidInput: false, validationErrorMessage: '' };
     }
     
@@ -541,6 +571,69 @@ export const quoteSummaryHandler: IndividualStepHandler = {
         restartBookingFlow: true,
         shouldAutoAdvance: true,
         confirmationMessage: 'Let\'s update your service selection...'
+      };
+    }
+
+    // Handle edit_quote button - show edit options without advancing steps
+    if (validatedInput === 'edit_quote') {
+      return {
+        ...currentGoalData,
+        showEditOptions: true,
+        shouldAutoAdvance: false,
+        confirmationMessage: 'What would you like to change?'
+      };
+    }
+
+    // Handle specific edit choices - navigate back to appropriate steps
+    if (validatedInput === 'edit_service') {
+      return {
+        ...currentGoalData,
+        navigateBackTo: 'selectService',
+        showEditOptions: false,
+        shouldAutoAdvance: true,
+        confirmationMessage: 'Let\'s choose a different service...'
+      };
+    }
+    
+    if (validatedInput === 'edit_time') {
+      return {
+        ...currentGoalData,
+        navigateBackTo: 'showAvailableTimes',
+        showEditOptions: false,
+        // Clear timing data to force re-selection
+        selectedDate: undefined,
+        selectedTime: undefined,
+        availableSlots: undefined,
+        shouldAutoAdvance: true,
+        confirmationMessage: 'Let\'s choose a different time...'
+      };
+    }
+    
+    if (validatedInput === 'edit_pickup_address') {
+      return {
+        ...currentGoalData,
+        navigateBackTo: 'askPickupAddress',
+        showEditOptions: false,
+        // Clear pickup-related data
+        pickupAddress: undefined,
+        finalServiceAddress: undefined,
+        pickupAddressValidated: false,
+        shouldAutoAdvance: true,
+        confirmationMessage: 'Let\'s update your pickup address...'
+      };
+    }
+    
+    if (validatedInput === 'edit_dropoff_address') {
+      return {
+        ...currentGoalData,
+        navigateBackTo: 'askDropoffAddress', 
+        showEditOptions: false,
+        // Clear dropoff-related data
+        dropoffAddress: undefined,
+        finalDropoffAddress: undefined,
+        dropoffAddressValidated: false,
+        shouldAutoAdvance: true,
+        confirmationMessage: 'Let\'s update your dropoff address...'
       };
     }
 
@@ -619,6 +712,27 @@ export const quoteSummaryHandler: IndividualStepHandler = {
   fixedUiButtons: async (currentGoalData, chatContext) => {
     if (currentGoalData.summaryError) {
       return [{ buttonText: getLocalizedText(chatContext, 'BUTTONS.TRY_AGAIN'), buttonValue: 'restart_booking' }];
+    }
+    
+    // Show edit options if user clicked edit
+    if (currentGoalData.showEditOptions) {
+      // Check if any selected services are mobile to determine if address editing is relevant
+      const selectedServices = currentGoalData.selectedServices || 
+                              (currentGoalData.selectedService ? [currentGoalData.selectedService] : []);
+      const hasMobileServices = selectedServices.some((service: any) => service?.mobile);
+      
+      const buttons = [
+        { buttonText: getLocalizedText(chatContext, 'BUTTONS.CHANGE_SERVICE'), buttonValue: 'edit_service' },
+        { buttonText: getLocalizedText(chatContext, 'BUTTONS.CHANGE_TIME'), buttonValue: 'edit_time' }
+      ];
+      
+      // Only add address buttons for mobile services (pickup and dropoff separately)
+      if (hasMobileServices) {
+        buttons.push({ buttonText: getLocalizedText(chatContext, 'BUTTONS.CHANGE_PICKUP'), buttonValue: 'edit_pickup_address' });
+        buttons.push({ buttonText: getLocalizedText(chatContext, 'BUTTONS.CHANGE_DROPOFF'), buttonValue: 'edit_dropoff_address' });
+      }
+      
+      return buttons;
     }
     
     const requiresDeposit = currentGoalData.requiresDeposit || currentGoalData.bookingSummary?.requiresDeposit;

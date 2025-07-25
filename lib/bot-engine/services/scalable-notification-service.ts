@@ -342,19 +342,27 @@ export class ScalableNotificationService {
 
     // Choose the appropriate booking confirmation template
     let customerMessage: string;
+    let templateName: string;
+    
     if (businessCategory === 'removalist') {
       customerMessage = this.formatRemovalistBookingConfirmation(bookingDetails);
+      templateName = 'removalist_booking_confirmation';
     } else if (!bookingDetails.isMobile && bookingDetails.pricingType === 'fixed_price') {
       customerMessage = this.formatFixedPriceNonMobileBookingConfirmation(bookingDetails);
+      templateName = 'fixed_price_non_mobile_booking_confirmation';
     } else {
       // Fallback to fixed price non-mobile template for now
       customerMessage = this.formatFixedPriceNonMobileBookingConfirmation(bookingDetails);
+      templateName = 'fixed_price_non_mobile_booking_confirmation';
     }
     
     const content: NotificationContent = {
       title: "🎉 New Booking Confirmed!",
       message: customerMessage,
-      data: bookingDetails // Provider-agnostic data for templates
+      data: {
+        ...bookingDetails,
+        templateName // Pass the specific template name to the provider
+      }
     };
 
     await this.sendNotification({

@@ -23,19 +23,21 @@ export class WhatsAppProvider extends BaseNotificationProvider {
       requiresTemplate: true,
       headerParams: (data) => [this.cleanParam(data.customerName || 'Customer')], // {{1}} Customer name in header
       bodyParams: (data) => [
-        this.cleanParam(data.customerName || 'Customer'), // {{2}} Customer name (first in body)
-        this.cleanParam(data.servicesDisplay || data.serviceName || 'Service'), // {{3}} Service name
-        this.cleanParam(data.serviceCost?.toString() || (data.totalCost - 4).toString()), // {{4}} Service price
-        this.cleanParam(data.bookingFee?.toString() || '4.00'), // {{5}} Booking fee
-        this.cleanParam(data.totalCost?.toString() || '0'), // {{6}} Total cost
-        this.cleanParam(data.formattedDate || 'Unknown date'), // {{7}} Date
-        this.cleanParam(data.formattedTime || 'Unknown time'), // {{8}} Time
-        this.cleanParam(data.location || 'Unknown location'), // {{9}} Location
-        this.cleanParam(data.amountPaid?.toString() || '0'), // {{10}} Amount paid
-        this.cleanParam(data.balanceDue?.toString() || '0'), // {{11}} Balance due
-        this.cleanParam(data.paymentMethod || 'Unknown'), // {{12}} Payment method
-        this.cleanParam(data.customerWhatsapp || data.customerPhone || 'Unknown'), // {{13}} Customer WhatsApp
-        this.cleanParam(data.bookingId || 'Unknown ID') // {{14}} Booking ID
+        this.cleanParam(data.customerName || 'Customer'), // {{1}} Customer name (reused in body)
+        this.cleanParam(data.serviceName || 'Service'), // {{2}} Service name
+        this.cleanParam(data.pickupAddress || 'N/A'), // {{3}} Pickup address
+        this.cleanParam(data.deliveryAddress || 'N/A'), // {{4}} Delivery address
+        this.cleanParam(data.serviceCost?.toString() || (data.totalCost - (data.travelCost || 0) - (data.bookingFee || 4)).toString()), // {{5}} Work/Service cost
+        this.cleanParam(data.travelCost?.toString() || '0'), // {{6}} Travel cost
+        this.cleanParam(data.totalCost?.toString() || '0'), // {{7}} Total cost (first time)
+        this.cleanParam(data.formattedDate || 'Unknown date'), // {{8}} Date
+        this.cleanParam(data.formattedTime || 'Unknown time'), // {{9}} Time
+        this.cleanParam(data.estimatedCompletion || 'N/A'), // {{10}} Estimated completion
+        this.cleanParam(data.totalCost?.toString() || '0'), // {{11}} Total cost (AGAIN in payment breakdown)
+        this.cleanParam(data.bookingFee?.toString() || '4'), // {{12}} Booking fee
+        this.cleanParam(data.amountPaid?.toString() || '0'), // {{13}} Total paid
+        this.cleanParam(data.balanceDue?.toString() || '0'), // {{14}} Remaining balance
+        this.cleanParam(data.customerWhatsapp || data.customerPhone || 'Unknown') // {{15}} Customer WhatsApp
       ]
     }],
     ['system', {
@@ -94,9 +96,12 @@ export class WhatsAppProvider extends BaseNotificationProvider {
       const templateConfig = this.templateConfig.get(type);
       if (templateConfig && content.data) {
         try {
+          // Use dynamic template name if provided in data, otherwise fallback to config
+          const dynamicTemplateName = content.data.templateName || templateConfig.templateName;
+          
           const messageId = await this.sendTemplate(
             recipient,
-            templateConfig,
+            { ...templateConfig, templateName: dynamicTemplateName },
             content.data,
             businessPhoneNumberId
           );
