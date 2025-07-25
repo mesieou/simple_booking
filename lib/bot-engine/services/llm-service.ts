@@ -162,6 +162,7 @@ INTENT CLASSIFICATION:
 **STEP-SPECIFIC GUIDANCE:**
 ${currentStepName === 'selectService' ? '- User is selecting their first service. Single service names like "manicure" are direct answers (advance). Questions like "do you do manicures?" are FAQ (continue)' : ''}
 ${currentStepName === 'addAdditionalServices' ? '- User is adding additional services. Single service names like "pedicure" are direct answers (advance). Questions like "what services do you offer?" are FAQ (continue)' : ''}
+${currentStepName === 'showDayBrowser' ? '- User is selecting appointment date. Date mentions like "10 aug", "July 30", "tomorrow", "next Monday" are direct answers (advance). General questions like "when are you open?" are FAQ (continue)' : ''}
 ${currentStepName === 'showAvailableTimes' || currentStepName === 'handleTimeChoice' || currentStepName === 'selectSpecificTime' ? '- User is selecting appointment time. Navigation like "go back", "change service" is booking action. General questions like "what are your hours?" are FAQ (continue)' : ''}
 ${currentStepName.includes('Date') ? '- User is selecting date. Navigation like "go back", "different time" is booking action. General questions like "when are you open?" are FAQ (continue)' : ''}
 ${currentStepName.includes('Address') || currentStepName.includes('Location') ? '- User is providing address/location. Navigation like "go back", "change service" is booking action. General questions like "where are you located?" are FAQ (continue)' : ''}

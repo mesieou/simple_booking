@@ -90,14 +90,39 @@ export class ScalableNotificationService {
     preferredProviders?: string[]
   ): Promise<void> {
     
-    // Create notification record in database
-    const notification = await Notification.create({
-      businessId: businessContext.businessId,
-      chatSessionId: chatSessionId || null,
-      message: content.message,
-      status: 'pending',
-      notificationType: type
-    });
+    // Create notification record in database with enhanced error context
+    let notification: Notification;
+    try {
+      notification = await Notification.create({
+        businessId: businessContext.businessId,
+        chatSessionId: chatSessionId || null,
+        message: content.message,
+        status: 'pending',
+        notificationType: type
+      });
+    } catch (error) {
+      // Add additional context for scalable notification service errors
+      const { productionErrorTracker } = await import('@/lib/general-helpers/error-handling/production-error-tracker');
+      await productionErrorTracker.logCriticalError('BOOKING_NOTIFICATION_FAILED', error instanceof Error ? error : new Error(String(error)), {
+        businessId: businessContext.businessId,
+        chatSessionId,
+        additionalContext: {
+          component: 'ScalableNotificationService',
+          operation: 'sendToRecipient',
+          notificationType: type,
+          recipientName: recipient.name,
+          recipientPhone: recipient.phoneNumber,
+          contentTitle: content.title,
+          businessContext: businessContext,
+          contentData: content.data,
+          stackTrace: new Error().stack
+        }
+      }).catch(trackingError => {
+        console.error('[ScalableNotificationService] Failed to log detailed error:', trackingError);
+      });
+      
+      throw error; // Re-throw the original error
+    }
 
     // Find suitable providers for this recipient
     const availableProviders = this.findProvidersForRecipient(recipient, preferredProviders);
@@ -365,8 +390,15 @@ export class ScalableNotificationService {
       }
     };
 
+    // Determine the notification type based on template
+    const notificationType = templateName === 'fixed_price_non_mobile_booking_confirmation' 
+      ? 'booking_fixed_price_non_mobile' 
+      : templateName === 'removalist_booking_confirmation'
+      ? 'booking_removalist'
+      : 'booking_fixed_price_non_mobile'; // fallback
+
     await this.sendNotification({
-      type: 'booking',
+      type: notificationType as any,
       businessId,
       content
     });

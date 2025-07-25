@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import type { Metadata } from "next";
 import { AuthProvider } from "@/app/context/auth-context";
 import { LayoutSwitcher } from "./layout-switcher";
+import WhatsAppWidget from "@/components/widgets/whatsapp-widget";
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -53,6 +54,7 @@ export default function RootLayout({
       <body className="bg-background text-foreground" suppressHydrationWarning={true}>
         <AuthProvider>
           <LayoutSwitcher>{children}</LayoutSwitcher>
+          <WhatsAppWidget businessId="782e1021-058f-4eb1-b3fe-9c374d814799" />
         </AuthProvider>
       </body>
     </html>

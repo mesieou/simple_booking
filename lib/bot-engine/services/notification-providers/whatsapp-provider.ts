@@ -18,8 +18,8 @@ export class WhatsAppProvider extends BaseNotificationProvider {
     headerParams: (data: any) => string[];
     bodyParams: (data: any) => string[];
   }>([
-    ['booking', {
-      templateName: 'booking_confirmation',
+    ['booking_removalist', {
+      templateName: 'removalist_booking_confirmation',
       requiresTemplate: true,
       headerParams: (data) => [this.cleanParam(data.customerName || 'Customer')], // {{1}} Customer name in header
       bodyParams: (data) => [
@@ -38,6 +38,26 @@ export class WhatsAppProvider extends BaseNotificationProvider {
         this.cleanParam(data.amountPaid?.toString() || '0'), // {{13}} Total paid
         this.cleanParam(data.balanceDue?.toString() || '0'), // {{14}} Remaining balance
         this.cleanParam(data.customerWhatsapp || data.customerPhone || 'Unknown') // {{15}} Customer WhatsApp
+      ]
+    }],
+    ['booking_fixed_price_non_mobile', {
+      templateName: 'fixed_price_non_mobile_booking_confirmation',
+      requiresTemplate: true,
+      headerParams: (data) => [this.cleanParam(data.customerName || 'Customer')], // {{1}} Customer name in header
+      bodyParams: (data) => [
+        this.cleanParam(data.customerName || 'Customer'), // {{1}} Customer name
+        this.cleanParam(data.serviceName || 'Service'), // {{2}} Service name
+        this.cleanParam(data.serviceCost?.toString() || (data.totalCost - (data.bookingFee || 4)).toString()), // {{3}} Service cost
+        this.cleanParam(data.bookingFee?.toString() || '4'), // {{4}} Booking fee
+        this.cleanParam(data.totalCost?.toString() || '0'), // {{5}} Total cost
+        this.cleanParam(data.formattedDate || 'Unknown date'), // {{6}} Date
+        this.cleanParam(data.formattedTime || 'Unknown time'), // {{7}} Time
+        this.cleanParam(data.location || data.pickupAddress || 'N/A'), // {{8}} Service location
+        this.cleanParam(data.amountPaid?.toString() || '0'), // {{9}} Amount paid
+        this.cleanParam(data.balanceDue?.toString() || '0'), // {{10}} Remaining balance
+        this.cleanParam(data.paymentMethod || 'cash'), // {{11}} Payment method
+        this.cleanParam(data.customerWhatsapp || data.customerPhone || 'Unknown'), // {{12}} Customer WhatsApp
+        this.cleanParam(data.bookingId || 'Unknown') // {{13}} Booking ID
       ]
     }],
     ['system', {

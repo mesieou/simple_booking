@@ -1362,6 +1362,7 @@ export class BookingDataManager {
     return {
       ...this.clearTimeData(goalData),
       browseModeSelected: true,
+      lastErrorMessage: undefined, // Clear any previous error messages when entering browse mode
       confirmationMessage: 'Let me show you all available days...'
     };
   }

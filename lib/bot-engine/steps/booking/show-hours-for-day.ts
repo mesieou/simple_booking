@@ -140,7 +140,7 @@ export const showHoursForDayHandler: IndividualStepHandler = {
       return [{ buttonText: getLocalizedText(chatContext, 'BUTTONS.OTHER_DAYS'), buttonValue: 'choose_different_date' }];
     }
     
-    return formattedHours.slice(0, 8).map((hour: any) => ({
+    return formattedHours.slice(0, 10).map((hour: any) => ({
       buttonText: hour.display,
       buttonValue: hour.display
     }));

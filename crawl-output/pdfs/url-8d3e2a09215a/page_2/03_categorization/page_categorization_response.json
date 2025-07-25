@@ -1,0 +1,39 @@
+{
+  "modelUsed": "gpt-4o",
+  "originalContentCharacterLength": 3283,
+  "llmSegmentedChunks": [
+    {
+      "chunkOrder": 1,
+      "chunkText": "- Moving blankets to protect furniture from scratches - Moving straps to secure items during transport - Bubble wrap for fragile items protection - Plastic wrapper to protect upholstery and prevent dirt - Complete tool kit for furniture assembly and disassembly - All necessary hardware and tools All tools and equipment are included in our service at no additional charge.",
+      "category": 0,
+      "categoryName": "services offered",
+      "confidence": 0.9,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 2,
+      "chunkText": "Q: Can you move fragile or valuable items? A: Yes, we have experience with fragile items. We use protective blankets and careful handling techniques. For extremely valuable items, please inform us beforehand so we can take extra precautions.",
+      "category": 5,
+      "categoryName": "faq",
+      "confidence": 0.95,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 3,
+      "chunkText": "=== BOOKING & SCHEDULING === Q: How far in advance should I book? A: We recommend booking at least 24-48 hours in advance, especially for weekends. For urgent moves, we often have same-day availability - just call to check. Q: What are your operating hours? A: Monday to Sunday: 6:00 AM - 6:00 PM Public holidays: Same hours apply Emergency moves: Contact for availability Q: Do you work on public holidays? A: Yes, we work on public holidays with the same rates as regular days. No premium charges for weekends or holidays. Q: Can I reschedule my booking? A: Yes, you can reschedule up to 24 hours before your booking time without penalty. Changes within 24 hours may incur a rescheduling fee.",
+      "category": 3,
+      "categoryName": "booking or scheduling",
+      "confidence": 0.95,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "chunkOrder": 4,
+      "chunkText": "=== PAYMENT & DEPOSITS === Q: When do I need to pay? A: We require a 25% deposit to secure your booking. The remaining balance is due upon completion of the move. Q: What payment methods do you accept? A: We accept: - Cash payments - Bank transfers (direct deposit) Note: Credit card payments are not available.",
+      "category": 1,
+      "categoryName": "pricing or quotes",
+      "confidence": 0.95,
+      "preChunkSourceIndex": 0
+    }
+  ],
+  "promptUsedLength": 6102
+}

@@ -1,0 +1,12 @@
+{
+  "sourceUrl": "pdf-Removalist-FAQ-Handbook.pdf#page=3",
+  "originalCleanedTextPath": "../../01_cleaned_text/cleaned_pdf_page.txt",
+  "maxCharsPerGptChunk": 6000,
+  "numberOfPreChunks": 1,
+  "preChunkFileNames": [
+    "pre_chunk_0.txt"
+  ],
+  "timestamp": "2025-07-25T05:56:01.461Z",
+  "sessionId": "117b507a-64a7-49ec-be6f-b14d0183cd24",
+  "domain": "Removalist-FAQ-Handbook.pdf"
+}

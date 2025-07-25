@@ -9,7 +9,9 @@ export const BOOKING_TRANSLATIONS = {
       INVALID_SERVICE_SELECTION: '{name}, please select a valid service from the options provided or type the name of the service you\'d like',
       NO_SERVICES_TO_CHOOSE: 'Sorry {name}, no services are currently available to choose from',
       INVALID_ADDRESS: '{name}, please provide a valid address with street, suburb, and postcode',
-      SYSTEM_ERROR_ADDRESS_VALIDATION: 'Sorry {name}, we\'re experiencing technical difficulties with our address validation service. Our developers have been notified and will fix this shortly. Please try again later or contact support.'
+      SYSTEM_ERROR_ADDRESS_VALIDATION: 'Sorry {name}, we\'re experiencing technical difficulties with our address validation service. Our developers have been notified and will fix this shortly. Please try again later or contact support.',
+      INVALID_DATE_FORMAT: 'I couldn\'t understand that date. Please try "tomorrow", "next Friday", "august 20", "20/8", or select from the options above.',
+      INVALID_DATE_SELECTION: 'Please select a valid day or type a date like "tomorrow" or "next Friday".'
     },
     BUTTONS: {
       SYSTEM_ERROR: '❌ System Error',
@@ -41,6 +43,7 @@ export const BOOKING_TRANSLATIONS = {
       CONFIGURATION_ERROR_SUPPORT: 'Sorry {name}, there was a configuration error. Please try again or contact support.',
       NO_AVAILABILITY_10_DAYS: 'Sorry {name}, no availability found in the next 10 days. Please contact us directly to check for other options.',
       AVAILABLE_DAYS: '{name}, here are the available days:',
+      SELECT_DAY_OR_TYPE: 'Select one of these days, or if not here type (example: July 30):',
       GETTING_TIMES: 'Got it {name}. Let me get available times...',
       ERROR_LOADING_TIMES: 'Sorry {name}, there was an error loading times. Please try again.',
       NO_APPOINTMENTS_DATE: 'Sorry {name}, no appointments are available on this date. Please choose another day.',
@@ -227,7 +230,9 @@ export const BOOKING_TRANSLATIONS = {
       INVALID_SERVICE_SELECTION: '{name}, por favor selecciona un servicio válido de las opciones proporcionadas o escribe el nombre del servicio que te gustaría',
       NO_SERVICES_TO_CHOOSE: 'Lo siento {name}, no hay servicios disponibles para elegir en este momento',
       INVALID_ADDRESS: '{name}, por favor proporciona una dirección válida con calle, barrio y código postal',
-      SYSTEM_ERROR_ADDRESS_VALIDATION: 'Lo siento {name}, estamos experimentando dificultades técnicas con nuestro servicio de validación de direcciones. Nuestros desarrolladores han sido notificados y lo resolverán pronto. Por favor intenta más tarde o contacta a soporte.'
+      SYSTEM_ERROR_ADDRESS_VALIDATION: 'Lo siento {name}, estamos experimentando dificultades técnicas con nuestro servicio de validación de direcciones. Nuestros desarrolladores han sido notificados y lo resolverán pronto. Por favor intenta más tarde o contacta a soporte.',
+      INVALID_DATE_FORMAT: 'No pude entender esa fecha. Por favor intenta "mañana", "próximo viernes", "15/7", o selecciona de las opciones arriba.',
+      INVALID_DATE_SELECTION: 'Por favor selecciona un día válido o escribe una fecha como "mañana" o "próximo viernes".'
     },
     BUTTONS: {
       SYSTEM_ERROR: '❌ Error Sistema',
@@ -259,6 +264,7 @@ export const BOOKING_TRANSLATIONS = {
       CONFIGURATION_ERROR_SUPPORT: 'Lo siento {name}, hubo un error de configuración. Por favor intenta de nuevo o contacta soporte.',
       NO_AVAILABILITY_10_DAYS: 'Lo siento {name}, no se encontró disponibilidad en los próximos 10 días. Por favor contáctanos directamente para verificar otras opciones.',
       AVAILABLE_DAYS: '{name}, aquí están los días disponibles:',
+      SELECT_DAY_OR_TYPE: 'Selecciona uno de estos días, o si no está aquí escribe (ejemplo: 30 de julio):',
       GETTING_TIMES: 'Entendido {name}. Déjame obtener los horarios disponibles...',
       ERROR_LOADING_TIMES: 'Lo siento {name}, hubo un error cargando los horarios. Por favor intenta de nuevo.',
       NO_APPOINTMENTS_DATE: 'Lo siento {name}, no hay citas disponibles en esta fecha. Por favor elige otro día.',

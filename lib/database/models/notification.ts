@@ -7,7 +7,7 @@ const NOTIFICATIONS_TABLE_NAME = 'notifications';
 export type NotificationStatus = 'pending' | 'attending' | 'provided_help' | 'ignored' | 'wrong_activation';
 
 // NEW: Notification types for different purposes
-export type NotificationType = 'escalation' | 'booking' | 'system';
+export type NotificationType = 'escalation' | 'booking_fixed_price_non_mobile' | 'booking_removalist' | 'booking' | 'system';
 
 // NEW: Delivery status tracking
 export type DeliveryStatus = 'pending' | 'sent' | 'delivered' | 'read' | 'failed' | 'retry_scheduled';
@@ -108,20 +108,44 @@ export class Notification {
     notificationType?: NotificationType;
   }): Promise<Notification> {
     const supabase = getEnvironmentServiceRoleClient();
+    const insertData = {
+      businessId: data.businessId,
+      chatSessionId: data.chatSessionId,
+      message: data.message,
+      status: data.status,
+      notificationType: data.notificationType || 'escalation', // Default to escalation for backward compatibility
+    };
+    
     const { data: row, error } = await supabase
       .from(this._tableName)
-      .insert({
-        businessId: data.businessId,
-        chatSessionId: data.chatSessionId,
-        message: data.message,
-        status: data.status,
-        notificationType: data.notificationType || 'escalation', // Default to escalation for backward compatibility
-      })
+      .insert(insertData)
       .select()
       .single();
 
     if (error) {
       console.error(`[NotificationDB] Error creating notification:`, error);
+      
+      // Enhanced error logging with full context
+      const { productionErrorTracker } = await import('@/lib/general-helpers/error-handling/production-error-tracker');
+      await productionErrorTracker.logCriticalError('NOTIFICATION_CREATION_FAILED', error, {
+        businessId: data.businessId,
+        chatSessionId: data.chatSessionId || undefined,
+        additionalContext: {
+          component: 'NotificationDB',
+          operation: 'create',
+          notificationType: data.notificationType || 'escalation',
+          notificationStatus: data.status,
+          messagePreview: data.message.substring(0, 100),
+          insertData: insertData,
+          postgresErrorCode: error.code,
+          postgresErrorDetails: error.details,
+          postgresErrorHint: error.hint,
+          stackTrace: new Error().stack
+        }
+      }).catch(trackingError => {
+        console.error('[NotificationDB] Failed to log detailed error:', trackingError);
+      });
+      
       throw new Error('Failed to create notification.');
     }
 

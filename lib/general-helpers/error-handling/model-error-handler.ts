@@ -7,6 +7,9 @@ export class ModelError extends Error {
   }
 }
 
+// Flag to prevent recursive error logging
+let isLoggingError = false;
+
 export function handleModelError(message: string, error: any): never {
   const errorDetails = error ? {
     message: error.message,
@@ -18,18 +21,23 @@ export function handleModelError(message: string, error: any): never {
   // Log to console (existing behavior)
   console.error(message, errorDetails);
   
-  // Log to error tracking system (new integration)
-  // Fire-and-forget to avoid making this function async and breaking existing code
-  productionErrorTracker.logDatabaseError(error || new Error(message), {
-    additionalContext: {
-      modelErrorMessage: message,
-      errorDetails,
-      stackTrace: new Error().stack
-    }
-  }).catch(trackingError => {
-    // Don't let error tracking failures break the app
-    console.error('[ModelError] Failed to log to error tracker:', trackingError);
-  });
+  // Log to error tracking system (new integration) - but prevent infinite loops
+  if (!isLoggingError) {
+    isLoggingError = true;
+    // Fire-and-forget to avoid making this function async and breaking existing code
+    productionErrorTracker.logDatabaseError(error || new Error(message), {
+      additionalContext: {
+        modelErrorMessage: message,
+        errorDetails,
+        stackTrace: new Error().stack
+      }
+    }).catch(trackingError => {
+      // Don't let error tracking failures break the app
+      console.error('[ModelError] Failed to log to error tracker:', trackingError);
+    }).finally(() => {
+      isLoggingError = false;
+    });
+  }
   
   throw new ModelError(message, error);
 }
@@ -58,21 +66,26 @@ export function handleModelErrorWithContext(
   // Log to console (existing behavior)
   console.error(message, errorDetails);
   
-  // Log to error tracking system with enhanced context
-  productionErrorTracker.logDatabaseError(error || new Error(message), {
-    userId: context.userId,
-    businessId: context.businessId,
-    additionalContext: {
-      modelErrorMessage: message,
-      operation: context.operation,
-      table: context.table,
-      data: context.data,
-      errorDetails,
-      stackTrace: new Error().stack
-    }
-  }).catch(trackingError => {
-    console.error('[ModelError] Failed to log to error tracker:', trackingError);
-  });
+  // Log to error tracking system with enhanced context - but prevent infinite loops
+  if (!isLoggingError) {
+    isLoggingError = true;
+    productionErrorTracker.logDatabaseError(error || new Error(message), {
+      userId: context.userId,
+      businessId: context.businessId,
+      additionalContext: {
+        modelErrorMessage: message,
+        operation: context.operation,
+        table: context.table,
+        data: context.data,
+        errorDetails,
+        stackTrace: new Error().stack
+      }
+    }).catch(trackingError => {
+      console.error('[ModelError] Failed to log to error tracker:', trackingError);
+    }).finally(() => {
+      isLoggingError = false;
+    });
+  }
   
   throw new ModelError(message, error);
 } 
