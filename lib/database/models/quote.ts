@@ -2,7 +2,7 @@ import { Business } from "./business";
 import { User } from "./user";
 import { getEnvironmentServerClient, getEnvironmentServiceRoleClient } from "../supabase/environment";
 import { v4 as uuidv4 } from 'uuid';
-import { handleModelError } from '@/lib/general-helpers/error';
+import { handleModelError } from '@/lib/general-helpers/error-handling/model-error-handler';
 
 export type JobType = "one item" | "few items" | "house/apartment move";
 export type QuoteStatus = "pending" | "accepted" | "rejected";

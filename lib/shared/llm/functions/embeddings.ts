@@ -229,11 +229,11 @@ function convertAvailabilityDataToSlots(availabilityData: any[]): Array<{ date: 
     
     // Extract time strings from tuples [time, providerCount] and filter available slots
     const availableTimes60 = slots60
-      .filter(([time, providerCount]) => providerCount > 0)
-      .map(([time, providerCount]) => time);
+      .filter(([time, providerCount]: [string, number]) => providerCount > 0)
+      .map(([time, providerCount]: [string, number]) => time);
     const availableTimes90 = slots90
-      .filter(([time, providerCount]) => providerCount > 0)
-      .map(([time, providerCount]) => time);
+      .filter(([time, providerCount]: [string, number]) => providerCount > 0)
+      .map(([time, providerCount]: [string, number]) => time);
     
     // Combine and deduplicate time strings (not tuples!)
     const allSlots = Array.from(new Set([...availableTimes60, ...availableTimes90]));

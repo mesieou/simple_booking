@@ -1,7 +1,7 @@
 import { getEnvironmentServerClient, getEnvironmentServiceRoleClient } from "../supabase/environment";
 import { Business } from "./business";
 import { v4 as uuidv4 } from 'uuid';
-import { handleModelError } from '@/lib/general-helpers/error';
+import { handleModelError } from '@/lib/general-helpers/error-handling/model-error-handler';
 
 export type UserRole = "super_admin" | "admin" | "provider" | "customer" | "admin/provider" | "staff";
 

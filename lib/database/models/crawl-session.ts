@@ -1,5 +1,5 @@
 import { getEnvironmentServerClient, getEnvironmentServiceRoleClient } from "../supabase/environment";
-import { handleModelError } from '@/lib/general-helpers/error';
+import { handleModelError } from '@/lib/general-helpers/error-handling/model-error-handler';
 import { v4 as uuidv4 } from 'uuid';
 import { Document, DocumentData } from './documents';
 import { Embedding, EmbeddingData } from './embeddings';

@@ -20,6 +20,7 @@ import { conversationFlowBlueprints } from "@/lib/bot-engine/config/blueprints";
 import { START_BOOKING_PAYLOAD } from "@/lib/bot-engine/config/constants";
 import { BOOKING_TRANSLATIONS } from "@/lib/bot-engine/config/translations";
 import { MessageProcessorLogger } from "@/lib/bot-engine/utils/logger";
+import { productionErrorTracker } from "@/lib/general-helpers/error-handling/production-error-tracker";
 
 /**
  * Processes incoming messages and manages conversation flow for the bot engine
@@ -803,6 +804,16 @@ export class MessageProcessor {
       }
     } catch (error) {
       console.error(`[MessageProcessor] Error generating buttons:`, error);
+      await productionErrorTracker.logBotError(error instanceof Error ? error : new Error(String(error)), {
+        chatSessionId: currentContext?.currentConversationSession?.id,
+        businessId: currentContext?.currentParticipant?.associatedBusinessId,
+        additionalContext: {
+          component: 'MessageProcessor',
+          operation: 'button_generation',
+          stepIndex: userCurrentGoal?.currentStepIndex,
+          collectedData: userCurrentGoal?.collectedData
+        }
+      });
       return [];
     }
   }
@@ -897,6 +908,17 @@ export class MessageProcessor {
       );
     } catch (error) {
       console.error(`[MessageProcessor] LLM analysis failed, falling back to original flow:`, error);
+      await productionErrorTracker.logBotError(error instanceof Error ? error : new Error(String(error)), {
+        chatSessionId: currentContext?.currentConversationSession?.id,
+        businessId: currentContext?.currentParticipant?.associatedBusinessId,
+        additionalContext: {
+          component: 'MessageProcessor',
+          operation: 'llm_analysis',
+          currentStepIndex: userCurrentGoal?.currentStepIndex,
+          goalType: userCurrentGoal?.goalType,
+          messageLength: incomingUserMessage?.length || 0
+        }
+      });
       return this.processExistingGoalIntelligent(userCurrentGoal, currentContext, incomingUserMessage);
     }
   }
@@ -1213,6 +1235,17 @@ export class MessageProcessor {
       }
     } catch (error) {
       console.error(`[MessageProcessor] LLM error response generation failed:`, error);
+      await productionErrorTracker.logBotError(error instanceof Error ? error : new Error(String(error)), {
+        chatSessionId: currentContext?.currentConversationSession?.id,
+        businessId: currentContext?.currentParticipant?.associatedBusinessId,
+        additionalContext: {
+          component: 'MessageProcessor',
+          operation: 'llm_error_response_generation',
+          currentStepIndex: userCurrentGoal?.currentStepIndex,
+          goalType: userCurrentGoal?.goalType,
+          conversationDecision: conversationDecision
+        }
+      });
     }
     
     return "I didn't understand that. Could you please try again?";
@@ -1447,6 +1480,17 @@ export class MessageProcessor {
       }
     } catch (error) {
       console.error(`[MessageProcessor] LLM response generation failed, using original:`, error);
+      await productionErrorTracker.logBotError(error instanceof Error ? error : new Error(String(error)), {
+        chatSessionId: currentContext?.currentConversationSession?.id,
+        businessId: currentContext?.currentParticipant?.associatedBusinessId,
+        additionalContext: {
+          component: 'MessageProcessor',
+          operation: 'generateStepResponse_llm_fallback',
+          currentStepIndex: userCurrentGoal?.currentStepIndex,
+          goalType: userCurrentGoal?.goalType,
+          conversationDecision: conversationDecision
+        }
+      });
     }
     
     const fallbackMessage = this.getLocalizedFallback(currentContext, 'CONTINUE_BOOKING_FALLBACK');
@@ -1476,6 +1520,16 @@ export class MessageProcessor {
       this.updateGoalCollectedData(userCurrentGoal, stepUIDataResult);
     } catch (error) {
       console.error(`[MessageProcessor] Failed to refresh UI data for current step`, error);
+      await productionErrorTracker.logBotError(error instanceof Error ? error : new Error(String(error)), {
+        chatSessionId: currentContext?.currentConversationSession?.id,
+        businessId: currentContext?.currentParticipant?.associatedBusinessId,
+        additionalContext: {
+          component: 'MessageProcessor',
+          operation: 'refresh_ui_data',
+          currentStepIndex: userCurrentGoal?.currentStepIndex,
+          goalType: userCurrentGoal?.goalType
+        }
+      });
     }
   }
 

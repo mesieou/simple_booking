@@ -2,7 +2,7 @@ import { createClient } from "../supabase/server";
 import { getServiceRoleClient } from "../supabase/service-role";
 import { getEnvironmentServiceRoleClient } from "../supabase/environment";
 import { v4 as uuidv4 } from 'uuid';
-import { handleModelError } from '@/lib/general-helpers/error';
+import { handleModelError } from '@/lib/general-helpers/error-handling/model-error-handler';
 
 // Corresponds to the structure of the JSONB objects in the userContexts table.
 // These are based on Juan's original bot-manager types.

@@ -1,5 +1,6 @@
 import { BotResponse, IMessageSender } from "@/lib/cross-channel-interfaces/standardized-conversation-interface";
 import { getWhatsappHeaders } from "./whatsapp-headers";
+import { productionErrorTracker } from "@/lib/general-helpers/error-handling/production-error-tracker";
 
 /**
  * Cleans text for WhatsApp template parameters by removing/replacing forbidden characters
@@ -363,6 +364,18 @@ export class WhatsappSender implements IMessageSender {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
       console.error(`[WhatsappSender] ❌ Failed to send template message to ${recipientId}:`, errorMessage);
+      await productionErrorTracker.logCriticalError('WHATSAPP_TEMPLATE_SEND_FAILED', error instanceof Error ? error : new Error(String(error)), {
+        additionalContext: {
+          component: 'WhatsappSender',
+          operation: 'sendTemplateMessage',
+          recipientId: recipientId,
+          templateName: templateName,
+          languageCode: languageCode,
+          businessPhoneNumberId: businessPhoneNumberId,
+          headerParamsCount: headerParameters?.length || 0,
+          bodyParamsCount: parameters?.length || 0
+        }
+      });
       throw error;
     }
   }
@@ -449,6 +462,18 @@ export class WhatsappSender implements IMessageSender {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
       console.error(`[WhatsappSender] Failed to send message to ${recipientId}:`, errorMessage);
+      await productionErrorTracker.logCriticalError('WHATSAPP_MESSAGE_SEND_FAILED', error instanceof Error ? error : new Error(String(error)), {
+        additionalContext: {
+          component: 'WhatsappSender',
+          operation: 'sendMessage',
+          recipientId: recipientId,
+          businessPhoneNumberId: businessPhoneNumberId,
+          messageLength: response?.text?.length || 0,
+          hasButtons: !!(response?.buttons?.length),
+          buttonCount: response?.buttons?.length || 0,
+          messageType: this.getMessageType(response?.buttons?.length || 0)
+        }
+      });
       throw error;
     }
   }

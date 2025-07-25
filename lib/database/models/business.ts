@@ -1,7 +1,7 @@
 import { createClient } from "../supabase/server";
 import { getServiceRoleClient } from "../supabase/service-role";
 import { getEnvironmentServerClient, getEnvironmentServiceRoleClient } from "../supabase/environment";
-import { handleModelError } from '@/lib/general-helpers/error';
+import { handleModelError } from '@/lib/general-helpers/error-handling/model-error-handler';
 
 export type InterfaceType = 'whatsapp' | 'website';
 export type BusinessCategory = 'removalist' | 'salon' | 'default';

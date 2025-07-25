@@ -1,6 +1,6 @@
 import { getEnvironmentServerClient, getEnvironmentServiceRoleClient } from "../supabase/environment";
 import { v4 as uuidv4 } from 'uuid';
-import { handleModelError } from '@/lib/general-helpers/error';
+import { handleModelError } from '@/lib/general-helpers/error-handling/model-error-handler';
 
 export type PricingType = 'fixed' | 'per_minute';
 

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getEnvironmentServerClient, getEnvironmentServiceRoleClient } from "@/lib/database/supabase/environment";
 import { WhatsappSender } from "@/lib/bot-engine/channels/whatsapp/whatsapp-message-sender";
 import { Business } from "@/lib/database/models/business";
-import { ModelError } from "@/lib/general-helpers/error";
+import { ModelError } from "@/lib/general-helpers/error-handling/model-error-handler";
 
 export async function POST(req: NextRequest) {
   try {
@@ -133,8 +133,11 @@ export async function POST(req: NextRequest) {
           error: `Failed to fetch business configuration: ${error.message}` 
         }, { status: 500 });
       } else {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         console.error("[SendMessage] Unexpected error fetching business:", error);
-        throw error; // Re-throw non-ModelError exceptions
+        return NextResponse.json({ 
+          error: `Failed to fetch business configuration: ${errorMessage}` 
+        }, { status: 500 });
       }
     }
 

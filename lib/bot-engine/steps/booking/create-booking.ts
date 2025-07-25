@@ -7,6 +7,7 @@ import { Business } from '@/lib/database/models/business';
 import { CalendarSettings } from '@/lib/database/models/calendar-settings';
 import { DateTime } from 'luxon';
 import { ScalableNotificationService } from '@/lib/bot-engine/services/scalable-notification-service';
+import { productionErrorTracker } from "@/lib/general-helpers/error-handling/production-error-tracker";
 
 // Formats normalized phone number for user-friendly display
 const formatPhoneForDisplay = (normalizedPhone: string): string => {
@@ -40,6 +41,18 @@ const extractQuoteIdFromInput = (userInput: string, currentGoalData: any): { quo
 const validateBookingRequirements = (quote: any): { isValid: boolean; error?: string } => {
   if (!quote || !quote.userId || !quote.businessId) {
     console.error('[CreateBooking] Quote missing basic data:', { quote: !!quote, userId: quote?.userId, businessId: quote?.businessId });
+    productionErrorTracker.logCriticalError('BOOKING_QUOTE_MISSING_DATA', 'Quote missing basic data for booking creation', {
+      userId: quote?.userId,
+      businessId: quote?.businessId,
+      additionalContext: {
+        component: 'CreateBooking',
+        operation: 'validateBookingRequirements',
+        hasQuote: !!quote,
+        hasUserId: !!quote?.userId,
+        hasBusinessId: !!quote?.businessId,
+        quoteId: quote?.id
+      }
+    }).catch(console.error);
     return { isValid: false, error: 'Quote data is incomplete.' };
   }
 
@@ -582,6 +595,21 @@ export const createBookingHandler: IndividualStepHandler = {
 
     } catch (error) {
       console.error('[CreateBooking] Error during booking creation process:', error);
+      await productionErrorTracker.logCriticalError('BOOKING_CREATION_FAILED', error instanceof Error ? error : new Error(String(error)), {
+        userId: currentGoalData.userId,
+        businessId: chatContext?.currentParticipant?.associatedBusinessId,
+        chatSessionId: chatContext?.currentConversationSession?.id,
+        additionalContext: {
+          component: 'CreateBooking',
+          operation: 'processAndExtractData',
+          quoteId: currentGoalData.quoteId,
+          customerName: currentGoalData.customerName,
+          bookingDateTime: currentGoalData.bookingDateTime,
+          hasQuote: !!currentGoalData.persistedQuote,
+          isPaymentCompletion: validatedInput === 'payment_completed',
+          serviceCount: currentGoalData.persistedQuote?.serviceIds?.length || 0
+        }
+      });
       const customerName = currentGoalData.customerName || '{name}';
       return {
         ...currentGoalData,

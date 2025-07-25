@@ -1,5 +1,5 @@
 import { getEnvironmentServerClient, getEnvironmentServiceRoleClient } from "../supabase/environment";
-import { handleModelError } from '@/lib/general-helpers/error';
+import { handleModelError } from '@/lib/general-helpers/error-handling/model-error-handler';
 import { DateTime } from 'luxon';
 import { DURATION_INTERVALS } from '../../general-helpers/availability/helpers';
 

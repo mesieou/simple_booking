@@ -1,6 +1,6 @@
 // lib/models/events.ts
 
-import { handleModelError } from '@/lib/general-helpers/error';
+import { handleModelError } from '@/lib/general-helpers/error-handling/model-error-handler';
 import { getEnvironmentServerClient } from "../supabase/environment";
 
 export interface EventData {

@@ -1,5 +1,5 @@
 import { getEnvironmentServerClient } from "../supabase/environment";
-import { handleModelError } from '@/lib/general-helpers/error';
+import { handleModelError } from '@/lib/general-helpers/error-handling/model-error-handler';
 import { CONFIDENCE_CONFIG } from '@/lib/general-config/general-config';
 
 export interface DocumentData {

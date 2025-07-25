@@ -18,6 +18,7 @@ import {
   type EscalationTrigger,
   type EscalationResult
 } from './types';
+import { productionErrorTracker } from "@/lib/general-helpers/error-handling/production-error-tracker";
 import { CustomerService } from './services/customer-service';
 import { NotificationService } from './services/notification-service';
 
@@ -170,12 +171,31 @@ async function checkForEscalationTrigger(
       const chatSessionId = currentContext.currentConversationSession?.id;
       if (!chatSessionId) {
         console.error(`${LOG_PREFIX} Critical: No chat session ID available for escalation.`);
+        await productionErrorTracker.logCriticalError('ESCALATION_NO_SESSION_ID', 'No chat session ID available for escalation', {
+          businessId: currentContext.currentParticipant.associatedBusinessId,
+          additionalContext: {
+            component: 'EscalationOrchestrator',
+            operation: 'checkForEscalationTrigger',
+            escalationReason: escalationTrigger.reason,
+            conversationContext: currentContext.currentConversationSession
+          }
+        });
         return { isEscalated: false };
       }
 
       const finalBusinessPhoneNumberId = businessPhoneNumberId || currentContext.currentParticipant.businessWhatsappNumber;
       if (!finalBusinessPhoneNumberId) {
         console.error(`${LOG_PREFIX} Critical: Could not determine business phone number ID for sending notification.`);
+        await productionErrorTracker.logCriticalError('ESCALATION_NO_PHONE_ID', 'Could not determine business phone number ID for sending notification', {
+          businessId: currentContext.currentParticipant.associatedBusinessId,
+          chatSessionId: chatSessionId,
+          additionalContext: {
+            component: 'EscalationOrchestrator',
+            operation: 'checkForEscalationTrigger',
+            businessPhoneNumberIdProvided: !!businessPhoneNumberId,
+            currentParticipantPhoneNumber: currentContext.currentParticipant?.businessWhatsappNumber
+          }
+        });
         return { isEscalated: false };
       }
       
@@ -217,6 +237,17 @@ async function checkForEscalationTrigger(
       };
     } catch (error) {
       console.error(`${LOG_PREFIX} Failed to process AI-powered escalation due to an internal error:`, error);
+      await productionErrorTracker.logCriticalError('ESCALATION_PROCESSING_FAILED', error instanceof Error ? error : new Error(String(error)), {
+        businessId: currentContext.currentParticipant.associatedBusinessId,
+        chatSessionId: currentContext.currentConversationSession?.id,
+        additionalContext: {
+          component: 'EscalationOrchestrator',
+          operation: 'checkForEscalationTrigger',
+          escalationReason: escalationTrigger.reason,
+          customerPhoneNumber: currentContext.currentParticipant?.customerWhatsappNumber,
+          businessPhoneNumberId: businessPhoneNumberId
+        }
+      });
       return { isEscalated: false };
     }
   }

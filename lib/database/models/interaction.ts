@@ -1,6 +1,6 @@
 import { getEnvironmentServerClient } from "../supabase/environment";
 import { v4 as uuidv4 } from 'uuid';
-import { handleModelError } from '@/lib/general-helpers/error';
+import { handleModelError } from '@/lib/general-helpers/error-handling/model-error-handler';
 
 // Interface for the actual database schema of the interactions table
 export interface InteractionDBSchema {

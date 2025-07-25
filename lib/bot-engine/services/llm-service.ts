@@ -13,6 +13,7 @@ import { conversationFlowBlueprints } from "@/lib/bot-engine/config/blueprints";
 import { botTasks } from "@/lib/bot-engine/config/tasks";
 import { executeChatCompletion } from "@/lib/shared/llm/openai/openai-core";
 import { filterLLMContext, type LLMContextOptions } from "@/lib/bot-engine/session/state-persister";
+import { productionErrorTracker } from "@/lib/general-helpers/error-handling/production-error-tracker";
 import type { ChatMessage } from "@/lib/database/models/chat-session";
 
 export interface ConversationDecision {
@@ -455,6 +456,17 @@ Using the comprehensive knowledge base above, answer the user's question with sp
 
     } catch (error) {
       console.error('[IntelligentLLMService] Error generating response:', error);
+      await productionErrorTracker.logBotError(error instanceof Error ? error : new Error(String(error)), {
+        businessId: comprehensiveContext.business?.id,
+        additionalContext: {
+          component: 'IntelligentLLMService',
+          operation: 'generateIntelligentResponse',
+          currentStep: currentStepName,
+          customerName: comprehensiveContext.customer?.name,
+          hasBusinessContext: !!comprehensiveContext.business,
+          messageHistoryLength: comprehensiveContext.messageHistory?.length || 0
+        }
+      });
       return this.getFallbackResponse(currentStepName, comprehensiveContext);
     }
   }
