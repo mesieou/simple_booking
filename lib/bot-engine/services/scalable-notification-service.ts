@@ -330,12 +330,30 @@ export class ScalableNotificationService {
    * Convenience methods for specific notification types
    */
   async sendBookingNotification(businessId: string, bookingDetails: any): Promise<void> {
-    // Format exactly like customer confirmation with all the same details
-    const customerMessage = this.formatCustomerStyleBookingMessage(bookingDetails);
+    // Get business info to determine which template to use
+    const { Business } = await import('@/lib/database/models/business');
+    let businessCategory = 'default';
+    try {
+      const business = await Business.getById(businessId);
+      businessCategory = business?.businessCategory || 'default';
+    } catch (error) {
+      console.warn('[ScalableNotificationService] Could not fetch business category, using default template');
+    }
+
+    // Choose the appropriate booking confirmation template
+    let customerMessage: string;
+    if (businessCategory === 'removalist') {
+      customerMessage = this.formatRemovalistBookingConfirmation(bookingDetails);
+    } else if (!bookingDetails.isMobile && bookingDetails.pricingType === 'fixed_price') {
+      customerMessage = this.formatFixedPriceNonMobileBookingConfirmation(bookingDetails);
+    } else {
+      // Fallback to fixed price non-mobile template for now
+      customerMessage = this.formatFixedPriceNonMobileBookingConfirmation(bookingDetails);
+    }
     
     const content: NotificationContent = {
       title: "🎉 New Booking Confirmed!",
-      message: customerMessage, // Use detailed customer-style formatting
+      message: customerMessage,
       data: bookingDetails // Provider-agnostic data for templates
     };
 
@@ -346,32 +364,98 @@ export class ScalableNotificationService {
     });
   }
 
-  async sendFeedbackNotification(businessId: string, feedbackDetails: any): Promise<void> {
-    const content: NotificationContent = {
-      title: "⚠️ Negative Feedback Alert",
-      message: this.formatFeedbackMessage(feedbackDetails),
-      data: feedbackDetails // Provider-agnostic data
-    };
+  /**
+   * Format booking confirmation for removalist services
+   * Uses existing MessageComponentBuilder for consistent formatting
+   */
+  private formatRemovalistBookingConfirmation(details: any): string {
+    const {
+      bookingId,
+      customerName,
+      customerPhone,
+      serviceName,
+      pickupAddress,
+      deliveryAddress,
+      formattedDate,
+      formattedTime,
+      duration,
+      estimatedCompletion,
+      totalCost,
+      serviceCost,
+      travelCost = 0,
+      bookingFee = 4.00,
+      amountPaid = 0,
+      balanceDue = 0,
+      providerContactInfo,
+      isPaymentCompletion = false
+    } = details;
 
-    await this.sendNotification({
-      type: 'system',
-      businessId,
-      content
-    });
+    let message = '';
+    
+    // Payment thank you if this was a payment completion
+    if (isPaymentCompletion) {
+      message += `💳 Thank you for your payment!\n\n`;
+    }
+
+    // Header: New booking for {customerName}!
+    message += `New booking for ${customerName}!\n\n`;
+
+    // Body matching Meta template format exactly
+    message += `🏠 Service: ${serviceName}\n\n`;
+    
+    message += `📦 Pickup: ${pickupAddress || 'N/A'}\n`;
+    message += `🏁 Delivery: ${deliveryAddress || 'N/A'}\n\n`;
+    
+    message += `💪 Estimated Work Cost: $${(serviceCost || (totalCost - travelCost - bookingFee)).toFixed(2)}\n`;
+    message += `🚛 Estimated Travel Cost: $${travelCost.toFixed(2)}\n`;
+    message += `💰 Estimated Total Cost: $${totalCost.toFixed(2)}\n\n`;
+    
+    message += `📅 Date: ${formattedDate}\n`;
+    message += `⏰ Time: ${formattedTime}\n`;
+    if (estimatedCompletion) {
+      message += `🏁 Estimated completion: ${estimatedCompletion}\n`;
+    }
+    message += `\n`;
+    
+    message += `💳 Payment Breakdown\n`;
+    message += `• Estimated Total Cost: $${totalCost.toFixed(2)}\n`;
+    message += `• Booking Fee: $${bookingFee.toFixed(2)}\n`;
+    message += `• Total Paid: $${amountPaid.toFixed(2)}\n`;
+    message += `• Estimated Remaining Balance: $${balanceDue.toFixed(2)} (cash after job completion)\n\n`;
+
+    // Customer contact details (admin specific) - reusing {{1}} for customer name
+    message += `👤 Customer Details:\n`;
+    message += `• Name: ${customerName}\n`;
+    if (customerPhone) {
+      message += `• WhatsApp: ${customerPhone}\n`;
+    }
+    message += `\n`;
+
+    // Provider contact info (if available)
+    if (providerContactInfo) {
+      message += `📞 Contact Information:\n${providerContactInfo}\n\n`;
+    }
+
+    // Booking ID
+    message += `📄 Booking ID: ${bookingId}\n\n`;
+
+    // Admin closing
+    message += `New booking confirmed! 🎉`;
+
+    return message;
   }
 
   /**
-   * Format booking notification exactly like customer confirmations
-   * Uses the same detailed format customers see
+   * Format booking confirmation for fixed price non-mobile services
+   * Uses existing MessageComponentBuilder for consistent formatting
    */
-  private formatCustomerStyleBookingMessage(details: any): string {
+  private formatFixedPriceNonMobileBookingConfirmation(details: any): string {
     const {
       bookingId,
       customerName,
       customerPhone,
       serviceName,
       servicesDisplay,
-      isMultiService,
       formattedDate,
       formattedTime,
       location,
@@ -382,7 +466,6 @@ export class ScalableNotificationService {
       amountOwed = 0,
       paymentMethod = 'cash',
       providerContactInfo,
-      businessName,
       bookingFee = 4.00,
       isPaymentCompletion = false
     } = details;
@@ -457,6 +540,20 @@ export class ScalableNotificationService {
     message += `New booking confirmed and ready to serve! 🎉`;
 
     return message;
+  }
+
+  async sendFeedbackNotification(businessId: string, feedbackDetails: any): Promise<void> {
+    const content: NotificationContent = {
+      title: "⚠️ Negative Feedback Alert",
+      message: this.formatFeedbackMessage(feedbackDetails),
+      data: feedbackDetails // Provider-agnostic data
+    };
+
+    await this.sendNotification({
+      type: 'system',
+      businessId,
+      content
+    });
   }
 
   /**

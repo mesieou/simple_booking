@@ -395,6 +395,16 @@ const sendBookingNotifications = async (
     
     const bookingDateTime = DateTime.fromISO(savedBooking.dateTime);
     
+    // Calculate duration and estimated completion for removalist template
+    const durationMinutes = quote.totalJobDurationEstimation || 0;
+    const durationHours = Math.floor(durationMinutes / 60);
+    const durationRemainder = durationMinutes % 60;
+    const durationText = durationHours > 0 ? `${durationHours} hours${durationRemainder > 0 ? ` ${durationRemainder} minutes` : ''}` : `${durationMinutes} minutes`;
+    
+    const estimatedCompletionTime = durationMinutes > 0 
+      ? bookingDateTime.plus({ minutes: durationMinutes }).toLocaleString(DateTime.TIME_SIMPLE)
+      : null;
+    
     const bookingDetails = {
       bookingId: savedBooking.id,
       customerName,
@@ -406,8 +416,18 @@ const sendBookingNotifications = async (
       formattedDate: bookingDateTime.toLocaleString(DateTime.DATE_FULL),
       formattedTime: bookingDateTime.toLocaleString(DateTime.TIME_SIMPLE),
       location: service.mobile ? quote.dropOff : quote.pickUp,
+      // Removalist-specific fields
+      pickupAddress: quote.pickUp,
+      deliveryAddress: quote.dropOff,
+      duration: durationMinutes > 0 ? durationText : null,
+      estimatedCompletion: estimatedCompletionTime,
+      // Service characteristics for template selection
+      isMobile: service.mobile,
+      pricingType: service.pricingType,
+      // Cost details
       totalCost: quote.totalJobCostEstimation + businessBookingFee,
       serviceCost: quote.totalJobCostEstimation,
+      travelCost: quote.travelCostEstimate || 0,
       bookingFee: businessBookingFee,
       amountPaid: paymentDetails.amountPaid,
       amountOwed: paymentDetails.amountOwed,

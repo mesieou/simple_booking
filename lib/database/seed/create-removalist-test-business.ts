@@ -112,7 +112,7 @@ export async function createRemovalistTestBusiness(supabase?: SupabaseClient): P
       websiteUrl: 'https://timosremovals.com.au',
       businessCategory: 'removalist', // Set business category for removalist
       depositPercentage: 25, // 25% deposit required for bookings
-      stripeConnectAccountId: 'acct_1RdjJT00GaxmqnjE', // Stripe Connect account ID
+      stripeConnectAccountId: 'acct_1Rna89P41K8lchaj', // Stripe Connect account ID
       stripeAccountStatus: 'active',
       preferredPaymentMethod: 'cash'
     };
@@ -465,7 +465,7 @@ export async function createRemovalistBusinessForProduction(
     websiteUrl: 'https://timosremovals.com.au',
     businessCategory: 'removalist',
     depositPercentage: 25,
-    stripeConnectAccountId: 'acct_1RdjJT00GaxmqnjE',
+    stripeConnectAccountId: 'acct_1Rna89P41K8lchaj',
     stripeAccountStatus: 'active',
     preferredPaymentMethod: 'cash'
   };
