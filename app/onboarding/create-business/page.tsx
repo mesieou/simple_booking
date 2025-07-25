@@ -74,7 +74,7 @@ interface BusinessFormData {
   faqDocumentBase64?: string;
   
   // Payment
-  depositPercentage: number;
+  depositPercentage: number | string;
   preferredPaymentMethod: string;
   setupPayments: boolean;
 }
@@ -493,6 +493,12 @@ export default function CreateBusinessPage() {
         throw new Error('Please add at least one service');
       }
 
+      // Check maximum number of services (same limit as in services-step.tsx)
+      const MAX_SERVICES = 15;
+      if (formData.services.length > MAX_SERVICES) {
+        throw new Error(`You can only have up to ${MAX_SERVICES} services per business. Please remove some services.`);
+      }
+
       // Check each service for required fields
       for (let i = 0; i < formData.services.length; i++) {
         const service = formData.services[i];
@@ -547,6 +553,43 @@ export default function CreateBusinessPage() {
     }
   };
 
+  // Validation function for Payment step
+  const validatePayment = () => {
+    try {
+      // Check if user explicitly chose "payment after service" (depositPercentage = 0)
+      // If depositPercentage is anything else (including empty string), they chose "deposit required"
+      const isPaymentAfterService = formData.depositPercentage === 0;
+      
+      if (!isPaymentAfterService) {
+        // User selected "deposit required" - validate they provided a valid percentage
+        const percentage = typeof formData.depositPercentage === 'string' ? 
+          parseInt(formData.depositPercentage) : formData.depositPercentage;
+        
+        // If it's empty string, NaN, or invalid range, show error
+        if (formData.depositPercentage === '' || isNaN(percentage) || percentage < 1 || percentage > 99) {
+          throw new Error('Please enter a deposit percentage between 1% and 99%');
+        }
+      }
+      
+      return true;
+    } catch (error) {
+      if (error instanceof Error) {
+        toast({
+          title: "Payment Validation Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Payment Validation Error",
+          description: "Please check payment configuration",
+          variant: "destructive",
+        });
+      }
+      return false;
+    }
+  };
+
   const handleNext = () => {
     if (currentStep < STEPS.length) {
       // Validate current step before proceeding
@@ -560,6 +603,11 @@ export default function CreateBusinessPage() {
         if (!validateServices()) {
           return; // Don't proceed if validation fails
         }
+      } else if (currentStep === 5) {
+        // Payment step validation
+        if (!validatePayment()) {
+          return; // Don't proceed if validation fails
+        }
       }
       // Add validation for other steps here as needed
       
@@ -567,6 +615,11 @@ export default function CreateBusinessPage() {
       setCurrentStep(nextStep);
       // Auto-save current step to localStorage
       saveFormToStorage(formData, nextStep);
+      
+      // Scroll to top of page with smooth animation - add small delay to ensure DOM updates complete
+      setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 10);
     }
   };
 
@@ -576,6 +629,11 @@ export default function CreateBusinessPage() {
       setCurrentStep(prevStep);
       // Auto-save current step to localStorage
       saveFormToStorage(formData, prevStep);
+      
+      // Scroll to top of page with smooth animation - add small delay to ensure DOM updates complete
+      setTimeout(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 10);
     }
   };
 
@@ -594,11 +652,22 @@ export default function CreateBusinessPage() {
       return;
     }
 
+    // Final validation for payment step
+    if (!validatePayment()) {
+      return;
+    }
+
     setIsLoading(true);
 
     try {
       // Prepare form data for submission
       const submissionData = { ...formData };
+      
+      // Ensure depositPercentage is a number for submission
+      if (typeof submissionData.depositPercentage === 'string') {
+        const percentage = parseInt(submissionData.depositPercentage);
+        submissionData.depositPercentage = isNaN(percentage) ? 0 : percentage;
+      }
       
       // Convert FAQ document to base64 if present
       if (formData.faqDocument) {

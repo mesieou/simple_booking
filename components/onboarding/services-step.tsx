@@ -9,6 +9,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Trash2, X, Check } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+import { useToast } from '@/lib/rename-categorise-better/utils/use-toast';
+
+// Maximum number of services allowed per business
+const MAX_SERVICES = 15;
 
 interface ServiceData {
   name: string;
@@ -269,6 +273,7 @@ function ServiceCardForm({
 export function ServicesStep({ data, onUpdate, onEditingChange }: ServicesStepProps) {
   const [editingService, setEditingService] = useState<ServiceData | null>(null);
   const [isAddingNew, setIsAddingNew] = useState(false);
+  const { toast } = useToast();
 
   const handleDelete = (index: number) => {
     const updatedServices = data.services.filter((_, i) => i !== index);
@@ -276,6 +281,16 @@ export function ServicesStep({ data, onUpdate, onEditingChange }: ServicesStepPr
   };
 
   const handleAddNew = () => {
+    // Check if maximum number of services reached
+    if (data.services.length >= MAX_SERVICES) {
+      toast({
+        title: "Service Limit Reached",
+        description: `You can only add up to ${MAX_SERVICES} services per business. Please delete existing services to add new ones.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     const newService: ServiceData = {
       name: '',
       pricingType: 'fixed',
@@ -308,18 +323,34 @@ export function ServicesStep({ data, onUpdate, onEditingChange }: ServicesStepPr
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <p className="text-sm text-gray-600 text-center md:text-left">
-          Review and customize your services. These have been pre-configured based on your business type.
-        </p>
+        <div className="text-center md:text-left">
+          <p className="text-sm text-gray-600">
+            Review and customize your services. These have been pre-configured based on your business type.
+          </p>
+          <p className={`text-xs mt-1 ${
+            data.services.length >= MAX_SERVICES 
+              ? 'text-red-600 font-medium' 
+              : data.services.length >= MAX_SERVICES - 2 
+                ? 'text-orange-600 font-medium' 
+                : 'text-gray-500'
+          }`}>
+            Services: {data.services.length}/{MAX_SERVICES}
+            {data.services.length >= MAX_SERVICES && ' (Maximum reached)'}
+            {data.services.length >= MAX_SERVICES - 2 && data.services.length < MAX_SERVICES && ' (Near limit)'}
+          </p>
+        </div>
         <div className="flex justify-center md:justify-end">
           <Button
             variant="outline"
             onClick={handleAddNew}
-            disabled={isAddingNew}
+            disabled={isAddingNew || data.services.length >= MAX_SERVICES}
             className="px-4 py-2"
           >
             <Plus className="w-4 h-4 mr-2" />
             Add Service
+            {data.services.length >= MAX_SERVICES && (
+              <span className="ml-2 text-xs">(Max reached)</span>
+            )}
           </Button>
         </div>
       </div>

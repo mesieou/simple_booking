@@ -17,15 +17,15 @@
     "totalDocuments": 0,
     "processedDocuments": 0,
     "failedDocuments": 0,
-    "totalEmbeddings": 6,
-    "processedEmbeddings": 6,
+    "totalEmbeddings": 5,
+    "processedEmbeddings": 5,
     "failedEmbeddings": 0,
-    "startTime": 1753371198612,
+    "startTime": 1753402327316,
     "baseOutputPath": "/Users/juanbernal/code/mesieou/2025/simple_booking/crawl-output",
     "domainProcessingSummary": {},
-    "endTime": 1753371219728
+    "endTime": 1753402345975
   },
-  "durationSeconds": 21.116,
+  "durationSeconds": 18.659,
   "allFoundUrls": [
     "pdf-business-knowledge-base.pdf#page=1"
   ],

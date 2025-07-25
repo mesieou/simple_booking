@@ -2,48 +2,41 @@
   "sourceUrl": "pdf-business-knowledge-base.pdf#page=1",
   "pageTitle": "business-knowledge-base.pdf - Page 1",
   "isPdf": true,
-  "totalLlmChunks": 6,
+  "totalLlmChunks": 5,
   "documents": [
     {
-      "documentId": "4820ddd9-e86e-4466-a793-c86c438f2411",
+      "documentId": "4a3091f0-4bee-4410-944e-e2e1b1c3fe73",
       "chunkOrder": 1,
-      "category": "General Information / Articles: For informative content like blog posts, articles, guides, industry insights, or company news that doesn't fall into other specific business function categories.",
-      "originalTextLength": 152,
-      "preChunkSourceIndex": 0
-    },
-    {
-      "documentId": "53f6f69a-718d-4802-b9da-f3468de84b05",
-      "chunkOrder": 2,
       "category": "booking or scheduling",
-      "originalTextLength": 929,
+      "originalTextLength": 855,
       "preChunkSourceIndex": 0
     },
     {
-      "documentId": "61de1f01-85ee-49d7-8de8-c84c0ee796d1",
+      "documentId": "d0acb294-d9df-4eeb-8636-f78adf99f1f1",
+      "chunkOrder": 2,
+      "category": "pricing or quotes",
+      "originalTextLength": 1229,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "febc39dd-1ac0-4979-9e83-2db6ad07d449",
       "chunkOrder": 3,
       "category": "pricing or quotes",
-      "originalTextLength": 213,
+      "originalTextLength": 518,
       "preChunkSourceIndex": 0
     },
     {
-      "documentId": "9bb3e94b-0712-4932-afc6-282325a01a28",
+      "documentId": "30604bbb-597a-49e3-beba-eb62292fe9d5",
       "chunkOrder": 4,
-      "category": "pricing or quotes",
-      "originalTextLength": 596,
-      "preChunkSourceIndex": 0
-    },
-    {
-      "documentId": "0bb52d67-868e-45a8-a937-a8d6f52339f5",
-      "chunkOrder": 5,
       "category": "Uncategorized",
-      "originalTextLength": 1163,
+      "originalTextLength": 1222,
       "preChunkSourceIndex": 0
     },
     {
-      "documentId": "c38bee23-9245-4e33-9d1b-ff998e5fd1b0",
-      "chunkOrder": 6,
+      "documentId": "02c1d372-eecc-48d5-90eb-52684625a14b",
+      "chunkOrder": 5,
       "category": "contact",
-      "originalTextLength": 670,
+      "originalTextLength": 651,
       "preChunkSourceIndex": 0
     }
   ]

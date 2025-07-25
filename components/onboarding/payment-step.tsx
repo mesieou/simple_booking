@@ -10,7 +10,7 @@ import { useState } from 'react';
 
 interface PaymentStepProps {
   data: {
-    depositPercentage: number;
+    depositPercentage: number | string;
     preferredPaymentMethod: string;
     setupPayments: boolean;
   };
@@ -45,19 +45,34 @@ const PAYMENT_METHODS = [
 ];
 
 export function PaymentStep({ data, onUpdate }: PaymentStepProps) {
-  // Determine payment type based on deposit percentage
-  const paymentType = data.depositPercentage === 0 ? 'no_payment' : 'deposit';
+  // Track payment type separately from deposit percentage to avoid auto-switching
+  const [paymentType, setPaymentType] = useState<'deposit' | 'no_payment'>(
+    data.depositPercentage === 0 || data.depositPercentage === '' ? 'no_payment' : 'deposit'
+  );
   
   const handlePaymentTypeChange = (type: 'deposit' | 'no_payment') => {
+    setPaymentType(type);
     if (type === 'deposit') {
-      onUpdate({ depositPercentage: 25 }); // Partial deposit required
+      // Only set default percentage if it's currently 0 or empty
+      if (data.depositPercentage === 0 || data.depositPercentage === '') {
+        onUpdate({ depositPercentage: 25 });
+      }
     } else {
       onUpdate({ depositPercentage: 0 }); // No deposit = payment after service
     }
   };
+  
   const handleDepositChange = (value: string) => {
-    const percentage = parseInt(value) || 0;
-    onUpdate({ depositPercentage: Math.min(100, Math.max(0, percentage)) });
+    // Allow empty values during editing without switching payment type
+    if (value === '') {
+      onUpdate({ depositPercentage: '' as any }); // Allow empty state for editing
+      return;
+    }
+    
+    const percentage = parseInt(value);
+    if (!isNaN(percentage)) {
+      onUpdate({ depositPercentage: Math.min(99, Math.max(1, percentage)) });
+    }
   };
   return (
     <div className="space-y-6">
@@ -109,6 +124,7 @@ export function PaymentStep({ data, onUpdate }: PaymentStepProps) {
                       value={data.depositPercentage}
                       onChange={(e) => handleDepositChange(e.target.value)}
                       className="w-24 bg-gray-50 border border-gray-300 text-gray-900 placeholder:text-gray-400 rounded-lg"
+                      placeholder="25"
                     />
                     <span className="text-sm text-gray-600">% of total booking amount</span>
                   </div>
