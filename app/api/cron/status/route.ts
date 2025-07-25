@@ -6,8 +6,8 @@ export async function GET() {
   
   const now = new Date();
   const utcTime = now.toISOString();
-  const sydneyTime = now.toLocaleString('en-AU', { 
-    timeZone: 'Australia/Sydney',
+  const melbourneTime = now.toLocaleString('en-AU', { 
+    timeZone: 'Australia/Melbourne',
     year: 'numeric',
     month: '2-digit', 
     day: '2-digit',
@@ -16,13 +16,18 @@ export async function GET() {
     second: '2-digit'
   });
 
-  // Calculate next midnight UTC (when cron should run)
-  const nextMidnightUTC = new Date();
-  nextMidnightUTC.setUTCDate(nextMidnightUTC.getUTCDate() + 1);
-  nextMidnightUTC.setUTCHours(0, 0, 0, 0);
+  // Calculate next 14:00 UTC (when cron should run - midnight Melbourne time)
+  const nextCronRun = new Date();
+  const currentHour = nextCronRun.getUTCHours();
   
-  const nextMidnightSydney = nextMidnightUTC.toLocaleString('en-AU', {
-    timeZone: 'Australia/Sydney',
+  // If it's already past 14:00 UTC today, schedule for tomorrow
+  if (currentHour >= 14) {
+    nextCronRun.setUTCDate(nextCronRun.getUTCDate() + 1);
+  }
+  nextCronRun.setUTCHours(14, 0, 0, 0);
+  
+  const nextCronMelbourne = nextCronRun.toLocaleString('en-AU', {
+    timeZone: 'Australia/Melbourne',
     year: 'numeric',
     month: '2-digit', 
     day: '2-digit',
@@ -36,14 +41,14 @@ export async function GET() {
     message: 'Cron job endpoint is accessible',
     currentTime: {
       utc: utcTime,
-      sydney: sydneyTime
+      melbourne: melbourneTime
     },
     nextScheduledRun: {
-      utc: nextMidnightUTC.toISOString(),
-      sydney: nextMidnightSydney,
-      description: 'Next cron job will run at 00:00 UTC (10:00 AM Sydney time)'
+      utc: nextCronRun.toISOString(),
+      melbourne: nextCronMelbourne,
+      description: 'Next cron job will run at 14:00 UTC (midnight Melbourne time)'
     },
-    cronSchedule: '0 0 * * * (daily at midnight UTC)',
+    cronSchedule: '0 14 * * * (daily at 14:00 UTC - midnight Melbourne)',
     environment: {
       nodeEnv: process.env.NODE_ENV,
       hasCronSecret: !!process.env.CRON_SECRET,

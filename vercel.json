@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/cron/roll-availability-coordinator",
-      "schedule": "0 0 * * *"
+      "schedule": "0 14 * * *"
     }
   ]
 } 
