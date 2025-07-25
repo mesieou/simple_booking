@@ -84,7 +84,7 @@ export class IntelligentLLMService {
     const currentStepName = currentFlow[currentGoal.currentStepIndex];
     const currentStepHandler = botTasks[currentStepName];
     
-    const systemPrompt = `You are an expert conversation flow analyst for a booking system. Your task is to analyze a user's message and determine the best conversation flow action.
+    const systemPrompt = `You are an expert conversation flow analyst for a quote system. Your task is to analyze a user's message and determine the best conversation flow action.
 
 **PRIMARY RULE: QUESTIONS = CONTINUE, ACTIONS = SWITCH, CHANGES = GO BACK**
 
@@ -103,25 +103,25 @@ INTENT CLASSIFICATION:
    - **Examples**: "do you do haircuts?", "what's your price?", "are you open Sunday?", "where are you located?"
    - **CRITICAL: Distinguish from direct answers - "do you do manicures?" is a question, "manicure" is a service selection**
 
-2. **NAVIGATION BACK TO MODIFY CURRENT BOOKING → "go_back"**
-   - User wants to change/modify something in their current booking
+2. **NAVIGATION BACK TO MODIFY CURRENT QUOTE → "go_back"**
+   - User wants to change/modify something in their current quote
    - **Service changes**: "change service", "different service", "pick another service", "can I change the service"
    - **Time changes**: "change time", "different time", "pick another time", "can I change the time"
    - **Location changes**: "change location", "different address", "change address"
    - **General navigation**: "go back", "change that", "modify that", "edit that"
-   - **Key pattern**: User wants to MODIFY existing booking, not start fresh
+   - **Key pattern**: User wants to MODIFY existing quote, not start fresh
    - **Examples**: "sorry can i change the service", "actually I want a different service", "can I pick another time"
    - **Target step should be specified** (e.g., "selectService" for service changes, "selectTime" for time changes)
 
-3. **EXPLICIT NEW BOOKING ACTIONS → "switch_topic"** 
-   - Clear commands to book something COMPLETELY NEW (not modify current)
-   - "I want to book [service]", "Book me a [service]", "Let's book [service]"
-   - Must contain ACTION words: book, schedule, appointment, reserve
-   - **Only use when starting a completely new booking conversation**
+3. **EXPLICIT NEW QUOTE ACTIONS → "switch_topic"** 
+   - Clear commands to get a quote for something COMPLETELY NEW (not modify current)
+   - "I want a quote for [service]", "Quote me [service]", "Let's get a quote for [service]"
+   - Must contain ACTION words: quote, estimate, price, cost
+   - **Only use when starting a completely new quote conversation**
 
 4. **RESTART ENTIRE PROCESS → "restart"**
    - "restart", "start over", "let's start fresh", "begin again"
-   - User wants to completely reset and start the entire booking process from scratch
+   - User wants to completely reset and start the entire quote process from scratch
 
 5. **DIRECT ANSWERS → "advance"**
    - Answering current step question

@@ -78,7 +78,7 @@ export async function handleFaqOrChitchat(
       if (ragResults && ragResults.length > 0) {
         console.log(`[handleFaqOrChitchat] Found ${ragResults.length} relevant document(s). Using them to generate response.`);
         const context = ragResults.map(r => r.content).join('\n---\n');
-        systemPrompt = `You are a helpful assistant for a booking system. A user is asking a question. Use the conversation history for context to understand the question fully. 
+        systemPrompt = `You are a helpful assistant for a quote system. A user is asking a question. Use the conversation history for context to understand the question fully. 
         
         **CRITICAL: Give clear, direct answers based on the provided information.**
         
@@ -110,13 +110,13 @@ export async function handleFaqOrChitchat(
         
         **BOOKING DIRECTION (CONTEXT-AWARE)**:
         ${activeBookingGoal ? 
-          `- The user is currently in a booking process, so DO NOT mention "Book an Appointment" or redirect them to booking
+          `- The user is currently in a quote process, so DO NOT mention "Get a Quote" or redirect them to booking
           - Simply answer their question directly and end naturally
           - The booking context will be added automatically after your response` :
-          `- NEVER ask users to "tell me your preferred date/time" or "let me know when you'd like to book"
-          - NEVER create expectations that they can book via text messages
-          - ALWAYS end responses with: "Click the 'Book an Appointment' button below to get started!"
-          - The booking process requires clicking the button, not text responses`
+          `- NEVER ask users to "tell me your preferred date/time" or "let me know when you'd like a quote"
+          - NEVER create expectations that they can get quotes via text messages
+          - ALWAYS end responses with: "Click the 'Get a Quote' button below to get started!"
+          - The quote process requires clicking the button, not text responses`
         }
         
         **FORMATTING RULES FOR WHATSAPP**:
@@ -136,7 +136,7 @@ export async function handleFaqOrChitchat(
         ---`;
       } else {
         console.log(`[handleFaqOrChitchat] No relevant document found. Treating as chitchat.`);
-        systemPrompt = `You are a friendly and helpful assistant for a booking system. The user is making small talk or asking a general question. 
+        systemPrompt = `You are a friendly and helpful assistant for a quote system. The user is making small talk or asking a general question. 
         Use the conversation history for context and respond conversationally and naturally.
         
         **PERSONALIZATION RULES:**
@@ -149,13 +149,13 @@ export async function handleFaqOrChitchat(
         
         **BOOKING DIRECTION (CONTEXT-AWARE)**:
         ${activeBookingGoal ? 
-          `- The user is currently in a booking process, so DO NOT mention "Book an Appointment" or redirect them to booking
+          `- The user is currently in a quote process, so DO NOT mention "Get a Quote" or redirect them to booking
           - Simply answer their question directly and end naturally
           - The booking context will be added automatically after your response` :
-          `- NEVER ask users to "tell me your preferred date/time" or "let me know when you'd like to book"
-          - NEVER create expectations that they can book via text messages
-          - ALWAYS end responses with: "Click the 'Book an Appointment' button below to get started!"
-          - The booking process requires clicking the button, not text responses`
+          `- NEVER ask users to "tell me your preferred date/time" or "let me know when you'd like a quote"
+          - NEVER create expectations that they can get quotes via text messages
+          - ALWAYS end responses with: "Click the 'Get a Quote' button below to get started!"
+          - The quote process requires clicking the button, not text responses`
         }
 
         **FORMATTING RULES FOR WHATSAPP**:
@@ -288,7 +288,7 @@ async function handleUserCreationIfNeeded(
             ${activeBookingGoal ? 
               `- The user is currently in a booking process, so simply answer their question directly and end naturally
               - The booking context will be added automatically after your response` :
-              `- After answering the question, ALWAYS offer to help the user book an appointment for the services we DO offer
+              `- After answering the question, ALWAYS offer to help the user get a quote for the services we DO offer
               - The booking buttons will be added automatically after your response`
             }
             
@@ -581,8 +581,8 @@ async function generateContextAwareFAQResponse(
       };
     }
   } else {
-    // No active booking goal - show standard "Book an Appointment" button
-    const buttonText = userLanguage === 'es' ? 'Reservar una cita' : 'Book an Appointment';
+    // No active booking goal - show standard "Get a Quote" button
+    const buttonText = userLanguage === 'es' ? 'Obtener cotización' : 'Get a Quote';
     const buttonDescription = userLanguage === 'es' ? 'Iniciar el proceso de reserva' : 'Start the booking process';
 
     return {

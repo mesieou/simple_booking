@@ -86,7 +86,7 @@ function generateBookingProcessKnowledge(config: BusinessConfiguration): string 
   let section = `## How to Book with ${businessName}\n\n`;
   
   if (allowsTextBooking && !requiresButtonBooking) {
-    section += `**Q: Can I book appointments just by sending text messages?**\n`;
+    section += `**Q: Can I get quotes just by sending text messages?**\n`;
     section += `A: Yes! With ${businessName}, you can complete the entire booking process through WhatsApp messages. Here's how it works:\n\n`;
     section += `1. **Request a Quote**: Tell us what service you need\n`;
     section += `2. **Get Instant Quote**: Our AI calculates your price immediately\n`;
@@ -96,8 +96,8 @@ function generateBookingProcessKnowledge(config: BusinessConfiguration): string 
     section += `6. **Get Confirmation**: Receive booking confirmation and reminders\n\n`;
     section += `No buttons, no apps, no complicated forms - just natural conversation!\n\n`;
   } else if (requiresButtonBooking) {
-    section += `**Q: Do I need to click a button to book appointments?**\n`;
-    section += `A: Yes, ${businessName} uses our secure booking system. After getting your quote through chat, you'll need to click the 'Book an Appointment' button to:\n`;
+    section += `**Q: Do I need to click a button to get quotes?**\n`;
+    section += `A: Yes, ${businessName} uses our secure quote system. After getting your quote through chat, you'll need to click the 'Get a Quote' button to:\n`;
     section += `• Access real-time availability\n`;
     section += `• Complete secure payment processing\n`;
     section += `• Receive official booking confirmations\n\n`;

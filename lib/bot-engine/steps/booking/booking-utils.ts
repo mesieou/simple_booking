@@ -1430,7 +1430,7 @@ export class BookingMessageGenerator {
     return 'Here are the next available appointment times:';
   }
   static generateServiceChangeMessage(serviceName: string): string {
-    return `Great! You've selected ${serviceName}. Let's continue with your booking.`;
+    return `Great! You've selected ${serviceName}. Let's continue with your quote.`;
   }
   static generateErrorMessage(errorType: string): string {
     switch (errorType) {
