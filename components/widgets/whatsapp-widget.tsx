@@ -40,13 +40,6 @@ const WhatsAppWidget: React.FC<WhatsAppWidgetProps> = ({
 
     const widgetBaseUrl = getBaseUrl();
     
-    // Debug log for production troubleshooting
-    if (process.env.NODE_ENV === 'production') {
-      console.log('[WhatsApp Widget] Base URL:', widgetBaseUrl);
-      console.log('[WhatsApp Widget] Environment:', process.env.NODE_ENV);
-      console.log('[WhatsApp Widget] NEXT_PUBLIC_SITE_URL:', process.env.NEXT_PUBLIC_SITE_URL);
-    }
-    
     // Create and append the widget iframe
     const iframe = document.createElement('iframe');
     iframe.src = `${widgetBaseUrl}/api/widget/embed?businessId=${businessId}&t=${Date.now()}`;

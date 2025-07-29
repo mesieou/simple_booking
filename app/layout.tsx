@@ -49,12 +49,20 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Use correct business ID based on environment
+  const getBusinessId = (): string => {
+    if (process.env.NODE_ENV === 'production') {
+      return '42f7bb6e-c4bb-4556-b33e-d2858612bd4c'; // Production business ID
+    }
+    return '495c1537-d2cb-4557-b498-25c44961e506'; // Development business ID
+  };
+
   return (
     <html lang="en" className={cn(inter.className)}>
       <body className="bg-background text-foreground" suppressHydrationWarning={true}>
         <AuthProvider>
           <LayoutSwitcher>{children}</LayoutSwitcher>
-          <WhatsAppWidget businessId="782e1021-058f-4eb1-b3fe-9c374d814799" />
+          <WhatsAppWidget businessId={getBusinessId()} />
         </AuthProvider>
       </body>
     </html>
