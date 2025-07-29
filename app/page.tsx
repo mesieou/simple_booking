@@ -19,6 +19,7 @@ import WhatYouGet2 from '@/components/sections/what_you_get2';
 import { CTASection } from '@/components/sections/cta-section';
 import OnboardingAccordion from '@/components/ui/OnboardingAccordion';
 import OnboardingAccordion2 from '@/components/ui/OnboardingAccordion2';
+import WhatsAppWidget from '@/components/widgets/whatsapp-widget';
 
 const LandingPage = () => {
   const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
@@ -36,6 +37,14 @@ const LandingPage = () => {
 
   const handleCTAClick = () => {
     setIsEmailDialogOpen(true);
+  };
+
+  // Use correct business ID based on environment
+  const getBusinessId = (): string => {
+    if (process.env.NODE_ENV === 'production') {
+      return '42f7bb6e-c4bb-4556-b33e-d2858612bd4c'; // Production business ID
+    }
+    return '495c1537-d2cb-4557-b498-25c44961e506'; // Development business ID
   };
 
   return (
@@ -95,6 +104,9 @@ const LandingPage = () => {
         onClose={() => setIsEmailDialogOpen(false)} 
       />
       <CTASection onButtonClick={handleCTAClick} />
+      
+      {/* WhatsApp Widget - Only on main page */}
+      <WhatsAppWidget businessId={getBusinessId()} />
     </>
     
   )

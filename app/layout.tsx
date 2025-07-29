@@ -4,7 +4,6 @@ import { cn } from "@/lib/utils";
 import type { Metadata } from "next";
 import { AuthProvider } from "@/app/context/auth-context";
 import { LayoutSwitcher } from "./layout-switcher";
-import WhatsAppWidget from "@/components/widgets/whatsapp-widget";
 
 const defaultUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
@@ -49,20 +48,11 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Use correct business ID based on environment
-  const getBusinessId = (): string => {
-    if (process.env.NODE_ENV === 'production') {
-      return '42f7bb6e-c4bb-4556-b33e-d2858612bd4c'; // Production business ID
-    }
-    return '495c1537-d2cb-4557-b498-25c44961e506'; // Development business ID
-  };
-
   return (
     <html lang="en" className={cn(inter.className)}>
       <body className="bg-background text-foreground" suppressHydrationWarning={true}>
         <AuthProvider>
           <LayoutSwitcher>{children}</LayoutSwitcher>
-          <WhatsAppWidget businessId={getBusinessId()} />
         </AuthProvider>
       </body>
     </html>

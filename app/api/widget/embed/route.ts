@@ -27,12 +27,6 @@ export async function GET(request: NextRequest) {
   };
 
   const baseUrl = getBaseUrl();
-  
-  // Debug logging for production troubleshooting
-  console.log('[Widget Embed] Base URL:', baseUrl);
-  console.log('[Widget Embed] Environment:', process.env.NODE_ENV);
-  console.log('[Widget Embed] NEXT_PUBLIC_SITE_URL:', process.env.NEXT_PUBLIC_SITE_URL);
-  console.log('[Widget Embed] Business ID:', businessId);
 
   const widgetHtml = `
 <!DOCTYPE html>

@@ -26,6 +26,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get chat session to find business and customer info
+    console.log(`${LOG_PREFIX} Looking up chat session: ${sessionId}`);
     const chatSession = await ChatSession.getById(sessionId);
     if (!chatSession) {
       console.error(`${LOG_PREFIX} Chat session not found: ${sessionId}`);
@@ -34,15 +35,28 @@ export async function POST(request: NextRequest) {
       }, { status: 404 });
     }
 
+    console.log(`${LOG_PREFIX} Found chat session. Business ID: ${chatSession.businessId}`);
+    console.log(`${LOG_PREFIX} Chat session details:`, {
+      sessionId: chatSession.id,
+      businessId: chatSession.businessId,
+      channel: chatSession.channel,
+      channelUserId: chatSession.channelUserId,
+      status: chatSession.status
+    });
+
     // Get business info
+    console.log(`${LOG_PREFIX} Looking up business with ID: ${chatSession.businessId}`);
     const { Business } = await import('@/lib/database/models/business');
     const business = await Business.getById(chatSession.businessId);
     if (!business) {
       console.error(`${LOG_PREFIX} Business not found: ${chatSession.businessId}`);
+      console.error(`${LOG_PREFIX} This indicates a data integrity issue - the chat session references a business that doesn't exist`);
       return NextResponse.json({ 
         error: 'Business not found' 
       }, { status: 404 });
     }
+
+    console.log(`${LOG_PREFIX} Found business: ${business.name} (ID: ${business.id})`);
 
     // Get customer phone number (normalize format)
     const customerPhoneNumber = chatSession.channelUserId?.startsWith('+') 
