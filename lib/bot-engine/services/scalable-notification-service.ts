@@ -103,7 +103,10 @@ export class ScalableNotificationService {
     } catch (error) {
       // Add additional context for scalable notification service errors
       const { productionErrorTracker } = await import('@/lib/general-helpers/error-handling/production-error-tracker');
-      await productionErrorTracker.logCriticalError('BOOKING_NOTIFICATION_FAILED', error instanceof Error ? error : new Error(String(error)), {
+      const errorCategory = type === 'system' ? 'SYSTEM_NOTIFICATION_FAILED' : 
+                          type === 'escalation' ? 'ESCALATION_NOTIFICATION_FAILED' : 
+                          'BOOKING_NOTIFICATION_FAILED';
+      await productionErrorTracker.logCriticalError(errorCategory, error instanceof Error ? error : new Error(String(error)), {
         businessId: businessContext.businessId,
         chatSessionId,
         additionalContext: {
@@ -592,6 +595,7 @@ export class ScalableNotificationService {
     await this.sendNotification({
       type: 'system',
       businessId,
+      chatSessionId: feedbackDetails.sessionId, // Pass the session ID from feedback details
       content
     });
   }
