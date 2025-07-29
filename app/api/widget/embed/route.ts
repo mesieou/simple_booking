@@ -8,10 +8,31 @@ export async function GET(request: NextRequest) {
     return new NextResponse('Business ID is required', { status: 400 });
   }
 
-  // Get the current domain for API calls
-  const protocol = request.headers.get('x-forwarded-proto') || 'https';
-  const host = request.headers.get('host') || 'skedy.io';
-  const baseUrl = `${protocol}://${host}`;
+  // Get the current domain for API calls with proper environment detection
+  const getBaseUrl = (): string => {
+    // Check for environment variable first
+    if (process.env.NEXT_PUBLIC_SITE_URL) {
+      return process.env.NEXT_PUBLIC_SITE_URL;
+    }
+    
+    // Fallback based on environment
+    if (process.env.NODE_ENV === 'production') {
+      return 'https://skedy.io';
+    }
+    
+    // Development fallback - use request headers
+    const protocol = request.headers.get('x-forwarded-proto') || 'http';
+    const host = request.headers.get('host') || 'localhost:3000';
+    return `${protocol}://${host}`;
+  };
+
+  const baseUrl = getBaseUrl();
+  
+  // Debug logging for production troubleshooting
+  console.log('[Widget Embed] Base URL:', baseUrl);
+  console.log('[Widget Embed] Environment:', process.env.NODE_ENV);
+  console.log('[Widget Embed] NEXT_PUBLIC_SITE_URL:', process.env.NEXT_PUBLIC_SITE_URL);
+  console.log('[Widget Embed] Business ID:', businessId);
 
   const widgetHtml = `
 <!DOCTYPE html>

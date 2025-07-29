@@ -9,12 +9,47 @@ interface WhatsAppWidgetProps {
 
 const WhatsAppWidget: React.FC<WhatsAppWidgetProps> = ({ 
   businessId, 
-  baseUrl = typeof window !== 'undefined' ? window.location.origin : '' 
+  baseUrl 
 }) => {
   useEffect(() => {
+    // Determine the correct base URL based on environment
+    const getBaseUrl = (): string => {
+      // If baseUrl is explicitly provided, use it
+      if (baseUrl) {
+        return baseUrl;
+      }
+      
+      // Check for environment variable first
+      if (typeof window !== 'undefined' && (window as any).__NEXT_DATA__?.props?.siteUrl) {
+        return (window as any).__NEXT_DATA__.props.siteUrl;
+      }
+      
+      // Use environment variable if available
+      if (process.env.NEXT_PUBLIC_SITE_URL) {
+        return process.env.NEXT_PUBLIC_SITE_URL;
+      }
+      
+      // Fallback based on environment
+      if (process.env.NODE_ENV === 'production') {
+        return 'https://skedy.io';
+      }
+      
+      // Development fallback
+      return typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+    };
+
+    const widgetBaseUrl = getBaseUrl();
+    
+    // Debug log for production troubleshooting
+    if (process.env.NODE_ENV === 'production') {
+      console.log('[WhatsApp Widget] Base URL:', widgetBaseUrl);
+      console.log('[WhatsApp Widget] Environment:', process.env.NODE_ENV);
+      console.log('[WhatsApp Widget] NEXT_PUBLIC_SITE_URL:', process.env.NEXT_PUBLIC_SITE_URL);
+    }
+    
     // Create and append the widget iframe
     const iframe = document.createElement('iframe');
-    iframe.src = `${baseUrl}/api/widget/embed?businessId=${businessId}&t=${Date.now()}`;
+    iframe.src = `${widgetBaseUrl}/api/widget/embed?businessId=${businessId}&t=${Date.now()}`;
     iframe.style.position = 'fixed';
     iframe.style.bottom = '0';
     iframe.style.right = '0';
