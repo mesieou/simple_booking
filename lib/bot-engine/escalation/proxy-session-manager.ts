@@ -235,7 +235,7 @@ async function getAdminPhoneFromNotification(notification: any): Promise<string 
       
       // Final fallback: use business phone
       const { Business } = await import('@/lib/database/models/business');
-      const business = await Business.getById(notification.businessId);
+      const business = await Business.getByIdWithServiceRole(notification.businessId);
       return business?.phone || null;
     }
     

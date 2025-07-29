@@ -214,7 +214,7 @@ export class ScalableNotificationService {
    * Get business context for providers
    */
   private async getBusinessContext(businessId: string) {
-    const business = await Business.getById(businessId);
+    const business = await Business.getByIdWithServiceRole(businessId);
     
     return {
       businessId,
@@ -359,7 +359,7 @@ export class ScalableNotificationService {
     const { Business } = await import('@/lib/database/models/business');
     let businessCategory = 'default';
     try {
-      const business = await Business.getById(businessId);
+      const business = await Business.getByIdWithServiceRole(businessId);
       businessCategory = business?.businessCategory || 'default';
     } catch (error) {
       console.warn('[ScalableNotificationService] Could not fetch business category, using default template');

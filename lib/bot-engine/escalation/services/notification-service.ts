@@ -60,7 +60,7 @@ export class NotificationService {
    */
   static async getBusinessWithValidation(businessId: string): Promise<Business> {
     try {
-      const business = await Business.getById(businessId);
+      const business = await Business.getByIdWithServiceRole(businessId);
       
       if (!business) {
         throw new EscalationError(
