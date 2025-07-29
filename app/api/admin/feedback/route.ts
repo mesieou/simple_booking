@@ -44,10 +44,10 @@ export async function POST(request: NextRequest) {
       status: chatSession.status
     });
 
-    // Get business info
+    // Get business info using service role to bypass RLS
     console.log(`${LOG_PREFIX} Looking up business with ID: ${chatSession.businessId}`);
     const { Business } = await import('@/lib/database/models/business');
-    const business = await Business.getById(chatSession.businessId);
+    const business = await Business.getByIdWithServiceRole(chatSession.businessId);
     if (!business) {
       console.error(`${LOG_PREFIX} Business not found: ${chatSession.businessId}`);
       console.error(`${LOG_PREFIX} This indicates a data integrity issue - the chat session references a business that doesn't exist`);
