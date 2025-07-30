@@ -125,9 +125,16 @@ export const addAdditionalServicesHandler: IndividualStepHandler = {
         const hasNonMobileService = selectedServices.some((service: any) => !service.mobile);
         
         console.log('[AddAdditionalServices] Service types - Mobile:', hasMobileService, 'Non-mobile:', hasNonMobileService);
+        console.log('[AddAdditionalServices] DEBUG - Service mobile flags:', selectedServices.map((s: any) => ({
+          name: s.name,
+          mobile: s.mobile,
+          mobileType: typeof s.mobile,
+          notMobile: !s.mobile
+        })));
         
-        if (hasNonMobileService) {
+        if (hasNonMobileService && !currentGoalData.finalServiceAddress) {
           // For services with non-mobile components, use business address
+          // BUT only if we don't already have a pickup address
           let businessAddress = 'Our location';
           
           if (businessId) {
@@ -142,6 +149,10 @@ export const addAdditionalServicesHandler: IndividualStepHandler = {
           
           finalServiceAddress = businessAddress;
           serviceLocation = 'business_address';
+        } else if (currentGoalData.finalServiceAddress) {
+          // Preserve existing pickup address
+          finalServiceAddress = currentGoalData.finalServiceAddress;
+          serviceLocation = 'customer_address';
         } else if (hasMobileService && !hasNonMobileService) {
           // All services are mobile - will need customer address later
           console.log('[AddAdditionalServices] All services are mobile - address will be requested later');

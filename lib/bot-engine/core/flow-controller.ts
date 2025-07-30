@@ -427,10 +427,29 @@ export class FlowController {
       clearedDataTypes.push('time', 'date', 'quote');
     }
     
-    if (stepLower.includes('address') || stepLower.includes('location')) {
-      collectedData.finalServiceAddress = undefined;
-      collectedData.serviceLocation = undefined;
+    // Handle specific address step clearing - each step clears different data
+    if (stepLower === 'askaddress') {
+      // Legacy single address step - clear general address data
       collectedData.customerAddress = undefined;
+      collectedData.finalServiceAddress = undefined;
+      collectedData.isAddressValidated = false;
+      clearedDataTypes.push('address', 'location');
+    } else if (stepLower === 'askpickupaddress') {
+      // Modern pickup address step - clear pickup-specific data
+      collectedData.pickupAddress = undefined;
+      collectedData.finalServiceAddress = undefined;
+      collectedData.pickupAddressValidated = false;
+      clearedDataTypes.push('pickup_address');
+    } else if (stepLower === 'askdropoffaddress') {
+      // Modern dropoff address step - clear dropoff-specific data  
+      collectedData.dropoffAddress = undefined;
+      collectedData.finalDropoffAddress = undefined;
+      collectedData.dropoffAddressValidated = false;
+      clearedDataTypes.push('dropoff_address');
+    }
+    
+    // If any address step was cleared, also clear dependent data
+    if (clearedDataTypes.some(type => type.includes('address'))) {
       // CRITICAL: Clear timing data when address changes since travel time affects availability
       collectedData.selectedDate = undefined;
       collectedData.selectedTime = undefined;
@@ -444,7 +463,7 @@ export class FlowController {
       collectedData.persistedQuote = undefined;
       collectedData.quoteId = undefined;
       collectedData.bookingSummary = undefined;
-      clearedDataTypes.push('address', 'location', 'quote', 'timing');
+      clearedDataTypes.push('quote', 'timing');
     }
     
     if (stepLower.includes('user') || stepLower.includes('name')) {

@@ -214,8 +214,8 @@ class QuoteCalculator {
     
     // Check if validated addresses are missing or the same
     if (!pickUp || !dropOff || pickUp === dropOff) {
-      console.log('[QuoteCalculator] Same or missing validated addresses - no travel cost');
-      return { travelCost: 0, travelTime: MINIMAL_TRAVEL_TIME };
+      console.log('[QuoteCalculator] Same or missing validated addresses - no travel cost or time');
+      return { travelCost: 0, travelTime: 0 }; // No travel time if same location
     }
 
     try {
