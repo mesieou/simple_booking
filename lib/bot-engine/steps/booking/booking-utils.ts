@@ -1053,13 +1053,22 @@ export class MessageComponentBuilder {
   static buildBreakdownCosts(
     pricingType: 'per_minute' | 'fixed_price',
     costs: { labour?: number; travel?: number; total: number },
-    language: string
+    language: string,
+    hourlyRate?: number | null
   ): string {
     const { BOOKING_TRANSLATIONS } = require('./booking-utils');
     const t = BOOKING_TRANSLATIONS[language];
     const template = t.MESSAGE_COMPONENTS.BREAKDOWN_COSTS[pricingType.toUpperCase()];
     
     let section = '';
+    
+    // Add hourly rate for removalists (when provided)
+    if (hourlyRate) {
+      const rateText = language === 'es' 
+        ? `💰 Tarifa por hora: $${hourlyRate.toFixed(2)}\n\n`
+        : `💰 Hourly Rate: $${hourlyRate.toFixed(2)}\n\n`;
+      section += rateText;
+    }
     
     if (pricingType === 'per_minute') {
       if (costs.travel && costs.travel > 0) {
@@ -1069,7 +1078,14 @@ export class MessageComponentBuilder {
         section += `${template.LABOUR_COST.replace('{cost}', costs.labour?.toFixed(2) || '0.00')}\n`;
       }
     }
-    section += `${template.TOTAL_COST.replace('{cost}', costs.total.toFixed(2))}\n\n`;
+    section += `${template.TOTAL_COST.replace('{cost}', costs.total.toFixed(2))}\n`;
+    
+    // Add disclaimer for per-minute pricing
+    if (pricingType === 'per_minute') {
+      section += `\n${template.DISCLAIMER}\n`;
+    }
+    
+    section += '\n';
     
     return section;
   }

@@ -371,7 +371,7 @@ class QuoteTemplateRenderer {
   }
   
   private static buildBreakdownCostsSection(data: QuoteTemplateData, language: string): string {
-    const { services, quoteEstimation } = data;
+    const { services, quoteEstimation, businessInfo } = data;
     
     // Determine if any service uses per-minute pricing
     const hasPerMinuteService = services.some(s => s.pricingType === 'per_minute');
@@ -383,7 +383,17 @@ class QuoteTemplateRenderer {
       total: quoteEstimation.totalJobCost
     };
     
-    return MessageComponentBuilder.buildBreakdownCosts(pricingType, costs, language);
+    // Get hourly rate for removalist businesses
+    let hourlyRate = null;
+    const isRemovalist = businessInfo.type === 'removalist' || businessInfo.businessCategory === 'removalist';
+    if (isRemovalist && hasPerMinuteService) {
+      const perMinuteService = services.find(s => s.pricingType === 'per_minute');
+      if (perMinuteService?.ratePerMinute) {
+        hourlyRate = perMinuteService.ratePerMinute * 60;
+      }
+    }
+    
+    return MessageComponentBuilder.buildBreakdownCosts(pricingType, costs, language, hourlyRate);
   }
   
   private static buildDateTimeSection(data: QuoteTemplateData, language: string): string {

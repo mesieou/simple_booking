@@ -218,7 +218,7 @@ const generateCostBreakdown = (
     total: totalJobCostEstimation
   };
   
-  return MessageComponentBuilder.buildBreakdownCosts(pricingType, costs, language);
+  return MessageComponentBuilder.buildBreakdownCosts(pricingType, costs, language, null);
 };
 
 // Retrieves provider contact information and business preferences

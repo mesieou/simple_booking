@@ -129,7 +129,8 @@ export const BOOKING_TRANSLATIONS = {
         PER_MINUTE: {
           LABOUR_COST: '💪 Estimated Work Cost: ${cost}',
           TRAVEL_COST: '🚛 Estimated Travel Cost: ${cost}',
-          TOTAL_COST: '💰 Estimated Total Cost: ${cost}'
+          TOTAL_COST: '💰 Estimated Total Cost: ${cost}',
+          DISCLAIMER: '⚠️ *This is only an estimation. Actual price is per hour and can change depending on the actual job on the day.*'
         },
         FIXED_PRICE: {
           TOTAL_COST: '💰 Total Cost: ${cost}'
@@ -351,7 +352,8 @@ export const BOOKING_TRANSLATIONS = {
         PER_MINUTE: {
           LABOUR_COST: '💪 Costo Estimado de Trabajo: ${cost}',
           TRAVEL_COST: '🚛 Costo Estimado de Viaje: ${cost}',
-          TOTAL_COST: '💰 Costo Total Estimado: ${cost}'
+          TOTAL_COST: '💰 Costo Total Estimado: ${cost}',
+          DISCLAIMER: '⚠️ *Esto es solo una estimación. El precio real es por hora y puede cambiar dependiendo del trabajo real del día.*'
         },
         FIXED_PRICE: {
           TOTAL_COST: '💰 Costo Total: ${cost}'
