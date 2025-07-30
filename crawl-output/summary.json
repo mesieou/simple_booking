@@ -1,8 +1,8 @@
 {
   "processingStats": {
-    "totalUrls": 4,
+    "totalUrls": 1,
     "processedUrls": [
-      "pdf-Removalist-FAQ-Handbook.pdf"
+      "pdf-business-knowledge-base.pdf"
     ],
     "filteredUrls": [],
     "skippedUrls": [],
@@ -17,24 +17,21 @@
     "totalDocuments": 0,
     "processedDocuments": 0,
     "failedDocuments": 0,
-    "totalEmbeddings": 24,
-    "processedEmbeddings": 24,
+    "totalEmbeddings": 5,
+    "processedEmbeddings": 5,
     "failedEmbeddings": 0,
-    "startTime": 1753422928980,
+    "startTime": 1753778483243,
     "baseOutputPath": "/Users/juanbernal/code/mesieou/2025/simple_booking/crawl-output",
     "domainProcessingSummary": {},
-    "endTime": 1753423019823
+    "endTime": 1753778501477
   },
-  "durationSeconds": 90.843,
+  "durationSeconds": 18.234,
   "allFoundUrls": [
-    "pdf-Removalist-FAQ-Handbook.pdf#page=1",
-    "pdf-Removalist-FAQ-Handbook.pdf#page=2",
-    "pdf-Removalist-FAQ-Handbook.pdf#page=3",
-    "pdf-Removalist-FAQ-Handbook.pdf#page=4"
+    "pdf-business-knowledge-base.pdf#page=1"
   ],
   "urlLogs": [
     {
-      "url": "pdf-Removalist-FAQ-Handbook.pdf",
+      "url": "pdf-business-knowledge-base.pdf",
       "status": "processed",
       "prompt": "",
       "result": ""

@@ -28,11 +28,13 @@ export interface BusinessConfiguration {
   numberOfProviders: number;
   allowProviderSelection: boolean; // Most businesses: false
   
-  // Payment configuration
+  // 🆕 Payment configuration - Updated for flexible deposit system
   acceptsOnlinePayments: boolean;
   acceptsCash: boolean;
   requiresDeposit: boolean;
-  depositPercentage: number;
+  depositType: 'percentage' | 'fixed';
+  depositPercentage?: number; // For percentage-based deposits
+  depositFixedAmount?: number; // For fixed-amount deposits
   
   // Booking configuration
   allowsTextBooking: boolean; // Most businesses: true
@@ -186,7 +188,7 @@ function generateQuoteSystemKnowledge(config: BusinessConfiguration): string {
 }
 
 function generatePaymentSystemKnowledge(config: BusinessConfiguration): string {
-  const { businessName, acceptsOnlinePayments, acceptsCash, requiresDeposit, depositPercentage } = config;
+  const { businessName, acceptsOnlinePayments, acceptsCash, requiresDeposit, depositType, depositPercentage, depositFixedAmount } = config;
   
   let section = `## Payment Options with ${businessName}\n\n`;
   
@@ -195,9 +197,15 @@ function generatePaymentSystemKnowledge(config: BusinessConfiguration): string {
   
   if (requiresDeposit) {
     section += `**Deposit Required**:\n`;
-    section += `• ${depositPercentage}% deposit required to secure your booking\n`;
-    section += `• Remaining balance paid after service completion\n`;
-    section += `• Deposits are processed when you confirm your booking\n\n`;
+    if (depositType === 'percentage') {
+      section += `• ${depositPercentage}% deposit required to secure your booking\n`;
+      section += `• Remaining balance paid after service completion\n`;
+      section += `• Deposits are processed when you confirm your booking\n\n`;
+    } else if (depositType === 'fixed') {
+      section += `• A fixed deposit of $${depositFixedAmount} is required to secure your booking\n`;
+      section += `• Remaining balance paid after service completion\n`;
+      section += `• Deposits are processed when you confirm your booking\n\n`;
+    }
   } else {
     section += `**No Deposit Required**:\n`;
     section += `• Full payment after service completion\n`;
@@ -288,8 +296,11 @@ export function generateSystemKnowledgeFromBusinessForm(businessFormData: any): 
     
     acceptsOnlinePayments: businessFormData.setupPayments || true,
     acceptsCash: true, // Most businesses accept cash
-    requiresDeposit: businessFormData.depositPercentage > 0,
-    depositPercentage: businessFormData.depositPercentage || 0,
+    requiresDeposit: (businessFormData.depositType === 'percentage' && businessFormData.depositPercentage > 0) || 
+                     (businessFormData.depositType === 'fixed' && businessFormData.depositFixedAmount > 0),
+    depositType: businessFormData.depositType || 'percentage',
+    depositPercentage: businessFormData.depositType === 'percentage' ? businessFormData.depositPercentage : undefined,
+    depositFixedAmount: businessFormData.depositType === 'fixed' ? businessFormData.depositFixedAmount : undefined,
     
     allowsTextBooking: true, // This is the main Skedy feature
     requiresButtonBooking: false, // Most don't require buttons
@@ -309,4 +320,36 @@ export function generateSystemKnowledgeFromBusinessForm(businessFormData: any): 
   };
   
   return generateBusinessSpecificSystemKnowledge(config);
+} 
+
+export function createBusinessConfiguration(businessFormData: any): BusinessConfiguration {
+  // Determine deposit configuration
+  const requiresDeposit = businessFormData.depositType === 'percentage' 
+    ? (businessFormData.depositPercentage > 0)
+    : (businessFormData.depositFixedAmount > 0);
+
+  return {
+    businessName: businessFormData.businessName,
+    businessCategory: businessFormData.businessCategory || 'default',
+    services: businessFormData.services || [],
+    numberOfProviders: businessFormData.numberOfProviders || 1,
+    allowProviderSelection: false,
+    acceptsOnlinePayments: true,
+    acceptsCash: true,
+    requiresDeposit: requiresDeposit,
+    depositType: businessFormData.depositType || 'percentage',
+    depositPercentage: businessFormData.depositType === 'percentage' ? businessFormData.depositPercentage : undefined,
+    depositFixedAmount: businessFormData.depositType === 'fixed' ? businessFormData.depositFixedAmount : undefined,
+    allowsTextBooking: true,
+    requiresButtonBooking: false,
+    whatsappNumber: businessFormData.whatsappNumber || '',
+    responseTimeHours: 2,
+    operatingHours: 'Business hours: 9 AM - 5 PM, Monday to Friday',
+    cancellationPolicy: 'Please provide at least 24 hours notice for cancellations',
+    businessAddress: businessFormData.businessAddress || '',
+    serviceAreas: [businessFormData.businessAddress || ''],
+    offersQuotes: true,
+    offersInstantBooking: false,
+    hasRealTimeAvailability: true
+  };
 } 

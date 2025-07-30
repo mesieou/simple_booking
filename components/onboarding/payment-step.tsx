@@ -7,14 +7,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { CreditCard, Banknote, Shield, Building2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { useState } from 'react';
+import { getBusinessTemplate, type BusinessCategoryType } from '@/lib/config/business-templates';
 
 interface PaymentStepProps {
   data: {
+    depositType?: 'percentage' | 'fixed';
     depositPercentage: number | string;
+    depositFixedAmount?: number | string;
     preferredPaymentMethod: string;
     setupPayments: boolean;
+    businessCategory?: BusinessCategoryType | ''; // 🆕 Add business category to get template defaults
   };
-  onUpdate: (data: any) => void;
+  onUpdate: (updates: Partial<PaymentStepProps['data']>) => void;
 }
 
 const PAYMENT_METHODS = [
@@ -45,98 +49,223 @@ const PAYMENT_METHODS = [
 ];
 
 export function PaymentStep({ data, onUpdate }: PaymentStepProps) {
-  // Track payment type separately from deposit percentage to avoid auto-switching
+  // 🆕 Get deposit defaults from business template data, not hardcoded values
+  const getDepositDefaults = () => {
+    // Try to get defaults from business templates based on category
+    try {
+      const template = data.businessCategory ? getBusinessTemplate(data.businessCategory) : null;
+      
+      return {
+        PERCENTAGE: {
+          DEFAULT: template?.depositPercentage || 25,
+          MIN: 1,
+          MAX: 99
+        },
+        FIXED: {
+          DEFAULT: template?.depositFixedAmount || 50,
+          MIN: 0,
+          MAX: 10000
+        }
+      };
+    } catch (error) {
+      // Fallback to reasonable defaults if template not found
+      return {
+        PERCENTAGE: { DEFAULT: 25, MIN: 1, MAX: 99 },
+        FIXED: { DEFAULT: 50, MIN: 0, MAX: 10000 }
+      };
+    }
+  };
+
+  const depositDefaults = getDepositDefaults();
+
+  // Determine if deposits are required based on deposit type and values
+  const isDepositRequired = () => {
+    const depositType = data.depositType || 'percentage';
+    if (depositType === 'percentage') {
+      return data.depositPercentage !== 0 && data.depositPercentage !== '';
+    } else {
+      return data.depositFixedAmount !== 0 && data.depositFixedAmount !== '';
+    }
+  };
+
+  // Track payment type separately to avoid auto-switching
   const [paymentType, setPaymentType] = useState<'deposit' | 'no_payment'>(
-    data.depositPercentage === 0 || data.depositPercentage === '' ? 'no_payment' : 'deposit'
+    isDepositRequired() ? 'deposit' : 'no_payment'
   );
-  
+
   const handlePaymentTypeChange = (type: 'deposit' | 'no_payment') => {
     setPaymentType(type);
     if (type === 'deposit') {
-      // Only set default percentage if it's currently 0 or empty
-      if (data.depositPercentage === 0 || data.depositPercentage === '') {
-        onUpdate({ depositPercentage: 25 });
+      // Set default values if switching to deposit - use template data
+      if (!isDepositRequired()) {
+        onUpdate({ 
+          depositType: 'percentage',
+          depositPercentage: depositDefaults.PERCENTAGE.DEFAULT,
+          depositFixedAmount: 0
+        });
       }
     } else {
-      onUpdate({ depositPercentage: 0 }); // No deposit = payment after service
+      // Clear deposit values when switching to no payment
+      onUpdate({ 
+        depositType: 'percentage',
+        depositPercentage: 0, 
+        depositFixedAmount: 0 
+      });
     }
   };
-  
-  const handleDepositChange = (value: string) => {
-    // Allow empty values during editing without switching payment type
+
+  const handleDepositTypeChange = (depositType: 'percentage' | 'fixed') => {
+    onUpdate({ 
+      depositType,
+      // Set defaults from template data for the selected type
+      depositPercentage: depositType === 'percentage' ? (data.depositPercentage || depositDefaults.PERCENTAGE.DEFAULT) : 0,
+      depositFixedAmount: depositType === 'fixed' ? (data.depositFixedAmount || depositDefaults.FIXED.DEFAULT) : 0
+    });
+  };
+
+  const handlePercentageChange = (value: string) => {
     if (value === '') {
-      onUpdate({ depositPercentage: '' as any }); // Allow empty state for editing
+      onUpdate({ depositPercentage: '' as any });
       return;
     }
     
     const percentage = parseInt(value);
     if (!isNaN(percentage)) {
-      onUpdate({ depositPercentage: Math.min(99, Math.max(1, percentage)) });
+      onUpdate({ 
+        depositPercentage: Math.min(
+          depositDefaults.PERCENTAGE.MAX, 
+          Math.max(depositDefaults.PERCENTAGE.MIN, percentage)
+        ) 
+      });
     }
   };
+
+  const handleFixedAmountChange = (value: string) => {
+    if (value === '') {
+      onUpdate({ depositFixedAmount: '' as any });
+      return;
+    }
+    
+    const amount = parseFloat(value);
+    if (!isNaN(amount)) {
+      onUpdate({ 
+        depositFixedAmount: Math.min(
+          depositDefaults.FIXED.MAX, 
+          Math.max(depositDefaults.FIXED.MIN, amount)
+        ) 
+      });
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <p className="text-sm text-gray-700">
-          Configure how you want to handle payments and deposits for bookings.
-        </p>
-      </div>
       {/* Payment Type Selection */}
       <Card className="border border-gray-200 rounded-xl bg-white shadow-sm">
         <CardHeader>
-          <CardTitle className="text-lg font-bold text-gray-900">When and how do you want to collect payment?</CardTitle>
+          <CardTitle className="text-lg font-bold text-gray-900">Payment Requirements</CardTitle>
+          <CardDescription className="text-gray-700">
+            Choose when customers need to pay for their bookings
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <RadioGroup
             value={paymentType}
-            onValueChange={val => handlePaymentTypeChange(val as 'deposit' | 'no_payment')}
-            className="flex flex-col gap-3"
+            onValueChange={(value: 'deposit' | 'no_payment') => handlePaymentTypeChange(value)}
+            className="grid gap-4"
           >
-            <Label className="flex items-center gap-2 cursor-pointer text-gray-900">
+            <div className="flex items-center space-x-2">
               <RadioGroupItem value="deposit" id="deposit" />
-              <span className="font-medium">Deposit required to confirm booking (rest paid later)</span>
-            </Label>
-            <Label className="flex items-center gap-2 cursor-pointer text-gray-900">
+              <Label htmlFor="deposit" className="font-medium text-gray-900">Require deposit to confirm booking</Label>
+            </div>
+            <div className="flex items-center space-x-2">
               <RadioGroupItem value="no_payment" id="no_payment" />
-              <span className="font-medium">Payment after the service (no deposit required)</span>
-            </Label>
+              <Label htmlFor="no_payment" className="font-medium text-gray-900">Payment after service completion</Label>
+            </div>
           </RadioGroup>
         </CardContent>
       </Card>
-      {/* Deposit Percentage */}
+
       {paymentType === 'deposit' && (
         <Card className="border border-gray-200 rounded-xl bg-white shadow-sm">
           <CardHeader>
-            <CardTitle className="text-lg font-bold text-gray-900">Deposit Requirements</CardTitle>
+            <CardTitle className="text-lg font-bold text-gray-900">Deposit Configuration</CardTitle>
             <CardDescription className="text-gray-700">
-              Set the deposit percentage required to confirm bookings
+              Set how much customers need to pay upfront to confirm bookings
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                <div className="flex-1">
+            <div className="space-y-6">
+              {/* Deposit Type Selection */}
+              <div>
+                <Label className="text-sm font-medium text-gray-700 mb-3 block">Deposit Type</Label>
+                <RadioGroup
+                  value={data.depositType || 'percentage'}
+                  onValueChange={(value: 'percentage' | 'fixed') => handleDepositTypeChange(value)}
+                  className="grid grid-cols-2 gap-4"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="percentage" id="percentage" />
+                    <Label htmlFor="percentage" className="font-medium text-gray-900">Percentage of total</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="fixed" id="fixed" />
+                    <Label htmlFor="fixed" className="font-medium text-gray-900">Fixed amount</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+
+              {/* Percentage Input */}
+              {(data.depositType || 'percentage') === 'percentage' && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">Percentage</Label>
                   <div className="flex items-center gap-3">
                     <Input
                       type="number"
-                      min="1"
-                      max="99"
+                      min={depositDefaults.PERCENTAGE.MIN}
+                      max={depositDefaults.PERCENTAGE.MAX}
                       value={data.depositPercentage}
-                      onChange={(e) => handleDepositChange(e.target.value)}
+                      onChange={(e) => handlePercentageChange(e.target.value)}
                       className="w-24 bg-gray-50 border border-gray-300 text-gray-900 placeholder:text-gray-400 rounded-lg"
-                      placeholder="25"
+                      placeholder={depositDefaults.PERCENTAGE.DEFAULT.toString()}
                     />
                     <span className="text-sm text-gray-600">% of total booking amount</span>
                   </div>
+                  <p className="text-sm text-gray-600">
+                    Customers will pay this percentage upfront to confirm their booking.
+                  </p>
                 </div>
-              </div>
-              <p className="text-sm text-gray-600">
-                Customers will need to pay this percentage upfront to confirm their booking.
-              </p>
+              )}
+
+              {/* Fixed Amount Input */}
+              {data.depositType === 'fixed' && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700">Fixed Deposit Amount</Label>
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
+                      <Input
+                        type="number"
+                        min={depositDefaults.FIXED.MIN}
+                        max={depositDefaults.FIXED.MAX}
+                        step="0.01"
+                        value={data.depositFixedAmount || ''}
+                        onChange={(e) => handleFixedAmountChange(e.target.value)}
+                        className="pl-8 w-32 bg-gray-50 border border-gray-300 text-gray-900 placeholder:text-gray-400 rounded-lg"
+                        placeholder={depositDefaults.FIXED.DEFAULT.toString() + '.00'}
+                      />
+                    </div>
+                    <span className="text-sm text-gray-600">fixed deposit amount</span>
+                  </div>
+                  <p className="text-sm text-gray-600">
+                    Customers will pay this fixed amount upfront, regardless of the total booking cost.
+                  </p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
       )}
+
       {/* Preferred Payment Method */}
       {paymentType === 'deposit' && (
         <Card className="border border-gray-200 rounded-xl bg-white shadow-sm">

@@ -73,8 +73,10 @@ interface BusinessFormData {
   faqDocumentSize?: number;
   faqDocumentBase64?: string;
   
-  // Payment
+  // 🆕 Payment - Updated to support both deposit types
+  depositType?: 'percentage' | 'fixed';
   depositPercentage: number | string;
+  depositFixedAmount?: number | string;
   preferredPaymentMethod: string;
   setupPayments: boolean;
 }
@@ -144,7 +146,9 @@ const DEFAULT_FORM_DATA: BusinessFormData = {
   faqDocument: null,
   faqDocumentName: '',
   faqDocumentSize: 0,
-  depositPercentage: 25,
+  depositType: 'percentage',
+  depositPercentage: 25, // Will be overridden by template when category is selected
+  depositFixedAmount: 0,
   preferredPaymentMethod: 'cash',
   setupPayments: true
 };
@@ -204,6 +208,7 @@ export default function CreateBusinessPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [hasRestoredData, setHasRestoredData] = useState(false);
   const [showClearConfirmation, setShowClearConfirmation] = useState(false);
+  const [emailValidationState, setEmailValidationState] = useState<boolean | null>(null);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -242,17 +247,30 @@ export default function CreateBusinessPage() {
       setFormData(prev => {
         // Apply template settings to all provider calendar settings
         // IMPORTANT: Deep clone the working hours to prevent shared references
+        // Default working hours structure (9am-5pm, Mon-Fri)
+        const defaultWorkingHours = {
+          mon: { start: '09:00', end: '17:00' },
+          tue: { start: '09:00', end: '17:00' },
+          wed: { start: '09:00', end: '17:00' },
+          thu: { start: '09:00', end: '17:00' },
+          fri: { start: '09:00', end: '17:00' },
+          sat: null,
+          sun: null
+        };
+
         const updatedProviderSettings = prev.providerCalendarSettings.map(setting => ({
           ...setting,
-          workingHours: JSON.parse(JSON.stringify(template.defaultWorkingHours)), // Deep clone to prevent shared references
-          bufferTime: template.bufferTime
+          workingHours: JSON.parse(JSON.stringify(defaultWorkingHours)), // Deep clone to prevent shared references
+          bufferTime: 15 // Default buffer time in minutes
         }));
         
         return {
           ...prev,
           services: correctedServices,
           providerCalendarSettings: updatedProviderSettings,
-          depositPercentage: template.depositPercentage
+          depositType: template.depositType || 'percentage',
+          depositPercentage: template.depositPercentage || 25,
+          depositFixedAmount: template.depositFixedAmount || 0
         };
       });
     }
@@ -373,6 +391,15 @@ export default function CreateBusinessPage() {
   // Validation function for Business Information step
   const validateBusinessInfo = () => {
     try {
+      // Check email validation state first
+      if (emailValidationState === null) {
+        throw new Error('Please wait for email validation to complete');
+      }
+      
+      if (emailValidationState === false) {
+        throw new Error('Please enter a valid and available email address');
+      }
+      
       // Prepare data for validation
       const phoneCountryCode = formData.phoneCountryCode || '+61';
       const whatsappCountryCode = formData.whatsappCountryCode || '+61';
@@ -558,18 +585,39 @@ export default function CreateBusinessPage() {
     try {
       // Check if user explicitly chose "payment after service" (depositPercentage = 0)
       // If depositPercentage is anything else (including empty string), they chose "deposit required"
-      const isPaymentAfterService = formData.depositPercentage === 0;
-      
-      if (!isPaymentAfterService) {
-        // User selected "deposit required" - validate they provided a valid percentage
-        const percentage = typeof formData.depositPercentage === 'string' ? 
-          parseInt(formData.depositPercentage) : formData.depositPercentage;
-        
-        // If it's empty string, NaN, or invalid range, show error
-        if (formData.depositPercentage === '' || isNaN(percentage) || percentage < 1 || percentage > 99) {
-          throw new Error('Please enter a deposit percentage between 1% and 99%');
+      const isPaymentAfterService = (formData.depositType === 'percentage' && formData.depositPercentage === 0) ||
+                                   (formData.depositType === 'fixed' && formData.depositFixedAmount === 0);
+
+              if (!isPaymentAfterService) {
+          // Validate deposit configuration based on type
+          if (formData.depositType === 'percentage') {
+            const percentage = typeof formData.depositPercentage === 'string' ?
+              parseInt(formData.depositPercentage) : formData.depositPercentage;
+            
+            if (formData.depositPercentage === '' || isNaN(percentage) || 
+                percentage < 1 || percentage > 99) {
+              toast({
+                title: "Payment Validation Error",
+                description: 'Please enter a valid deposit percentage between 1% and 99%',
+                variant: "destructive",
+              });
+              return false;
+            }
+          } else if (formData.depositType === 'fixed') {
+            const amount = typeof formData.depositFixedAmount === 'string' ?
+              parseFloat(formData.depositFixedAmount) : (formData.depositFixedAmount || 0);
+            
+            if (formData.depositFixedAmount === '' || formData.depositFixedAmount === undefined || isNaN(amount) || 
+                amount < 0 || amount > 10000) {
+              toast({
+                title: "Payment Validation Error",
+                description: 'Please enter a valid fixed deposit amount between $0 and $10,000',
+                variant: "destructive",
+              });
+              return false;
+            }
+          }
         }
-      }
       
       return true;
     } catch (error) {
@@ -663,12 +711,22 @@ export default function CreateBusinessPage() {
       // Prepare form data for submission
       const submissionData = { ...formData };
       
-      // Ensure depositPercentage is a number for submission
+      // Ensure deposit values are properly formatted for submission
       if (typeof submissionData.depositPercentage === 'string') {
         const percentage = parseInt(submissionData.depositPercentage);
         submissionData.depositPercentage = isNaN(percentage) ? 0 : percentage;
       }
       
+      if (typeof submissionData.depositFixedAmount === 'string') {
+        const amount = parseFloat(submissionData.depositFixedAmount);
+        submissionData.depositFixedAmount = isNaN(amount) ? 0 : amount;
+      }
+
+      // Ensure depositType is set
+      if (!submissionData.depositType) {
+        submissionData.depositType = 'percentage';
+      }
+
       // Convert FAQ document to base64 if present
       if (formData.faqDocument) {
         try {
@@ -806,6 +864,7 @@ export default function CreateBusinessPage() {
           <BusinessInfoStep
             data={formData}
             onUpdate={updateFormData}
+            onEmailValidationChange={setEmailValidationState}
           />
         );
       case 2:
@@ -837,8 +896,11 @@ export default function CreateBusinessPage() {
       case 5:
         return (
           <PaymentStep
-            data={formData}
-            onUpdate={updateFormData}
+            data={{
+              ...formData,
+              businessCategory: formData.businessCategory // 🆕 Pass category to get template defaults
+            }}
+            onUpdate={(updates) => setFormData(prev => ({ ...prev, ...updates }))} 
           />
         );
       default:

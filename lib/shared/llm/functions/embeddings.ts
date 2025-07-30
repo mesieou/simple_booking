@@ -118,9 +118,15 @@ function generateBusinessDocumentContent(business: BusinessData): string {
     'Payment processing: Status not specified.';
   
   // Deposit information
-  const depositInfo = business.depositPercentage ? 
-    `Deposit required: ${business.depositPercentage}% of total service cost.` : 
-    'Deposits: No deposit required.';
+  const depositInfo = (() => {
+    if (business.depositType === 'percentage' && business.depositPercentage && business.depositPercentage > 0) {
+      return `${business.depositPercentage}% deposit required.`;
+    } else if (business.depositType === 'fixed' && business.depositFixedAmount && business.depositFixedAmount > 0) {
+      return `$${business.depositFixedAmount} deposit required.`;
+    } else {
+      return 'No deposit required.';
+    }
+  })();
     
   // Contact methods
   const contactMethods = [];

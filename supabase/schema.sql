@@ -37,10 +37,18 @@ CREATE TABLE businesses (
     "stripeAccountId" TEXT,
     "onboardingCompleted" BOOLEAN DEFAULT false,
     "requiresDeposit" BOOLEAN DEFAULT false,
-    "depositPercentage" INTEGER DEFAULT 0,
+    "depositPercentage" INTEGER DEFAULT 0,  -- Percentage-based deposit (0-100%)
+    "depositType" TEXT DEFAULT 'percentage',  -- 🆕 NEW FIELD: 'percentage' or 'fixed'
+    "depositFixedAmount" DECIMAL(10,2) DEFAULT NULL,  -- 🆕 NEW FIELD: Fixed deposit amount in dollars
     "websiteUrl" TEXT,  -- 🆕 NEW FIELD ADDED!
     "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    CONSTRAINT valid_deposit_type CHECK ("depositType" IN ('percentage', 'fixed')),
+    CONSTRAINT valid_deposit_setup CHECK (
+        ("depositType" = 'percentage' AND "depositPercentage" IS NOT NULL AND "depositPercentage" >= 0 AND "depositPercentage" <= 100)
+        OR
+        ("depositType" = 'fixed' AND "depositFixedAmount" IS NOT NULL AND "depositFixedAmount" >= 0)
+    )
 );
 
 -- Services table

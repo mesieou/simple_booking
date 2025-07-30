@@ -5,11 +5,134 @@ import { handleModelError } from '@/lib/general-helpers/error-handling/model-err
 
 export type InterfaceType = 'whatsapp' | 'website';
 export type BusinessCategory = 'removalist' | 'salon' | 'default';
+export type DepositType = 'percentage' | 'fixed';
+
 export const VALID_BUSINESS_CATEGORIES: BusinessCategory[] = [
   'removalist',
   'salon', 
   'default'
 ];
+
+// 🆕 CENTRALIZED DEPOSIT SYSTEM
+export interface DepositConfiguration {
+  type: DepositType;
+  amount?: number;    // For fixed deposits
+  percentage?: number; // For percentage deposits
+}
+
+export interface DepositCalculation {
+  isRequired: boolean;
+  depositAmount: number;
+  remainingBalance: number;
+  displayText: string;
+  metadata: {
+    type: DepositType;
+    originalValue: number;
+    totalCost: number;
+  };
+}
+
+/**
+ * 🎯 CENTRALIZED DEPOSIT MANAGER
+ * All deposit logic lives here - reduces coupling and makes changes safer
+ */
+export class DepositManager {
+  private config: DepositConfiguration;
+
+  constructor(depositType: DepositType, depositPercentage?: number, depositFixedAmount?: number) {
+    this.config = {
+      type: depositType || 'percentage',
+      percentage: depositType === 'percentage' ? depositPercentage : undefined,
+      amount: depositType === 'fixed' ? depositFixedAmount : undefined
+    };
+  }
+
+  /**
+   * Calculate deposit for any quote total
+   */
+  calculateDeposit(quoteTotal: number): DepositCalculation {
+    if (!this.isDepositRequired()) {
+      return {
+        isRequired: false,
+        depositAmount: 0,
+        remainingBalance: quoteTotal,
+        displayText: 'No deposit required',
+        metadata: {
+          type: this.config.type,
+          originalValue: 0,
+          totalCost: quoteTotal
+        }
+      };
+    }
+
+    let depositAmount = 0;
+    let displayText = '';
+    let originalValue = 0;
+
+    if (this.config.type === 'percentage' && this.config.percentage) {
+      depositAmount = Math.round((quoteTotal * this.config.percentage) / 100);
+      displayText = `${this.config.percentage}% deposit ($${depositAmount})`;
+      originalValue = this.config.percentage;
+    } else if (this.config.type === 'fixed' && this.config.amount) {
+      // Ensure fixed deposit doesn't exceed total
+      depositAmount = Math.min(this.config.amount, quoteTotal);
+      displayText = `$${depositAmount} deposit`;
+      originalValue = this.config.amount;
+    }
+
+    return {
+      isRequired: depositAmount > 0,
+      depositAmount,
+      remainingBalance: quoteTotal - depositAmount,
+      displayText,
+      metadata: {
+        type: this.config.type,
+        originalValue,
+        totalCost: quoteTotal
+      }
+    };
+  }
+
+  /**
+   * Check if deposits are required
+   */
+  isDepositRequired(): boolean {
+    if (this.config.type === 'percentage') {
+      return this.config.percentage !== undefined && this.config.percentage > 0;
+    } else {
+      return this.config.amount !== undefined && this.config.amount > 0;
+    }
+  }
+
+  /**
+   * Get deposit configuration for external systems (Stripe, etc.)
+   */
+  getConfiguration(): DepositConfiguration {
+    return { ...this.config };
+  }
+
+  /**
+   * Get metadata for payment systems
+   */
+  getPaymentMetadata(): Record<string, string> {
+    return {
+      depositType: this.config.type,
+      depositPercentage: this.config.percentage?.toString() || '',
+      depositFixedAmount: this.config.amount?.toString() || ''
+    };
+  }
+
+  /**
+   * Create deposit manager from business data
+   */
+  static fromBusinessData(data: BusinessData): DepositManager {
+    return new DepositManager(
+      data.depositType || 'percentage',
+      data.depositPercentage,
+      data.depositFixedAmount
+    );
+  }
+}
 
 export interface BusinessData {
     id?: string;
@@ -26,7 +149,12 @@ export interface BusinessData {
     businessAddress?: string;
     createdAt?: string;
     updatedAt?: string;
-    depositPercentage?: number;
+    
+    // 🔄 DEPOSIT CONFIGURATION - New flexible system
+    depositType?: DepositType; // 'percentage' or 'fixed'
+    depositPercentage?: number; // For percentage-based deposits (0-100)
+    depositFixedAmount?: number; // For fixed-amount deposits (in dollars)
+    
     bookingFee?: number; // Booking fee in dollars (e.g., 4.00)
     stripeConnectAccountId?: string;
     stripeAccountStatus?: 'pending' | 'active' | 'disabled';
@@ -35,6 +163,7 @@ export interface BusinessData {
 
 export class Business {
     private data: BusinessData;
+    private _depositManager?: DepositManager; // 🆕 Cached deposit manager
 
     constructor(data: BusinessData) {
         if (!data.name) handleModelError("Name is required", new Error("Missing name"));
@@ -43,12 +172,57 @@ export class Business {
         if (!data.timeZone) handleModelError("Time zone is required", new Error("Missing timeZone"));
         if (!['whatsapp', 'website'].includes(data.interfaceType)) handleModelError("Interface type must be 'whatsapp' or 'website'", new Error("Invalid interfaceType"));
         if (data.interfaceType === 'whatsapp' && !data.whatsappNumber) handleModelError("Whatsapp number is required if interface type is 'whatsapp'", new Error("Missing whatsappNumber"));
-        if (data.depositPercentage !== undefined && (data.depositPercentage < 0 || data.depositPercentage > 100)) handleModelError("Deposit percentage must be between 0 and 100", new Error("Invalid depositPercentage"));
+        
+        // 🆕 Enhanced deposit validation
+        this.validateDepositConfiguration(data);
+        
         if (data.bookingFee !== undefined && (data.bookingFee < 0)) handleModelError("Booking fee must be non-negative", new Error("Invalid bookingFee"));
         if (data.businessCategory && !VALID_BUSINESS_CATEGORIES.includes(data.businessCategory)) {
             handleModelError(`businessCategory must be one of: ${VALID_BUSINESS_CATEGORIES.join(', ')}`, new Error("Invalid businessCategory"));
         }
         this.data = data;
+    }
+
+    // 🆕 Validate deposit configuration for new deposit types
+    private validateDepositConfiguration(data: BusinessData): void {
+        const depositType = data.depositType || 'percentage';
+        
+        if (!['percentage', 'fixed'].includes(depositType)) {
+            handleModelError("depositType must be 'percentage' or 'fixed'", new Error("Invalid depositType"));
+        }
+
+        if (depositType === 'percentage') {
+            if (data.depositPercentage !== undefined && (data.depositPercentage < 0 || data.depositPercentage > 100)) {
+                handleModelError("Deposit percentage must be between 0 and 100", new Error("Invalid depositPercentage"));
+            }
+        } else if (depositType === 'fixed') {
+            if (data.depositFixedAmount !== undefined && data.depositFixedAmount < 0) {
+                handleModelError("Fixed deposit amount must be non-negative", new Error("Invalid depositFixedAmount"));
+            }
+        }
+    }
+
+    // 🆕 Get centralized deposit manager
+    getDepositManager(): DepositManager {
+        if (!this._depositManager) {
+            this._depositManager = DepositManager.fromBusinessData(this.data);
+        }
+        return this._depositManager;
+    }
+
+    // 🆕 SIMPLIFIED PUBLIC API - All deposit logic goes through DepositManager
+    calculateDepositAmount(quoteTotal: number): number {
+        return this.getDepositManager().calculateDeposit(quoteTotal).depositAmount;
+    }
+
+    getDepositCalculation(quoteTotal: number): DepositCalculation {
+        return this.getDepositManager().calculateDeposit(quoteTotal);
+    }
+
+    // 🔄 DEPRECATED METHODS - Use DepositManager instead
+    getDepositConfiguration(): { type: DepositType; amount?: number; percentage?: number } {
+        console.warn('Business.getDepositConfiguration() is deprecated. Use getDepositManager().getConfiguration() instead.');
+        return this.getDepositManager().getConfiguration();
     }
 
     // Getter method to access business data
@@ -77,7 +251,9 @@ export class Business {
             "whatsappNumber": this.data.whatsappNumber,
             "whatsappPhoneNumberId": this.data.whatsappPhoneNumberId,
             "businessAddress": this.data.businessAddress,
+            "depositType": this.data.depositType || 'percentage',
             "depositPercentage": this.data.depositPercentage,
+            "depositFixedAmount": this.data.depositFixedAmount,
             "bookingFee": this.data.bookingFee,
             "stripeConnectAccountId": this.data.stripeConnectAccountId,
             "stripeAccountStatus": this.data.stripeAccountStatus,
@@ -200,7 +376,9 @@ export class Business {
             "whatsappNumber": businessData.whatsappNumber,
             "whatsappPhoneNumberId": businessData.whatsappPhoneNumberId,
             "businessAddress": businessData.businessAddress,
+            "depositType": businessData.depositType || 'percentage',
             "depositPercentage": businessData.depositPercentage,
+            "depositFixedAmount": businessData.depositFixedAmount,
             "bookingFee": businessData.bookingFee,
             "stripeConnectAccountId": businessData.stripeConnectAccountId,
             "stripeAccountStatus": businessData.stripeAccountStatus,
@@ -257,11 +435,16 @@ export class Business {
     get whatsappNumber(): string | undefined { return this.data.whatsappNumber; }
     get whatsappPhoneNumberId(): string | undefined { return this.data.whatsappPhoneNumberId; }
     get businessAddress(): string | undefined { return this.data.businessAddress; }
+    
+    // 🔄 Backward compatibility getters + new deposit getters
     get depositPercentage(): number | undefined { return this.data.depositPercentage; }
+    get depositType(): DepositType { return this.data.depositType || 'percentage'; }
+    get depositFixedAmount(): number | undefined { return this.data.depositFixedAmount; }
+    
     get bookingFee(): number | undefined { return this.data.bookingFee; }
     get stripeConnectAccountId(): string | undefined { return this.data.stripeConnectAccountId; }
     get stripeAccountStatus(): 'pending' | 'active' | 'disabled' | undefined { return this.data.stripeAccountStatus; }
-        get preferredPaymentMethod(): string | undefined { return this.data.preferredPaymentMethod; }
+    get preferredPaymentMethod(): string | undefined { return this.data.preferredPaymentMethod; }
     get businessCategory(): BusinessCategory | undefined { return this.data.businessCategory; }
 
     static async findByWhatsappNumber(whatsappNumber: string): Promise<Business | null> {

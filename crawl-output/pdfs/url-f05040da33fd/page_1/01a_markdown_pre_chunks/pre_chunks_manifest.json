@@ -1,0 +1,12 @@
+{
+  "sourceUrl": "pdf-business-knowledge-base.pdf#page=1",
+  "originalCleanedTextPath": "../../01_cleaned_text/cleaned.txt",
+  "maxCharsPerGptChunk": 6000,
+  "numberOfPreChunks": 1,
+  "preChunkFileNames": [
+    "pre_chunk_0.txt"
+  ],
+  "timestamp": "2025-07-29T08:41:39.432Z",
+  "sessionId": "d7503cce-6f86-4137-878c-cc78c142ca42",
+  "domain": "business-knowledge-base.pdf"
+}

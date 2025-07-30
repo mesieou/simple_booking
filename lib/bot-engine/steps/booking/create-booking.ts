@@ -290,10 +290,10 @@ const buildConfirmationMessage = async (
   // Build main confirmation content using business-specific template
   let confirmationMessage = `${paymentMessage}${confirmationTemplate.TITLE.replace('{name}', customerName)}\n\n`;
 
-  // Build job details section using new component system
+  // Build job details section using new component system - use only validated addresses
   const addresses = {
-    pickup: quote.pickUp || currentGoalData.finalServiceAddress || currentGoalData.pickupAddress,
-    dropoff: quote.dropOff || currentGoalData.finalDropoffAddress || currentGoalData.dropoffAddress,
+    pickup: quote.pickUp || currentGoalData.finalServiceAddress,
+    dropoff: quote.dropOff || currentGoalData.finalDropoffAddress,
     customer: quote.dropOff || currentGoalData.finalServiceAddress,
     business: business?.businessAddress
   };
@@ -332,8 +332,9 @@ const buildConfirmationMessage = async (
   // Add payment details section using new component system
   if (paymentDetails.showPaymentDetails) {
     const deposit = paymentDetails.amountPaid > quote.totalJobCostEstimation ? {
-      percentage: business?.depositPercentage || 0,
-      amount: paymentDetails.amountPaid - (business?.bookingFee || 0)
+      percentage: business?.getDepositManager().getConfiguration().percentage || 0,
+      amount: paymentDetails.amountPaid - (business?.bookingFee || 0),
+      type: business?.getDepositManager().getConfiguration().type || 'percentage'
     } : null;
     
     // Check if any service uses per-minute pricing

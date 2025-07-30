@@ -10,7 +10,7 @@
 export { 
   createKnowledgeBase, 
   saveKnowledgeBase,
-  type KnowledgeCreatorOptions 
+  type KnowledgeOptions 
 } from './knowledge-creator';
 
 // Customer template (for additional policies)

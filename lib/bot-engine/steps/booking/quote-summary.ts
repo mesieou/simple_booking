@@ -202,25 +202,19 @@ class QuoteCalculator {
     const firstMobileService = services.find(s => s.mobile);
     if (!firstMobileService) return { travelCost: 0, travelTime: 0 };
 
-    const pickUp = currentGoalData.finalServiceAddress || currentGoalData.pickupAddress;
-    const dropOff = currentGoalData.finalDropoffAddress || currentGoalData.dropoffAddress;
+    // Use only validated addresses for travel cost calculation
+    const pickUp = currentGoalData.finalServiceAddress;
+    const dropOff = currentGoalData.finalDropoffAddress;
     
-    // Also check raw input addresses before Google formatting
-    const rawPickup = currentGoalData.pickupAddress;
-    const rawDropoff = currentGoalData.dropoffAddress;
-    
-    console.log('[QuoteCalculator] Travel cost calculation:', {
+    console.log('[QuoteCalculator] Travel cost calculation using validated addresses:', {
       pickUp,
       dropOff,
-      rawPickup,
-      rawDropoff,
-      sameFormatted: pickUp === dropOff,
-      sameRawInput: rawPickup === rawDropoff
+      sameAddress: pickUp === dropOff
     });
     
-    // Check if addresses are missing or the same (either formatted or raw input)
-    if (!pickUp || !dropOff || pickUp === dropOff || rawPickup === rawDropoff) {
-      console.log('[QuoteCalculator] Same address detected - no travel cost');
+    // Check if validated addresses are missing or the same
+    if (!pickUp || !dropOff || pickUp === dropOff) {
+      console.log('[QuoteCalculator] Same or missing validated addresses - no travel cost');
       return { travelCost: 0, travelTime: MINIMAL_TRAVEL_TIME };
     }
 
@@ -273,25 +267,22 @@ class QuoteDataBuilder {
 }
 
 class BusinessHelper {
-  static async getInfo(businessId: string): Promise<{ type: string; businessCategory: string; paymentMethod?: string; address: string; depositPercentage?: number; bookingFee?: number; businessAddress?: string; preferredPaymentMethod?: string }> {
-    try {
-      const business = await Business.getById(businessId);
-      return {
-        type: business.businessCategory || 'unknown',
-        businessCategory: business.businessCategory || 'unknown',
-        paymentMethod: business.preferredPaymentMethod,
-        address: business.businessAddress || business.name || 'Business Location',
-        depositPercentage: business.depositPercentage,
-        bookingFee: business.bookingFee,
-        businessAddress: business.businessAddress,
-        preferredPaymentMethod: business.preferredPaymentMethod
-      };
-    } catch (error) {
-      QuoteSummaryLogger.warn('Could not fetch business info', {}, { 
-        error: error instanceof Error ? error.message : String(error) 
-      });
-      return { type: 'unknown', businessCategory: 'unknown', address: 'Business Location' };
-    }
+  static async getInfo(businessId: string): Promise<{ type: string; businessCategory: string; paymentMethod?: string; address: string; depositType?: string; depositPercentage?: number; depositFixedAmount?: number; bookingFee?: number; businessAddress?: string; preferredPaymentMethod?: string }> {
+    const business = await Business.getById(businessId);
+    const depositConfig = business.getDepositManager().getConfiguration();
+    
+    return {
+      type: business.interfaceType || 'whatsapp',
+      businessCategory: business.businessCategory || 'default',
+      paymentMethod: business.preferredPaymentMethod, // ✅ Added missing paymentMethod field
+      address: business.businessAddress || '',
+      depositType: depositConfig.type,
+      depositPercentage: depositConfig.percentage,
+      depositFixedAmount: depositConfig.amount,
+      bookingFee: business.bookingFee,
+      businessAddress: business.businessAddress,
+      preferredPaymentMethod: business.preferredPaymentMethod
+    };
   }
 
   static async getAddress(businessId: string): Promise<string> {
@@ -356,10 +347,11 @@ class QuoteTemplateRenderer {
   }
   
   private static buildJobDetailsSection(businessType: 'removalist' | 'mobile' | 'non_mobile', data: QuoteTemplateData, language: string): string {
+    // Use only validated addresses - if not available, this indicates a validation issue
     const addresses = {
-      pickup: data.currentGoalData.finalServiceAddress || data.currentGoalData.pickupAddress,
-      dropoff: data.currentGoalData.finalDropoffAddress || data.currentGoalData.dropoffAddress,
-      customer: data.currentGoalData.finalServiceAddress || data.currentGoalData.customerAddress,
+      pickup: data.currentGoalData.finalServiceAddress,
+      dropoff: data.currentGoalData.finalDropoffAddress,
+      customer: data.currentGoalData.finalServiceAddress,
       business: data.businessInfo.businessAddress
     };
     
@@ -422,13 +414,25 @@ class QuoteTemplateRenderer {
   private static buildPaymentBreakdownSection(data: QuoteTemplateData, businessType: string, language: string): string {
     const { paymentDetails, quoteEstimation, businessInfo, services } = data;
     
-    // Get the correct deposit percentage from business info
-    const depositPercentage = businessInfo.depositPercentage || 0;
+    // 🆕 Simplified using DepositManager - no more complex deposit type handling!
+    let deposit: { percentage?: number; amount: number; type: string } | null = null;
     
-    const deposit = paymentDetails.depositAmount > 0 ? {
-      percentage: depositPercentage,
-      amount: paymentDetails.depositAmount
-    } : null;
+    if (paymentDetails.depositAmount > 0) {
+      const depositType = businessInfo.depositType || 'percentage';
+      
+      if (depositType === 'percentage') {
+        deposit = {
+          percentage: businessInfo.depositPercentage || 0,
+          amount: paymentDetails.depositAmount,
+          type: 'percentage'
+        };
+      } else {
+        deposit = {
+          amount: paymentDetails.depositAmount,
+          type: 'fixed'
+        };
+      }
+    }
     
     const businessTypeForPayment = businessType === 'removalist' ? 'removalist' : 'salon';
     
@@ -639,6 +643,11 @@ export const quoteSummaryHandler: IndividualStepHandler = {
 
     // Return existing data if not empty input
     if (validatedInput !== "") {
+      return currentGoalData;
+    }
+
+    // If we're showing edit options, don't regenerate the quote
+    if (currentGoalData.showEditOptions) {
       return currentGoalData;
     }
 

@@ -9,8 +9,7 @@
 import { generateBusinessSpecificSystemKnowledge, type BusinessConfiguration } from './dynamic-system-knowledge';
 import { BusinessCategoryType } from '../config/business-templates';
 
-export interface KnowledgeCreatorOptions {
-  // Business basics
+export interface KnowledgeOptions {
   businessName: string;
   businessCategory: BusinessCategoryType;
   ownerFirstName: string;
@@ -19,54 +18,54 @@ export interface KnowledgeCreatorOptions {
   phone: string;
   whatsappNumber: string;
   businessAddress: string;
-  
-  // Services
   services: Array<{
     name: string;
     pricingType: 'fixed' | 'per_minute';
     fixedPrice?: number;
     baseCharge?: number;
     ratePerMinute?: number;
-    mobile: boolean;
+    description: string;
     durationEstimate: number;
+    mobile: boolean;
   }>;
-  
-  // Providers
   numberOfProviders: number;
-  
-  // Payment
-  depositPercentage: number;
+  depositType?: 'percentage' | 'fixed';
+  depositPercentage?: number;
+  depositFixedAmount?: number;
   preferredPaymentMethod: string;
 }
 
 /**
  * Create complete knowledge base
  */
-export function createKnowledgeBase(options: KnowledgeCreatorOptions, customQandA?: string): string {
-  // 1. Generate Skedy knowledge from form data
+export function createKnowledgeBase(options: KnowledgeOptions, customQandA?: string): string {
+  // Create business configuration from options
   const businessConfig: BusinessConfiguration = {
     businessName: options.businessName,
     businessCategory: options.businessCategory,
     services: options.services,
     numberOfProviders: options.numberOfProviders,
-    allowProviderSelection: false, // Most businesses don't allow this
+    allowProviderSelection: false,
     acceptsOnlinePayments: true,
-    acceptsCash: false,
-    requiresDeposit: options.depositPercentage > 0,
-    depositPercentage: options.depositPercentage,
-    allowsTextBooking: true, // Main feature of Skedy
+    acceptsCash: true,
+    requiresDeposit: Boolean((options.depositType === 'percentage' && options.depositPercentage && options.depositPercentage > 0) ||
+                     (options.depositType === 'fixed' && options.depositFixedAmount && options.depositFixedAmount > 0)),
+    depositType: options.depositType || 'percentage',
+    depositPercentage: options.depositType === 'percentage' ? options.depositPercentage : undefined,
+    depositFixedAmount: options.depositType === 'fixed' ? options.depositFixedAmount : undefined,
+    allowsTextBooking: true,
     requiresButtonBooking: false,
     whatsappNumber: options.whatsappNumber,
     responseTimeHours: 24,
     operatingHours: 'See calendar for availability',
     cancellationPolicy: 'See business policies',
     businessAddress: options.businessAddress,
-    serviceAreas: ['Local area'], // Default service area
-    offersQuotes: true, // Most businesses offer quotes
-    offersInstantBooking: true, // Main feature of Skedy
-    hasRealTimeAvailability: true // Skedy provides real-time availability
+    serviceAreas: ['Local area'],
+    offersQuotes: true,
+    offersInstantBooking: true,
+    hasRealTimeAvailability: true
   };
-  
+
   const skedyKnowledge = generateBusinessSpecificSystemKnowledge(businessConfig);
   
   // 2. Add customer Q&A if provided

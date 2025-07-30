@@ -1,12 +1,13 @@
 'use client';
 
+import { useState, useCallback, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Truck, Scissors, User, Users, Plus, Minus } from 'lucide-react';
+import { Truck, Scissors, User, Users, Plus, Minus, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getAllBusinessCategories, type BusinessCategoryType } from '@/lib/config/business-templates';
 
@@ -30,6 +31,7 @@ interface BusinessInfoStepProps {
     providerNames: string[];
   };
   onUpdate: (data: any) => void;
+  onEmailValidationChange?: (isValid: boolean | null) => void;
 }
 
 const CATEGORY_ICONS = {
@@ -58,12 +60,101 @@ const COUNTRY_CODES = [
   { value: '+91', label: '🇮🇳 +91', country: 'India', placeholder: '98XXX XXXXX' },
 ];
 
-export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
+export function BusinessInfoStep({ data, onUpdate, onEmailValidationChange }: BusinessInfoStepProps) {
   const categories = getAllBusinessCategories();
+  
+  // Email validation state
+  const [emailValidation, setEmailValidation] = useState<{
+    isValidating: boolean;
+    isValid: boolean | null;
+    message: string;
+  }>({
+    isValidating: false,
+    isValid: null,
+    message: ''
+  });
 
   const handleInputChange = (field: string, value: string) => {
     onUpdate({ [field]: value });
   };
+
+  // Email validation function
+  const validateEmail = useCallback(async (email: string) => {
+    if (!email || !email.includes('@')) {
+      setEmailValidation({
+        isValidating: false,
+        isValid: false,
+        message: 'Please enter a valid email address'
+      });
+      
+      // Notify parent component about validation failure
+      onEmailValidationChange?.(false);
+      return;
+    }
+
+    setEmailValidation({
+      isValidating: true,
+      isValid: null,
+      message: 'Checking email availability...'
+    });
+
+    try {
+      const response = await fetch('/api/onboarding/validate-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const result = await response.json();
+
+      setEmailValidation({
+        isValidating: false,
+        isValid: result.available,
+        message: result.message
+      });
+      
+      // Notify parent component about validation state
+      onEmailValidationChange?.(result.available);
+    } catch (error) {
+      console.error('Email validation error:', error);
+      setEmailValidation({
+        isValidating: false,
+        isValid: false,
+        message: 'Error checking email availability'
+      });
+      
+      // Notify parent component about validation failure
+      onEmailValidationChange?.(false);
+    }
+  }, []);
+
+  // Handle email input change with validation
+  const handleEmailChange = (email: string) => {
+    handleInputChange('email', email);
+    
+    // Clear previous validation when user starts typing
+    setEmailValidation({
+      isValidating: false,
+      isValid: null,
+      message: ''
+    });
+    
+    // Notify parent that validation is pending
+    onEmailValidationChange?.(null);
+  };
+
+  // Debounced email validation
+  useEffect(() => {
+    if (!data.email) return;
+
+    const timeoutId = setTimeout(() => {
+      validateEmail(data.email);
+    }, 1000); // Wait 1 second after user stops typing
+
+    return () => clearTimeout(timeoutId);
+  }, [data.email, validateEmail]);
 
   const getPlaceholderForCountryCode = (countryCode: string) => {
     const country = COUNTRY_CODES.find(c => c.value === countryCode);
@@ -392,14 +483,46 @@ export function BusinessInfoStep({ data, onUpdate }: BusinessInfoStepProps) {
         <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="email" className="text-sm font-semibold text-gray-800">Email Address</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="john@example.com"
-              value={data.email}
-              onChange={(e) => handleInputChange('email', e.target.value)}
-              className="bg-white border-gray-300 text-black placeholder:text-gray-500 text-sm"
-            />
+            <div className="relative">
+              <Input
+                id="email"
+                type="email"
+                placeholder="john@example.com"
+                value={data.email}
+                onChange={(e) => handleEmailChange(e.target.value)}
+                className={`bg-white border text-black placeholder:text-gray-500 text-sm pr-10 ${
+                  emailValidation.isValid === false 
+                    ? 'border-red-500 focus:border-red-500' 
+                    : emailValidation.isValid === true 
+                      ? 'border-green-500 focus:border-green-500'
+                      : 'border-gray-300'
+                }`}
+              />
+              {/* Validation icon */}
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                {emailValidation.isValidating && (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                )}
+                {!emailValidation.isValidating && emailValidation.isValid === true && (
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                )}
+                {!emailValidation.isValidating && emailValidation.isValid === false && (
+                  <AlertCircle className="h-4 w-4 text-red-500" />
+                )}
+              </div>
+            </div>
+            {/* Validation message */}
+            {emailValidation.message && (
+              <p className={`text-xs ${
+                emailValidation.isValid === false 
+                  ? 'text-red-600' 
+                  : emailValidation.isValid === true 
+                    ? 'text-green-600'
+                    : 'text-blue-600'
+              }`}>
+                {emailValidation.message}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">

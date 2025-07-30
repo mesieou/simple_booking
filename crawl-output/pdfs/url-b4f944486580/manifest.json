@@ -1,0 +1,43 @@
+{
+  "sourceUrl": "pdf-business-knowledge-base.pdf#page=1",
+  "pageTitle": "business-knowledge-base.pdf - Page 1",
+  "isPdf": true,
+  "totalLlmChunks": 5,
+  "documents": [
+    {
+      "documentId": "10043c29-8d45-400c-b077-6b5a0f0e5bfd",
+      "chunkOrder": 1,
+      "category": "booking or scheduling",
+      "originalTextLength": 848,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "f302fd8c-19fa-4d32-a3ec-dae4f441892e",
+      "chunkOrder": 2,
+      "category": "pricing or quotes",
+      "originalTextLength": 1621,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "f6be0624-5510-42e2-9c11-9e26221ecde4",
+      "chunkOrder": 3,
+      "category": "pricing or quotes",
+      "originalTextLength": 644,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "f2de3a36-7a14-49c8-bbae-89521e4f9032",
+      "chunkOrder": 4,
+      "category": "Uncategorized",
+      "originalTextLength": 1222,
+      "preChunkSourceIndex": 0
+    },
+    {
+      "documentId": "00c00ec0-42d5-43c5-9960-fa8d415aa1c5",
+      "chunkOrder": 5,
+      "category": "contact",
+      "originalTextLength": 652,
+      "preChunkSourceIndex": 0
+    }
+  ]
+}

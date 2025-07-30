@@ -62,7 +62,7 @@ export class WhatsAppProvider extends BaseNotificationProvider {
     }],
     ['system', {
       templateName: 'negative_feedback_alert',
-      requiresTemplate: true,
+      requiresTemplate: false, // Allow fallback to regular messages
       headerParams: () => [], // No header parameters
       bodyParams: (data) => [
         this.cleanParam(data.customerPhone || data.customerPhoneNumber || 'Unknown'), // {{1}} Customer phone

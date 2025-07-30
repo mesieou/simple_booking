@@ -8,6 +8,7 @@ import { StripePaymentService } from '@/lib/payments/stripe-utils';
 import { getBusinessTemplate } from '@/lib/config/business-templates';
 import { computeAggregatedAvailability } from '@/lib/general-helpers/availability/index';
 import { AvailabilitySlots } from '@/lib/database/models/availability-slots';
+import { DepositManager } from '@/lib/database/models/business';
 
 export const runtime = 'nodejs';
 
@@ -130,7 +131,9 @@ export async function POST(request: NextRequest) {
         businessAddress: onboardingData.businessAddress,
         services: onboardingData.services || [],
         numberOfProviders: numberOfProviders,
-        depositPercentage: onboardingData.depositPercentage || 0,
+        depositType: onboardingData.depositType || 'percentage',
+        depositPercentage: onboardingData.depositType === 'percentage' ? (onboardingData.depositPercentage || 0) : undefined,
+        depositFixedAmount: onboardingData.depositType === 'fixed' ? (onboardingData.depositFixedAmount || 0) : undefined,
         preferredPaymentMethod: onboardingData.preferredPaymentMethod || 'online',
       };
       
@@ -189,7 +192,9 @@ export async function POST(request: NextRequest) {
       websiteUrl: onboardingData.websiteUrl || '',
       businessCategory: onboardingData.businessCategory as any,
       numberOfProviders: numberOfProviders, // Track the number of providers
-      depositPercentage: onboardingData.depositPercentage || 25,
+      depositType: onboardingData.depositType || 'percentage',
+      depositPercentage: onboardingData.depositType === 'percentage' ? (onboardingData.depositPercentage || 0) : undefined,
+      depositFixedAmount: onboardingData.depositType === 'fixed' ? (onboardingData.depositFixedAmount || 0) : undefined,
       stripeConnectAccountId: undefined, // To be created later
       stripeAccountStatus: 'pending' as const,
       preferredPaymentMethod: onboardingData.preferredPaymentMethod || 'cash'

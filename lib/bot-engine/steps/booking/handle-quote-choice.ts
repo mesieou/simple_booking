@@ -95,15 +95,17 @@ export const handleQuoteChoiceHandler: IndividualStepHandler = {
 
           console.log('[HandleQuoteChoice] Payment link created successfully');
           
-          // Get business info for personalization
+          // Get business info once and reuse throughout
           const businessId = chatContext.currentParticipant.associatedBusinessId;
+          let business: Business | null = null;
           let businessName = 'the business';
+          
           if (businessId) {
             try {
-              const business = await Business.getById(businessId);
+              business = await Business.getById(businessId);
               businessName = business.name;
             } catch (error) {
-              console.warn('[HandleQuoteChoice] Could not fetch business name');
+              console.warn('[HandleQuoteChoice] Could not fetch business info');
             }
           }
 
@@ -128,17 +130,12 @@ export const handleQuoteChoiceHandler: IndividualStepHandler = {
           let businessType = 'unknown';
           let bookingFee = 0;
           
-          if (businessId) {
-            try {
-              const business = await Business.getById(businessId);
-              if (business.preferredPaymentMethod) {
-                preferredPaymentMethod = business.preferredPaymentMethod;
-              }
-              businessType = business.businessCategory || 'unknown';
-              bookingFee = business.bookingFee || 0;
-            } catch (error) {
-              console.warn('[HandleQuoteChoice] Could not fetch business payment method');
+          if (business) {
+            if (business.preferredPaymentMethod) {
+              preferredPaymentMethod = business.preferredPaymentMethod;
             }
+            businessType = business.businessCategory || 'unknown';
+            bookingFee = business.bookingFee || 0;
           }
           
           const customerName = currentGoalData.customerName || '{name}';
@@ -148,11 +145,13 @@ export const handleQuoteChoiceHandler: IndividualStepHandler = {
           const businessTemplate = isRemovalist ? 'REMOVALIST' : 'SALON';
           const paymentTemplate = t.PAYMENT_TEMPLATES[businessTemplate];
           
-          // Calculate deposit details for payment breakdown
-          const depositPercentage = currentGoalData.depositPercentage || 25; // fallback
-          const deposit = depositAmount > 0 ? {
-            percentage: depositPercentage,
-            amount: depositAmount
+          // 🆕 Calculate deposit details using centralized DepositManager
+          const depositCalc = business?.getDepositCalculation(currentGoalData.totalJobCostEstimation || 0);
+          
+          const deposit = (depositCalc && depositCalc.isRequired) ? {
+            type: depositCalc.metadata.type,
+            percentage: depositCalc.metadata.type === 'percentage' ? depositCalc.metadata.originalValue : undefined,
+            amount: depositCalc.depositAmount
           } : null;
           
           // Build payment message using business-specific template and new component system

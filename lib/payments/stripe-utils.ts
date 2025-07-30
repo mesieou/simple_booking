@@ -89,6 +89,7 @@ export class StripePaymentService {
             serviceDescription: data.serviceDescription,
             depositAmount: data.depositAmount.toString(),
             totalAmount: data.totalAmount.toString(),
+            type: 'booking_deposit', // Added type for deposit
           },
         },
         unit_amount: totalAmountCents,
@@ -108,15 +109,11 @@ export class StripePaymentService {
           destination: business.stripeConnectAccountId,
         },
         metadata: {
-          quoteId: data.quoteId,
-          businessId: data.businessId,
-          customerId: data.customerId,
-          businessName: data.businessName,
-          customerName: data.customerName,
-          serviceDescription: data.serviceDescription,
-          depositAmount: data.depositAmount.toString(),
-          totalAmount: data.totalAmount.toString(),
           type: 'booking_deposit',
+          quoteId: data.quoteId,
+          customerId: data.customerId,
+          businessId: data.businessId,
+          ...business.getDepositManager().getPaymentMetadata(),
         },
         after_completion: {
           type: 'redirect',
@@ -322,7 +319,9 @@ export class StripePaymentService {
         websiteUrl: business.websiteUrl,
         whatsappNumber: business.whatsappNumber,
         businessAddress: business.businessAddress,
+        depositType: business.depositType,
         depositPercentage: business.depositPercentage,
+        depositFixedAmount: business.depositFixedAmount,
         stripeConnectAccountId: account.id,
         stripeAccountStatus: 'pending',
       });
@@ -433,7 +432,9 @@ export class StripePaymentService {
         websiteUrl: business.websiteUrl,
         whatsappNumber: business.whatsappNumber,
         businessAddress: business.businessAddress,
+        depositType: business.depositType,
         depositPercentage: business.depositPercentage,
+        depositFixedAmount: business.depositFixedAmount,
         stripeConnectAccountId: business.stripeConnectAccountId,
         stripeAccountStatus: status,
       });
@@ -509,7 +510,9 @@ export class StripePaymentService {
         websiteUrl: business.websiteUrl,
         whatsappNumber: business.whatsappNumber,
         businessAddress: business.businessAddress,
+        depositType: business.depositType,
         depositPercentage: business.depositPercentage,
+        depositFixedAmount: business.depositFixedAmount,
         stripeConnectAccountId: business.stripeConnectAccountId,
         stripeAccountStatus: status,
       });

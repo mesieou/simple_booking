@@ -1102,7 +1102,7 @@ export class MessageComponentBuilder {
   
   static buildPaymentBreakdown(
     totalCost: number,
-    deposit: { percentage: number; amount: number } | null,
+    deposit: { percentage?: number; amount: number; type: string } | null,
     bookingFee: number,
     paymentMethod: string,
     businessType: 'removalist' | 'salon',
@@ -1120,11 +1120,18 @@ export class MessageComponentBuilder {
     const totalCostTemplate = isPerMinuteService ? template.ESTIMATED_TOTAL_COST : template.TOTAL_COST;
     section += `${totalCostTemplate.replace('{amount}', totalCost.toFixed(2))}\n`;
     
-    // Deposit (only if > 0)
+    // 🆕 Deposit display - handle both percentage and fixed types
     if (deposit && deposit.amount > 0) {
-      section += `${template.DEPOSIT
-        .replace('{percentage}', deposit.percentage.toString())
-        .replace('{amount}', deposit.amount.toFixed(2))}\n`;
+      let depositText = '';
+      if (deposit.type === 'percentage' && deposit.percentage) {
+        depositText = template.DEPOSIT
+          .replace('{percentage}', deposit.percentage.toString())
+          .replace('{amount}', deposit.amount.toFixed(2));
+      } else {
+        // For fixed deposits, create a simpler template
+        depositText = `• Deposit: $${deposit.amount.toFixed(2)}`;
+      }
+      section += `${depositText}\n`;
     }
     
     // Booking fee (only if > 0)

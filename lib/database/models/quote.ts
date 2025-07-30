@@ -54,24 +54,22 @@ export class Quote {
             const { Business } = await import('./business');
             const business = await Business.getById(this.data.businessId);
             
-            // Calculate deposit and remaining balance
-            let depositAmount: number | undefined = undefined;
-            let remainingBalance = this.data.totalJobCostEstimation;
+            // 🆕 Use centralized DepositManager - no more scattered deposit logic!
+            const depositCalc = business.getDepositCalculation(this.data.totalJobCostEstimation);
             
-            // Only calculate deposit if business has a deposit percentage set
-            if (business.depositPercentage !== undefined && business.depositPercentage > 0) {
-                depositAmount = Math.round((this.data.totalJobCostEstimation * business.depositPercentage) / 100);
-                remainingBalance = this.data.totalJobCostEstimation - depositAmount;
-                
-                this.data.depositAmount = depositAmount;
-                this.data.remainingBalance = remainingBalance;
+            // Update quote data
+            if (depositCalc.isRequired) {
+                this.data.depositAmount = depositCalc.depositAmount;
+                this.data.remainingBalance = depositCalc.remainingBalance;
             } else {
-                // No deposit required - full amount is remaining balance
                 this.data.depositAmount = undefined;
-                this.data.remainingBalance = remainingBalance;
+                this.data.remainingBalance = this.data.totalJobCostEstimation;
             }
             
-            return { depositAmount, remainingBalance };
+            return { 
+                depositAmount: depositCalc.isRequired ? depositCalc.depositAmount : undefined, 
+                remainingBalance: depositCalc.remainingBalance
+            };
         } catch (error) {
             console.error('Error calculating payment details:', error);
             // Fallback values

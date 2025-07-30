@@ -142,17 +142,18 @@ export const BOOKING_TRANSLATIONS = {
         ESTIMATED_COMPLETION: '🏁 Estimated completion: {time}'
       },
       PAYMENT_BREAKDOWN: {
-        TITLE: '💳 *Payment Breakdown*',
+        TITLE: '💰 Payment Details',
         TOTAL_COST: '• Total Cost: ${amount}',
         ESTIMATED_TOTAL_COST: '• Estimated Total Cost: ${amount}',
         DEPOSIT: '• Deposit ({percentage}%): ${amount}',
+        FIXED_DEPOSIT: '• Deposit: ${amount}',
         BOOKING_FEE: '• Booking Fee: ${amount}',
+        PAY_NOW: '• Pay Now: ${amount}',
         REMAINING_BALANCE: '• Remaining Balance: ${amount}',
         ESTIMATED_REMAINING_BALANCE: '• Estimated Remaining Balance: ${amount}',
         PAYMENT_METHOD: '• Payment Method: {method}',
-        PAY_NOW: '• *Total to Pay Now: ${amount}*',
-        PAY_AT_SERVICE: '💳 Pay at service ({method})',
-        PAY_AFTER_JOB: '💳 Pay after job completion ({method})'
+        PAY_AFTER_JOB: '• Balance due cash after job completion',
+        PAY_AT_SERVICE: '• Balance due {method} at service'
       }
     },
     // Business-specific payment templates
@@ -363,7 +364,7 @@ export const BOOKING_TRANSLATIONS = {
         ESTIMATED_COMPLETION: '🏁 Finalización estimada: {time}'
       },
       PAYMENT_BREAKDOWN: {
-        TITLE: '💳 *Desglose de Pago*',
+        TITLE: '💰 *Desglose de Pago*',
         TOTAL_COST: '• Costo Total: ${amount}',
         ESTIMATED_TOTAL_COST: '• Costo Total Estimado: ${amount}',
         DEPOSIT: '• Depósito ({percentage}%): ${amount}',
