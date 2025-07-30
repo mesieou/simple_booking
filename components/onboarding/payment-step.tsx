@@ -41,7 +41,7 @@ const PAYMENT_METHODS = [
     icon: Building2,
   },
   {
-    value: 'both',
+    value: 'cash, card and bank transfers',
     label: 'All Methods',
     description: 'Accept cash, card, and bank transfers',
     icon: Shield,
