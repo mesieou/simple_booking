@@ -11,20 +11,20 @@ const defaultUrl = process.env.VERCEL_URL
 
 export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
-  title: "Skedy - AI-Powered Booking Management",
-  description: "We help mobile businesses manage their bookings and calendars with AI agents. Streamline your operations and delight your customers.",
+  title: "Skedy - AI-Powered Voice Agent",
+  description: "We help tradies to automate their customer service, booking and scheduling.",
   keywords: "booking management, calendar automation, AI agents, mobile business, scheduling",
   authors: [{ name: "Skedy Team" }],
   openGraph: {
-    title: "Skedy - AI-Powered Booking Management",
-    description: "We help mobile businesses manage their bookings and calendars with AI agents.",
+    title: "Skedy - AI-Powered Voice Agent",
+    description: "We help tradies to automate their customer service, booking and scheduling.",
     type: "website",
     url: defaultUrl,
   },
   twitter: {
     card: "summary_large_image",
-    title: "Skedy - AI-Powered Booking Management",
-    description: "We help mobile businesses manage their bookings and calendars with AI agents.",
+    title: "Skedy - AI-Powered Voice Agent",
+    description: "We help tradies to automate their customer service, booking and scheduling.",
   },
   icons: {
     icon: "/favicon.ico",

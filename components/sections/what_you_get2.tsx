@@ -17,7 +17,7 @@ const icons = [
   {
     src: "/images/beneficts/whatsapp-removebg-preview.png",
     alt: "Personalized",
-    label: "Enjoy a chatbot that continuously learns and adapts, becoming smarter with your feedback.",
+    label: "AI that learns from every interaction, continuously improving its responses and service quality.",
     aria: "Personalized",
   },
   {
@@ -35,7 +35,7 @@ const icons = [
   {
     src: "/images/beneficts/customizable-removebg-preview.png",
     alt: "Reduce Costs",
-    label: "Tailor the chatbot to your business needs in minutes and reduce operational expenses.",
+    label: "Customize your AI receptionist to fit your business perfectly while reducing operational costs.",
     aria: "Reduce Costs",
   },
 ];
@@ -52,10 +52,10 @@ const WhatYouGet = () => {
   return (
     <section className="flex flex-col items-center justify-center py-12 w-full">
       <div className="flex flex-col items-center justify-center mb-8">
-        <h2 className="text-5xl md:text-8xl font-extrabold tracking-tight text-primary mb-2">
+        <h2 className="text-2xl sm:text-4xl md:text-6xl font-extrabold tracking-tight text-primary mb-2">
           UNIQUE
         </h2>
-        <h2 className="text-3xl md:text-6xl font-bold tracking-tight text-white mb-2">
+        <h2 className="text-xl sm:text-2xl md:text-4xl font-bold tracking-tight text-white mb-2">
           For <span className="text-white">Your</span> <span className="text-white">Business</span>
         </h2>
         <div className="h-1 w-24 bg-primary rounded-full mt-2 transition-all duration-500" />

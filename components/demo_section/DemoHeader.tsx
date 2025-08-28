@@ -2,13 +2,13 @@ const DemoHeader = () => {
   return (
     <div>
       <h2 className="text-4xl font-bold text-white mb-6">
-        See how it works in action
+        Your AI Receptionist in Action
       </h2>
       <p className="text-xl text-white/60 mb-8">
-        Our chatbot handles complex queries, bookings, and sales naturally and efficiently.
+        See how our AI handles real customer calls with natural conversation and professional service.
       </p>
     </div>
   );
 };
 
-export default DemoHeader; 
+export default DemoHeader;

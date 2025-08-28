@@ -31,7 +31,7 @@ export function LayoutSwitcher({ children }: { children: React.ReactNode }) {
       <main className="min-h-screen flex flex-col">
         <div className="flex-1 w-full flex flex-col items-center">
           <Navbar />
-          <div className="flex flex-col gap-20 max-w-5xl p-5 relative z-10 w-full">
+          <div className="flex flex-col gap-20 max-w-5xl px-4 sm:px-6 lg:px-8 pt-4 sm:pt-8 lg:pt-12 pb-5 relative z-10 w-full">
             <Suspense
               fallback={
                 <div className="flex items-center justify-center min-h-[200px]">
@@ -48,4 +48,4 @@ export function LayoutSwitcher({ children }: { children: React.ReactNode }) {
       <Toaster />
     </>
   );
-} 
+}

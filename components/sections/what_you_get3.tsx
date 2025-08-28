@@ -20,9 +20,9 @@ const features = [
     description: "Agents constantly improve their performance through machine learning and feedback.",
     gradient: "from-secondary to-primary"
   },
-  
+
   {
-    icon: Languages,  
+    icon: Languages,
     title: "Multi-language Communication",
     description: "Communicate without barriers with your users in any language, expanding your global reach.",
     gradient: "from-accent to-secondary"
@@ -31,17 +31,17 @@ const features = [
   {
     icon: CalendarCheck2,
     title: "Business Adaptation",
-    description: "Customize the chatbot in minutes to align it with your processes, style and business objectives.",
+    description: "Customize your AI receptionist to match your business style and specific requirements.",
     gradient: "from-accent to-secondary"
   },
 ];
 
-const FeatureCard = ({ 
-  icon: Icon, 
-  title, 
-  description, 
-  gradient, 
-  index 
+const FeatureCard = ({
+  icon: Icon,
+  title,
+  description,
+  gradient,
+  index
 }: {
   icon: any;
   title: string;
@@ -82,12 +82,11 @@ export const FeaturesSection = () => {
           <div className="inline-flex items-center justify-center p-2 bg-primary/10 rounded-full mb-4">
             <Brain className="w-6 h-6 text-primary" />
           </div>
-          <h2 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-            Chatbot Agents at the Service of Your Business
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+            Your AI Receptionist Features
           </h2>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Our chatbot agents transform the way businesses operate, 
-            automating complex processes and unlocking new growth opportunities.
+          <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto">
+            Professional AI receptionist that handles calls, bookings, and customer service with human-like conversation.
           </p>
         </div>
 
@@ -106,7 +105,7 @@ export const FeaturesSection = () => {
               />
             ))}
           </div>
-          
+
           {/* Second row - 2 centered features */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
             {features.slice(3, 5).map((feature, index) => (
@@ -122,8 +121,8 @@ export const FeaturesSection = () => {
           </div>
         </div>
 
-      
-        
+
+
       </div>
     </section>
   );

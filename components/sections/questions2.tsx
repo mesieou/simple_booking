@@ -29,25 +29,25 @@ const faqs = [
 
 const Questions2 = () => {
   return (
-    <section className="py-20 px-4 bg-white/5">
+    <section className="py-12 sm:py-16 md:py-20 px-4 bg-white/5">
       <div className="container mx-auto">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl font-bold text-white mb-4">
+        <div className="text-center mb-8 sm:mb-12 md:mb-16">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3 sm:mb-4">
             Frequently Asked Questions
           </h2>
-          <p className="text-xl text-white/60">
+          <p className="text-base sm:text-lg md:text-xl text-white/60">
             Everything you need to know about our chatbot
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+        <div className="grid md:grid-cols-2 gap-6 sm:gap-8 max-w-4xl mx-auto">
           {faqs.map((faq, index) => (
             <Card key={index} className="bg-white/5 border-white/10 backdrop-blur-xl">
               <CardHeader>
-                <CardTitle className="text-white text-lg">{faq.question}</CardTitle>
+                <CardTitle className="text-white text-base sm:text-lg">{faq.question}</CardTitle>
               </CardHeader>
               <CardContent>
-                <CardDescription className="text-white/70">
+                <CardDescription className="text-white/70 text-sm sm:text-base">
                   {faq.answer}
                 </CardDescription>
               </CardContent>
@@ -60,4 +60,3 @@ const Questions2 = () => {
 };
 
 export default Questions2;
-
